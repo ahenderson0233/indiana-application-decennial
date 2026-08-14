@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ClusterReports>
+  <Report>
+    <Cycle>TC1</Cycle>
+    <Stage>Phase 2</Stage>
+    <Phase1SISClusterReport>https://www.pjm.com/pub/planning/project-queues/Cluster-Reports/TC1/TC1_PH1_Executive_Summary.htm</Phase1SISClusterReport>
+    <Phase1SISClusterReportStatus>Posted</Phase1SISClusterReportStatus>
+    <Phase2SISClusterReport>
+    </Phase2SISClusterReport>
+    <Phase2SISClusterReportStatus>In Process</Phase2SISClusterReportStatus>
+    <Phase3SISClusterReport>
+    </Phase3SISClusterReport>
+    <Phase3SISClusterReportStatus>Not Started</Phase3SISClusterReportStatus>
+    <Phase1BeginDate>1/22/2024</Phase1BeginDate>
+    <Phase1EndDate>5/20/2024</Phase1EndDate>
+    <Phase2BeginDate>6/21/2024</Phase2BeginDate>
+    <Phase2EndDate>12/17/2024</Phase2EndDate>
+    <Phase3BeginDate>1/17/2025</Phase3BeginDate>
+    <Phase3EndDate>7/15/2025</Phase3EndDate>
+    <TotalNumberOfActiveProjects>204</TotalNumberOfActiveProjects>
+    <TotalMWOfActiveProjects>30237</TotalMWOfActiveProjects>
+  </Report>
+</ClusterReports>
