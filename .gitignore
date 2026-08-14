@@ -1,0 +1,18 @@
+# credentials — never committed
+*.key.json
+bq-key.json
+.env
+.env.*
+data/_secrets/
+
+# local scratch and caches
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+_scratch/
+*.log
+
+# licensed / commercial reference data must never enter this public repo.
+# Keep any such files outside the repository entirely.
+data/_local/
