@@ -16,3 +16,12 @@ _scratch/
 # licensed / commercial reference data must never enter this public repo.
 # Keep any such files outside the repository entirely.
 data/_local/
+
+# scraper working artifacts: caches, scratch pulls, downloaded documents
+scrapers/**/_scratch/
+scrapers/**/_cache*/
+scrapers/**/*.pdf
+scrapers/**/*.html
+scrapers/**/*.xlsx
+scrapers/**/*.js
+scrapers/**/*.json
