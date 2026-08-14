@@ -60,5 +60,73 @@ Adams, Allen, Blackford, Dearborn, DeKalb, Delaware, Elkhart, Fayette, Grant, Ha
 2. **`https://services.arcgis.com/ZnwBsu4Q8SvSAofV/arcgis/rest/services/PROD_MI_HC_GRID/FeatureServer/{0,1}`** — re-check STATE_ABBR quarterly (one groupBy request): lastEditDate is actively maintained (was today) and I&M told MPSC staff the tool may expand; the day IN rows appear, the generic ArcGIS loader lands them (`outSR=4326`, page by OBJECTID_1).
 3. **`https://giqueue.misoenergy.org/POI/api/pois`** — re-pull when MISO advances the viewer past DPP-2021-Cycle (watch the disclaimer in `PoiAnalysisConfig.xml`); a newer vintage would refresh `in_miso_poi_identity` and possibly populate the 2,864 coordinate-unknown POIs. (Duke Carolinas/Ohio GHC services are recorded above if scope ever widens beyond Indiana.)
 
-## 7. SCRIPTS
-`registry_check.py` (registry-first) · `cartovista_miso_probe.py` (+results json) · `build_in_miso_poi_identity.py` · `im_counties.py` · `check_aep_service.py` / `check_aep_states.py` / `check_aep_ev.py` / `resolve_aep_dashboard.py` · `pjm_page_inspect.py` / `pjm_js_inspect.py` / `pull_pjm_rtep_upgrades.py` (+`pjm_rtep_upgrades.xlsx`) · `build_in_rto_expansion.py` · `register_helper.py` · `agol_search_duke.py` / `agol_duke_org.py` / `duke_enumerate.py` / `duke_hc_inspect.py` · `final_qa.py`
+## 7. PJM FOLLOW-UP (coordinator add-on, 2026-08-14 second pass)
+
+### 7a. RTEP per-upgrade detail + cost-allocation fragments — LANDED (Indiana slice)
+`pull_pjm_upgrade_details.py`. Public GETs, no login: `/m/ProjectConst/UpgradeDetails?upgradeId={id}` and `/m/ProjectConst/UpgradeCostAllocations?upgradeId={id}` (the page's own modal loaders).
+- `indiana_app.in_pjm_rtep_upgrade_details` — one row per upgrade id: criteria_violation, description, type, driver, sub_region, location, task, equipment, related_materials (multi-link JSON: TEAC PDFs + proposal-window ids). See registry row for final count.
+- `indiana_app.in_pjm_rtep_cost_allocations` — one row per (upgrade_id, share_type, zone, percent).
+- SCOPE: the 932 Indiana-naming ids of 15,443 (INDIANA SLICE — full universe is ~9.4h at the rate limit; resumable script records the `--all` command). Fragments serve NO dates — milestone dates live in `in_pjm_rtep_upgrades`' own columns (that is the observed-date surface).
+- ⚠ OVERLAP, recorded not hidden: held `energy.txexp_pjm_rtep_upgrades` (15,440 rows from the anonymous 25MB `projectCostUpgrades.xml`) ALREADY carries `costallocationpercent`/`costallocationpercentlrs` comma-strings, and my `in_pjm_rtep_upgrades` XLSX carries the same two columns — the cost-allocation crawl NORMALIZES that into rows; the genuinely NEW fields are `criteria_violation` and multi-link `related_materials`.
+
+### 7b. Queue project → network upgrade cost $ — LANDED (NUCRA) + held + deferred
+- **LANDED: `indiana_app.in_pjm_nucra_costs` — 55 rows** (the full posted-allocation universe), from the public XLSX export `POST /m/ProjectTransition/GenerateExcelNUCRAProjectsAll` (cycle-service-request-status page, no login). THE machine-readable mapping: network upgrade id → `Projects with Cost Allocation` (queue ids incl. MISO-J*/NYISO-Q* affected-system projects) → Cost($M) → TO → NUCRA PDF link → NUCRA status → in-service/cancellation dates. 1 row names Indiana in State (column is sparse; TO+queue-id joins are the reliable route).
+- **ALREADY HELD (registry-first, not re-pulled):** `energy.txexp_pjm_tcic_upgrade_info` 9,936 rows (TCIC workbook: initial/latest TEAC $M, allocation type, useful life — upgrade-grain costs); `energy.txexp_pjm_rtep_upgrades` 15,440 (XML incl. costestimate + allocation strings); `energy.lbnl_interconnection_costs` (PJM queue-project costs through 2022); `energy.pjm_queuescope_results` 1.97M (per-bus headroom).
+- **Probed, no cost fields:** `pjmfiles/media/planning/queues-data/transitionProjects.xml` (200 OK, 310 cycle projects, 28 IN) — status/MW/report-links only; `clusterReports.xml` (200, report URLs). `pub/planning/downloads/xml/NUCRA.xml` → 404 (JS-advertised path dead; the working surface is the export POST above).
+- **EXTRACTION-DEFERRED (document-only):** per-project SIS/facilities-study costs live in per-project reports, systematic URLs published in transitionProjects.xml, pattern `pjm.com/pub/planning/project-queues/{cycle}/{phase}/{project}/..._imp_....htm|pdf`, and per-upgrade NUCRA agreement PDFs `pjm.com/pjmfiles/pub/planning/project-queues/Agreements/NUCRAs/{upgrade_id}_nucra.pdf` (links captured row-wise in in_pjm_nucra_costs). No OCR this run per instruction.
+
+### 7c. COORDINATE EXPERIMENT — bus_label ↔ substation_name (REPORT ONLY, no table wired)
+`coord_experiment.py`. Universe: 1,475 distinct AEP `bus_label` in `energy.pjm_queuescope_results` → 1,403 normalized names (labels are PSS/E-truncated: `05LEBANO 138 kV (242700)`); `indiana_app.in_substations` 3,010 assets, of which **1,992 (66%) are UNKNOWN#### placeholders** → 1,018 usable-named.
+
+| join | buses matched | substations matched | bus→multi-sub collisions |
+|---|---|---|---|
+| exact (normalize: UPPER, strip punctuation + type suffixes) | **38/1,403 = 2.7%** | 41/1,018 = 4.0% | 3 (7.9% of matched) |
+| prefix (truncation-aware, ≥5 chars) | **75/1,403 = 5.3%** | 88/1,018 = 8.6% | 12 (16.0% of matched) |
+
+10 sample pairs for human review (prefix join; exact-equal flagged):
+`05ALADDIN 138 kV↔ALADDIN (Alexandria/Madison, 138/138, exact)` · `05ROCKCR 138↔ROCK CREEK (Huntington, 138/138)` · `05DEQUIN 345↔DEQUINE (W. Lafayette/Tippecanoe, 345/345)` · `05MEADOW 138↔MEADOWBROOK (Anderson/Madison, 138/138)` · `05JACKSON 138↔JACKSON ROAD (South Bend/St. Joseph, **138 vs 345 kV mismatch**)` · `05KENDAL 138↔KENDALLVILLE (Kendallville/Noble, 138/138)` · `05GRABILL 138↔GRABILL (Grabill/Allen, 138/138, exact)` · `05FLOYD 138↔FLOYDS KNOBS (New Albany/Floyd, 138/138)` · `05BATTLE 138↔Battleground Station (no county/kv on sub)` · `05GRANT 138↔Grant Substation (no county/kv, exact)`.
+
+**Verdict (measured):** name-join is NOT viable as a wired location source — ceiling 5.3% even truncation-aware, collisions triple exact→prefix, kV mismatches appear in samples, and the binding constraint is the 66% placeholder-name rate in in_substations, not the normalizer. If the operator wants a next step: constrain candidates to I&M counties + require kV agreement, or wait for a name-bearing substation refresh; nothing wired this run.
+
+## 8. PJM BUS-LOCATION DEEP DIVE (operator escalation, 2026-08-14 third pass)
+
+**The decision asked for: which path gives PJM buses coordinates, at what match rate, with what caveats.**
+
+### Angle 1 — in-warehouse re-match (HIFLD + OSM replace the 66%-placeholder in_substations)
+AEP QueueScope universe: 1,475 distinct buses (1,403 normalized names; PSS/E-truncated). Candidate pools: `energy.nat_substations_hifld` and `energy.osm_power_substations`, AEP-footprint states (IN,MI,OH,WV,VA,KY,TN) and IN-only panels. kV validator = bus_kv within station's [min,max] kV.
+
+| panel | exact | exact kV-validated | prefix | prefix kV-validated |
+|---|---|---|---|---|
+| HIFLD AEP-states (2,603 named) | 8.0% | 6.1% (6 collisions) | 19.2% | 15.8% |
+| OSM AEP-states (8,436 named) | 10.4% | 8.1% (12 collisions) | 22.9% | 18.8% |
+| HIFLD IN-only (337 named) | 2.1% | 1.7% (**0 collisions**) | 4.6% | 3.6% |
+| OSM IN-only (900 named) | 1.9% | 1.2% (1 collision) | 5.1% | 2.9% |
+
+UNION wireable tier (exact + kV-validated, IN): **32 distinct buses**; 10 found in both layers, coordinates agree ≤~100m for 8/10; 3 multi-site cases flagged. Samples visually correct (DUMONT→North Liberty 345/765; CENTER→Indianapolis; BOSSERMAN→Michigan City). Denominator caveat: bus-side % is bounded by the unknown IN share of AEP's 7-state bus universe — IN-only panels understate the IN-conditional rate.
+
+### Angle 2 — PJM's own GIS: LIVE public ArcGIS server found
+`https://gis.pjm.com/arcgis/rest/services` (folders CTC, ESM, Interregional, Renewables, RTDMS, Utilities):
+- **LANDED: `indiana_app.in_pjm_gis_queues` — 6,923 queue POINTS with PJM's own coordinates** (Renewables/Queue/MapServer/0; Query capability, anonymous; outFields=\*, outSR=4326; pulled complete, count-verified vs returnCountOnly). Columns: QUEUE_ID, FAC_ID (4-char facility code + state + kV, e.g. BERGNJ230), VOLTAGE, lat/lon. **DIRECTLY PLOTTABLE**; exact-keyed to queue data via QUEUE_ID.
+- Walls (exact): `CTC/*` (Footprint, FuelTypes, Renewables, TO_Zones, TransmissionSystem) and `RTDMS/*` return HTTP 200 with in-body `{"error":{"code":500,"message":"Error handling service request :0x80004004 - Unidentified Error in 'esriCarto.MapServer'"}}` — the transmission-system layers exist but do not serve anonymously. `ESM` folder lists zero public services (the Enhanced System Map's layers are not exposed here). `Interregional/LMP` = 19 city points + zones (not buses).
+
+### Angle 3 — the wired ladder: `indiana_app.in_pjm_bus_locations_candidate` (1,475 rows, one per AEP bus)
+Registered twice: second row supersedes the first — the initial build's 4-char FAC gate produced FALSE HIGHS (FAC `CLIN` matched both CLINCHFLD and CLINTO; a WV bus landed on a MI `VALL` point). Rebuilt with ≥5-char overlap + unique-bus-family gate, which eliminated the tier entirely — **measured: every FAC_ID name part is a 4-char code, too weak for per-bus joins under the never-guess rule** (the queue points remain exact-keyed by QUEUE_ID instead).
+
+Final per-method counts (tiers never blended; kV gate hard for high; collisions → method='none'):
+| location_method | confidence | buses | coords |
+|---|---|---|---|
+| substation_match_exact | high (kV-validated) | 91 | 91 |
+| substation_match_exact | med | 34 | 34 |
+| substation_match_prefix | med | 91 | 91 |
+| rtep_bridge | med | 13 | 13 |
+| none (1,246; of which 186 saw only ambiguous matches) | — | 1,246 | 0 |
+
+**Located: 229/1,475 = 15.5% of the whole AEP zone universe** (IN-conditional share is higher; denominator spans 7 states). Every row carries location_method, match_confidence, match_basis, kv_consistent, collision_count. Interpolation tier **SKIPPED-BY-MEASUREMENT**: QueueScope PSS/E bus_numbers (242,508–290,735) join `energy.bus_hifld` synthetic ids (1–75,328) at exactly **0/1,475** — recorded, not attempted.
+
+### Angle 4 — CEII boundary (BLOCKED-CEII, do not re-chase)
+PJM RAW/PSS-E powerflow cases, MMWG model files, and FERC Form 715 Parts 2–6 (base cases, maps, planning criteria) are CEII — bus-coordinate truth lives there and stays out of scope (matches `data/bus_headroom_sources.json` ceii_boundary). PJM DataMiner2 needs a registered API key (operator-declined earlier, unchanged). Nothing was attempted against any of these.
+
+**Recommendation:** the defensible public path is the wired ladder (229 buses now, styled by method/confidence) + `in_pjm_gis_queues` for queue-facility siting (6,923 publisher points, exact QUEUE_ID key). The single highest-leverage upgrade would be a named refresh of the substation layer (replace UNKNOWN#### placeholders), which mechanically lifts the exact tier.
+
+## 9. SCRIPTS
+`registry_check.py` / `pjm_registry_check.py` (registry-first) · `cartovista_miso_probe.py` (+results json) · `build_in_miso_poi_identity.py` · `im_counties.py` · `check_aep_service.py` / `check_aep_states.py` / `check_aep_ev.py` / `resolve_aep_dashboard.py` · `pjm_page_inspect.py` / `pjm_js_inspect.py` / `pull_pjm_rtep_upgrades.py` (+`pjm_rtep_upgrades.xlsx`) · `build_in_rto_expansion.py` · `register_helper.py` · `agol_search_duke.py` / `agol_duke_org.py` / `duke_enumerate.py` / `duke_hc_inspect.py` · `pull_pjm_upgrade_details.py` (resumable; `_cache_pjm_details/`) · `pull_pjm_nucra.py` (+`pjm_nucra.xlsx`) · `coord_experiment.py` / `coord_experiment2.py` / `coord_experiment2b.py` (report-only) · `pjm_gis_probe.py` / `pjm_gis_enum.py` / `pjm_gis_queue_inspect.py` / `pull_pjm_gis_queues.py` · `tier4_gate2.py` (0% vocab measurement) · `build_bus_locations_candidate.py` (+`sanity_t0.py`) · `final_qa.py`

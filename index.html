@@ -15,23 +15,48 @@
 
 <div id="layout">
   <aside id="rail">
-    <h2>Site classes <span class="hint">(rendered individually)</span></h2>
-    <label><input type="checkbox" id="f-ci" checked> Strict C&amp;I</label>
-    <label><input type="checkbox" id="f-mw" checked> Fits ≥
-      <input type="number" id="f-mw-val" value="25" min="1" step="1"> MW
-      <span class="hint">at 4 MW/acre default — adjustable, not the answer</span></label>
-    <label><input type="checkbox" id="f-si" checked> Carries a seller-intent signal</label>
+    <div id="presets">
+      <button data-p="land" class="active">Land</button>
+      <button data-p="grid">Grid</button>
+      <button data-p="sentiment">Sentiment</button>
+    </div>
+
+    <div id="rail-land">
+      <h2>Site classes <span class="hint">(rendered individually)</span></h2>
+      <label><input type="checkbox" id="f-ci" checked> Strict C&amp;I</label>
+      <label><input type="checkbox" id="f-mw" checked> Fits ≥
+        <input type="number" id="f-mw-val" value="25" min="1" step="1"> MW
+        <span class="hint">at 4 MW/acre default — adjustable, not the answer</span></label>
+      <label><input type="checkbox" id="f-si" checked> Carries a seller-intent signal</label>
+      <h2>Legend</h2>
+      <div class="legend">
+        <div><span class="sw" style="background:#d97706"></span> seller-intent signal</div>
+        <div><span class="sw" style="background:#2563eb"></span> strict C&amp;I (no SI)</div>
+        <div><span class="sw" style="background:#059669"></span> fits ≥MW only</div>
+        <div><span class="sw sw-line"></span> exact parcel boundary (never simplified)</div>
+        <div class="hint">colour priority: SI &gt; C&amp;I &gt; MW. County shading counts <b>all</b> parcels.</div>
+      </div>
+    </div>
+
+    <div id="rail-grid" style="display:none">
+      <h2>Grid layers</h2>
+      <label><input type="checkbox" id="g-lines" checked> Transmission lines <span class="hint">(width/colour by kV)</span></label>
+      <label><input type="checkbox" id="g-subs" checked> Substations <span class="hint">(size by max kV)</span></label>
+      <label><input type="checkbox" id="g-bus" checked> MISO bus POIs <span class="hint">(size by median transfer MW)</span></label>
+      <div class="legend">
+        <div><span class="sw" style="background:#d97706"></span> MISO POI (publisher coordinates)</div>
+        <div><span class="sw" style="background:#334155"></span> substation (HIFLD+OSM)</div>
+        <div><span class="sw" style="background:#4a7bd0"></span> line ≥100 kV · <span style="color:#7c3aed">≥300 kV</span></div>
+        <div class="hint">Click anything for its evidence. Queue &amp; posture live in the county click. PJM/I&amp;M bus locations: candidate set in progress — will render as clearly-badged ESTIMATES.</div>
+      </div>
+    </div>
+
+    <div id="rail-sent" style="display:none">
+      <h2>Community sentiment</h2>
+      <div class="hint">County shading = opposition intensity from held receipts (dockets, news, actions, ordinances). Grey = no receipts held — <b>cannot assess, not calm</b>. Click a county for its receipts with links.</div>
+    </div>
 
     <div id="denominator" class="panelbox">zoom in (z≥10) to load parcels</div>
-
-    <h2>Legend</h2>
-    <div class="legend">
-      <div><span class="sw" style="background:#d97706"></span> seller-intent signal</div>
-      <div><span class="sw" style="background:#2563eb"></span> strict C&amp;I (no SI)</div>
-      <div><span class="sw" style="background:#059669"></span> fits ≥MW only</div>
-      <div><span class="sw sw-line"></span> exact parcel boundary (never simplified)</div>
-      <div class="hint">colour priority: SI &gt; C&amp;I &gt; MW. County shading counts <b>all</b> parcels.</div>
-    </div>
 
     <h2>Honesty ledger</h2>
     <div id="ledger" class="panelbox hint">…</div>
