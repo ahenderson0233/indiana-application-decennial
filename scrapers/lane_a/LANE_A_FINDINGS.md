@@ -64,8 +64,8 @@ Adams, Allen, Blackford, Dearborn, DeKalb, Delaware, Elkhart, Fayette, Grant, Ha
 
 ### 7a. RTEP per-upgrade detail + cost-allocation fragments — LANDED (Indiana slice)
 `pull_pjm_upgrade_details.py`. Public GETs, no login: `/m/ProjectConst/UpgradeDetails?upgradeId={id}` and `/m/ProjectConst/UpgradeCostAllocations?upgradeId={id}` (the page's own modal loaders).
-- `indiana_app.in_pjm_rtep_upgrade_details` — one row per upgrade id: criteria_violation, description, type, driver, sub_region, location, task, equipment, related_materials (multi-link JSON: TEAC PDFs + proposal-window ids). See registry row for final count.
-- `indiana_app.in_pjm_rtep_cost_allocations` — one row per (upgrade_id, share_type, zone, percent).
+- `indiana_app.in_pjm_rtep_upgrade_details` — **932 rows** (one per Indiana-naming upgrade id, 932/932 crawled, 0 errors): criteria_violation, description, type, driver, sub_region, location, task, equipment, related_materials (multi-link JSON: TEAC PDFs + proposal-window ids).
+- `indiana_app.in_pjm_rtep_cost_allocations` — **375 rows**, one per (upgrade_id, share_type, zone, percent); upgrades absent here published no split (allocation fragment empty).
 - SCOPE: the 932 Indiana-naming ids of 15,443 (INDIANA SLICE — full universe is ~9.4h at the rate limit; resumable script records the `--all` command). Fragments serve NO dates — milestone dates live in `in_pjm_rtep_upgrades`' own columns (that is the observed-date surface).
 - ⚠ OVERLAP, recorded not hidden: held `energy.txexp_pjm_rtep_upgrades` (15,440 rows from the anonymous 25MB `projectCostUpgrades.xml`) ALREADY carries `costallocationpercent`/`costallocationpercentlrs` comma-strings, and my `in_pjm_rtep_upgrades` XLSX carries the same two columns — the cost-allocation crawl NORMALIZES that into rows; the genuinely NEW fields are `criteria_violation` and multi-link `related_materials`.
 
