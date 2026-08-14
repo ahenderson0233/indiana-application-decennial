@@ -25,3 +25,4 @@ scrapers/**/*.html
 scrapers/**/*.xlsx
 scrapers/**/*.js
 scrapers/**/*.json
+scrapers/**/*.xml
