@@ -18,6 +18,7 @@
     <div id="presets">
       <button data-p="land" class="active">Land</button>
       <button data-p="grid">Grid</button>
+      <button data-p="env">Environ.</button>
       <button data-p="sentiment">Sentiment</button>
     </div>
 
@@ -51,6 +52,17 @@
       </div>
     </div>
 
+    <div id="rail-env" style="display:none">
+      <h2>Environmental &amp; gates</h2>
+      <label><input type="checkbox" id="e-padus" checked> Protected land (PAD-US)</label>
+      <label><input type="checkbox" id="e-bonus" checked> Bonus-credit geographies</label>
+      <div class="legend">
+        <div><span class="sw" style="background:#15803d"></span> protected land — a where-to-say-no layer</div>
+        <div><span class="sw" style="background:#7c3aed"></span> bonus credit (energy community / LIC tract / OZ / habitat)</div>
+        <div class="hint">Wetlands (453,995), flood zones (66,140), water (2.4M) and fibre (12.6M FCC rows) are county-grain here — click a county — until the tile pipeline ships. Nothing is dropped.</div>
+      </div>
+    </div>
+
     <div id="rail-sent" style="display:none">
       <h2>Community sentiment</h2>
       <div class="hint">County shading = opposition intensity from held receipts (dockets, news, actions, ordinances). Grey = no receipts held — <b>cannot assess, not calm</b>. Click a county for its receipts with links.</div>
@@ -62,6 +74,10 @@
     <div id="ledger" class="panelbox hint">…</div>
 
     <button id="export-csv" disabled>Export visible sites → CSV</button>
+    <div class="rowbtns">
+      <button id="btn-pipeline">Future capacity</button>
+      <button id="btn-inventory">Data inventory</button>
+    </div>
     <div class="hint" style="margin-top:8px">Upload door (your own site list → same pipeline): next milestone.</div>
   </aside>
 

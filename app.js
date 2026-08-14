@@ -82,8 +82,32 @@ map.on("load", async () => {
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
   }
+  // environmental overlays (P4) + PJM layers (published queue points vs ESTIMATE buses)
+  state.overlays = await fetchGz("data/overlays.geojson.gz");
+  map.addSource("overlays", { type: "geojson", data: state.overlays });
+  map.addLayer({ id: "env-padus", type: "fill", source: "overlays",
+    filter: ["==", ["get", "layer"], "padus"], layout: { visibility: "none" },
+    paint: { "fill-color": "#15803d", "fill-opacity": 0.35, "fill-outline-color": "#14532d" } });
+  map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
+    filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
+    paint: { "fill-color": "#7c3aed", "fill-opacity": 0.22, "fill-outline-color": "#5b21b6" } });
+  state.pjm = await fetchGz("data/pjm.geojson.gz");
+  map.addSource("pjm", { type: "geojson", data: state.pjm });
+  map.addLayer({ id: "pjm-queue", type: "circle", source: "pjm",
+    filter: ["==", ["get", "layer"], "queue_point"], layout: { visibility: "none" },
+    paint: { "circle-radius": 3, "circle-color": "#64748b", "circle-opacity": 0.7 } });
+  map.addLayer({ id: "pjm-bus-est", type: "circle", source: "pjm",
+    filter: ["==", ["get", "layer"], "bus_candidate"], layout: { visibility: "none" },
+    paint: { "circle-radius": 6, "circle-color": "#ffffff", "circle-opacity": 0.5,
+             "circle-stroke-color": "#dc2626", "circle-stroke-width": 2 } });
+  for (const id of ["env-padus", "env-bonus", "pjm-queue", "pjm-bus-est"]) {
+    map.on("click", id, (e) => openMiscEvidence(e.features[0].properties));
+    map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+  }
   setPreset(state.preset); // resync any preset chosen before layers existed
   maybeLoadCounties();
+  document.body.dataset.ready = "1";
 });
 
 function countyPaint(preset) {
@@ -101,15 +125,24 @@ function setPreset(p) {
   document.querySelectorAll("#presets button").forEach((b) => b.classList.toggle("active", b.dataset.p === p));
   document.getElementById("rail-land").style.display = p === "land" ? "" : "none";
   document.getElementById("rail-grid").style.display = p === "grid" ? "" : "none";
+  document.getElementById("rail-env").style.display = p === "env" ? "" : "none";
   document.getElementById("rail-sent").style.display = p === "sentiment" ? "" : "none";
   if (!map.getLayer("county-fill")) { renderDenominator(); return; } // layers not up yet; resynced after load
   map.setPaintProperty("county-fill", "fill-color", countyPaint(p));
   map.setPaintProperty("county-fill", "fill-opacity",
-    p === "land" ? ["interpolate", ["linear"], ["zoom"], 8.5, 0.85, 10, 0.25] : 0.75);
+    p === "land" ? ["interpolate", ["linear"], ["zoom"], 8.5, 0.85, 10, 0.25] : (p === "env" ? 0.15 : 0.75));
   const gridOn = p === "grid";
   for (const id of ["grid-lines", "grid-subs", "grid-bus"])
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility",
       gridOn && document.getElementById(`g-${id.split("-")[1]}`)?.checked !== false ? "visible" : "none");
+  for (const id of ["pjm-queue", "pjm-bus-est"])
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", gridOn ? "visible" : "none");
+  if (map.getLayer("env-padus")) {
+    map.setLayoutProperty("env-padus", "visibility",
+      p === "env" && document.getElementById("e-padus").checked ? "visible" : "none");
+    map.setLayoutProperty("env-bonus", "visibility",
+      p === "env" && document.getElementById("e-bonus").checked ? "visible" : "none");
+  }
   for (const fips of state.loaded.keys())
     for (const suf of ["fill", "line"])
       map.setLayoutProperty(`sites-${fips}-${suf}`, "visibility", p === "land" ? "visible" : "none");
@@ -119,6 +152,10 @@ document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => se
 for (const id of ["g-lines", "g-subs", "g-bus"]) {
   const el = document.getElementById(id);
   if (el) el.onchange = () => setPreset("grid");
+}
+for (const id of ["e-padus", "e-bonus"]) {
+  const el = document.getElementById(id);
+  if (el) el.onchange = () => setPreset("env");
 }
 
 /* ---------- land parcels (unchanged mechanics) ---------- */
@@ -207,6 +244,13 @@ function renderDenominator() {
     el.innerHTML = `County shading = opposition intensity (grey = no receipts held — cannot assess, not calm). Click a county for its receipts.`;
     btn.disabled = true; return;
   }
+  if (state.preset === "env") {
+    const o = state.overlays ? state.overlays.features : [];
+    el.innerHTML = `<b>${fmt(o.filter((f) => f.properties.layer === "padus").length)}</b> protected areas · ` +
+      `<b>${fmt(o.filter((f) => f.properties.layer === "bonus").length)}</b> bonus-credit geographies rendered. ` +
+      `Wetlands / flood / fibre are county-grain (click a county) until the tile pipeline ships.`;
+    btn.disabled = true; return;
+  }
   if (map.getZoom() < PARCEL_ZOOM) {
     el.textContent = `County view — shading counts ALL ${fmt(state.summary?.totals.all_parcels)} parcels. Zoom to z≥${PARCEL_ZOOM} to load individual parcels.`;
     btn.disabled = true; return;
@@ -282,6 +326,90 @@ function openGridEvidence(p) {
       <div class="prov">${prov("in_transmission_lines")} (HIFLD)</div>`);
   }
 }
+function openMiscEvidence(p) {
+  if (p.layer === "bus_candidate") {
+    show(`PJM bus ${p.bus_number} — ESTIMATED location`, `
+      <div class="est-badge">ESTIMATE — ${p.location_method}, confidence ${p.match_confidence}</div>
+      <table>${row("bus label", p.bus_label)}${row("kV", p.bus_kv)}
+      ${row("matched substation", p.matched_substation_name)}${row("kV consistent", p.kv_consistent)}
+      ${row("competing matches", p.collision_count)}</table>
+      <div class="prov">${prov("in_pjm_bus_locations_candidate")} · an estimate never styles as a published coordinate — hollow red ring means derived</div>`);
+  } else if (p.layer === "queue_point") {
+    const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10)
+      .map(([k, v]) => row(k, v)).join("");
+    show(`PJM queue point`, `<table>${rows_}</table>
+      <div class="prov">${prov("in_pjm_gis_queues")} · PJM's own published coordinates (gis.pjm.com)</div>`);
+  } else if (p.layer === "padus") {
+    show(`Protected: ${p.name || "(unnamed)"}`, `
+      <table>${row("designation", p.designation)}${row("owner type", p.owner_type)}
+      ${row("manager", p.manager)}${row("acres", p.acres)}</table>
+      <div class="prov">${prov("in_padus")}</div>`);
+  } else {
+    show(`Bonus geography: ${p.kind}`, `
+      <table>${row("kind", p.kind)}${row("key", p.key)}${row("attributes", p.attrs_json)}</table>
+      <div class="prov">${prov("in_bonus_geo")} · the BENEFIT half of P4 — improves economics</div>`);
+  }
+}
+
+async function loadPipeline() {
+  if (!state.pipeline) state.pipeline = await fetchGz("data/pipeline.json.gz");
+  return state.pipeline;
+}
+document.getElementById("btn-pipeline").onclick = async () => {
+  if (!state.summary) return; // still loading
+  const pl = await loadPipeline();
+  const plans = pl.grid_plans.filter((r) => r.row_type === "project").slice(0, 60);
+  const rto = pl.rto_expansion.slice(0, 60);
+  show("Future capacity — where upgrades are coming", `
+    <h3>State-jurisdictional grid plans (TDSIC/IRP) — ${fmt(pl.grid_plans.filter((r) => r.row_type === "project").length)} projects</h3>
+    <table>${plans.map((r) => row(`${r.utility || ""} ${r.in_service_year || ""}`,
+      `${r.project_name || r.location_text || ""} ${r.voltage_kv ? r.voltage_kv + " kV" : ""} ${r.cost_usd_m ? "$" + r.cost_usd_m + "M" : ""}`)).join("")}</table>
+    <div class="prov">${prov("in_grid_plans")} · locations are named endpoints/counties (joinable), never geocoded</div>
+    <h3>RTO expansion (MISO MTEP + PJM RTEP) — ${fmt(pl.rto_expansion.length)} Indiana-naming projects</h3>
+    <table>${rto.map((r) => row(`${r.rto || r.source || ""} ${r.in_service_year || r.isd || ""}`,
+      `${r.project_name || r.upgrade_name || r.description || ""}`)).join("")}</table>
+    <div class="prov">${prov("in_rto_expansion")} · first 60 of each shown; full lists in BigQuery + CSV on request</div>
+    <h3>PJM queue network-upgrade costs</h3>
+    <table>${pl.nucra_costs.slice(0, 20).map((r) => row(r.project_id || r.queue_id || "project",
+      JSON.stringify(r).slice(0, 120))).join("")}</table>
+    <div class="prov">${prov("in_pjm_nucra_costs")}</div>`);
+};
+
+const FEATURE_HOME = {
+  in_sites: "Land preset — parcels + filters + evidence", in_si_signals: "Land evidence (SI section)",
+  in_sites_county: "county assignment (spine)", in_county_rollup: "county layer + county evidence",
+  in_substations: "Grid preset", in_transmission_lines: "Grid preset", in_bus_headroom_miso: "Grid preset (MISO POIs)",
+  in_miso_poi_identity: "feeds in_bus_headroom_miso", in_pjm_bus_locations_candidate: "Grid preset (estimate ring)",
+  in_pjm_gis_queues: "Grid preset (queue points)", in_queue: "Future-capacity panel + county evidence",
+  in_queue_counties: "county evidence (queue)", in_grid_plans: "Future-capacity panel",
+  in_rto_expansion: "Future-capacity panel", in_pjm_nucra_costs: "Future-capacity panel",
+  in_pjm_rtep_upgrades: "Future-capacity panel (source of RTO rows)",
+  in_pjm_rtep_upgrade_details: "DEFERRED: per-upgrade drill-down panel",
+  in_pjm_rtep_cost_allocations: "DEFERRED: per-upgrade drill-down panel",
+  in_pjm_queuescope_aep: "DEFERRED: needs bus locations (candidate set is the path)",
+  in_padus: "Environmental preset", in_bonus_geo: "Environmental preset",
+  in_wetlands: "county evidence (gate stats); polygons DEFERRED to tile pipeline",
+  in_flood: "county evidence (gate stats); polygons DEFERRED to tile pipeline",
+  in_water: "DEFERRED: tile pipeline (2.4M flowlines)",
+  in_fcc_bdc: "county evidence via in_county_fibre",
+  in_county_fibre: "county evidence", in_county_flood: "county evidence", in_county_wetlands: "county evidence",
+  in_iurc_dockets: "Sentiment receipts", in_news_dc: "Sentiment receipts", in_dc_actions: "Sentiment receipts",
+  in_ordinances_dc: "Sentiment receipts", in_cems_monthly: "DEFERRED: P6 market charts",
+};
+document.getElementById("btn-inventory").onclick = () => {
+  if (!state.summary) return; // still loading
+  const rows_ = state.summary.provenance.map((p) => {
+    let home = FEATURE_HOME[p.table_name];
+    if (!home) home = p.table_name.startsWith("in_si_") ?
+      "STAGED: new SI acquisitions awaiting subject wiring" : "STAGED: refresh/staging table";
+    const cls = home.startsWith("DEFERRED") || home.startsWith("STAGED") ? ' class="cannot"' : "";
+    return `<tr><td>${p.table_name}<br><span class="hint">${fmt(p.n_rows)} rows · ${String(p.built_at).slice(0, 10)}</span></td><td${cls}>${home}</td></tr>`;
+  }).join("");
+  show("Data inventory — every table has a feature home or a stated waiver", `
+    <div class="hint">The Indiana-scoped version of the platform rule: every dataset ships in a feature or carries a waiver. DEFERRED/STAGED rows are the honest waivers.</div>
+    <table>${rows_}</table>`);
+};
+
 async function openCountyEvidence(p) {
   const c = state.ctx.by_fips[p.fips] || {};
   let html = `
@@ -294,6 +422,13 @@ async function openCountyEvidence(p) {
       ${row("projects", c.queue?.projects)}${row("active projects", c.queue?.active_projects)}
       ${row("active MW", c.queue?.active_mw)}${row("withdrawn (a signal, kept)", c.queue?.withdrawn_projects)}</table>
     <div class="prov">${prov("in_queue_counties")}</div>
+    <h3>Environmental & infrastructure gates (county grain)</h3><table>
+      ${row("wetland features / acres", c.wetlands ? `${fmt(c.wetlands.wetland_features)} / ${fmt(c.wetlands.wetland_acres)} ac` : null)}
+      ${row("flood features (SFHA)", c.flood ? `${fmt(c.flood.flood_features)} (${fmt(c.flood.sfha_features)} SFHA)` : null)}
+      ${row("fibre-served locations (FCC)", c.fibre ? `${fmt(c.fibre.fiber_locations)} of ${fmt(c.fibre.locations)}` : null)}
+      ${row("fibre providers", c.fibre?.fiber_providers)}
+      ${row("gig-capable locations", c.fibre?.gig_locations)}</table>
+    <div class="prov">${prov("in_county_wetlands")} · ${prov("in_county_fibre")} · per-parcel gate columns are the tile-pipeline milestone</div>
     <h3>Community posture</h3><table>
       ${row("posture", c.posture?.posture)}${row("opposition intensity", c.posture?.opposition_intensity)}
       ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}

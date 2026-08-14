@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-14T22:47:07+00:00",
+ "built_at_utc": "2026-08-14T23:53:51+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -29,16 +29,46 @@
    "built_at": "2026-08-14 22:20:57.876470+00"
   },
   {
+   "table_name": "in_bus_headroom_miso",
+   "source": "energy.miso_poi_monitored_facilities x indiana_app.in_miso_poi_identity",
+   "n_rows": 11820,
+   "built_at": "2026-08-14 23:09:18.618943+00"
+  },
+  {
    "table_name": "in_cems_monthly",
    "source": "energy.cems_hourly aggregated to plant-unit-month",
    "n_rows": 50132,
    "built_at": "2026-08-14 22:21:03.627645+00"
   },
   {
+   "table_name": "in_county_fibre",
+   "source": "indiana_app.in_fcc_bdc",
+   "n_rows": 92,
+   "built_at": "2026-08-14 23:52:45.721008+00"
+  },
+  {
+   "table_name": "in_county_flood",
+   "source": "indiana_app.in_flood",
+   "n_rows": 89,
+   "built_at": "2026-08-14 23:52:56.854115+00"
+  },
+  {
    "table_name": "in_county_rollup",
    "source": "in_sites + in_sites_county",
    "n_rows": 92,
    "built_at": "2026-08-14 22:36:27.059105+00"
+  },
+  {
+   "table_name": "in_county_wetlands",
+   "source": "indiana_app.in_wetlands",
+   "n_rows": 92,
+   "built_at": "2026-08-14 23:53:15.103880+00"
+  },
+  {
+   "table_name": "in_dc_actions",
+   "source": "CORRECTION note (no data change)",
+   "n_rows": 0,
+   "built_at": "2026-08-14 23:12:59+00"
   },
   {
    "table_name": "in_fcc_bdc",
@@ -53,6 +83,18 @@
    "built_at": "2026-08-14 22:20:23.852585+00"
   },
   {
+   "table_name": "in_grid_plans",
+   "source": "IURC TDSIC public XLSX workpapers (iurc.portal.in.gov filings)",
+   "n_rows": 7,
+   "built_at": "2026-08-14 23:09:28+00"
+  },
+  {
+   "table_name": "in_iurc_dockets",
+   "source": "https://iurc.portal.in.gov/advanced-search/ via companion API https://zus1iurcprodd365companionappmaster-appservice.azurewebsites.net",
+   "n_rows": 516,
+   "built_at": "2026-08-14 22:50:16+00"
+  },
+  {
    "table_name": "in_miso_poi",
    "source": "energy.miso_poi_monitored_facilities (points in IN polygon)",
    "n_rows": 0,
@@ -65,16 +107,64 @@
    "built_at": "2026-08-14 22:39:42.260106+00"
   },
   {
+   "table_name": "in_news_dc",
+   "source": "CORRECTION note (no data change)",
+   "n_rows": 0,
+   "built_at": "2026-08-14 23:12:56+00"
+  },
+  {
+   "table_name": "in_ordinances_dc",
+   "source": "https://api.municode.com/search (public JSON API of library.municode.com)",
+   "n_rows": 4,
+   "built_at": "2026-08-14 22:53:50+00"
+  },
+  {
    "table_name": "in_padus",
    "source": "energy.padus",
    "n_rows": 4736,
    "built_at": "2026-08-14 22:20:34.164806+00"
   },
   {
+   "table_name": "in_pjm_bus_locations_candidate",
+   "source": "DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-published points), energy.nat_substations_hifld + energy.osm_power_substations (AEP-footprint states), indiana_app.in_pjm_rtep_upgrades (name bridge); universe = energy.pjm_queuescope_results owner_label='AEP'",
+   "n_rows": 1475,
+   "built_at": "2026-08-14 23:35:59.232666+00"
+  },
+  {
+   "table_name": "in_pjm_gis_queues",
+   "source": "PJM public GIS queue-point layer https://gis.pjm.com/arcgis/rest/services/Renewables/Queue/MapServer/0 (folder Renewables, anonymous Query capability; discovered behind pjm.com map pages)",
+   "n_rows": 6923,
+   "built_at": "2026-08-14 23:30:44.881407+00"
+  },
+  {
+   "table_name": "in_pjm_nucra_costs",
+   "source": "PJM NUCRA (Network Upgrade Cost Responsibility Allocation) - public XLSX export of the cycle-service-request-status page, endpoint https://www.pjm.com/m/ProjectTransition/GenerateExcelNUCRAProjectsAll",
+   "n_rows": 55,
+   "built_at": "2026-08-14 23:15:01.505719+00"
+  },
+  {
    "table_name": "in_pjm_queuescope_aep",
    "source": "energy.pjm_queuescope_results (AEP = the I&M sliver)",
    "n_rows": 303671,
    "built_at": "2026-08-14 22:19:36.870082+00"
+  },
+  {
+   "table_name": "in_pjm_rtep_cost_allocations",
+   "source": "PJM RTEP per-upgrade cost-allocation splits (public GET, no login) https://www.pjm.com/m/ProjectConst/UpgradeCostAllocations?upgradeId={id}",
+   "n_rows": 375,
+   "built_at": "2026-08-14 23:47:00.365806+00"
+  },
+  {
+   "table_name": "in_pjm_rtep_upgrade_details",
+   "source": "PJM RTEP upgrade detail fragments (public GET, no login) https://www.pjm.com/m/ProjectConst/UpgradeDetails?upgradeId={id}",
+   "n_rows": 932,
+   "built_at": "2026-08-14 23:46:54.748742+00"
+  },
+  {
+   "table_name": "in_pjm_rtep_upgrades",
+   "source": "PJM Project Status & Cost Allocation (RTEP upgrades) - public grid export at https://www.pjm.com/planning/m/project-construction, endpoint https://www.pjm.com/m/ProjectConst/ProjectConstructionUpgrades",
+   "n_rows": 15443,
+   "built_at": "2026-08-14 22:49:05.406779+00"
   },
   {
    "table_name": "in_queue",
@@ -89,10 +179,112 @@
    "built_at": "2026-08-14 22:19:24.002393+00"
   },
   {
+   "table_name": "in_rto_expansion",
+   "source": "MISO MTEP (held energy.txexp_miso_mtep_appendix_a_in_service/_status/_under_evaluation, cdn.misoenergy.org public XLSX, pulled 2026-08-07) + PJM RTEP Project Status & Cost Allocation (indiana_app.in_pjm_rtep_upgrades, public export pulled 2026-08-14)",
+   "n_rows": 2034,
+   "built_at": "2026-08-14 22:50:44.445870+00"
+  },
+  {
+   "table_name": "in_si_evansville_demolition_permits",
+   "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/BC/BUILDING_COMMISSION_PERMITS/MapServer/0",
+   "n_rows": 4190,
+   "built_at": "2026-08-14 23:10:41.204776+00"
+  },
+  {
+   "table_name": "in_si_evansville_foreclosures",
+   "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/ASSESSOR/FORECLOSURES/MapServer",
+   "n_rows": 5758,
+   "built_at": "2026-08-14 23:05:53.327391+00"
+  },
+  {
+   "table_name": "in_si_evansville_taxsale",
+   "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/SITE_PROJECTS/TAX_SALE/MapServer",
+   "n_rows": 3202,
+   "built_at": "2026-08-14 23:06:34.909650+00"
+  },
+  {
+   "table_name": "in_si_evansville_taxsale_transfers",
+   "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/ASSESSOR/TAX_SALES/MapServer",
+   "n_rows": 941,
+   "built_at": "2026-08-14 23:07:09.383457+00"
+  },
+  {
+   "table_name": "in_si_indy_abandoned_vacant",
+   "source": "https://gis.indy.gov/server/rest/services/OpenData/OpenData_Infrastructure/MapServer/2",
+   "n_rows": 7120,
+   "built_at": "2026-08-14 22:56:07.935014+00"
+  },
+  {
+   "table_name": "in_si_indy_surplus_parcels",
+   "source": "https://gis.indy.gov/server/rest/services/SurplusProperties/SurplusPropertiesFeatures2/MapServer/7",
+   "n_rows": 595,
+   "built_at": "2026-08-14 22:55:47.287584+00"
+  },
+  {
+   "table_name": "in_si_indy_taxsale_parcels",
+   "source": "https://gis.indy.gov/server/rest/services/TaxSaleViewer/TaxSaleParcels_BuildingBlocks/MapServer/0",
+   "n_rows": 62368,
+   "built_at": "2026-08-14 22:55:37.190846+00"
+  },
+  {
+   "table_name": "in_si_refresh_ibtr_appeals",
+   "source": "www.in.gov IBTR DevExtreme determinations API",
+   "n_rows": 10152,
+   "built_at": "2026-08-14 23:48:44.116054+00"
+  },
+  {
+   "table_name": "in_si_refresh_iocs_eviction",
+   "source": "www.in.gov/courts/iocs (Indiana Office of Court Services statewide case statistics XLSX)",
+   "n_rows": 6519,
+   "built_at": "2026-08-14 23:51:53.156997+00"
+  },
+  {
+   "table_name": "in_si_refresh_warn_notices",
+   "source": "www.in.gov/dwd/warn-notices/current-warn-notices/ (Indiana DWD WARN notices, full history table)",
+   "n_rows": 1220,
+   "built_at": "2026-08-14 23:51:06.753943+00"
+  },
+  {
    "table_name": "in_si_signals",
    "source": "energy.si_signals",
    "n_rows": 1818158,
    "built_at": "2026-08-14 22:18:49.242540+00"
+  },
+  {
+   "table_name": "in_si_southbend_chronic_problem",
+   "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Chronic_Problem_Properties_List/FeatureServer/0",
+   "n_rows": 7,
+   "built_at": "2026-08-14 22:57:01.761139+00"
+  },
+  {
+   "table_name": "in_si_southbend_code_enforcement",
+   "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Code_Enforcement_Cases/FeatureServer/0",
+   "n_rows": 20414,
+   "built_at": "2026-08-14 22:57:27.527288+00"
+  },
+  {
+   "table_name": "in_si_southbend_continuous_enforcement",
+   "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Continuous_Enforcement/FeatureServer/4",
+   "n_rows": 241,
+   "built_at": "2026-08-14 22:57:08.179989+00"
+  },
+  {
+   "table_name": "in_si_southbend_demolition_orders",
+   "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Active_Demolition_Orders/FeatureServer/0",
+   "n_rows": 80,
+   "built_at": "2026-08-14 22:56:49.635148+00"
+  },
+  {
+   "table_name": "in_si_southbend_vacant_abandoned",
+   "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/AllVacantandAbandonedProperties/FeatureServer/3",
+   "n_rows": 47,
+   "built_at": "2026-08-14 22:56:55.655576+00"
+  },
+  {
+   "table_name": "in_si_state_warn_notices",
+   "source": "https://www.in.gov/dwd/warn-notices/current-warn-notices/",
+   "n_rows": 1220,
+   "built_at": "2026-08-14 22:49:08.102582+00"
   },
   {
    "table_name": "in_sites",
