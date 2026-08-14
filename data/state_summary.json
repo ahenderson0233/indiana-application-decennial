@@ -1,0 +1,134 @@
+{
+ "built_at_utc": "2026-08-14T22:47:07+00:00",
+ "state": "IN",
+ "totals": {
+  "all_parcels": 3553194,
+  "no_geometry": 1,
+  "ci": 100952,
+  "ge25": 511715,
+  "si": 847410,
+  "class_union": 1200924
+ },
+ "cannot_assess": {
+  "parcels_without_geometry": 1,
+  "parcels_geometry_but_no_county": 7,
+  "si_observations_unmappable": 222746,
+  "note": "listed, never rendered as zero or dropped"
+ },
+ "class_union_definition": "occ_group='ci' OR mw_datacenter_4_per_acre>=25 OR has_si_signal",
+ "defaults": {
+  "mw_per_acre_datacenter": 4,
+  "mw_per_acre_bess": 10,
+  "note": "defaults only, user-adjustable"
+ },
+ "provenance": [
+  {
+   "table_name": "in_bonus_geo",
+   "source": "energy communities + LIC tracts + opportunity zones + critical habitat",
+   "n_rows": 836,
+   "built_at": "2026-08-14 22:20:57.876470+00"
+  },
+  {
+   "table_name": "in_cems_monthly",
+   "source": "energy.cems_hourly aggregated to plant-unit-month",
+   "n_rows": 50132,
+   "built_at": "2026-08-14 22:21:03.627645+00"
+  },
+  {
+   "table_name": "in_county_rollup",
+   "source": "in_sites + in_sites_county",
+   "n_rows": 92,
+   "built_at": "2026-08-14 22:36:27.059105+00"
+  },
+  {
+   "table_name": "in_fcc_bdc",
+   "source": "energy.fcc_bdc_fixed_availability",
+   "n_rows": 12649532,
+   "built_at": "2026-08-14 22:19:48.941824+00"
+  },
+  {
+   "table_name": "in_flood",
+   "source": "energy.nfhl_flood_zones",
+   "n_rows": 66140,
+   "built_at": "2026-08-14 22:20:23.852585+00"
+  },
+  {
+   "table_name": "in_miso_poi",
+   "source": "energy.miso_poi_monitored_facilities (points in IN polygon)",
+   "n_rows": 0,
+   "built_at": "2026-08-14 22:19:31.536846+00"
+  },
+  {
+   "table_name": "in_miso_poi_identity",
+   "source": "MISO giqueue legacy POI viewer https://giqueue.misoenergy.org/POI/api/pois (via held energy.miso_poi_attributes, pulled 2026-08-02; AES blob the viewer decrypts client-side for every visitor, key ships in the public JS bundle)",
+   "n_rows": 12845,
+   "built_at": "2026-08-14 22:39:42.260106+00"
+  },
+  {
+   "table_name": "in_padus",
+   "source": "energy.padus",
+   "n_rows": 4736,
+   "built_at": "2026-08-14 22:20:34.164806+00"
+  },
+  {
+   "table_name": "in_pjm_queuescope_aep",
+   "source": "energy.pjm_queuescope_results (AEP = the I&M sliver)",
+   "n_rows": 303671,
+   "built_at": "2026-08-14 22:19:36.870082+00"
+  },
+  {
+   "table_name": "in_queue",
+   "source": "energy.interconnection_queue",
+   "n_rows": 948,
+   "built_at": "2026-08-14 22:19:18.970281+00"
+  },
+  {
+   "table_name": "in_queue_counties",
+   "source": "energy.vw_grid_queue_counties",
+   "n_rows": 87,
+   "built_at": "2026-08-14 22:19:24.002393+00"
+  },
+  {
+   "table_name": "in_si_signals",
+   "source": "energy.si_signals",
+   "n_rows": 1818158,
+   "built_at": "2026-08-14 22:18:49.242540+00"
+  },
+  {
+   "table_name": "in_sites",
+   "source": "energy.vw_parcel_sites (all parcels, SI-agnostic)",
+   "n_rows": 3553194,
+   "built_at": "2026-08-14 22:19:00.216829+00"
+  },
+  {
+   "table_name": "in_sites_county",
+   "source": "in_sites x geo_us_boundaries.counties, greatest-intersection",
+   "n_rows": 3553186,
+   "built_at": "2026-08-14 22:36:18.966515+00"
+  },
+  {
+   "table_name": "in_substations",
+   "source": "energy.mat_grid_substations (HIFLD+OSM deduped)",
+   "n_rows": 3858,
+   "built_at": "2026-08-14 22:19:05.190261+00"
+  },
+  {
+   "table_name": "in_transmission_lines",
+   "source": "energy.transmission_lines (HIFLD), spatial clip",
+   "n_rows": 2623,
+   "built_at": "2026-08-14 22:19:13.484325+00"
+  },
+  {
+   "table_name": "in_water",
+   "source": "energy.nhd_flowline",
+   "n_rows": 2415369,
+   "built_at": "2026-08-14 22:19:43.020712+00"
+  },
+  {
+   "table_name": "in_wetlands",
+   "source": "energy.nwi_wetlands",
+   "n_rows": 453995,
+   "built_at": "2026-08-14 22:20:05.655666+00"
+  }
+ ]
+}

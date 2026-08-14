@@ -18,6 +18,22 @@ The attribute store is sharded by county / tile key so a click fetches a few KB.
 This same contract is what a server-backed national app would serve from an API —
 the front end doesn't care, which is what makes this repo the national baseline.
 
+### v0 transport (shipped 2026-08-14) — and the flagged upgrade
+
+This machine has no tippecanoe/WSL/Docker/GDAL, so v0 ships **without** binary tiles:
+
+- `data/counties.geojson.gz` — 92 counties with full rollup stats; the choropleth carries
+  **100% of the 3,553,194 parcels at every zoom**.
+- `data/sites/{fips}.geojson.gz` — per-county **class-union** parcels
+  (`occ_group='ci' OR mw@4>=25 OR has_si_signal` = 1,200,924 parcels), exact geometry,
+  full attributes, lazy-loaded per viewport at z≥10 and decompressed natively in the
+  browser (`DecompressionStream`).
+- Parcels outside the class union are **fully counted** in the county layer and the
+  on-screen denominators — aggregation, not truncation. Rendering ALL 3.55M parcels
+  individually is the PMTiles upgrade, which needs one install on the build machine
+  (either `wsl --install` then `sudo apt install …/tippecanoe`, or Docker Desktop) —
+  flagged, not silently skipped.
+
 ## Zoom-grain ladder — 100% representation, never truncation
 
 | zoom | grain | source |

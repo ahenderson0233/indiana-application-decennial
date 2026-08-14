@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="topbar">
+  <div id="title">Indiana Siting Intelligence <span class="tag">v0 spine</span></div>
+  <div id="statebar">loading state summary…</div>
+</header>
+
+<div id="layout">
+  <aside id="rail">
+    <h2>Site classes <span class="hint">(rendered individually)</span></h2>
+    <label><input type="checkbox" id="f-ci" checked> Strict C&amp;I</label>
+    <label><input type="checkbox" id="f-mw" checked> Fits ≥
+      <input type="number" id="f-mw-val" value="25" min="1" step="1"> MW
+      <span class="hint">at 4 MW/acre default — adjustable, not the answer</span></label>
+    <label><input type="checkbox" id="f-si" checked> Carries a seller-intent signal</label>
+
+    <div id="denominator" class="panelbox">zoom in (z≥10) to load parcels</div>
+
+    <h2>Legend</h2>
+    <div class="legend">
+      <div><span class="sw" style="background:#d97706"></span> seller-intent signal</div>
+      <div><span class="sw" style="background:#2563eb"></span> strict C&amp;I (no SI)</div>
+      <div><span class="sw" style="background:#059669"></span> fits ≥MW only</div>
+      <div><span class="sw sw-line"></span> exact parcel boundary (never simplified)</div>
+      <div class="hint">colour priority: SI &gt; C&amp;I &gt; MW. County shading counts <b>all</b> parcels.</div>
+    </div>
+
+    <h2>Honesty ledger</h2>
+    <div id="ledger" class="panelbox hint">…</div>
+
+    <button id="export-csv" disabled>Export visible sites → CSV</button>
+    <div class="hint" style="margin-top:8px">Upload door (your own site list → same pipeline): next milestone.</div>
+  </aside>
+
+  <div id="map"></div>
+
+  <aside id="evidence" class="hidden">
+    <div id="evidence-head"><h2 id="ev-title">Evidence</h2><button id="ev-close">×</button></div>
+    <div id="evidence-body"></div>
+  </aside>
+</div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -46,10 +46,15 @@ BigQuery (energy-platfrom.indiana_app)
 ## Repository layout
 
 ```
-docs/         architecture, measured data inventory, scrape lanes
-scripts/      reproducible BigQuery → export builders (read-only on energy.*)
-web/          the application (arrives with the first tile milestone)
+index.html, app.js, style.css   the map console (GitHub Pages serves the repo root)
+vendor/                         MapLibre GL, vendored (no CDN dependency)
+data/                           exported spine artifacts (gzipped GeoJSON + summary)
+docs/                           architecture, measured data inventory, scrape lanes
+scripts/                        reproducible BigQuery → export builders (read-only on energy.*)
+scrapers/                       lane A/B/C acquisition scripts + findings
 ```
+
+**Enable hosting:** GitHub → Settings → Pages → Deploy from branch → `main` / `/ (root)`.
 
 ## Data warehouse
 
