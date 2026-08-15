@@ -105,9 +105,26 @@ def arcgis_pull_all(layer_url, where="1=1", want_geometry=False, page_size=None)
         }
         if want_geometry:
             params["outSR"] = "4326"
-        j = get(layer_url.rstrip("/") + "/query", params=params, timeout=180)
-        if "error" in j:
-            raise RuntimeError(f"ArcGIS error at offset {offset}: {j['error']}")
+        # Retry a handful of times on transient ArcGIS server errors (e.g. 503 "Wait
+        # timeout for the request exceeded" under server load) before giving up. Not a
+        # gating/permission issue -- same request, same params, just resent after a
+        # backoff. Non-transient errors (bad field, bad where clause, etc.) still raise
+        # immediately.
+        attempt = 0
+        while True:
+            j = get(layer_url.rstrip("/") + "/query", params=params, timeout=180)
+            if "error" not in j:
+                break
+            err = j["error"]
+            transient = (err.get("code") in (503, 500, 429) or
+                         "timeout" in str(err.get("message", "")).lower())
+            attempt += 1
+            if not transient or attempt >= 5:
+                raise RuntimeError(f"ArcGIS error at offset {offset} (attempt {attempt}): {err}")
+            wait = 2 ** attempt  # 4, 8, 16, 32s
+            print(f"  transient ArcGIS error at offset {offset} (attempt {attempt}/5): "
+                  f"{err} -- retrying in {wait}s")
+            time.sleep(wait)
         feats = j.get("features", [])
         for f in feats:
             row = dict(f.get("attributes", {}))
