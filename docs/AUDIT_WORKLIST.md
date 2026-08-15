@@ -83,6 +83,27 @@ eia861_sales + _ult_cust (retail P6), fsis_establishments (large occupiers).
 (owner-mailing-state class), si_register / parcel_county_register / county_boundaries (meta/spine),
 mat_grid_territories + electric_retail_service_territories (already feed in_territories).
 
+## Batch 4 — verified rows 216-308, THE TAIL (2026-08-15) — verified-308 audit COMPLETE
+
+**CLIPPED + REGISTERED (12):** data_centers_peeringdb + peeringdb_facilities (Indiana carrier
+hotels/IX — the connectivity layer beside the 157 DCM data centres), openstates_energy_bills
+(bills master), land_faa_sua (special-use airspace gate), tribal_land, sec_cik_registrant_state,
+fsis_establishments_inactive (plant CLOSURES — SI-adjacent), commission_posture,
+dc_docket_tracker, balancing_authority_areas, groundwater_sites, puc_state_access_ledger.
+
+**FLAGS:** `airports` reads 1 IN row — format-suspect (Indiana has dozens of airports);
+sample-read before use. `si_d27_ucc_lapse` holds 10 Indiana rows though si_signals reads D27
+absent for IN — a wiring gap-let for the SI engine (data-ops lane), noted not fixed here.
+
+**WAIVE:** remaining tail rows are the owner-mailing-state class (out-of-state
+parcels/socrata/agis/ckan/carto with 1-30 IN-mailing rows) and spines (state_boundaries).
+
+**HEADROOM MILESTONE (same session):** MISO bounded 300MW re-harvest complete (40,007 facility
+rows; 641/642 POIs read 0 injection headroom — real, publisher-computed, injection-only
+disclosed). PJM WITHDRAWAL headroom derived per bus (all 1,475 positive after excluding
+pre-existing overloads — measured identity: every zero row was a pre-overload; 2027 RTEP
+Summer Peak); 229 located buses display load MW. Open lane: a MISO LOAD-direction source.
+
 ## Remaining batches
 Batch 2+: rest of the 308 (rows 46-308) · then the 465 measured zeros (eyeball samples for
 disguised Indiana) · then spatial-only via source identity + PARCEL_SOURCE_GEOGRAPHY ·
