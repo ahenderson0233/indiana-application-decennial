@@ -74,6 +74,18 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
   border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
 .unstar { font-size: 10.5px; margin-left: 6px; }
 
+/* dossier: printing isolates the evidence panel as a branded one-pager */
+@media print {
+  #topbar, #rail, #map, #ev-close, #ev-star, #ev-print, #tooltip { display: none !important; }
+  #layout { height: auto; display: block; }
+  #evidence { display: block !important; width: 100%; min-width: 0; border: none; }
+  #evidence::before { content: "DECENNIAL — Indiana Siting Intelligence · site dossier";
+    display: block; font-weight: 700; font-size: 15px; border-bottom: 3px solid #d97706;
+    padding-bottom: 6px; margin: 0 14px 6px; }
+  #evidence::after { content: "Every figure traces to its named source table and build date. Cannot-assess is stated, never zeroed. MW capacities are adjustable assumptions, not answers.";
+    display: block; font-size: 10px; color: #666; margin: 14px; }
+  .prov { color: #444; }
+}
 ::-webkit-scrollbar { width: 9px; }
 ::-webkit-scrollbar-thumb { background: #c7ced9; border-radius: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

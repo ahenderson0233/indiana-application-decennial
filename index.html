@@ -69,7 +69,8 @@
       <label><input type="checkbox" id="L-gas"> Natural gas</label>
       <label><input type="checkbox" id="L-terr"> Service territories</label>
       <label><input type="checkbox" id="L-padus"> Protected land</label>
-      <label><input type="checkbox" id="L-bonusgeo"> Bonus-credit geographies</label>
+      <label><input type="checkbox" id="L-bonusgeo"> Bonus-credit geographies <span class="hint">(incl. coal-closure)</span></label>
+      <label><input type="checkbox" id="L-nonatt"> Air nonattainment areas</label>
       <div class="subhead">County shading</div>
       <select id="county-metric">
         <option value="class_union">screened-class density</option>
@@ -96,7 +97,8 @@
 
   <aside id="evidence" class="hidden">
     <div id="evidence-head"><h2 id="ev-title">Evidence</h2>
-      <div><button id="ev-star" class="hidden" title="add to shortlist">★</button>
+      <div><button id="ev-print" title="print dossier">🖨</button>
+      <button id="ev-star" class="hidden" title="add to shortlist">★</button>
       <button id="ev-close">×</button></div></div>
     <div id="evidence-body"></div>
   </aside>

@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-15T04:04:56+00:00",
+ "built_at_utc": "2026-08-15T05:02:42+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -24,9 +24,9 @@
  "provenance": [
   {
    "table_name": "in_bonus_geo",
-   "source": "energy communities + LIC tracts + opportunity zones + critical habitat",
-   "n_rows": 836,
-   "built_at": "2026-08-14 22:20:57.876470+00"
+   "source": "energy.coal_closure_communities",
+   "n_rows": 1057,
+   "built_at": "2026-08-15 05:01:17.281476+00"
   },
   {
    "table_name": "in_bus_headroom_miso",
@@ -71,6 +71,12 @@
    "built_at": "2026-08-14 23:12:59+00"
   },
   {
+   "table_name": "in_eia861_reliability",
+   "source": "energy.eia861_reliability",
+   "n_rows": 36,
+   "built_at": "2026-08-15 05:01:22.392424+00"
+  },
+  {
    "table_name": "in_eia861_territory",
    "source": "energy.eia861_service_territory",
    "n_rows": 10928,
@@ -87,6 +93,60 @@
    "source": "energy.nfhl_flood_zones",
    "n_rows": 66140,
    "built_at": "2026-08-14 22:20:23.852585+00"
+  },
+  {
+   "table_name": "in_gas_capacity_anr",
+   "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacityANR&pAssetNbr=3005",
+   "n_rows": 554,
+   "built_at": "2026-08-15 04:35:49.332717+00"
+  },
+  {
+   "table_name": "in_gas_capacity_crossroads",
+   "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacity&pAssetNbr=44",
+   "n_rows": 24,
+   "built_at": "2026-08-15 04:35:51.682453+00"
+  },
+  {
+   "table_name": "in_gas_capacity_midwestern",
+   "source": "DT Midstream Trellis PTMS public infopost, https://dtmidstream.trellisenergy.com/ptms/public/infopost/getInfoPostRpts.do?tspId=10&rptId=2 -> getInfoPostRptExportCsvFile.do?infoPostDataId=<id>",
+   "n_rows": 3367,
+   "built_at": "2026-08-15 04:40:49.202028+00"
+  },
+  {
+   "table_name": "in_gas_capacity_ngpl",
+   "source": "Kinder Morgan DART infopost, https://pipeline2.kindermorgan.com/Capacity/OpAvailPoint.aspx?code=NGPL",
+   "n_rows": 693,
+   "built_at": "2026-08-15 04:35:56.324350+00"
+  },
+  {
+   "table_name": "in_gas_capacity_northern_border",
+   "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacity&pAssetNbr=3029",
+   "n_rows": 290,
+   "built_at": "2026-08-15 04:35:53.999293+00"
+  },
+  {
+   "table_name": "in_gas_capacity_panhandle_eastern",
+   "source": "Energy Transfer Messenger ipost, https://peplmessenger.energytransfer.com/ipost/capacity/operationally-available-by-location?asset=PEPL (+by-segment)",
+   "n_rows": 1979,
+   "built_at": "2026-08-15 04:35:58.923694+00"
+  },
+  {
+   "table_name": "in_gas_capacity_texas_gas",
+   "source": "Boardwalk GasQuest anonymous reporting API, POST https://reporting.prod.bwpmlp.org/infopost/infopostdetails {infoPostId:1,tspId:100000} -> GET /infopost/postings?postingsDocumentId=<id>",
+   "n_rows": 23220,
+   "built_at": "2026-08-15 04:37:19.991869+00"
+  },
+  {
+   "table_name": "in_gas_capacity_trunkline",
+   "source": "Energy Transfer Messenger ipost, https://tgcmessenger.energytransfer.com/ipost/capacity/operationally-available-by-location?asset=TGC (+by-segment)",
+   "n_rows": 1231,
+   "built_at": "2026-08-15 04:36:02.342081+00"
+  },
+  {
+   "table_name": "in_gas_capacity_vector",
+   "source": "Vector Pipeline informational postings via vendor EBB https://www.gasnom.com/ip/vector/cap_operationally_available.cfm (iframed by vector-pipeline.com)",
+   "n_rows": 4620,
+   "built_at": "2026-08-15 04:36:07.410460+00"
   },
   {
    "table_name": "in_gas_compressor_stations",
@@ -153,6 +213,12 @@
    "source": "CORRECTION note (no data change)",
    "n_rows": 0,
    "built_at": "2026-08-14 23:12:56+00"
+  },
+  {
+   "table_name": "in_nonattainment",
+   "source": "energy.nonattainment_areas",
+   "n_rows": 62,
+   "built_at": "2026-08-15 05:02:02.992883+00"
   },
   {
    "table_name": "in_ordinances_dc",
@@ -239,6 +305,12 @@
    "built_at": "2026-08-15 04:01:32.566673+00"
   },
   {
+   "table_name": "in_si_candidates",
+   "source": "in_si_evansville_demolition_permits x in_sites",
+   "n_rows": 4170,
+   "built_at": "2026-08-15 04:30:45.930636+00"
+  },
+  {
    "table_name": "in_si_evansville_demolition_permits",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/BC/BUILDING_COMMISSION_PERMITS/MapServer/0",
    "n_rows": 4190,
@@ -291,6 +363,12 @@
    "source": "www.in.gov IBTR DevExtreme determinations API",
    "n_rows": 10152,
    "built_at": "2026-08-14 23:48:44.116054+00"
+  },
+  {
+   "table_name": "in_si_refresh_indy_code_enforcement",
+   "source": "gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indianapolis/Marion County code enforcement)",
+   "n_rows": 910483,
+   "built_at": "2026-08-15 04:36:20.180741+00"
   },
   {
    "table_name": "in_si_refresh_iocs_eviction",

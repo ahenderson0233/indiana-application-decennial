@@ -160,6 +160,9 @@ map.on("load", async () => {
   map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
     paint: { "fill-color": "#7c3aed", "fill-opacity": 0.2, "fill-outline-color": "#5b21b6" } });
+  map.addLayer({ id: "env-nonatt", type: "fill", source: "overlays",
+    filter: ["==", ["get", "layer"], "nonattainment"], layout: { visibility: "none" },
+    paint: { "fill-color": "#9f1239", "fill-opacity": 0.18, "fill-outline-color": "#881337" } });
 
   state.cand = await fetchGz("data/candidates.geojson.gz");
   map.addSource("cand", { type: "geojson", data: state.cand });
@@ -169,7 +172,7 @@ map.on("load", async () => {
   // clicks + hover for every non-parcel layer
   const clickable = { "grid-bus": gridEv, "grid-subs": gridEv, "grid-lines": gridEv,
     "pjm-queue": miscEv, "pjm-bus-est": miscEv, "gas-lines": miscEv, "gas-pts": miscEv,
-    "env-padus": miscEv, "env-bonus": miscEv, "cand-line": candEv };
+    "env-padus": miscEv, "env-bonus": miscEv, "env-nonatt": miscEv, "cand-line": candEv };
   for (const [id, fn] of Object.entries(clickable)) {
     map.on("click", id, (e) => { if (!state.measure.on) fn(e.features[0].properties); });
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
@@ -267,7 +270,7 @@ $("f-cand").addEventListener("change", syncLayers);
 const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
-  "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"] };
+  "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"] };
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))
@@ -451,6 +454,7 @@ function renderDenominator() {
 /* ---------- evidence panels ---------- */
 const panel = $("evidence");
 $("ev-close").onclick = () => panel.classList.add("hidden");
+$("ev-print").onclick = () => window.print(); // print stylesheet isolates the evidence panel as a dossier
 function prov(t) {
   const p = state.provenance[t];
   return p ? `source: indiana_app.${t} · rows ${fmt(p.n_rows)} · built ${String(p.built_at).slice(0, 16)}Z` : `source: ${t}`;
@@ -556,10 +560,15 @@ function miscEv(p) {
     show(`Protected: ${p.name || "(unnamed)"}`, `
       <table>${row("designation", p.designation)}${row("owner type", p.owner_type)}${row("manager", p.manager)}${row("acres", p.acres)}</table>
       <div class="prov">${prov("in_padus")}</div>`);
+  } else if (p.layer === "nonattainment") {
+    show(`Nonattainment: ${p.area_name || ""}`, `
+      <table>${row("pollutant", p.pollutant_name)}${row("classification", p.classification)}
+      ${row("current status", p.current_status)}${row("designation effective", p.designation_effective_date)}</table>
+      <div class="prov">${prov("in_nonattainment")} · air-permitting gate for on-site generation</div>`);
   } else {
     show(`Bonus geography: ${p.kind}`, `
       <table>${row("kind", p.kind)}${row("key", p.key)}${row("attributes", p.attrs_json)}</table>
-      <div class="prov">${prov("in_bonus_geo")} · the BENEFIT half of P4</div>`);
+      <div class="prov">${prov("in_bonus_geo")} · the BENEFIT half of P4 (energy community / LIC / OZ / habitat / coal-closure)</div>`);
   }
 }
 function candEv(p) {
@@ -637,6 +646,11 @@ $("btn-market").onclick = async () => {
     <h3>Gas capacity at Indiana borders (EIA, design)</h3>
     <table>${gas.map((r) => row(`${r.pipeline || ""} ${r.year}`, `${r.state_from}→${r.state_to}: ${fmt(r.capacity_mmcfd)} MMcf/d`)).join("")}</table>
     <div class="prov">${prov("in_gas_state_capacity")} · daily operational availability (EBB) is an open lane</div>
+    <h3>Utility reliability (EIA-861 SAIDI/SAIFI)</h3>
+    <table>${(m.reliability || []).filter((r) => r.saidi_minutes_per_year != null).slice(0, 15).map((r) =>
+      row(`${String(r.utility_name).slice(0, 34)} ${r.data_year}`,
+      `SAIDI ${fmt(Math.round(r.saidi_minutes_per_year))} min/yr · SAIFI ${r.saifi_times_per_year ?? "—"} · ${fmt(r.number_of_customers)} customers`)).join("")}</table>
+    <div class="prov">${prov("in_eia861_reliability")} · outage risk per utility — a screening metric</div>
     <h3>Indiana C&I tariffs (URDB) — ${fmt((m.tariffs || []).length)}</h3>
     <table>${(m.tariffs || []).slice(0, 30).map((r) => row(String(r.utility).slice(0, 38),
       `${r.name || ""} · ${r.sector || ""}${r.has_demand_charge ? " · demand-charged" : ""}${r.energy_rate_max_usd_kwh ? " · ≤$" + r.energy_rate_max_usd_kwh + "/kWh" : ""}`)).join("")}</table>
@@ -699,6 +713,12 @@ const FEATURE_HOME = {
   in_eia861_territory: "county evidence", in_urdb_rates: "Market panel",
   in_parcel_attrs: "BLOCKED-UPSTREAM: IN slice 100% NULL — question filed",
   in_county_water: "DEFERRED: tile pipeline", in_si_candidates: "Candidate overlay (dashed purple)",
+  in_nonattainment: "Nonattainment layer + evidence", in_eia861_reliability: "Market panel (reliability)",
+  in_gas_capacity_texas_gas: "Gas OAC (Market page next)", in_gas_capacity_vector: "Gas OAC",
+  in_gas_capacity_midwestern: "Gas OAC", in_gas_capacity_panhandle_eastern: "Gas OAC (county-plottable)",
+  in_gas_capacity_trunkline: "Gas OAC (county-plottable)", in_gas_capacity_ngpl: "Gas OAC",
+  in_gas_capacity_anr: "Gas OAC", in_gas_capacity_northern_border: "Gas OAC",
+  in_gas_capacity_crossroads: "Gas OAC",
 };
 $("btn-inventory").onclick = () => {
   if (!state.summary) return;
