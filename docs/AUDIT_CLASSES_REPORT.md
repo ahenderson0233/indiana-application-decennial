@@ -1,0 +1,100 @@
+# Remaining audit classes — measured 2026-08-15
+
+## ZEROS re-tested with widened predicates: 465 tables
+- **Disguised Indiana found in 80 tables** (widened spellings / other state columns):
+  - `parcels_in`: 2,034,876 rows
+  - `socrata_chicago_permits`: 6,471 rows
+  - `socrata_tx_franchise_taxpayers`: 5,101 rows
+  - `si_d11_entity_dissolution`: 2,129 rows
+  - `gov_surplus_nces`: 1,928 rows
+  - `nfirs_fireincident_2022`: 1,221 rows
+  - `socrata_ct_entities`: 1,143 rows
+  - `entities_va`: 1,117 rows
+  - `parcels_ct`: 1,086 rows
+  - `si_d25_stb_abandonment_state`: 874 rows
+  - `parcels_al_regional_al_residential_parcel`: 650 rows
+  - `si_d4_ks_johnson_fall_taxsale_2025`: 576 rows
+  - `si_d12_detroit_wayne_blight_tickets`: 466 rows
+  - `si_d11_business_closure_city`: 357 rows
+  - `txexp_miso_mtep_appendix_a_status`: 328 rows
+  - `si_d2_az_maricopa_trustee_sales`: 317 rows
+  - `parcels_nc`: 290 rows
+  - `parcels_mo_clay_county`: 271 rows
+  - `parcels_nm_l23`: 265 rows
+  - `parcels_al_jefferson_county`: 255 rows
+  - `parcels_al_jefferson`: 255 rows
+  - `parcels_ga_chatham`: 219 rows
+  - `si_d17_az_maricopa_evictions_2023_monthly`: 205 rows
+  - `si_d2_oh_hamilton_cincinnati_taxforecl`: 168 rows
+  - `parcels_tx_collin`: 167 rows
+  - `si_d27_ucc_lapse_v2`: 156 rows
+  - `parcels_il_madison`: 150 rows
+  - `parcels_mi`: 142 rows
+  - `parcels_mi_muskegon`: 142 rows
+  - `parcels_nc_v2`: 127 rows
+  - `si_d2_az_maricopa_trustee_sales_2019`: 120 rows
+  - `parcels_tx_dallascity`: 108 rows
+  - `si_d2_az_maricopa_trustee_sales_2018`: 108 rows
+  - `parcels_mo`: 97 rows
+  - `si_d2_az_maricopa_trustee_sales_2017`: 89 rows
+  - `parcels_sc_marion_county`: 88 rows
+  - `agis_cle_citywide_property_survey_2022`: 78 rows
+  - `parcels_id_bonneville_county`: 77 rows
+  - `agis_gso_code_violations`: 57 rows
+  - `parcels_sc_lexington`: 55 rows
+  - `parcels_al_chilton_commercial`: 55 rows
+  - `parcels_al_montgomery_commercial`: 55 rows
+  - `parcels_ga_douglas`: 54 rows
+  - `parcels_nm_l19`: 54 rows
+  - `parcels_tn_lawrence_county`: 51 rows
+  - `si_d2_az_maricopa_foreclosures_monthly_points`: 36 rows
+  - `parcels_il_rockisland`: 28 rows
+  - `parcels_nj`: 27 rows
+  - `parcels_nm_l24`: 23 rows
+  - `si_d17_az_maricopa_evictions_2023_annual`: 23 rows
+  - `si_d2_az_maricopa_foreclosures_2022_2023_points`: 21 rows
+  - `si_d17_az_maricopa_evict_2021_q1`: 20 rows
+  - `agis_mem_code_community`: 16 rows
+  - `parcels_nm_l13`: 13 rows
+  - `si_d4_tx_harris_delinquent_parcels_2025`: 13 rows
+  - `parcels_nm_l20`: 13 rows
+  - `parcels_nm_l21`: 12 rows
+  - `agis_gso_demo_permits`: 12 rows
+  - `parcels_or_josephine_county`: 11 rows
+  - `parcels_ok`: 9 rows
+  - `parcels_nm_l14`: 9 rows
+  - `si_d4_oh_mahoning_youngstown_tax_delinquent`: 8 rows
+  - `si_d4_nc_guilford_tax_delinquent`: 8 rows
+  - `parcels_or_curry_county`: 6 rows
+  - `si_a1_va_vedp_properties`: 5 rows
+  - `parcels_al_st_clair_commercial`: 4 rows
+  - `parcels_nm_l05`: 4 rows
+  - `parcels_tn`: 3 rows
+  - `gas_eia_pipeline_projects`: 2 rows
+  - `parcels_nm_l11`: 2 rows
+  - `parcels_ks_butler_county`: 2 rows
+  - `si_a1_va_vedp_sites`: 2 rows
+  - `parcels_nm_l17`: 2 rows
+  - `si_d3_seized_auction_state`: 2 rows
+  - `si_d2_ca_alameda_foreclosures`: 1 rows
+  - `parcels_ca_mariposa`: 1 rows
+  - `warn_notices`: 1 rows
+  - `agis_sanantonio_vacant`: 1 rows
+  - `parcels_nm_l15`: 1 rows
+  - `parcels_ne`: 1 rows
+- Remaining 385 measured genuinely-no-Indiana: verdict WAIVE (out-of-scope geography).
+
+## SPATIAL-ONLY resolved by source identity
+- parcels_*: 532 tables; **2 feed the Indiana spine** (WIRED-via-spine: `parcels_in`(3,553,193), `parcels_mi_regional_mdot`(1)); the rest are out-of-state land — WAIVE.
+- hca_* (311): utility identity — zero Indiana utilities in the HC estate (measured day one) — WAIVE class.
+- agis_* Indiana-named: 4 -> `agis_indy_code_enforcement`, `agis_indy_landbank_surplus`, `agis_indy_rezoning`, `agis_indy_taxsale` (indy tables already wired via SI); all other agis_* are out-of-state jurisdictions by publisher identity — WAIVE.
+
+- spatial-clip queue (national geometry families for state-polygon clips, next window): `airports`, `brownfield_epa_repowering`, `brownfields`, `echo_cwa_facilities`, `epa_brownfields`, `faa_obstacles`, `groundwater_sites`, `hurdat2_tracks`, `land_faa_sua`, `land_military_bases`, `land_padus`, `nat_substations_hifld`, `nat_usa_structures`, `nat_usa_structures_pt`, `nat_usa_structures_ptc`, `nhd_flowline`, `nhd_waterbody`, `osm_power_lines`, `osm_power_substations`, `railroads`, `roads_primary`, `roads_secondary`, `storm_events`, `water_aqueduct`, `water_cwns_2022`, `water_drought_monitor`, `water_use`
+
+## NATIONAL/OTHER grain — page assignments by family
+- **Grid** (73): `branch_hifld`, `bus_hifld`, `cartovista_miso_poi_locations`, `cartovista_nyiso_poi`, `cartovista_nyiso_poi_locations`, `cartovista_nyiso_poi_v2`, `cartovista_nyiso_queue`, `cartovista_nyiso_stressgens`, `cartovista_nyiso_tsa`, `cartovista_nyiso_tsa_agg_by_poi`, `cartovista_pnm_cv_generator_cluster13_study_agg`, `cartovista_pnm_cv_generator_cluster13_study_subset_agg`, `cartovista_pnm_cv_generator_cluster14_study_agg`, `cartovista_pnm_cv_load_study`, `cartovista_pnm_cv_load_study_agg`, `cartovista_pnm_existing_generation`, `cartovista_pnm_poi`, `cartovista_pnm_queue`, `cartovista_pnm_queue_v2`, `cartovista_tva_poi_locations`, `cartovista_tva_tsa`, `gips_caiso`, `gips_duke_dec`, `gips_duke_def`, `gips_duke_dep`, `gips_flowgates`, `gips_nvenergy`, `gips_poi_headroom`, `gips_poi_studies`, `gips_smud`, `gips_velco`, `hifld_bus_features_v3`, `interconnection_queue`, `lbnl_interconnection_costs`, `lbnl_interconnection_queue`, `miso_poi_attributes`, `miso_poi_capacity_surface_geotiff`, `miso_poi_headroom`, `miso_poi_location_crosswalk`, `miso_poi_mf_crawl_status`, `miso_poi_monitored_facilities`, `pjm_capacity_prices`, `pjm_queuescope_results`, `queue_caiso`, `queue_ercot` …
+- **Market** (70): `avert_emission_rates`, `cbp_county_industry`, `cems_hourly`, `econ_bls_oews_nat`, `econ_gjf_megadeals`, `egrid_plant`, `egrid_state`, `egrid_subregion`, `eia860_generators`, `eia860m_generators`, `eia861_demand_response`, `eia861_reliability`, `eia861_sales`, `eia861_sales_ult_cust`, `eia861_service_territory`, `eia923_boiler_fuel`, `eia923_fuel_receipts_costs`, `eia923_generation_fuel`, `eia930_generation_by_fuel`, `eia930_hourly_operations`, `eia930_interchange`, `eia930_subregion_demand`, `eia_generators_by_ownership`, `eia_plants`, `eqr_contracts`, `eqr_identity`, `eqr_index`, `eqr_transactions`, `ferc1_all_plants`, `ferc1_balance_sheet_assets`, `ferc1_income_statements`, `ferc714_hourly_demand`, `ferc714_state_demand`, `ferc_dc_documents`, `ferc_dc_filings`, `ferc_large_load_dockets`, `gas_compressor_stations`, `gas_eia_176`, `gas_eia_pipeline_projects`, `gas_eia_state_capacity`, `gas_lng_terminals`, `gas_phmsa_distribution`, `gas_pipelines`, `gas_pipelines_hifld`, `gas_processing_plants` …
+- **P1-SI** (30): `bankruptcy_dockets`, `candidate_sites_colleges`, `candidate_sites_private_schools`, `candidate_sites_schools`, `civilview_sales`, `edgar_abs_ee_cmbs`, `entities_va`, `fsis_establishments`, `fsis_establishments_inactive`, `gov_auction_gsa`, `gov_auction_irs`, `gov_auction_treasury`, `gov_auction_treasury_v2`, `gov_surplus_frpp`, `gov_surplus_nces`, `lgbs_property_sales`, `lgbs_property_sales_snap20260719`, `lgbs_sale_counties`, `realauction_items`, `recorder_publicsearch_d15_mechanics_lien`, `recorder_publicsearch_dallas_tx_rp_mechanics_family`, `recorder_publicsearch_rendered`, `sec_cik_registrant_state`, `sec_ft_sec_8k_closure`, `taxsale_mi`, `ustp_ch7_tfr`, `ut_tax_liens`, `ut_tax_liens_v2`, `warn_notices`, `zoomprospector_listings`
+- **Regulatory-preview** (43): `dc_document_text`, `openstates_bulk_session_coverage`, `openstates_dc_bills`, `openstates_energy_bill_abstracts`, `openstates_energy_bill_actions`, `openstates_energy_bill_sources`, `openstates_energy_bill_sponsorships`, `openstates_energy_bill_versions`, `openstates_energy_bill_vote_people`, `openstates_energy_bill_votes`, `openstates_energy_bills`, `openstates_energy_bills_api`, `openstates_energy_bills_v2`, `puc_al_dc`, `puc_az_dc`, `puc_az_deep_dc`, `puc_ca_dc`, `puc_dc_dc`, `puc_ferc_deep_dc`, `puc_il_dc`, `puc_ks_dc`, `puc_ma_dc`, `puc_ma_dockets`, `puc_me_dc`, `puc_mi_dc`, `puc_mn_dc`, `puc_mn_deep_dc`, `puc_nc_dc`, `puc_nv_dc`, `puc_oh_dc`, `puc_pa_dc`, `puc_sc_deep_dc`, `puc_sd_dc`, `puc_state_access_ledger`, `puc_tx_dc`, `puc_tx_deep_dc`, `puc_ut_dc`, `puc_va_dc`, `puc_va_deep_dc`, `puc_wa_deep_dc`, `state_irp_catalog`, `tx_dc_documents`, `va_dc_documents`
+- **Sentiment** (26): `amlegal_dc_ordinances`, `ballotpedia_dc`, `bingnews_dc`, `bingnews_dc_state`, `civic_civicclerk_deep_dc`, `civic_client_county`, `civic_client_town`, `civic_legistar_dc`, `dc_bans`, `dc_docket_tracker`, `dc_e3_largeload_tariffs`, `dc_eei_tariffs`, `dc_large_load_indicators`, `dc_opposition_tracker`, `dc_regulatory_dimensions`, `dc_regulatory_news`, `dc_state_actions`, `gdelt_dc_articles`, `gdelt_dc_tone`, `gdelt_gkg_dc_locations`, `googlenews_dc`, `googlenews_dc_state`, `legistar_rezoning`, `primegov_meetings`, `reddit_dc_posts`, `tradepress_dc`
+- **UNASSIGNED (eyeball queue)** (151): `acs_county`, `acs_tract_vacancy`, `airports`, `balancing_authority_areas`, `block_groups`, `brownfield_epa_repowering`, `brownfields`, `caiso_curtailment`, `census_tracts`, `coal_closure_communities`, `column_census`, `commission_posture`, `competitor_gap_matrix`, `county_boundaries`, `critical_habitat`, `data_centers`, `data_centers_baxtel`, `data_centers_cloudscene`, `data_centers_datacentermap`, `data_centers_datacentermap_coords`, `data_centers_datacentermap_coords_shard_0`, `data_centers_datacentermap_coords_shard_1`, `data_centers_datacentermap_coords_shard_2`, `data_centers_datacentermap_coords_shard_3`, `data_centers_datacentermap_coords_shard_4`, `data_centers_peeringdb`, `data_centers_wikidata`, `decisions`, `deletion_log`, `dim_jurisdiction`, `dim_ny_utility_territories`, `disadvantaged_communities`, `drought_by_state`, `echo_cwa_facilities`, `elec_power_operational`, `electric_retail_service_territories`, `endpoint_truth`, `energy_communities_msa`, `epa_brownfields`, `ercot_large_load`, `faa_obstacles`, `fcc_bdc_fixed_availability`, `fcc_bdc_fixed_provider_summary`, `fcc_bdc_fixed_summary_by_geography`, `fcc_bdc_mobile_summary_by_geography` …
