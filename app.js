@@ -652,6 +652,10 @@ $("btn-market").onclick = async () => {
     <h3>Gas capacity at Indiana borders (EIA, design)</h3>
     <table>${gas.map((r) => row(`${r.pipeline || ""} ${r.year}`, `${r.state_from}→${r.state_to}: ${fmt(r.capacity_mmcfd)} MMcf/d`)).join("")}</table>
     <div class="prov">${prov("in_gas_state_capacity")} · daily operational availability (EBB) is an open lane</div>
+    ${m.state_demand ? `<h3>Indiana statewide demand (FERC-714, monthly MWh)</h3>
+    <svg viewBox="0 0 300 84" style="width:100%;background:#f8fafc;border:1px solid #e3e6ec;border-radius:6px">
+      <polyline points="${(() => { const s = m.state_demand.slice(-120); const mx = Math.max(...s.map((r) => r.demand_mwh || 0)); return s.map((r, i) => `${(i / (s.length - 1) * 300).toFixed(1)},${(80 - (r.demand_mwh || 0) / mx * 75).toFixed(1)}`).join(" "); })()}" fill="none" stroke="#b45309" stroke-width="1.2"/></svg>
+    <div class="prov">${prov("in_ferc714_state_demand")} · ${m.state_demand.length} months held</div>` : ""}
     <h3>Utility reliability (EIA-861 SAIDI/SAIFI)</h3>
     <table>${(m.reliability || []).filter((r) => r.saidi_minutes_per_year != null).slice(0, 15).map((r) =>
       row(`${String(r.utility_name).slice(0, 34)} ${r.data_year}`,
@@ -720,6 +724,20 @@ const FEATURE_HOME = {
   in_parcel_attrs: "BLOCKED-UPSTREAM: IN slice 100% NULL — question filed",
   in_county_water: "DEFERRED: tile pipeline", in_si_candidates: "Candidate overlay (dashed purple)",
   in_nonattainment: "Nonattainment layer + evidence", in_eia861_reliability: "Market panel (reliability)",
+  in_ferc714_state_demand: "Market panel (state demand chart)",
+  in_nhd_waterbody: "WIRE-NEXT: water gate complement (county agg + tiles)",
+  in_spc_severe_events: "WIRE-NEXT: P4 severe-weather county stats",
+  in_faa_obstacles: "WIRE-NEXT: P4 obstacle-proximity gate",
+  in_echo_cwa_facilities: "WIRE-NEXT: water-permit facilities layer",
+  in_utility_tariff_riders: "Market panel (riders — next)", in_dc_eei_tariffs: "Market panel (EEI benchmark — next)",
+  in_econ_gjf_megadeals: "county evidence (megadeals — next)", in_state_irp_catalog: "Future-capacity panel (IRP refs)",
+  in_gov_auction_gsa: "Acquisitions (A2 extension)", in_ustp_ch7_tfr: "Acquisitions (D6 extension)",
+  in_queue_miso: "FLAG: diff vs interconnection_queue before wiring",
+  in_nfirs_basicincident_2024: "Acquisitions (D16 vintage, subject-read pending)",
+  in_nfirs_incidentaddress_2024: "joins in_nfirs_basicincident_2024",
+  in_nfirs_basicincident_2023: "Acquisitions (D16 vintage)", in_nfirs_incidentaddress_2023: "joins 2023",
+  in_nfirs_basicincident_2022: "Acquisitions (D16 vintage)", in_nfirs_incidentaddress_2022: "joins 2022",
+  in_miso_poi_300mw: "Grid — THE single headroom number at a 300MW-class request",
   in_gas_capacity_texas_gas: "Gas OAC (Market page next)", in_gas_capacity_vector: "Gas OAC",
   in_gas_capacity_midwestern: "Gas OAC", in_gas_capacity_panhandle_eastern: "Gas OAC (county-plottable)",
   in_gas_capacity_trunkline: "Gas OAC (county-plottable)", in_gas_capacity_ngpl: "Gas OAC",
