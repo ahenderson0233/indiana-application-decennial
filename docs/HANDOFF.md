@@ -99,7 +99,75 @@ assuming ZCTA=FIPS; trusting a summary's claim that scripts "were pending" (veri
 BQ); MIN-over-facilities at an infinite probe; treating publisher 0,0 coords as locations;
 letting a preset lock layers users need to compose.
 
-## 5. CURRENTLY IN FLIGHT / AWAITING OPERATOR
+## 5. THE OPUS 5 ROADMAP — do these IN ORDER, exactly as written
+
+The next session runs on Opus 5. Follow this list top-down; do not invent new workstreams;
+if a step's acceptance check fails, stop and report rather than improvising.
+
+**Setup (every session):**
+```
+cd "C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial"
+git pull
+```
+BigQuery from the platform venv, always with these env vars:
+```
+cd "C:\Users\ahend\Downloads\Decennial Summer Work\Remaking Orennia\energy-platform"
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\Users\ahend\bq-key.json"; $env:PYTHONIOENCODING="utf-8"
+.venv\Scripts\python.exe <script>
+```
+Preview: the `.claude/launch.json` config `indiana-app` serves the repo at localhost:8123.
+Commit style: explicit paths (never `git add -A`), message via `-F <file>` if it has
+backticks, push after each completed task.
+
+**T1 — Verify state (10 min).** Open localhost:8123 → data.html must show ~190 tables;
+index.html → upload a 2-row lat/lon CSV → status must read "2 placed". If either fails,
+diagnose before anything else (console errors first).
+
+**T2 — Operator sign-off packet (read-only queries, present, wait).** For each of:
+in_si_d11_entity_dissolution, in_si_d25_stb_abandonment_state, in_si_d27_ucc_lapse_v2,
+in_data_centers_cloudscene, energy tables airports + queue_miso — run
+`SELECT * FROM <table> LIMIT 10` plus a GROUP BY on the subject-looking column; show the
+operator the value vocabulary; ask them to confirm each mapping. DO NOT wire without the
+answer. For in_data_centers_all dedupe: propose "same name-stem within 500 m across
+sources → keep one row, list sources"; implement ONLY after approval.
+
+**T3 — FCC county detail into county evidence.** Data: indiana_app.in_fcc_bdc_fixed_summary_by_geography
+(15,900) + in_fcc_bdc_mobile_summary (533). Read 5 rows first. Add per-county fields into
+data/county_context.json (extend scripts/build_p36_wiring.py pattern: merge into
+ctx["by_fips"][fips]["fcc"]) and render 2-3 rows in openCountyEvidence (app.js).
+Acceptance: click Marion County → FCC rows appear with a prov() line.
+
+**T4 — SI inventory chart on si.html.** One BQ export: signal × count from
+indiana_app.in_si_signals GROUP BY signal → add to data/state_summary.json as
+"si_by_signal"; render a table+bars on si.html. Acceptance: 17 rows, totals match 1,818,158.
+
+**T5 — Gas OAC locations table on market.html.** From in_gas_capacity_panhandle_eastern +
+_trunkline (State='IN'): location name, county, design capacity, OAC, gas day → new
+data/gas_locations.json.gz + a Market card. Acceptance: 203 rows total, county column filled.
+
+**T6 — Rate proxy (ONLY after reading energy-platform/ANALYSIS_METHODOLOGY.md end-to-end).**
+Inputs: in_urdb_rates (demand + energy components), user MW + load factor + class. Output:
+yearly cost band per tariff, labeled "proxy from published tariff structure — not a quote".
+Add to market.html with adjustable inputs. Acceptance: CPS-style decomposition shown
+(fixed/demand/energy) and every number carries the tariff's name.
+
+**T7 — PMTiles (BLOCKED until the operator installs WSL or Docker).** Then: export
+in_sites (all 3.55M, exact geometry) to GeoJSONL, tippecanoe -Z12 -z16 --no-feature-limit,
+split files <100 MB, swap the per-county gz loader for a pmtiles source. Do not start
+before the install exists.
+
+**T8 — Refresh cadence.** All scrapers/lane_d + lane_e scripts are idempotent; propose a
+weekly script-run schedule to the operator (zero agent tokens). Registry rows get a new
+append per refresh.
+
+**DO NOT (Opus-specific guardrails):** do not re-audit the estate (it is DONE — read the
+verdicts); do not launch agents for anything a script in scripts/ or scrapers/ already
+does; do not touch energy.* except reads + APPEND to registry_sources; do not read
+SAMPLES_*.md whole (grep per table); do not re-derive headroom (both derivations are
+final and documented — §2 above); do not change payload schemas without updating every
+page that reads them (grep the field name across *.html and app.js first).
+
+## 6. CURRENTLY IN FLIGHT / AWAITING OPERATOR
 
 Upload door being built now. Awaiting operator: D11/D25/D27 + MF subject sign-offs;
 in_data_centers_all dedupe rule; cloudscene vocabulary; airports format flag;

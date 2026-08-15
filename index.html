@@ -88,6 +88,19 @@
     <div id="denominator" class="railcard panelbox">loading…</div>
 
     <div class="railcard">
+      <h2>Score your own sites <span class="hint">(first-class, same pipeline)</span></h2>
+      <input type="file" id="upload" accept=".csv" style="font-size:11.5px;width:100%">
+      <div class="hint">CSV with <code>lat</code>/<code>lon</code> columns (any casing; <code>latitude/longitude</code> ok).
+      Parses in your browser — nothing uploads anywhere. Each site gets grid distances, county gates &amp; sentiment,
+      and screener context. Rows without coordinates are kept &amp; listed, never dropped.</div>
+      <div id="upload-status" class="hint" style="margin-top:6px"></div>
+      <div class="rowbtns" style="margin-top:6px">
+        <button id="upload-export" disabled>Export enriched CSV</button>
+        <button id="upload-clear" disabled>Clear</button>
+      </div>
+    </div>
+
+    <div class="railcard">
       <div class="rowbtns">
         <button id="btn-measure">📏 Measure</button>
         <button id="export-csv" disabled>Export CSV</button>

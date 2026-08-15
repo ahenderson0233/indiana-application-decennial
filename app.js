@@ -21,7 +21,7 @@ async function fetchGz(url) {
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).json();
 }
-const fmt = (n) => n == null ? "—" : Number(n).toLocaleString("en-US");
+/* fmt + fetchGz come from common.js (loaded first) */
 function bboxOf(geom) {
   let w = 180, s = 90, e = -180, n = -90;
   const walk = (c) => { if (typeof c[0] === "number") { w = Math.min(w, c[0]); e = Math.max(e, c[0]); s = Math.min(s, c[1]); n = Math.max(n, c[1]); } else c.forEach(walk); };
@@ -832,6 +832,118 @@ $("btn-inventory").onclick = () => {
     return `<tr><td>${p.table_name}<br><span class="hint">${fmt(p.n_rows)} rows · ${String(p.built_at).slice(0, 10)}</span></td><td${cls}>${home}</td></tr>`;
   }).join("");
   show("Data inventory — every table has a home or a stated waiver", `<table>${rows_}</table>`);
+};
+
+/* ---------- upload door: user's own sites through the same pipeline ---------- */
+function pointInPoly(lon, lat, geom) {
+  const test = (ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+  return polys.some((p) => test(p[0]) && !p.slice(1).some(test));
+}
+function countyOf(lon, lat) {
+  for (const f of state.counties.features) {
+    const [w, s, e, n] = state.countyBbox[f.properties.fips];
+    if (lon < w || lon > e || lat < s || lat > n) continue;
+    if (pointInPoly(lon, lat, f.geometry)) return f.properties;
+  }
+  return null;
+}
+function parseCsv(text) {
+  let cur = [""], inQ = false, out = [];
+  for (const ch of text) {
+    if (inQ) { if (ch === '"') inQ = false; else cur[cur.length - 1] += ch; }
+    else if (ch === '"') inQ = true;
+    else if (ch === ",") cur.push("");
+    else if (ch === "\n" || ch === "\r") { if (cur.length > 1 || cur[0]) out.push(cur); cur = [""]; }
+    else cur[cur.length - 1] += ch;
+  }
+  if (cur.length > 1 || cur[0]) out.push(cur);
+  if (!out.length) return [];
+  const hdr = out[0].map((h) => h.trim().toLowerCase());
+  return out.slice(1).map((r) => Object.fromEntries(hdr.map((h, i) => [h, r[i]])));
+}
+state.uploaded = [];
+$("upload").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const recs = parseCsv(await file.text());
+  const latK = Object.keys(recs[0] || {}).find((k) => ["lat", "latitude", "y"].includes(k));
+  const lonK = Object.keys(recs[0] || {}).find((k) => ["lon", "lng", "longitude", "x"].includes(k));
+  if (!latK || !lonK) {
+    $("upload-status").innerHTML = `<span class="cannot">No lat/lon columns found (headers: ${Object.keys(recs[0] || {}).slice(0, 8).join(", ")}). Address-only lists need coordinates — centreline geocoding is refused by project rule.</span>`;
+    return;
+  }
+  let placed = 0, unplaced = 0, outside = 0;
+  const feats = [];
+  state.uploaded = recs.map((r, i) => {
+    const lat = parseFloat(r[latK]), lon = parseFloat(r[lonK]);
+    const row_ = { ...r, _row: i + 1 };
+    if (!isFinite(lat) || !isFinite(lon)) { row_._status = "cannot-place (no coords)"; unplaced++; return row_; }
+    const cty = countyOf(lon, lat);
+    if (!cty) { row_._status = "outside Indiana"; outside++; return row_; }
+    const c = state.ctx.by_fips[cty.fips] || {};
+    let best = null;
+    for (const s of binNear(state.subBins, lon, lat)) {
+      const d = havM(lat, lon, s.lat, s.lon); if (!best || d < best.d) best = { d, s };
+    }
+    let bp = null;
+    for (const q of state.poiList) {
+      const d = havM(lat, lon, q.lat, q.lon); if (!bp || d < bp.d) bp = { d, q };
+    }
+    Object.assign(row_, {
+      _status: "placed", _county: cty.county_name,
+      _sub_mi: best ? +(best.d / MI).toFixed(2) : null, _sub_name: best?.s.name, _sub_kv: best?.s.kv,
+      _poi_mi: bp ? +(bp.d / MI).toFixed(1) : null, _poi_median_mw: bp?.q.median,
+      _county_opposition: c.posture?.opposition_intensity ?? null,
+      _county_restriction: c.posture?.has_local_restriction ?? null,
+      _county_seismic: c.seismic?.sdc ?? null,
+      _county_fiber_locs: c.fibre?.fiber_locations ?? null,
+      _county_queue_mw: c.queue?.active_mw ?? null,
+    });
+    placed++;
+    feats.push({ type: "Feature", properties: { ...row_, layer: "uploaded" },
+      geometry: { type: "Point", coordinates: [lon, lat] } });
+    return row_;
+  });
+  const fc = { type: "FeatureCollection", features: feats };
+  if (map.getSource("uploaded")) map.getSource("uploaded").setData(fc);
+  else {
+    map.addSource("uploaded", { type: "geojson", data: fc });
+    map.addLayer({ id: "uploaded-pts", type: "circle", source: "uploaded",
+      paint: { "circle-radius": 7, "circle-color": "#16a34a", "circle-stroke-color": "#fff",
+               "circle-stroke-width": 2 } });
+    map.on("click", "uploaded-pts", (e2) => {
+      const p = e2.features[0].properties;
+      const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 16)
+        .map(([k, v]) => row(k.replace(/^_/, ""), v)).join("");
+      show(`Your site (row ${p._row})`, `<table>${rows_}</table>
+        <div class="prov">your upload · enriched client-side against the same layers as the feed — upload parity is a scope commitment; nothing leaves the browser</div>`);
+    });
+    map.on("mousemove", "uploaded-pts", (e2) => showTip(e2, `your site · ${e2.features[0].properties._county || ""} · sub ${e2.features[0].properties._sub_mi ?? "?"} mi`));
+    map.on("mouseleave", "uploaded-pts", hideTip);
+  }
+  $("upload-status").innerHTML = `<b>${placed}</b> placed · ${outside} outside Indiana · <b>${unplaced}</b> cannot-place (kept, listed in export) — green markers.`;
+  $("upload-export").disabled = $("upload-clear").disabled = false;
+});
+$("upload-export").onclick = () => {
+  if (!state.uploaded.length) return;
+  const cols = [...new Set(state.uploaded.flatMap((r) => Object.keys(r)))];
+  const esc = (v) => v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+  const csv = [cols.join(","), ...state.uploaded.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "your_sites_enriched.csv"; a.click();
+};
+$("upload-clear").onclick = () => {
+  state.uploaded = [];
+  if (map.getSource("uploaded")) map.getSource("uploaded").setData({ type: "FeatureCollection", features: [] });
+  $("upload-status").textContent = ""; $("upload-export").disabled = $("upload-clear").disabled = true;
 };
 
 /* ---------- CSV export ---------- */
