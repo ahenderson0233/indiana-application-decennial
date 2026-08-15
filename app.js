@@ -390,6 +390,86 @@ const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
   "L-dc": ["fac-dc", "fac-dc-city"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
+/* ---------- context layers: 1 MB of geometry, so fetched on FIRST USE, not at boot ----------
+   Six layers share one payload. The first toggle loads it and builds all six; later toggles
+   just flip visibility. A layer that has not loaded yet reports so rather than silently
+   doing nothing — the failure mode the logistics layer had for weeks. */
+const CONTEXT_LAYERS = {
+  "L-osmline": "ctx-osm-line", "L-osmsub": "ctx-osm-sub", "L-ghgrp": "ctx-ghgrp",
+  "L-frpp": "ctx-frpp", "L-school": "ctx-school", "L-wx": "ctx-wx",
+};
+state.ctxLoaded = false; state.ctxLoading = null;
+async function ensureContextLayers() {
+  if (state.ctxLoaded) return true;
+  if (state.ctxLoading) return state.ctxLoading;
+  state.ctxLoading = (async () => {
+    const fc = await fetchGz("data/context.geojson.gz");
+    map.addSource("ctx", { type: "geojson", data: fc });
+    map.addLayer({ id: "ctx-osm-line", type: "line", source: "ctx",
+      filter: ["==", ["get", "layer"], "osm_line"], layout: { visibility: "none" },
+      paint: { "line-color": "#7c3aed", "line-width": ["interpolate", ["linear"], ["get", "kv"], 100, 1, 765, 3], "line-opacity": 0.75 } });
+    map.addLayer({ id: "ctx-osm-sub", type: "fill", source: "ctx",
+      filter: ["==", ["get", "layer"], "osm_sub"], layout: { visibility: "none" },
+      paint: { "fill-color": "#7c3aed", "fill-opacity": 0.35, "fill-outline-color": "#4c1d95" } });
+    map.addLayer({ id: "ctx-ghgrp", type: "circle", source: "ctx",
+      filter: ["==", ["get", "layer"], "ghgrp"], layout: { visibility: "none" },
+      paint: { "circle-radius": 5, "circle-color": "#dc2626", "circle-opacity": 0.7,
+               "circle-stroke-color": "#7f1d1d", "circle-stroke-width": 1 } });
+    map.addLayer({ id: "ctx-frpp", type: "circle", source: "ctx",
+      filter: ["==", ["get", "layer"], "frpp"], layout: { visibility: "none" },
+      paint: { "circle-radius": 4, "circle-color": "#0d9488", "circle-opacity": 0.75 } });
+    map.addLayer({ id: "ctx-school", type: "circle", source: "ctx",
+      filter: ["==", ["get", "layer"], "school"], layout: { visibility: "none" },
+      paint: { "circle-radius": 3.5, "circle-color": "#f59e0b", "circle-opacity": 0.8 } });
+    map.addLayer({ id: "ctx-wx", type: "circle", source: "ctx",
+      filter: ["==", ["get", "layer"], "wx"], layout: { visibility: "none" },
+      paint: { "circle-radius": 3, "circle-color": "#64748b", "circle-opacity": 0.6 } });
+    for (const id of Object.values(CONTEXT_LAYERS)) {
+      map.on("mousemove", id, (e) => showTip(e, ctxTip(e.features[0].properties)));
+      map.on("mouseleave", id, hideTip);
+      map.on("click", id, (e) => { if (!state.measure.on) ctxEvidence(e.features[0].properties); });
+    }
+    state.ctxLoaded = true;
+    return true;
+  })();
+  return state.ctxLoading;
+}
+function ctxTip(p) {
+  if (p.layer === "osm_line") return `OSM line · ${p.kv || "?"} kV${p.operator ? " · " + p.operator : ""}`;
+  if (p.layer === "osm_sub") return `OSM substation${p.name ? ": " + p.name : " (unnamed)"}${p.kv ? " · " + p.kv + " kV" : ""}`;
+  if (p.layer === "ghgrp") return `GHGRP emitter: ${p.name || "?"}`;
+  if (p.layer === "frpp") return `Federal property: ${p.agency || "?"}`;
+  if (p.layer === "school") return `${p.kind === "private" ? "Private" : "Public"} school: ${p.name || "?"}`;
+  if (p.layer === "wx") return `Weather station: ${p.name || p.station_id}`;
+  return p.layer;
+}
+const CTX_PROV = {
+  osm_line: ["in_osm_power_lines", "OpenStreetMap power lines, Indiana, ≥100 kV only. 5,013 lines against 2,623 in in_transmission_lines — OSM is materially more complete here, so this is additive, not a duplicate copy."],
+  osm_sub: ["in_osm_power_substations", "OpenStreetMap substation FOOTPRINTS. 2,872 of 2,873 are ways carrying a polygon and no point coordinate, so the actual footprint is drawn — no centroid is derived."],
+  ghgrp: ["in_ghgrp_facilities", "EPA greenhouse-gas reporters: 263 Indiana facilities. Neighbours already holding air permits. in_ghgrp_emitter_facilities is a subset (all 246 of its ids are among these) and supplies the reporting year."],
+  frpp: ["in_gov_surplus_frpp", "Federal Real Property Profile — federally-held property, a live acquisition lead rather than mere context."],
+  school: ["in_candidate_sites_schools", "Public + private schools (in_candidate_sites_private_schools). Proximity-sensitive receptors: a data centre beside a school is a community-opposition risk, so this is a siting constraint."],
+  wx: ["in_weather_stations", "GHCN stations. 28 of 2,108 publish elevation −999.9, a sentinel, not a depth — those are shown as unknown rather than plotted as below sea level."],
+};
+function ctxEvidence(p) {
+  const [tbl, note] = CTX_PROV[p.layer] || ["", ""];
+  const rows_ = Object.entries(p).filter(([k]) => k !== "layer")
+    .map(([k, v]) => row(k, v)).join("");
+  show(ctxTip(p), `<table>${rows_}</table>
+    <div class="prov">${prov(tbl)}<br>${note}</div>`);
+}
+for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
+  $(box).addEventListener("change", async (e) => {
+    if (e.target.checked) {
+      $(box).parentElement.style.opacity = "0.55";
+      await ensureContextLayers();
+      $(box).parentElement.style.opacity = "";
+    }
+    if (map.getLayer(layerId))
+      map.setLayoutProperty(layerId, "visibility", $(box).checked ? "visible" : "none");
+  });
+}
+
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))
