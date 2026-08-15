@@ -69,7 +69,9 @@ si_rows = [jsafe(r) for r in si_rows]
 # normalized token from source_id (or vice versa).
 # ---------------------------------------------------------------------------
 def norm_tokens(s):
-    s = (s or "").lower()
+    if isinstance(s, (list, tuple)):
+        s = " ".join(str(x) for x in s)
+    s = str(s or "").lower()
     for ch in "_-.:/":
         s = s.replace(ch, " ")
     return set(t for t in s.split() if len(t) > 2)
