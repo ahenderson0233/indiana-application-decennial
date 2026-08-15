@@ -91,6 +91,18 @@ map.on("load", async () => {
   map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
     paint: { "fill-color": "#7c3aed", "fill-opacity": 0.22, "fill-outline-color": "#5b21b6" } });
+  state.cand = await fetchGz("data/candidates.geojson.gz");
+  map.addSource("cand", { type: "geojson", data: state.cand });
+  map.addLayer({ id: "cand-line", type: "line", source: "cand", layout: { visibility: "none" },
+    paint: { "line-color": "#7c3aed", "line-width": 2, "line-dasharray": [2, 1.5] } });
+  map.on("click", "cand-line", (e) => {
+    const p = e.features[0].properties;
+    show(`CANDIDATE ${p.candidate_signal}: ${p.parcel_key}`, `
+      <div class="est-badge">CANDIDATE — staged for this app only; not in the scored 17</div>
+      <table>${row("activity (publisher's words)", p.activity)}${row("observed date", p.observed_date)}
+      ${row("owner (permit)", p.owner)}${row("source", p.candidate_source)}</table>
+      <div class="prov">${prov("in_si_candidates")} · 3,385 of 4,190 permit parcels joined (80.8%); unjoined listed in BigQuery</div>`);
+  });
   state.terr = await fetchGz("data/territories.geojson.gz");
   map.addSource("terr", { type: "geojson", data: state.terr });
   map.addLayer({ id: "terr-fill", type: "fill", source: "terr", layout: { visibility: "none" },
@@ -167,6 +179,8 @@ function setPreset(p) {
       gridOn && document.getElementById("g-gas").checked ? "visible" : "none");
   if (map.getLayer("terr-fill")) map.setLayoutProperty("terr-fill", "visibility",
     gridOn && document.getElementById("g-terr").checked ? "visible" : "none");
+  if (map.getLayer("cand-line")) map.setLayoutProperty("cand-line", "visibility",
+    p === "land" && document.getElementById("f-cand").checked ? "visible" : "none");
   if (map.getLayer("env-padus")) {
     map.setLayoutProperty("env-padus", "visibility",
       p === "env" && document.getElementById("e-padus").checked ? "visible" : "none");
@@ -254,6 +268,7 @@ function applyFilters() {
 }
 for (const id of ["f-ci", "f-mw", "f-si", "f-mw-val", "f-recent", "f-recent-days"])
   document.getElementById(id).addEventListener("change", applyFilters);
+document.getElementById("f-cand").addEventListener("change", () => setPreset(state.preset));
 
 /* ---------- header, ledger, denominators ---------- */
 function renderStatebar() {
@@ -514,6 +529,7 @@ const FEATURE_HOME = {
   in_eia861_territory: "county evidence (utilities serving)", in_urdb_rates: "Market panel (tariff table)",
   in_parcel_attrs: "BLOCKED-UPSTREAM: IN slice of mat_parcel_attrs is 100% NULL on every attribute column — question filed",
   in_county_water: "DEFERRED: tile pipeline",
+  in_si_candidates: "Land preset (candidate-signal overlay, dashed purple)",
 };
 document.getElementById("btn-inventory").onclick = () => {
   if (!state.summary) return; // still loading
