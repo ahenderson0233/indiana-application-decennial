@@ -9,92 +9,95 @@
 </head>
 <body>
 <header id="topbar">
-  <div id="title">Indiana Siting Intelligence <span class="tag">v0 spine</span></div>
-  <div id="statebar">loading state summary…</div>
+  <div id="title">Indiana Siting Intelligence <span class="tag">beta</span></div>
+  <div id="statebar">loading…</div>
+  <div id="topbtns">
+    <button id="btn-pipeline">Future capacity</button>
+    <button id="btn-market">Market</button>
+    <button id="btn-acq">Acquisitions</button>
+    <button id="btn-inventory">Inventory</button>
+    <button id="btn-shortlist">★ Shortlist <span id="sl-count">0</span></button>
+  </div>
 </header>
 
 <div id="layout">
   <aside id="rail">
-    <div id="presets">
-      <button data-p="land" class="active">Land</button>
-      <button data-p="grid">Grid</button>
-      <button data-p="env">Environ.</button>
-      <button data-p="sentiment">Sentiment</button>
+
+    <div class="railcard">
+      <h2>Workspace bundles <span class="hint">(one-click setups — everything stays adjustable)</span></h2>
+      <div id="presets">
+        <button data-p="dc">DC developer</button>
+        <button data-p="bess">BESS</button>
+        <button data-p="screen">Full screen</button>
+        <button data-p="clear">Reset</button>
+      </div>
     </div>
 
-    <div id="rail-land">
-      <h2>Site classes <span class="hint">(rendered individually)</span></h2>
+    <div class="railcard">
+      <h2>Site screener <span class="hint">(composes across all parts)</span></h2>
+      <div class="subhead">Property class</div>
       <label><input type="checkbox" id="f-ci" checked> Strict C&amp;I</label>
-      <label><input type="checkbox" id="f-mw" checked> Fits ≥
-        <input type="number" id="f-mw-val" value="25" min="1" step="1"> MW
-        <span class="hint">at 4 MW/acre default — adjustable, not the answer</span></label>
-      <label><input type="checkbox" id="f-si" checked> Carries a seller-intent signal</label>
-      <label><input type="checkbox" id="f-recent"> SI event in last
-        <input type="number" id="f-recent-days" value="90" min="1" step="1"> days
-        <span class="hint">"new this week" at your chosen window — narrows the SI class</span></label>
-      <label><input type="checkbox" id="f-cand"> Candidate signals <span class="hint">(staged D21 demolition — this app only, not the national engine)</span></label>
-      <h2>Legend</h2>
-      <div class="legend">
-        <div><span class="sw" style="background:#d97706"></span> seller-intent signal</div>
-        <div><span class="sw" style="background:#2563eb"></span> strict C&amp;I (no SI)</div>
-        <div><span class="sw" style="background:#059669"></span> fits ≥MW only</div>
-        <div><span class="sw sw-line"></span> exact parcel boundary (never simplified)</div>
-        <div class="hint">colour priority: SI &gt; C&amp;I &gt; MW. County shading counts <b>all</b> parcels.</div>
+      <label><input type="checkbox" id="f-ag" checked> Agriculture</label>
+      <label><input type="checkbox" id="f-vac" checked> Vacant (no structure)</label>
+      <label><input type="checkbox" id="f-other"> Other non-residential</label>
+      <div class="subhead">Size &amp; intent</div>
+      <label><input type="checkbox" id="f-mw" checked> Fits ≥ <input type="number" id="f-mw-val" value="25" min="1"> MW
+        <span class="hint">@ <input type="number" id="f-density" value="4" min="1" max="20" step="0.5"> MW/acre (4=DC, 10=BESS — defaults, adjustable)</span></label>
+      <label><input type="checkbox" id="f-si"> Requires seller-intent signal</label>
+      <label><input type="checkbox" id="f-recent"> … with event in last <input type="number" id="f-recent-days" value="90" min="1"> days</label>
+      <label><input type="checkbox" id="f-cand"> Show candidate signals (staged D21)</label>
+      <div class="subhead">Grid access (Part 2)</div>
+      <label><input type="checkbox" id="f-dsub"> ≤ <input type="number" id="f-dsub-mi" value="2" min="0.1" step="0.1"> mi of a substation ≥ <input type="number" id="f-dsub-kv" value="69" min="0"> kV</label>
+      <label><input type="checkbox" id="f-dline"> ≤ <input type="number" id="f-dline-mi" value="1" min="0.1" step="0.1"> mi of a transmission line</label>
+      <div class="subhead">Environmental gates (Part 4)</div>
+      <label><input type="checkbox" id="f-noflood"> Exclude SFHA flood</label>
+      <label><input type="checkbox" id="f-nowet"> Exclude wetland-on-parcel</label>
+      <label><input type="checkbox" id="f-noprot"> Exclude protected-land overlap</label>
+      <label><input type="checkbox" id="f-bonus"> Require bonus-credit eligibility</label>
+      <div class="subhead">Community (Part 5, county grain)</div>
+      <label><input type="checkbox" id="f-sent"> Opposition intensity ≤ <input type="number" id="f-sent-max" value="2" min="0" step="1"></label>
+      <label><input type="checkbox" id="f-norestrict"> Exclude counties with local restrictions</label>
+    </div>
+
+    <div class="railcard">
+      <h2>Layers <span class="hint">(all composable)</span></h2>
+      <label><input type="checkbox" id="L-parcels" checked> Parcels (screened)</label>
+      <label><input type="checkbox" id="L-subs" checked> Substations</label>
+      <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
+      <label><input type="checkbox" id="L-bus" checked> MISO bus headroom (labels = median MW)</label>
+      <label><input type="checkbox" id="L-pjm"> PJM queue points + estimated buses</label>
+      <label><input type="checkbox" id="L-gas"> Natural gas</label>
+      <label><input type="checkbox" id="L-terr"> Service territories</label>
+      <label><input type="checkbox" id="L-padus"> Protected land</label>
+      <label><input type="checkbox" id="L-bonusgeo"> Bonus-credit geographies</label>
+      <div class="subhead">County shading</div>
+      <select id="county-metric">
+        <option value="class_union">screened-class density</option>
+        <option value="opposition_intensity">opposition intensity</option>
+        <option value="queue_active_mw">active queue MW</option>
+        <option value="ge25mw">parcels ≥25 MW</option>
+        <option value="none">none</option>
+      </select>
+    </div>
+
+    <div id="denominator" class="railcard panelbox">loading…</div>
+
+    <div class="railcard">
+      <div class="rowbtns">
+        <button id="btn-measure">📏 Measure</button>
+        <button id="export-csv" disabled>Export CSV</button>
       </div>
+      <div id="ledger" class="hint" style="margin-top:8px">…</div>
     </div>
 
-    <div id="rail-grid" style="display:none">
-      <h2>Grid layers</h2>
-      <label><input type="checkbox" id="g-lines" checked> Transmission lines <span class="hint">(width/colour by kV)</span></label>
-      <label><input type="checkbox" id="g-subs" checked> Substations <span class="hint">(size by max kV)</span></label>
-      <label><input type="checkbox" id="g-bus" checked> MISO bus POIs <span class="hint">(size by median transfer MW)</span></label>
-      <label><input type="checkbox" id="g-gas" checked> Natural gas <span class="hint">(pipelines, compressors, storage)</span></label>
-      <label><input type="checkbox" id="g-terr"> Service territories <span class="hint">(which utility serves where)</span></label>
-      <div class="legend">
-        <div><span class="sw" style="background:#d97706"></span> MISO POI (publisher coordinates)</div>
-        <div><span class="sw" style="background:#334155"></span> substation (HIFLD+OSM)</div>
-        <div><span class="sw" style="background:#4a7bd0"></span> line ≥100 kV · <span style="color:#7c3aed">≥300 kV</span></div>
-        <div class="hint">Click anything for its evidence. Queue &amp; posture live in the county click. PJM/I&amp;M bus locations: candidate set in progress — will render as clearly-badged ESTIMATES.</div>
-      </div>
-    </div>
-
-    <div id="rail-env" style="display:none">
-      <h2>Environmental &amp; gates</h2>
-      <label><input type="checkbox" id="e-padus" checked> Protected land (PAD-US)</label>
-      <label><input type="checkbox" id="e-bonus" checked> Bonus-credit geographies</label>
-      <div class="legend">
-        <div><span class="sw" style="background:#15803d"></span> protected land — a where-to-say-no layer</div>
-        <div><span class="sw" style="background:#7c3aed"></span> bonus credit (energy community / LIC tract / OZ / habitat)</div>
-        <div class="hint">Wetlands (453,995), flood zones (66,140), water (2.4M) and fibre (12.6M FCC rows) are county-grain here — click a county — until the tile pipeline ships. Nothing is dropped.</div>
-      </div>
-    </div>
-
-    <div id="rail-sent" style="display:none">
-      <h2>Community sentiment</h2>
-      <div class="hint">County shading = opposition intensity from held receipts (dockets, news, actions, ordinances). Grey = no receipts held — <b>cannot assess, not calm</b>. Click a county for its receipts with links.</div>
-    </div>
-
-    <div id="denominator" class="panelbox">zoom in (z≥10) to load parcels</div>
-
-    <h2>Honesty ledger</h2>
-    <div id="ledger" class="panelbox hint">…</div>
-
-    <button id="export-csv" disabled>Export visible sites → CSV</button>
-    <div class="rowbtns">
-      <button id="btn-pipeline">Future capacity</button>
-      <button id="btn-inventory">Data inventory</button>
-    </div>
-    <div class="rowbtns">
-      <button id="btn-market">Market (P6)</button>
-      <button id="btn-acq">Acquisitions</button>
-    </div>
-    <div class="hint" style="margin-top:8px">Upload door (your own site list → same pipeline): next milestone.</div>
   </aside>
 
-  <div id="map"></div>
+  <div id="map"><div id="tooltip" class="hidden"></div></div>
 
   <aside id="evidence" class="hidden">
-    <div id="evidence-head"><h2 id="ev-title">Evidence</h2><button id="ev-close">×</button></div>
+    <div id="evidence-head"><h2 id="ev-title">Evidence</h2>
+      <div><button id="ev-star" class="hidden" title="add to shortlist">★</button>
+      <button id="ev-close">×</button></div></div>
     <div id="evidence-body"></div>
   </aside>
 </div>
