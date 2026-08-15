@@ -285,26 +285,32 @@ function syncLayers() {
 }
 for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListener("change", syncLayers);
 
-/* ---------- workspace bundles (set toggles; nothing is locked) ---------- */
-const BUNDLES = {
-  dc: { "f-ci": 1, "f-ag": 1, "f-vac": 1, "f-other": 0, "f-mw": 1, "f-density": 4, "f-mw-val": 25,
-        "f-noflood": 1, "f-nowet": 0, "f-noprot": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1 },
-  bess: { "f-ci": 1, "f-ag": 1, "f-vac": 1, "f-other": 1, "f-mw": 1, "f-density": 10, "f-mw-val": 10,
-          "f-bonus": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1 },
-  screen: { "f-noflood": 1, "f-nowet": 1, "f-noprot": 1, "f-sent": 1, "f-norestrict": 1,
-            "L-padus": 1, "L-bonusgeo": 1 },
-  clear: { "f-ci": 1, "f-ag": 1, "f-vac": 1, "f-other": 0, "f-mw": 1, "f-density": 4, "f-mw-val": 25,
-           "f-si": 0, "f-recent": 0, "f-cand": 0, "f-dsub": 0, "f-dline": 0, "f-noflood": 0,
-           "f-nowet": 0, "f-noprot": 0, "f-bonus": 0, "f-sent": 0, "f-norestrict": 0,
-           "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 0, "L-gas": 0,
-           "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0 },
+/* ---------- the four part-presets (the dashboard's original pages) ----------
+ * Each sets the county shading + the layer defaults for that analysis; every layer
+ * stays user-toggleable afterwards — a preset frames the page, it never locks it. */
+const PRESETS = {
+  land: { metric: "class_union",
+    layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
+              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
+  grid: { metric: "queue_active_mw",
+    layers: { "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1,
+              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
+  env: { metric: "class_union",
+    layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
+              "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1 } },
+  sentiment: { metric: "opposition_intensity",
+    layers: { "L-parcels": 0, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
+              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
 };
 document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => {
-  const bun = BUNDLES[b.dataset.p]; if (!bun) return;
-  for (const [id, v] of Object.entries(bun)) {
-    const el = $(id); if (!el) continue;
-    if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+  const pr = PRESETS[b.dataset.p]; if (!pr) return;
+  document.querySelectorAll("#presets button").forEach((x) => x.classList.toggle("active", x === b));
+  for (const [id, v] of Object.entries(pr.layers)) {
+    const el = $(id); if (el) el.checked = !!v;
   }
+  $("county-metric").value = pr.metric;
+  if (map.getLayer("county-fill"))
+    map.setPaintProperty("county-fill", "fill-color", countyPaint(pr.metric));
   syncLayers(); applyFilters();
 });
 
