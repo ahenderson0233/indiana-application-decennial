@@ -42,6 +42,33 @@ gov_auction_gsa · ustp_ch7_tfr · queue_miso (diff vs interconnection_queue fir
 openstates energy bills (Indiana slice — the P7 preview with in_iurc_dockets + in_grid_plans) ·
 gas OAC tables → Market page · MISO pnode list (registry check first) → LMP at IN nodes.
 
+## Batch 2 — verified rows 46-130 (2026-08-15)
+
+**CLIPPED + REGISTERED (25 tables, WIRE-NEXT batch 2):** eia860_generators (12,479 — Indiana
+plants/generators, never wired), eia_plants, eia860m_generators, storm_events, osm_power_lines,
+osm_power_substations (named — PJM bus-match fodder), openstates_energy_bill_{vote_people,
+actions,sponsorships} (the P7 legislative preview), ghgrp_facilities + emitters, wind_turbines,
+gov_surplus_frpp, fema_disaster_declarations, weather_stations, eia923_fuel_receipts_costs,
+eia861_demand_response, water_cwns_2022 (wastewater capacity), sba_foia_loans, acs_tract_vacancy,
+eqr_identity (2,635 IN-registered sellers — the BOUNDED route into eqr_*), gas_phmsa_distribution,
+candidate_sites_schools ×2 (upload-door demo sets), nfirs_fireincident_2024. Plus incentive_qct
+→ bonus set (337, fifth bonus kind).
+
+**WAIVE — engine/spine internals:** mat_si_* buildings/scored/rooftop/building_in_parcel
+(superseded or internal), si_wire_*, si_coverage_matrix, si_signals_d19_* snapshots,
+dim_jurisdiction, block_groups, census_tracts (join spines).
+
+**WAIVE — owner-mailing-state pattern (§D.8):** out-of-state parcels_* tables reporting "IN"
+rows (sc_abbeville 2,045, mn 1,961, az_maricopa 1,584, tx 1,403, ny 698, pa 491, …) — the state
+column is the OWNER's mailing state, not parcel location. Same class: socrata_cook_bor_appeals,
+agis_detroit_blight_tickets, parcels_fl (batch-1 flag RESOLVED to this class). Reverse-absentee
+context only.
+
+**WIRED already:** eia861_service_territory, padus (+land_padus: duplicate-copy flag for dedupe),
+substations/nat_substations_hifld (feed mat_grid_substations), interconnection_queue
+(lbnl_/iso_ variants: same-source diff pending), txexp_*, si_d17_in_iocs_court_year,
+brownfields family, gas_eia_state_capacity.
+
 ## Remaining batches
 Batch 2+: rest of the 308 (rows 46-308) · then the 465 measured zeros (eyeball samples for
 disguised Indiana) · then spatial-only via source identity + PARCEL_SOURCE_GEOGRAPHY ·
