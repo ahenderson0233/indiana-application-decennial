@@ -51,6 +51,15 @@
       <div class="prov">source: <code>in_sba_foia_loans</code> · a business-formation and
         expansion signal; the counterpart to the distress signals above</div></div>
   </div>
+  <div class="card"><h2>Where the signals come from — every source, with its real freshness</h2>
+    <div class="hint" style="margin-bottom:6px">These 18 tables feed <code>in_si_signals</code>
+      upstream. <b>Event range is the PUBLISHER'S date, never our pull stamp</b> — reporting when
+      we fetched a file as if it were the data's currency would flatter our diligence and tell
+      you nothing about the signal. Where a publisher holds no date, the row says so.</div>
+    <div class="scroll" style="max-height:460px"><table id="t-src">
+      <tr><th>source</th><th>signal</th><th>rows</th><th>one row is</th><th>publisher event range</th><th>we pulled</th></tr></table></div>
+    <div class="prov" id="p-src"></div></div>
+
   <div class="card"><h2>Freshness &amp; remediation (Lane D)</h2>
     <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
     (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
@@ -91,6 +100,39 @@
         ? ` · <span class="cannot">the newest admitted event is over two years old — treat as historic</span>`
         : ` · current`);
   }
+  /* ---------- SI source visibility ---------- */
+  const SRC = await fetchGz("data/si_sources.json.gz");
+  const today = new Date("2026-08-15");
+  const staleness = (iso) => {
+    if (!iso) return "";
+    const d = (today - new Date(iso)) / 864e5;
+    if (d < 0) return ` <span class="hint">(scheduled ahead)</span>`;
+    if (d > 730) return ` <span class="cannot">(${Math.round(d / 365)} yr stale)</span>`;
+    if (d > 180) return ` <span class="hint">(${Math.round(d / 30)} mo old)</span>`;
+    return ` <span class="hint">(current)</span>`;
+  };
+  document.getElementById("t-src").insertAdjacentHTML("beforeend", SRC.sources.map(s => {
+    const range = s.date_status === "no publisher date held"
+      ? `<span class="cannot">no publisher date in this source — freshness cannot be assessed</span>`
+      : s.date_status === "unparseable"
+        ? `<span class="cannot">date column held but empty for every row</span>`
+        : `${s.first_event} → <b>${s.last_event}</b>${staleness(s.last_event)}` +
+          (s.date_status === "partial"
+            ? `<br><span class="hint">only ${fmt(s.dated_rows)} of ${fmt(s.rows)} rows carry a usable date</span>` : "");
+    return `<tr><td><code>${s.table}</code></td><td>${s.family}</td><td>${fmt(s.rows)}</td>
+      <td class="hint">${s.unit}</td><td>${range}</td><td class="hint">${s.pulled_at || "—"}</td></tr>`;
+  }).join(""));
+  const w = SRC.warn_dup;
+  document.getElementById("p-src").innerHTML =
+    `Seven of these columns store dates as <b>epoch milliseconds</b> (the Esri/ArcGIS convention,
+     e.g. <code>1656424281000</code> = 2022-06-28), because the sources are ArcGIS feature services.
+     Parsed as such — read as strings they would all have reported "unknown".
+     <br><b>Duplicate measured:</b> <code>in_si_refresh_warn_notices</code> and
+     <code>in_si_state_warn_notices</code> both hold ${fmt(w.refresh_rows)} notices and share
+     ${fmt(w.shared_keys)} company|city|date keys with an identical event range. They are the same
+     source pulled twice; <code>in_si_state_warn_notices</code> is kept because it also carries
+     <code>notice_pdf_urls</code>.`;
+
   const CTX = await fetchGz("data/context.json.gz");
   document.getElementById("t-vac").insertAdjacentHTML("beforeend", CTX.vacancy_top.map(v =>
     `<tr><td>${String(v.name || v.geoid).replace(/^Census Tract /, "CT ").slice(0, 40)}</td>

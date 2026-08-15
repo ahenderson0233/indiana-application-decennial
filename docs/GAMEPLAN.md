@@ -105,6 +105,28 @@ rows** — leftovers of the `_st_pct` instrument bug; drop them or record why an
 other session's checkpoint invariant 3.
 *Acceptance:* `indiana_app` has no empty table and no unregistered table.
 
+**A6 — UNION-AND-DEDUPE EVERY DUPLICATED SUBJECT (operator ruling 2026-08-15).**
+*"We want the full picture, not a partial picture — this should be recognised throughout the
+website."* A2 shipped OSM transmission as a layer BESIDE the HIFLD spine, which leaves the user
+to union two partial pictures in their head. That is the wrong shape. The right shape already
+exists in this repo: the data-centre layer unions 5 sources, dedupes on a stated rule, and badges
+each pin with where it came from. Apply that pattern to every subject we hold twice.
+Known duplicated subjects to merge, each needing its own measured dedupe rule:
+| subject | sources held | first question to measure |
+|---|---|---|
+| transmission lines | `in_transmission_lines` 2,623 · `in_osm_power_lines` 5,013 ≥100 kV | do they overlap geometrically, or cover different circuits? |
+| substations | `in_substations` 3,858 · `in_osm_power_substations` 2,873 polygons | point-in-polygon and name match |
+| generation | `in_eia_plants` 2,675 · `in_power_plants` 208 · `in_solar_pv_facilities` 114 · `in_wind_turbines` 1,652 | are plants and turbines the same rows at different grain? |
+| gas pipelines | `in_gas_pipelines` 215 + the national duplicate flagged in spec §14 | keep `gas_pipelines_hifld`, confirm by fingerprint |
+| brownfields | 3 programme tables — spec §14 says NOT duplicates | union with a `program_source` column, dedupe only exact registry_id |
+| WARN notices | `in_si_refresh_warn_notices` 1,220 · `in_si_state_warn_notices` 1,220 | identical counts — same table twice? |
+**Rules this must follow, all already earned here:** never merge on distance alone (it ate the
+New Carlisle campus in testing); carry a `src` and a `match_method` per row; keep what cannot be
+judged and label it rather than dropping it; state the coverage gain on screen ("N of M rows come
+from OSM alone") so the merge is auditable, not magic.
+*Acceptance:* for each subject, ONE layer with a source badge, a stated dedupe rule, and a
+measured before/after count. The user should never have to toggle two layers to see one thing.
+
 > **Phase A target: 139/196 → ~196/196.** This is the single largest quality jump available and
 > the operator has ruled it precedes front-end work.
 
