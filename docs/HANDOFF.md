@@ -231,6 +231,32 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **T2 PACKET REBUILT 2026-08-15 (v2) — v1 was not answerable.** Measured on open: items 1, 4
+  and 7 were BigQuery *errors* (`status`, `case_type`, `q_id` — all guessed, none read first;
+  the §4 worst practice, committed by the packet builder itself) and items 5-6 answered a
+  different question than the one posed. `scripts/build_signoff_packet_v2.py` reads every
+  schema before querying it. Five findings changed the questions themselves:
+  · **D25** — the multi-state worry was minor (737 name one state, 137 name two). The real
+    issue is that most of the 874 are *procedural paperwork about* an abandonment (Reply 185,
+    Extension 150, Certificate Of Service 26); only **127** are event filings.
+  · **IOCS MF** — unanswerable as posed. The table is a court-statistics WORKBOOK: one row per
+    court, every case-type code is a COLUMN of counts. MF is a per-court aggregate, never a
+    per-address event, so it cannot be a parcel-grain signal at any confidence. It also carries
+    two poison rows — `County_Name='STATE'` (a statewide total, 21,300) and `'nan'` (10,235) —
+    which is why the county list reads 94 for a 92-county state.
+  · **cloudscene** — `market` is the state key (`<state>-regional` buckets across the table:
+    illinois 322, texas 300, california 295 …), giving **260** Indiana rows. Checked rather than
+    assumed, because Indiana County *Pennsylvania* is real. But cloudscene has NO coordinates —
+    schema is slug/name/city/state/market/url — so it can never be a layer.
+  · **airports** — the batch-4 "format-suspect" flag was WRONG. It is an 86-row curated national
+    set; exactly one row is in Indiana geometrically (Indianapolis Intl) and `state` says `IN`.
+    The instrument was right. Flag closed.
+  · **queue_miso** — 452 of 456 Indiana ids also live in interconnection_queue (near-total
+    duplicate), but it alone carries `studyphase`/`poiname`/DPP ERIS-NRIS MW. Waive as a layer,
+    keep as a join.
+  · **DC dedupe** — v1's preview showed proximity-only pairs, i.e. not the proposed rule. Applied
+    properly, the name-stem rule collapses **3** pairs and correctly refuses to merge the New
+    Carlisle campus buildings; the open judgment is OSM's 8 unnamed rows.
 - **T-upload (DONE, verified):** upload door live on index.html — client-side CSV,
   point-in-county, grid distances, county context, enriched export, cannot-place kept.
 - **EXACT outdoor space (DONE):** the data-ops session shipped mat_parcel_outdoor_exact
