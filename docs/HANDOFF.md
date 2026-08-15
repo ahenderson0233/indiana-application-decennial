@@ -1,87 +1,107 @@
-# HANDOFF — Indiana Siting Intelligence (written 2026-08-15, end of the Phase-2 session)
+# HANDOFF — Indiana Siting Intelligence (updated 2026-08-15)
 
-**Read this first, then PLAN.md, then AUDIT_WORKLIST.md.** Everything below is committed on
-`main` at github.com/ahenderson0233/indiana-application-decennial. The operator pulls/pushes
-to rebuild GitHub Pages. Session cost across the whole build: ~$5-6 of BigQuery.
+The single document a fresh session reads first. Everything is committed on `main` at
+github.com/ahenderson0233/indiana-application-decennial; the operator pulls/pushes to
+rebuild GitHub Pages. Total BigQuery spend across the whole build: ~$6.
 
-## What this is
+## 0. REQUIRED READING, IN THIS ORDER
 
-A self-contained, static, Indiana-only siting app (P1–P6 + a scope-limited P7 preview),
-serving two goals: live hyperscale/BESS siting (~300 MW class, statewide, PJM emphasized as
-an ordering tiebreaker only) and the working baseline for the national application.
-GitHub Pages, no backend: BigQuery → gzipped GeoJSON/JSON payloads in `data/` → committed.
+**This repo (the app's own context):**
+1. `docs/HANDOFF.md` — this file
+2. `docs/PLAN.md` — the locked plan (wire → pages → functionality)
+3. `docs/AUDIT_WORKLIST.md` — every table's verdict, batch by batch, flags included
+4. `docs/BQ_INDIANA_CENSUS.md` — the estate classification + verified per-table IN counts
+5. `docs/AUDIT_CLASSES_REPORT.md` — zeros/spatial/national resolutions
+6. `docs/DATA.md`, `docs/ARCHITECTURE.md`, `docs/SCRAPE_LANES.md`, `docs/DATA_BACKLOG.md`
+7. `docs/SAMPLES_INDIANA.md` + `docs/SAMPLES_ALL_PART2.md` — 1-3 raw rows of every estate
+   table (grep per table; never load whole — 2.3 MB combined)
+8. `scrapers/lane_[a-e]/LANE_*_FINDINGS.md` — per-lane results, walls, next endpoints
 
-## Warehouse facts
+**The platform (parent project — read-only reference, another session owns it):**
+9. `energy-platform/CLAUDE.md` — the real one (repo-root and mirror copies are pointers);
+   reading order, non-negotiables, the four things that mislead
+10. `energy-platform/REBUILD_PLANNING/METHODS.md` §A-§AD — every rule was earned; §A tells,
+    §V zeros, §Z multi-signal tables, §AB measure-the-pipeline-first are the big four
+11. `REBUILD_PLANNING/1_SCOPE_AND_OBJECTIVES.md` + `2_TECHNICAL_BUILD_SPEC.md` — the seven
+    parts, the golden path, §11 map/score/evidence contracts, §13 acceptance
+12. `REBUILD_PLANNING/START_HERE.md` — TOP BLOCKS ONLY (orientation ≤10% of a context)
+13. `REBUILD_PLANNING/DECISIONS_INDEX.md` → grep DECISIONS.md, never read linearly
+14. `REBUILD_PLANNING/WASTED_WORK_LEDGER.md` — read before calling ANYTHING a gap
+15. `REBUILD_PLANNING/FABLE5_PREAMBLE.md` — paste above any ad-hoc scrape request
+16. `ANALYSIS_METHODOLOGY.md` — REQUIRED before computing any siting/rate/land NUMBER
+    (not yet read by this workstream — counts only so far; read before rate-engine work)
 
-- Everything lives in **`energy-platfrom.indiana_app`** (spelling intentional). `energy.*` is
-  READ-ONLY to this workstream; another session owns it and `energy-platform/ingest/`.
-- **`indiana_app._registry` is the authority**: 188+ tables, each with source, method, rows,
-  gb_scanned, built_at, notes. `data/state_summary.json` mirrors it for the app.
-- `_indiana_census` holds the per-table Indiana verification (773 keyed tables measured;
-  308 Indiana-positive; zeros re-tested with widened predicates).
-- Rebuild anything by re-running its script in `scripts/` (all idempotent, dry-run-guarded,
-  registered-in-run). Refreshes are SCRIPT runs, never agent runs.
+**The registry (how sources are documented):**
+- `energy.registry_sources` is the source-of-truth for source status — APPEND-only rows
+  (never MERGE/TRUNCATE — D25), `object_names` is a REPEATED field, status vocabulary
+  'done'/'blocked', walls recorded verbatim in notes, endpoints mechanical not name-matched
+  (W17). This session appended 31 rows (updated_by='indiana-app-session-20260815').
+- `indiana_app._registry` is the per-TABLE build ledger (source, method, n_rows, built_at,
+  notes) — every table this workstream creates gets a row IN THE SAME RUN.
+- Scrape rules: only what a source permits; no accounts/terms/CAPTCHA/paywalls; gated =
+  BLOCKED with the exact wall; outFields=*/every layer; observed event dates never pull
+  timestamps; ≥1s/host; UA identifies us; check registry + docs/SAMPLES before acquiring.
 
-## The audit (COMPLETE — docs/AUDIT_WORKLIST.md has every verdict)
+## 1. THE ENTIRE PLAN, START TO FINISH
 
-All 2,161 usable estate tables classified: verified-308 (batches 1–4), zeros re-test
-(80 disguised finds → 6 genuine clips + mailing-state waivers), spatial by source identity,
-national by page assignment, 151-table eyeball queue (batches 5–6b). Instrument bugs the
-audit itself caught are recorded (\_st_pct regex, ZCTA prefix, LIMIT-vs-TABLESAMPLE).
-**Standing rule: a name is never a subject — value-read before wiring; no-state-column
-never means not-applicable.**
+- **P0 — bootstrap (DONE):** repo, `indiana_app` dataset, Indiana clips of the core estate,
+  measured per-part coverage, architecture (static: BQ → gzipped payloads → Pages).
+- **P1 — map spine (DONE):** county layer counting 100% of 3,553,194 parcels; 1.2M
+  class-union parcels with exact geometry, lazy per county; screener composing
+  class/MW-density/SI-recency/grid-distance/gates/county-sentiment; evidence panels with
+  provenance; measure tool; shortlist; CSV; print dossier.
+- **P2 — wire the estate + pages (DONE):** the full audit (2,161 tables classified, ~190
+  registered Indiana tables), both-RTO headroom with direction disclosed, six-tab app
+  (Map / Grid & Capacity / Market & Rates / Community & Regulatory / SI Feed / Data),
+  layers for existing DCs/facilities/gas/logistics/territories/environmental.
+- **P3 — functionality (CURRENT):** ① upload door (client-side CSV → same screener/evidence
+  — the spec's first-class-citizen commitment); ② composite scoring with user weights
+  (assessable-only averaging); ③ rate-engine proxy (yearly cost from tariff structures at
+  the user's size/class — read ANALYSIS_METHODOLOGY first); ④ PMTiles all-parcel rendering
+  (needs the ONE machine install: WSL or Docker for tippecanoe).
+- **P4 — depth passes:** subject sign-offs graduating staged signals to candidates; DC
+  dedupe rule; FCC fibre/mobile detail per county; gas-OAC per-location; SI inventory
+  charts; RTEP drill-down joins to buses; dossier v2 (2-5 page P1-P6 verdict per site).
+- **P5 — acquisition lanes still open:** MISO LOAD-direction headroom; owner data via
+  county assessor rolls (statewide layer has NO owner — measured; unblocks D18 + the
+  approach workflow); A1 listings; Vanderburgh child parcels; EBB history depth; scheduled
+  refresh runs (scripts are idempotent — cron them, zero agent tokens).
+- **P6 — handover to national:** everything here is the national baseline: the payload
+  contract, the honesty grammar, per-source registries, the audit method, and the
+  SPP/CartoVista/EBB findings already flagged for the national app.
 
-## The app (Phase 2 SHIPPED)
+## 2. WHAT WE'VE WORKED THROUGH (proof points, all measured)
 
-Six pages sharing `common.js` + nav: **index** (map console: 4 part-presets framing, all
-layers composable; screener composes class/MW-density/SI-recency/grid-distance/gates/
-sentiment; measure tool; shortlist; dossier print; CSV export), **grid.html** (PJM LOAD
-headroom table + MISO 300MW injection + plans + RTEP drill-down + queue), **market.html**
-(demand/CEMS charts, reliability, gas design + OAC, tariffs), **community.html** (receipts
-browser + posture), **si.html** (signal state 17/29, acquisitions, freshness), **data.html**
-(188-table provenance + honesty ledger).
+Coverage per part measured day one and re-verified; parcels 3,553,194 (all but one with
+geometry); the 308 Indiana-positive keyed tables audited one-by-one; PJM load headroom
+per bus (all 1,475 positive after excluding pre-existing overloads — measured identity:
+zeros==pre-overloads); MISO bounded 300MW harvest (641/642 zero injection — real,
+injection-only disclosed); 244 existing DCs plotted (DCM "pinless" was stale); gas OAC
+for 9 pipelines; Orennia yardstick run LOCALLY (our MISO coords == their ISO rows at 0 m;
+their PJM locations are estimates like ours, 93 m median agreement) — Orennia data never
+renders, never exports, never enters repo/warehouse.
 
-Map layers: 1.2M class-union parcels (exact geometry, county-lazy gz), counties (100% of
-3,553,194 parcels counted), substations/lines/MISO POIs/PJM buses+queue points/gas/
-territories/protected/bonus(5 kinds)/nonattainment/candidates/**244 existing DCs**/
-plants·solar·wind/logistics. Estimates always style apart (hollow red = estimated location).
+## 3. BEST PRACTICES (earned here)
 
-## THE headroom story (decision-grade, both directions disclosed)
+Measure before claiming; dry-run everything; value-read before wiring; denominators on
+screen; cannot-assess rendered as itself; estimates styled apart; direction of headroom
+disclosed; per-row match_method/confidence on any derived location; widened-predicate
+re-tests before accepting zeros; source identity beats name inference; batch by emitted
+SQL length; TABLESAMPLE on monsters; commit small with measured messages; scripts not
+agents for refreshes; agents only for NEW sources with the FABLE5 rules embedded.
 
-- **PJM/I&M = the DC direction.** `in_pjm_bus_withdrawal`: per-bus LOAD headroom, 2027 RTEP
-  Summer Peak, MIN(available_mw) over |dfax|≥5% facilities, pre-existing overloads EXCLUDED
-  and counted (measured identity: every zero row was a pre-overload). All 1,475 buses
-  positive (q: 2/31/52/132 MW). No bus clears 300 MW without upgrades — the upgrade/cost
-  answer is in in_pjm_rtep_* + in_pjm_nucra_costs.
-- **MISO public viewer = INJECTION-only.** Bounded 300 MW re-harvest
-  (scrapers/lane_a/pull_miso_poi_300mw.py): 641/642 IN POIs read 0 — real, DPP-2021 vintage.
-  **Open lane: a MISO LOAD-direction source.** Bus locations solved: in_miso_poi_identity
-  (9,981 publisher coords).
-- Orennia yardstick (LOCAL ONLY, never rendered/committed): our MISO coords == their
-  ISO-sourced rows (median 0 m); their PJM locations are all estimates too (median 93 m
-  agreement with ours). in_pjm_bus_locations_candidate: 229 located (91 high), methods on
-  every row.
+## 4. WORST PRACTICES (each cost us time THIS build — do not repeat)
 
-## Open items, in the order the operator set
+Guessing column names (apn_key, area_name, PMax, listing_url — all bit us); reserved words
+(`rows`, `FULL`); backticks/backslashes through shells (use Write + `-F`); `SELECT * LIMIT`
+on monsters (bills full columns); short-token regexes (`_st_pct` matched as "state");
+assuming ZCTA=FIPS; trusting a summary's claim that scripts "were pending" (verify against
+BQ); MIN-over-facilities at an infinite probe; treating publisher 0,0 coords as locations;
+letting a preset lock layers users need to compose.
 
-1. Subject sign-offs (operator): D21 candidates done; pending — D11/D25/D27 first-rows,
-   IOCS `MF` foreclosure code, cloudscene state vocabulary, in_data_centers_all dedupe rule,
-   `airports` format flag, queue_miso-vs-interconnection_queue diff.
-2. Phase-2 leftovers: FCC mobile/fibre detail into county evidence; gas-OAC per-location
-   section; SI inventory chart on si.html.
-3. Phase 3: upload door (client-side CSV → same screener), composite scoring with user
-   weights, rate-engine port (tariff-structure yearly-cost proxy per site size/class),
-   PMTiles all-parcel rendering (needs WSL or Docker install — the one machine prerequisite).
-4. Acquisition lanes open: MISO load-direction; owner data via county assessor rolls
-   (statewide layer has NO owner — measured; unblocks D18 + approach workflow); A1 listings;
-   Vanderburgh child parcels; EBB history depth.
-5. Upstream questions filed: mat_parcel_attrs IN slice 100% NULL (all attribute columns,
-   all 3.55M rows); vw_county_dc_posture ordinance counter reads 92/92 (suspect).
+## 5. CURRENTLY IN FLIGHT / AWAITING OPERATOR
 
-## Traps this project already paid for (do not re-earn)
-
-Backticks/backslashes through shells → Write/Edit files. BigQuery reserved words (rows).
-`SELECT * LIMIT` bills full columns → TABLESAMPLE on monsters. A zero is an instrument claim
-(suspect JOIN → FILTER → DATA). MIN-over-facilities collapses at infinite probes — bound the
-request or gate by dfax + pre-overload. Owner-mailing-state columns masquerade as location.
-ZCTA codes are not FIPS. Never `git add -A`; never commit another session's in-flight files.
+Upload door being built now. Awaiting operator: D11/D25/D27 + MF subject sign-offs;
+in_data_centers_all dedupe rule; cloudscene vocabulary; airports format flag;
+queue_miso-vs-interconnection_queue diff; WSL/Docker install for PMTiles; the
+mat_parcel_attrs NULL question filed upstream (data-ops session).
