@@ -40,6 +40,17 @@
   <div class="card"><h2>Staged acquisitions — held, awaiting the subject test</h2>
     <div class="scroll"><table id="t-acq"><tr><th>source</th><th>rows</th><th>built</th></tr></table></div>
     <div class="prov">source: indiana_app._registry · county attribution by publisher identity</div></div>
+  <div class="gridcards">
+    <div class="card"><h2>Highest-vacancy census tracts (ACS)</h2>
+      <div class="scroll" style="max-height:280px"><table id="t-vac"><tr><th>tract</th><th>units</th><th>vacant</th><th>rate %</th></tr></table></div>
+      <div class="prov">source: <code>in_acs_tract_vacancy</code> · tracts with &gt;200 housing units
+        only, so a 3-unit tract at 100% cannot top the list — small denominators make spectacular
+        rates. Tract-grain context beneath the parcel-grain vacancy signal.</div></div>
+    <div class="card"><h2>SBA lending into Indiana businesses</h2>
+      <div class="scroll" style="max-height:280px"><table id="t-sba"><tr><th>FY</th><th>program</th><th>loans</th><th>gross approved</th></tr></table></div>
+      <div class="prov">source: <code>in_sba_foia_loans</code> · a business-formation and
+        expansion signal; the counterpart to the distress signals above</div></div>
+  </div>
   <div class="card"><h2>Freshness &amp; remediation (Lane D)</h2>
     <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
     (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
@@ -80,6 +91,14 @@
         ? ` · <span class="cannot">the newest admitted event is over two years old — treat as historic</span>`
         : ` · current`);
   }
+  const CTX = await fetchGz("data/context.json.gz");
+  document.getElementById("t-vac").insertAdjacentHTML("beforeend", CTX.vacancy_top.map(v =>
+    `<tr><td>${String(v.name || v.geoid).replace(/^Census Tract /, "CT ").slice(0, 40)}</td>
+     <td>${fmt(v.units)}</td><td>${fmt(v.vacant)}</td><td>${v.rate ?? "—"}</td></tr>`).join(""));
+  document.getElementById("t-sba").insertAdjacentHTML("beforeend", CTX.sba.map(x =>
+    `<tr><td>${x.fy}</td><td>${x.program}</td><td>${fmt(x.loans)}</td>
+     <td>$${fmt(Math.round((x.gross_usd || 0) / 1e6))}M</td></tr>`).join(""));
+
   document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
     .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
     .map(p => `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}</td><td>${fmt(p.n_rows)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join(""));

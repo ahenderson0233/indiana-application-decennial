@@ -227,7 +227,11 @@ out["waivers"] = [{"table": "in_water_cwns_2022", "rows": 404,
              "populated. Nothing to render. Measured, not assumed."},
   {"table": "in_wind_turbines", "rows": 1652,
    "reason": "not a gap — already rendered inside facilities.geojson as the 'wind' layer "
-             "(coords are xlong/ylat). Given a provenance line instead of a duplicate layer."}]
+             "(coords are xlong/ylat). Given a provenance line instead of a duplicate layer."},
+  {"table": "in_data_centers_deduped", "rows": 242,
+   "reason": "superseded 2026-08-15 by in_data_centers_located, which carries the same rows plus "
+             "the publisher's location_precision and 7 peeringdb facilities the union had missed. "
+             "The successor is what the map reads; this is kept as the build's intermediate step."}]
 
 jp = os.path.join(REPO, "data", "context.json.gz")
 with gzip.open(jp, "wt", encoding="utf-8", compresslevel=6) as f:

@@ -38,6 +38,23 @@
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
     <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th></tr></table></div>
     <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline · latest held posting; values verbatim from the EBB</div></div>
+  <div class="gridcards">
+    <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
+      <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>MMBtu received</th></tr></table></div>
+      <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
+        actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
+    <div class="card"><h2>Demand response — load the utilities can already shed</h2>
+      <div class="scroll" style="max-height:280px"><table id="t-dr"><tr><th>utility</th><th>class</th><th>year</th><th>actual MW</th><th>potential MW</th></tr></table></div>
+      <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
+  </div>
+  <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
+    <div class="scroll" style="max-height:260px"><table id="t-eqr"><tr><th>company</th><th>contact city</th><th>quarters filed</th><th>first</th><th>latest</th></tr></table></div>
+    <div class="prov">source: <code>in_eqr_identity</code>. <b>Read this as a contact address, not a
+      location of operations</b> — the state field is where the filer's contact sits. Checked rather
+      than assumed: of 58 companies, exactly one (AES Armenia Mountain Wind) names another state in
+      its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
+      elsewhere.</div></div>
+
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
@@ -87,6 +104,23 @@
   } catch (e) { console.error(e); }
   document.getElementById("t-oac").insertAdjacentHTML("beforeend", (m.gas_oac || []).map(r =>
     `<tr><td>${r.pipeline}</td><td>${fmt(r.n_rows)}</td><td>${r.indiana_locations != null ? fmt(r.indiana_locations) : "—"}</td><td>${r.indiana_counties ?? "—"}</td><td>${String(r.pulled).slice(0, 10)}</td></tr>`).join(""));
+  const CTX = await fetchGz("data/context.json.gz");
+  document.getElementById("t-fuel").insertAdjacentHTML("beforeend",
+    CTX.fuel_costs.slice().reverse().slice(0, 60).map(f =>
+    `<tr><td>${String(f.d).slice(0, 7)}</td><td>${f.fuel || "—"}</td><td>${f.usd_per_mmbtu ?? "—"}</td>
+     <td>${f.mmbtu != null ? fmt(f.mmbtu) : "—"}</td></tr>`).join(""));
+  document.getElementById("t-dr").insertAdjacentHTML("beforeend", CTX.demand_response.slice(0, 60).map(d =>
+    `<tr><td>${String(d.utility || "—").slice(0, 30)}</td><td>${d.customer_class || "—"}</td>
+     <td>${String(d.d).slice(0, 4)}</td><td>${d.actual_mw ?? "—"}</td><td>${d.potential_mw ?? "—"}</td></tr>`).join(""));
+  const dr = CTX.dr_denominator;
+  document.getElementById("p-dr").innerHTML =
+    `source: <code>in_eia861_demand_response</code> · <b>denominator:</b> of ${fmt(dr.n)} utility-class-year
+     rows held, ${fmt(dr.with_actual)} report an actual MW figure and ${fmt(dr.with_potential)} a potential one.
+     The rest are filed blank by the utility — shown as “—”, never as zero.`;
+  document.getElementById("t-eqr").insertAdjacentHTML("beforeend", CTX.eqr_filers.map(e =>
+    `<tr><td>${String(e.company_name).slice(0, 46)}</td><td>${e.city || "—"}</td><td>${e.quarters}</td>
+     <td>${e.first_q}</td><td>${e.last_q}</td></tr>`).join(""));
+
   document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
     `<tr><td>${String(r.utility).slice(0, 40)}</td><td>${(r.name || "").slice(0, 44)}</td><td>${r.sector || ""}</td><td>${r.has_demand_charge ? "yes" : "—"}</td><td>${r.energy_rate_max_usd_kwh ?? "—"}</td></tr>`).join(""));
   document.getElementById("p-tar").textContent = prov("in_urdb_rates") + " · name-matched floor; rate-engine math is the flagged milestone";

@@ -47,6 +47,16 @@
 
   <div id="leg-detail" class="card hidden"><h2 id="leg-detail-title"></h2><div id="leg-detail-body"></div></div>
 
+  <div class="gridcards">
+    <div class="card"><h2>Federal disaster declarations — Indiana history</h2>
+      <div class="scroll" style="max-height:260px"><table id="t-dis"><tr><th>incident</th><th>declarations</th><th>counties</th><th>first</th><th>latest</th></tr></table></div>
+      <div class="prov" id="p-dis">source: <code>in_fema_disaster_declarations</code></div></div>
+    <div class="card"><h2>Severe weather events by type (NOAA storm events)</h2>
+      <div class="scroll" style="max-height:260px"><table id="t-storm"><tr><th>event type</th><th>events</th><th>years</th><th>direct injuries</th></tr></table></div>
+      <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
+        physical-risk complement to the flood and wetland gates on the map</div></div>
+  </div>
+
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
     <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
       court-statistics workbook: one row per court, with each case-type code as a COLUMN of counts. There are
@@ -81,6 +91,22 @@
     .map(f => ({ n: f.properties.county_name, fips: f.properties.fips, c: ctx.by_fips[f.properties.fips] || {} }))
     .sort((a, b) => (b.c.posture?.opposition_intensity || 0) - (a.c.posture?.opposition_intensity || 0))
     .map(x => `<tr><td>${x.n}</td><td>${x.c.posture?.posture ?? "—"}</td><td>${x.c.posture?.opposition_intensity ?? "—"}</td><td>${x.c.posture?.has_local_restriction ?? "—"}</td><td>${x.c.queue?.active_mw != null ? fmt(x.c.queue.active_mw) : "—"}</td><td>${x.c.eia861?.utilities ?? "—"}</td></tr>`).join(""));
+  /* ---------- hazard history ---------- */
+  const CTX = await fetchGz("data/context.json.gz");
+  document.getElementById("t-dis").insertAdjacentHTML("beforeend", CTX.disasters.map(d =>
+    `<tr><td>${d.incident || "—"}</td><td>${fmt(d.events)}</td><td>${fmt(d.counties)}</td>
+     <td>${d.first_seen || "—"}</td><td>${d.last_seen || "—"}</td></tr>`).join(""));
+  document.getElementById("p-dis").innerHTML =
+    `source: <code>in_fema_disaster_declarations</code> · county roll-up covers
+     <b>${fmt(CTX.disasters_by_county.length)}</b> counties.
+     <b>Excluded from that roll-up:</b> ${CTX.disasters_noncounty.map(x =>
+       `${x.area} (${x.declarations})`).join(", ")} — these carry
+     <code>fipsCountyCode='000'</code> and are not counties; left in, the roll-up read 93 areas
+     for a 92-county state. They are listed here rather than dropped.`;
+  document.getElementById("t-storm").insertAdjacentHTML("beforeend", CTX.storms.map(s =>
+    `<tr><td>${s.event_type || "—"}</td><td>${fmt(s.n)}</td><td>${s.first_yr}–${s.last_yr}</td>
+     <td>${s.injuries != null ? fmt(s.injuries) : "—"}</td></tr>`).join(""));
+
   /* ---------- P7 legislative preview ---------- */
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;

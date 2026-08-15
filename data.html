@@ -15,6 +15,15 @@
     <div class="card"><div class="bigstat" id="s-built">…</div><div class="hint">last build (UTC)</div></div>
   </div>
   <div class="card"><h2>Honesty ledger</h2><div class="hint" id="ledger"></div></div>
+  <div class="card"><h2>Waived tables — held, deliberately not rendered</h2>
+    <div class="hint" style="margin-bottom:6px">A table we hold but do not show needs a reason on
+      the record, not silence. Each row states the measurement behind the waiver.</div>
+    <div class="scroll"><table id="t-waive"><tr><th>table</th><th>rows</th><th>why it is not rendered</th></tr></table></div>
+    <div class="prov">waivers are recorded by the export scripts that measured them, not asserted here</div></div>
+  <div class="card"><h2>Gas distribution operators (PHMSA annual reports)</h2>
+    <div class="scroll" style="max-height:260px"><table id="t-gasop"><tr><th>operator</th><th>latest report</th><th>reports held</th><th>plastic miles</th><th>coated steel miles</th></tr></table></div>
+    <div class="prov">source: <code>in_gas_phmsa_distribution</code> · distribution-system operators
+      serving Indiana; the local-delivery counterpart to the interstate pipeline capacity on Market</div></div>
   <div class="card"><h2>Cloudscene cross-check — how complete is our data-centre layer?</h2>
     <div class="hint" id="cs-summary"></div>
     <div class="scroll" style="max-height:320px"><table id="t-cs"><tr><th>cloudscene name</th><th>city</th><th>market</th><th>held with coordinates?</th></tr></table></div>
@@ -47,6 +56,13 @@
   }
   document.getElementById("f-q").oninput = render;
   render();
+
+  const CTX = await fetchGz("data/context.json.gz");
+  document.getElementById("t-waive").insertAdjacentHTML("beforeend", CTX.waivers.map(w =>
+    `<tr><td><code>${w.table}</code></td><td>${fmt(w.rows)}</td><td class="hint">${w.reason}</td></tr>`).join(""));
+  document.getElementById("t-gasop").insertAdjacentHTML("beforeend", CTX.gas_operators.map(g =>
+    `<tr><td>${String(g.operator_name).slice(0, 40)}</td><td>${g.latest_year ?? "—"}</td>
+     <td>${g.reports}</td><td>${g.plastic_miles ?? "—"}</td><td>${g.steel_coated_miles ?? "—"}</td></tr>`).join(""));
 
   // Cloudscene completeness cross-check: match its names against the data centres we hold PINNED.
   const so = await fetchGz("data/signoff.json.gz");

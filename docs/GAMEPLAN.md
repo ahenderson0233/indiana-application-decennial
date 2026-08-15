@@ -11,8 +11,8 @@ immediately — the point of this file is that the order survives a context refr
 |---|---:|
 | tables physically in `indiana_app` | 198 |
 | registered in `_registry` | 196 |
-| **reach a user-facing surface** | **147 (75%)** — was 139 before A1 |
-| reach nothing yet | 48 |
+| **reach a user-facing surface** | **165 (84%)** — 139 before A1, 147 after |
+| reach nothing yet | 28 — the A3 SI sources (20) + A4 NFIRS (7) + A5 empties (2) |
 | pages live | 6 (Map · Grid · Market · Community · SI Feed · Data) |
 | parcels held / rendered class-union | 3,553,194 / 1,200,916 |
 
@@ -56,15 +56,35 @@ HB 1189 (labor requirements for DC incentives), HB 1245 (IURC study of data cent
 look up `_actions` — and it also made the wiring measurement under-count by 7. Write table names
 in full on screen.
 
-**A2 — context layers with no home (19 tables).** storm_events · fema_disaster_declarations ·
-weather_stations · wind_turbines · ghgrp_facilities + ghgrp_emitter_facilities · eia860_generators
-+ eia860m_generators · eia861_demand_response · eia923_fuel_receipts_costs · water_cwns_2022 ·
-sba_foia_loans · gov_surplus_frpp · acs_tract_vacancy · eqr_identity · gas_phmsa_distribution ·
-candidate_sites_schools + _private_schools · osm_power_lines + osm_power_substations.
-Route each to the page it belongs on (risk → Map overlays + county panel; generation → Grid;
-market/demand → Market; surplus/vacancy → SI Feed; candidate sets → upload-door demo).
-*Acceptance:* zero tables left in the orphan list except by written waiver; the Data page's
-inventory shows a home for each.
+**A2 — context layers with no home. ✅ DONE 2026-08-15.** 20 tables routed; **147 → 165 of 196**.
+*Six new map layers* (one shared 1 MB payload, fetched on FIRST TOGGLE rather than at boot):
+OSM transmission ≥100 kV (5,013), OSM substation footprints (2,873), GHGRP emitters (263),
+federal surplus property (1,552), schools (2,518), weather stations (2,108).
+*Grid:* the generating fleet at the latest report date — existing 34,381 MW, retired 8,682,
+proposed 4,639 — plus announced retirements from EIA-860M.
+*Market:* delivered fuel cost per MMBtu, demand response with its denominator on screen, FERC
+EQR filers. *Community:* FEMA disaster history and NOAA storm events. *SI Feed:* highest-vacancy
+tracts (restricted to >200 units so tiny denominators cannot top the list) and SBA lending.
+*Data:* PHMSA gas distribution operators, and a **waived-tables card** so nothing is dropped in
+silence.
+**Four value-reads changed the build:** `in_wind_turbines` was a FALSE ORPHAN (coords are
+`xlong`/`ylat`; its 1,652 turbines were already on the map) → provenance line, not a layer.
+`in_water_cwns_2022` is STRUCTURALLY EMPTY (404 rows, 0 with facid, 0 with latitude) → waived
+with the measurement. `in_ghgrp_emitter_facilities` is a subset of `in_ghgrp_facilities` (246 of
+246 ids shared) → facilities is the layer, emitter supplies year/NAICS. `in_osm_power_lines` is
+ADDITIVE not duplicate — 5,013 lines ≥100 kV against 2,623 in `in_transmission_lines`.
+**Two instrument failures caught mid-build:** OSM substations first exported **1 of 2,873**
+because the query filtered on `latitude` and 2,872 are ways carrying a Polygon with no point at
+all — now drawn as true footprints, since deriving a point would be a banned centroid. And FEMA
+rolled up to **93 counties for a 92-county state**: `fipsCountyCode='000'` holds 'Statewide' and
+a tribal TDSA, the same shape as the IOCS poison row — excluded from the roll-up and listed
+separately.
+*Third waiver added:* `in_data_centers_deduped` is superseded by `in_data_centers_located`.
+*Tooling lesson, third time it has cost time:* Python's `SimpleHTTP` sends no `Cache-Control`,
+so Chrome serves a stale `app.js` after an edit and neither a new tab nor a server restart
+clears it. **The fix that works: `await fetch(f, {cache:"reload"})` for each changed asset, then
+navigate.** A stale-JS symptom looks exactly like a code bug — `ensureContextLayers` undefined
+while a function defined *after* it exists.
 
 **A3 — SI source visibility (20 tables).** The city-level sources (Evansville, Indy, South Bend)
 and the six `si_refresh_*` sets feed `in_si_signals` upstream but no screen shows them. Build a

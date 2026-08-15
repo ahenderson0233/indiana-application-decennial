@@ -29,6 +29,19 @@
   <div class="card"><h2>Interconnection queue (county grain — includes withdrawn, a deliberate signal)</h2>
     <div class="scroll"><table id="t-queue"><tr><th>county</th><th>project</th><th>MW</th><th>type</th><th>status</th></tr></table></div>
     <div class="prov" id="p-queue"></div></div>
+  <div class="gridcards">
+    <div class="card"><h2>Indiana generating fleet — what is actually on the system</h2>
+      <div class="hint" id="fleet-asof" style="margin-bottom:6px"></div>
+      <div class="scroll" style="max-height:320px"><table id="t-fleet"><tr><th>status</th><th>technology</th><th>units</th><th>MW</th></tr></table></div>
+      <div class="prov">source: <code>in_eia860_generators</code>. The table spans 2001–2026, so
+        this is the <b>latest report date only</b>; summing every year would count the same
+        generator once for every year it existed.</div></div>
+    <div class="card"><h2>Announced retirements — capacity leaving the system</h2>
+      <div class="scroll" style="max-height:320px"><table id="t-retire"><tr><th>plant</th><th>county</th><th>technology</th><th>MW</th><th>retires</th></tr></table></div>
+      <div class="prov">source: <code>in_eia860m_generators</code> (monthly EIA-860M) · a
+        300 MW load should know what is leaving nearby, not only what is arriving</div></div>
+  </div>
+
   <div class="card"><h2>MISO study-cycle detail — where each Indiana project actually sits</h2>
     <div class="hint" style="margin-bottom:6px">These are the <b>same 456 projects</b> as the queue above, not
       extra ones: 452 of their project numbers already appear there, so counting both would double the queue.
@@ -90,6 +103,21 @@
   document.getElementById("t-queue").insertAdjacentHTML("beforeend", pl.queue_projects.slice(0, 120).map(r =>
     `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`).join(""));
   document.getElementById("p-queue").textContent = prov("in_queue");
+
+  const CTX = await fetchGz("data/context.json.gz");
+  document.getElementById("fleet-asof").innerHTML =
+    `As of <b>${CTX.fleet_asof}</b>. ` + (() => {
+      const t = {}; CTX.fleet.forEach(f => { t[f.operational_status] = (t[f.operational_status] || 0) + f.mw; });
+      return Object.entries(t).sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<b>${k}</b> ${fmt(Math.round(v))} MW`).join(" · ");
+    })();
+  document.getElementById("t-fleet").insertAdjacentHTML("beforeend", CTX.fleet.map(f =>
+    `<tr><td>${f.operational_status}</td><td>${String(f.tech || "—").slice(0, 40)}</td>
+     <td>${fmt(f.units)}</td><td>${fmt(f.mw)}</td></tr>`).join(""));
+  document.getElementById("t-retire").insertAdjacentHTML("beforeend", CTX.retirements.map(r =>
+    `<tr><td>${String(r.plant_name || "—").slice(0, 32)}</td><td>${r.county || "—"}</td>
+     <td>${String(r.technology || "—").slice(0, 24)}</td><td>${r.mw != null ? fmt(r.mw) : "—"}</td>
+     <td>${r.yr || "—"}${r.mo ? "-" + String(r.mo).padStart(2, "0") : ""}</td></tr>`).join(""));
 
   const so = await fetchGz("data/signoff.json.gz");
   const qm = so.queue_miso;
