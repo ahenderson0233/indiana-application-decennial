@@ -96,10 +96,17 @@ map.on("load", async () => {
   for (const f of state.grid.features) {
     const p = f.properties;
     if (p.layer === "substation") {
-      const [lon, lat] = f.geometry.coordinates;
-      binPush(state.subBins, lon, lat, { lon, lat, name: p.substation_name, kv: Number(p.max_kv) || 0 });
+      // 933 substations are footprint POLYGONS with no published point. Bin every vertex: the
+      // nearest vertex approximates the nearest point on the boundary, which is both truer than
+      // a centroid and permitted — deriving a centroid to stand in for a site is not.
+      const meta = { name: p.substation_name, kv: Number(p.max_kv) || 0 };
+      const walkS = (c) => { if (typeof c[0] === "number") binPush(state.subBins, c[0], c[1], { lon: c[0], lat: c[1], ...meta }); else c.forEach(walkS); };
+      walkS(f.geometry.coordinates);
     } else if (p.layer === "line") {
-      const walk = (c) => { if (typeof c[0] === "number") binPush(state.lineBins, c[0], c[1], { lon: c[0], lat: c[1], kv: Number(p.voltage) || 0 }); else c.forEach(walk); };
+      // kv is the NORMALISED kilovolt column; `voltage` is the publisher's raw string and is in
+      // VOLTS for OSM rows, so binning on it would read a 138 kV OSM line as 138,000.
+      const kv = Number(p.kv) || Number(p.voltage) || 0;
+      const walk = (c) => { if (typeof c[0] === "number") binPush(state.lineBins, c[0], c[1], { lon: c[0], lat: c[1], kv }); else c.forEach(walk); };
       walk(f.geometry.coordinates);
     } else if (p.layer === "bus_poi") {
       const [lon, lat] = f.geometry.coordinates;
@@ -111,10 +118,15 @@ map.on("load", async () => {
     filter: ["==", ["get", "layer"], "line"],
     paint: { "line-color": ["step", ["to-number", ["get", "voltage"], 0], "#9aa5b5", 100, "#4a7bd0", 300, "#7c3aed"],
              "line-width": ["step", ["to-number", ["get", "voltage"], 0], 1, 100, 1.7, 300, 2.6] } });
+  // A circle layer silently ignores polygon features, so the 933 footprint-only substations
+  // need their own fill layer — otherwise they are in the payload and still invisible.
   map.addLayer({ id: "grid-subs", type: "circle", source: "grid",
-    filter: ["==", ["get", "layer"], "substation"],
+    filter: ["all", ["==", ["get", "layer"], "substation"], ["==", ["get", "geom_kind"], "point"]],
     paint: { "circle-radius": ["interpolate", ["linear"], ["to-number", ["get", "max_kv"], 0], 0, 2.2, 138, 4.2, 345, 7],
              "circle-color": "#334155", "circle-opacity": 0.8 } });
+  map.addLayer({ id: "grid-subs-fp", type: "fill", source: "grid",
+    filter: ["all", ["==", ["get", "layer"], "substation"], ["==", ["get", "geom_kind"], "footprint"]],
+    paint: { "fill-color": "#334155", "fill-opacity": 0.45, "fill-outline-color": "#0f172a" } });
   map.addLayer({ id: "grid-bus", type: "circle", source: "grid",
     filter: ["==", ["get", "layer"], "bus_poi"],
     paint: { "circle-radius": ["interpolate", ["linear"], ["to-number", ["get", "median_mw"], 0], 0, 4, 2000, 9, 8000, 13],
@@ -238,7 +250,7 @@ map.on("load", async () => {
     paint: { "line-color": "#7c3aed", "line-width": 2, "line-dasharray": [2, 1.5] } });
 
   // clicks + hover for every non-parcel layer
-  const clickable = { "grid-bus": gridEv, "grid-subs": gridEv, "grid-lines": gridEv,
+  const clickable = { "grid-bus": gridEv, "grid-subs": gridEv, "grid-subs-fp": gridEv, "grid-lines": gridEv,
     "pjm-queue": miscEv, "pjm-bus-est": miscEv, "gas-lines": miscEv, "gas-pts": miscEv,
     "env-padus": miscEv, "env-bonus": miscEv, "env-nonatt": miscEv, "cand-line": candEv };
   for (const [id, fn] of Object.entries(clickable)) {
@@ -385,7 +397,7 @@ $("f-usecase").addEventListener("change", () => {
 $("f-cand").addEventListener("change", syncLayers);
 
 /* ---------- layers panel ---------- */
-const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
+const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-lines"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
@@ -394,10 +406,10 @@ const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
    Six layers share one payload. The first toggle loads it and builds all six; later toggles
    just flip visibility. A layer that has not loaded yet reports so rather than silently
    doing nothing — the failure mode the logistics layer had for weeks. */
-const CONTEXT_LAYERS = {
-  "L-osmline": "ctx-osm-line", "L-osmsub": "ctx-osm-sub", "L-ghgrp": "ctx-ghgrp",
-  "L-frpp": "ctx-frpp", "L-school": "ctx-school", "L-wx": "ctx-wx",
-};
+// Schools and weather stations were removed by operator ruling 2026-08-15 — schools were staged
+// for a separate Illinois experiment, and a GHCN station location is not something a siter acts
+// on. Both are recorded as waivers on the Data page rather than silently dropped.
+const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
   if (state.ctxLoaded) return true;
@@ -405,12 +417,6 @@ async function ensureContextLayers() {
   state.ctxLoading = (async () => {
     const fc = await fetchGz("data/context.geojson.gz");
     map.addSource("ctx", { type: "geojson", data: fc });
-    map.addLayer({ id: "ctx-osm-line", type: "line", source: "ctx",
-      filter: ["==", ["get", "layer"], "osm_line"], layout: { visibility: "none" },
-      paint: { "line-color": "#7c3aed", "line-width": ["interpolate", ["linear"], ["get", "kv"], 100, 1, 765, 3], "line-opacity": 0.75 } });
-    map.addLayer({ id: "ctx-osm-sub", type: "fill", source: "ctx",
-      filter: ["==", ["get", "layer"], "osm_sub"], layout: { visibility: "none" },
-      paint: { "fill-color": "#7c3aed", "fill-opacity": 0.35, "fill-outline-color": "#4c1d95" } });
     map.addLayer({ id: "ctx-ghgrp", type: "circle", source: "ctx",
       filter: ["==", ["get", "layer"], "ghgrp"], layout: { visibility: "none" },
       paint: { "circle-radius": 5, "circle-color": "#dc2626", "circle-opacity": 0.7,
@@ -418,12 +424,6 @@ async function ensureContextLayers() {
     map.addLayer({ id: "ctx-frpp", type: "circle", source: "ctx",
       filter: ["==", ["get", "layer"], "frpp"], layout: { visibility: "none" },
       paint: { "circle-radius": 4, "circle-color": "#0d9488", "circle-opacity": 0.75 } });
-    map.addLayer({ id: "ctx-school", type: "circle", source: "ctx",
-      filter: ["==", ["get", "layer"], "school"], layout: { visibility: "none" },
-      paint: { "circle-radius": 3.5, "circle-color": "#f59e0b", "circle-opacity": 0.8 } });
-    map.addLayer({ id: "ctx-wx", type: "circle", source: "ctx",
-      filter: ["==", ["get", "layer"], "wx"], layout: { visibility: "none" },
-      paint: { "circle-radius": 3, "circle-color": "#64748b", "circle-opacity": 0.6 } });
     for (const id of Object.values(CONTEXT_LAYERS)) {
       map.on("mousemove", id, (e) => showTip(e, ctxTip(e.features[0].properties)));
       map.on("mouseleave", id, hideTip);
@@ -435,21 +435,13 @@ async function ensureContextLayers() {
   return state.ctxLoading;
 }
 function ctxTip(p) {
-  if (p.layer === "osm_line") return `OSM line · ${p.kv || "?"} kV${p.operator ? " · " + p.operator : ""}`;
-  if (p.layer === "osm_sub") return `OSM substation${p.name ? ": " + p.name : " (unnamed)"}${p.kv ? " · " + p.kv + " kV" : ""}`;
   if (p.layer === "ghgrp") return `GHGRP emitter: ${p.name || "?"}`;
   if (p.layer === "frpp") return `Federal property: ${p.agency || "?"}`;
-  if (p.layer === "school") return `${p.kind === "private" ? "Private" : "Public"} school: ${p.name || "?"}`;
-  if (p.layer === "wx") return `Weather station: ${p.name || p.station_id}`;
   return p.layer;
 }
 const CTX_PROV = {
-  osm_line: ["in_osm_power_lines", "OpenStreetMap power lines, Indiana, ≥100 kV only. 5,013 lines against 2,623 in in_transmission_lines — OSM is materially more complete here, so this is additive, not a duplicate copy."],
-  osm_sub: ["in_osm_power_substations", "OpenStreetMap substation FOOTPRINTS. 2,872 of 2,873 are ways carrying a polygon and no point coordinate, so the actual footprint is drawn — no centroid is derived."],
   ghgrp: ["in_ghgrp_facilities", "EPA greenhouse-gas reporters: 263 Indiana facilities. Neighbours already holding air permits. in_ghgrp_emitter_facilities is a subset (all 246 of its ids are among these) and supplies the reporting year."],
   frpp: ["in_gov_surplus_frpp", "Federal Real Property Profile — federally-held property, a live acquisition lead rather than mere context."],
-  school: ["in_candidate_sites_schools", "Public + private schools (in_candidate_sites_private_schools). Proximity-sensitive receptors: a data centre beside a school is a community-opposition risk, so this is a siting constraint."],
-  wx: ["in_weather_stations", "GHCN stations. 28 of 2,108 publish elevation −999.9, a sentinel, not a depth — those are shown as unknown rather than plotted as below sea level."],
 };
 function ctxEvidence(p) {
   const [tbl, note] = CTX_PROV[p.layer] || ["", ""];
@@ -950,15 +942,26 @@ function gridEv(p) {
       ${row("worst binding facility", p.worst_binding_facility)}${row("vintage", p.vintage)}</table>
       <div class="prov">${prov("in_bus_headroom_miso")} · probe ran at an effectively infinite request — read the three numbers together</div>`);
   } else if (p.layer === "substation") {
+    const S = { "HIFLD+OSM": "both HIFLD and OpenStreetMap describe this substation, matched to each other at 0.5 m on average (2,354 of 3,858)",
+                "OSM": "OpenStreetMap ONLY — HIFLD does not carry this substation. 933 of 3,858 are visible only because OSM was merged in.",
+                "HIFLD": "HIFLD only — OpenStreetMap has no matching footprint (571 of 3,858)" };
     show(`Substation: ${p.substation_name || "(unnamed)"}`, `
       <table>${row("kV range", `${p.min_kv ?? "—"}–${p.max_kv ?? "—"}`)}${row("county", p.county)}
-      ${row("status", p.status)}${row("type", p.substation_type)}${row("lines", p.line_count)}${row("operator", p.operator)}</table>
-      <div class="prov">${prov("in_substations")} (HIFLD + OSM, deduped)</div>`);
+      ${row("status", p.status)}${row("type", p.substation_type)}${row("lines", p.line_count)}${row("operator", p.operator)}
+      ${row("sources merged", p.sources)}</table>
+      <div class="prov">${prov("in_substations")}<br>${S[p.sources] || "source not recorded"}</div>`);
   } else {
     show("Transmission line", `
-      <table>${row("owner", p.owner)}${row("voltage (kV)", p.voltage)}${row("class", p.volt_class)}
-      ${row("status", p.status)}${row("from", p.sub_1)}${row("to", p.sub_2)}</table>
-      <div class="prov">${prov("in_transmission_lines")} (HIFLD)</div>`);
+      <table>${row("source", p.src === "osm" ? "OpenStreetMap" : "HIFLD")}${row("owner", p.owner)}
+      ${row("voltage", p.kv != null ? `${p.kv} kV` : p.voltage)}${row("class", p.volt_class)}
+      ${row("status", p.status)}${row("from", p.sub_1)}${row("to", p.sub_2)}
+      ${row("name (OSM)", p.osm_name)}${row("length", p.km != null ? `${p.km} km` : null)}</table>
+      <div class="prov">${prov("in_transmission_union")} — ONE merged layer, 27,866 km.
+      ${p.src === "osm"
+        ? `<b>This line exists only in OpenStreetMap.</b> ${p.merge_note}. 1,114 lines / 2,706 km
+           are visible only because OSM was merged in — 11% more transmission than HIFLD alone,
+           on the layer the screener measures distance against.`
+        : "HIFLD linework. OSM lines running within 100 m of a HIFLD line are treated as the same circuit and suppressed, so nothing is drawn twice."}</div>`);
   }
 }
 function miscEv(p) {

@@ -36,40 +36,13 @@ def pt(lon, lat, props):
     feats.append({"type": "Feature", "properties": props,
                   "geometry": {"type": "Point", "coordinates": [round(float(lon), 6), round(float(lat), 6)]}})
 
-# --- OSM power: the additive half. Only >=100 kV lines are useful for a 300 MW load, so the
-#     layer carries voltage and the UI can say what it is showing.
-osm_lines = rows(f"""
-  SELECT osm_id, name, operator, SAFE_CAST(voltage AS INT64) kv_raw, geometry_geojson
-  FROM `{DS}.in_osm_power_lines`
-  WHERE geometry_geojson IS NOT NULL AND SAFE_CAST(voltage AS INT64) >= 100000""")
-for r in osm_lines:
-    try: g = json.loads(r["geometry_geojson"])
-    except Exception: continue
-    feats.append({"type": "Feature",
-                  "properties": {"layer": "osm_line", "osm_id": r["osm_id"], "name": r["name"],
-                                 "operator": r["operator"], "kv": round((r["kv_raw"] or 0) / 1000)},
-                  "geometry": g})
-n_osm_line = len(osm_lines)
-
-# OSM substations are FOOTPRINT POLYGONS: 2,872 of 2,873 are osm_type='way' carrying a Polygon
-# in geometry_geojson and NO point coordinates at all. A first pass filtered on latitude and
-# exported 1 of 2,873 — a zero that was about the filter, not the data. Render the actual
-# footprints: it is exact geometry, and deriving a representative point would be a centroid,
-# which this project bans outright.
-osm_subs = rows(f"""
-  SELECT osm_id, name, operator, SAFE_CAST(voltage AS INT64) kv_raw, geometry_geojson
-  FROM `{DS}.in_osm_power_substations` WHERE geometry_geojson IS NOT NULL""")
-n_sub_poly = 0
-for r in osm_subs:
-    try: g = json.loads(r["geometry_geojson"])
-    except Exception: continue
-    feats.append({"type": "Feature",
-                  "properties": {"layer": "osm_sub", "osm_id": r["osm_id"], "name": r["name"],
-                                 "operator": r["operator"],
-                                 "kv": round((r["kv_raw"] or 0) / 1000) if r["kv_raw"] else None,
-                                 "geom_kind": g.get("type")},
-                  "geometry": g})
-    n_sub_poly += 1
+# --- OSM power lines and substations: REMOVED from this payload 2026-08-15, superseded by the
+#     A6 union (operator ruling: one merged layer, not two partial ones).
+#     Lines now reach the map through `in_transmission_union` in grid.geojson — HIFLD plus the
+#     1,114 OSM lines (2,706 km) that no HIFLD line comes within 100 m of.
+#     Substations were ALREADY unioned upstream in `in_substations` (sources = HIFLD+OSM 2,354 /
+#     OSM-only 933 / HIFLD-only 571); drawing them again here was a rival partial copy, and
+#     2,439 of the 2,873 ids were already in that union.
 
 # --- GHGRP emitters: neighbours that already hold air permits. facilities is the superset;
 #     emitter adds the reporting year and NAICS.
@@ -103,23 +76,13 @@ for r in frpp:
        "using": r["using_agency"], "county": r["county_name"], "city": r["city_name"],
        "addr": r["street_address"]})
 
-# --- Schools: proximity-sensitive RECEPTORS. A data centre beside a school is a community
-#     risk, so these are a siting constraint, not only an upload-door demo set.
-for tbl, kind in [("in_candidate_sites_schools", "public"), ("in_candidate_sites_private_schools", "private")]:
-    for r in rows(f"""SELECT NAME, CITY, NMCNTY, LAT, LON FROM `{DS}.{tbl}`
-                      WHERE LAT IS NOT NULL AND LON IS NOT NULL"""):
-        pt(r["LON"], r["LAT"], {"layer": "school", "kind": kind, "name": r["NAME"],
-                                "city": r["CITY"], "county": r["NMCNTY"]})
+# --- Schools: REMOVED 2026-08-15 by operator ruling. They were staged for a separate Illinois
+#     experiment and carry no material value in Indiana siting. Waived below rather than
+#     silently deleted, so the next session does not "rediscover" them as a gap.
 
-# --- Weather stations: scrub the -999.9 elevation sentinel rather than render it as a depth.
-wx = rows(f"""SELECT station_id, name, latitude, longitude,
-                     SAFE_CAST(elevation_m AS FLOAT64) elev
-              FROM `{DS}.in_weather_stations`
-              WHERE latitude IS NOT NULL AND longitude IS NOT NULL""")
-for r in wx:
-    e = r["elev"]
-    pt(r["longitude"], r["latitude"], {"layer": "wx", "station_id": r["station_id"],
-       "name": r["name"], "elevation_m": None if (e is None or e <= -999) else e})
+# --- Weather stations: REMOVED 2026-08-15 by operator ruling. A GHCN station tells a siter
+#     nothing they act on; the weather that matters reaches them through the storm-event and
+#     disaster history on Community. Waived below rather than deleted.
 
 gp = os.path.join(REPO, "data", "context.geojson.gz")
 with gzip.open(gp, "wt", encoding="utf-8", compresslevel=6) as f:
@@ -228,6 +191,25 @@ out["waivers"] = [{"table": "in_water_cwns_2022", "rows": 404,
   {"table": "in_wind_turbines", "rows": 1652,
    "reason": "not a gap — already rendered inside facilities.geojson as the 'wind' layer "
              "(coords are xlong/ylat). Given a provenance line instead of a duplicate layer."},
+  {"table": "in_osm_power_lines", "rows": 10906,
+   "reason": "MERGED, not waived — reaches the map through in_transmission_union alongside the "
+             "HIFLD linework. 1,114 OSM lines (2,706 km) had no HIFLD line within 100 m and are "
+             "now visible for the first time; the rest were duplicates and are suppressed. One "
+             "layer, not two partial ones."},
+  {"table": "in_osm_power_substations", "rows": 2873,
+   "reason": "MERGED UPSTREAM — in_substations was already a HIFLD+OSM union (sources: HIFLD+OSM "
+             "2,354 matched at 0.5 m average, OSM-only 933, HIFLD-only 571). 2,439 of these 2,873 "
+             "ids were already in it, so a separate layer was a rival partial copy and has been "
+             "removed. The union's `sources` badge now shows on every substation."},
+  {"table": "in_weather_stations", "rows": 2108,
+   "reason": "OPERATOR RULING 2026-08-15: removed from the app. A GHCN station location is not "
+             "something a siter acts on; the weather that matters reaches them through the storm "
+             "event and disaster history on Community. Held, not rendered."},
+  {"table": "in_candidate_sites_schools + in_candidate_sites_private_schools", "rows": 2518,
+   "reason": "OPERATOR RULING 2026-08-15: removed from the app. These were staged for a separate "
+             "Illinois experiment and carry no material value in Indiana siting. Kept in the "
+             "warehouse, deliberately not rendered — recorded here so they are not rediscovered "
+             "as a coverage gap later."},
   {"table": "in_data_centers_deduped", "rows": 242,
    "reason": "superseded 2026-08-15 by in_data_centers_located, which carries the same rows plus "
              "the publisher's location_precision and 7 peeringdb facilities the union had missed. "

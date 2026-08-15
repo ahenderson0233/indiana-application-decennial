@@ -23,19 +23,40 @@ def rc(x):
     return x
 
 feats = []
-# substations (points from lat/lon published by HIFLD/OSM)
+# Substations: in_substations is ALREADY a HIFLD+OSM union (sources = HIFLD+OSM 2,354 matched at
+# 0.5 m avg / OSM-only 933 / HIFLD-only 571). It was rendering without saying so, which hid both
+# the merge and its coverage. `sources` now rides on every point so a user can see which layer a
+# substation came from, and how many exist only because OSM was merged in.
+# 933 of the 3,858 carry NO lat/lon - only a footprint polygon - and they are exactly the
+# OSM-only ones. Filtering on lat/lon dropped 24% of the substations the warehouse holds, and
+# precisely the ones OSM contributes uniquely. Emit a point where the publisher gives one and
+# the FOOTPRINT where it does not: exact published geometry either way, and no centroid is
+# derived to fake a point.
+n_pt = n_poly = 0
 for r in client.query(f"""
   SELECT substation_name, max_kv, min_kv, county, status, substation_type, line_count,
-         operator, lat, lon
-  FROM `{DS}.in_substations` WHERE lat IS NOT NULL AND lon IS NOT NULL"""):
-    d = dict(r); lat, lon = d.pop("lat"), d.pop("lon")
+         operator, sources, lat, lon, footprint_geojson
+  FROM `{DS}.in_substations`
+  WHERE lat IS NOT NULL OR footprint_geojson IS NOT NULL"""):
+    d = dict(r); lat, lon = d.pop("lat"), d.pop("lon"); fp = d.pop("footprint_geojson")
     d["layer"] = "substation"
-    feats.append({"type": "Feature", "properties": d,
-                  "geometry": {"type": "Point", "coordinates": [rc(float(lon)), rc(float(lat))]}})
-# transmission lines
+    if lat is not None and lon is not None:
+        d["geom_kind"] = "point"; n_pt += 1
+        geom = {"type": "Point", "coordinates": [rc(float(lon)), rc(float(lat))]}
+    else:
+        try: geom = rc(json.loads(fp))
+        except Exception: continue
+        d["geom_kind"] = "footprint"; n_poly += 1
+    feats.append({"type": "Feature", "properties": d, "geometry": geom})
+print(f"  substations: {n_pt:,} points + {n_poly:,} footprint-only = {n_pt + n_poly:,}")
+# Transmission: ONE layer from in_transmission_union, not HIFLD alone. OSM contributes 1,114
+# lines / 2,706 km that no HIFLD line comes within 100 m of — an 11% length gain on the very
+# layer the parcel screener measures "distance to transmission" against, so merging it changes
+# real siting answers rather than only the picture.
 for r in client.query(f"""
-  SELECT owner, voltage, volt_class, status, sub_1, sub_2, ST_ASGEOJSON(geom) AS gj
-  FROM `{DS}.in_transmission_lines` WHERE geom IS NOT NULL"""):
+  SELECT src, owner, voltage_raw AS voltage, kv, volt_class, status, sub_1, sub_2, osm_name,
+         merge_note, km, ST_ASGEOJSON(geog) AS gj
+  FROM `{DS}.in_transmission_union` WHERE geog IS NOT NULL"""):
     d = dict(r); gj = d.pop("gj")
     d["layer"] = "line"
     feats.append({"type": "Feature", "properties": d, "geometry": rc(json.loads(gj))})
