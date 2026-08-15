@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-15T17:40:17+00:00",
+ "built_at_utc": "2026-08-15T17:54:52+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -197,6 +197,14 @@
    "n_rows": 242,
    "built_at": "2026-08-15 17:40:06.381254+00",
    "notes": "Rule applied honestly: it collapses exactly 3 pairs (Expedient Indianapolis 5 m; Digital Crossroad at 17 m and 127 m). It deliberately does NOT merge 'Amazon: New Carlisle II DC8' into OSM's generic 'Amazon AWS Data Center' - those are separate buildings on one campus, and a distance-only rule would have eaten the whole campus into a single pin. OSM's 8 UNNAMED rows cannot be judged by a name rule, so they are KEPT and flagged unnamed_cannot_dedupe - visible as possible duplicates rather than silently merged or silently dropped."
+  },
+  {
+   "table_name": "in_data_centers_located",
+   "source": "indiana_app.in_data_centers_deduped x energy.data_centers_datacentermap_coords",
+   "method": "attach the publisher's own precision/method labels; count pins sharing each coordinate",
+   "n_rows": 249,
+   "built_at": "2026-08-15 17:54:42.894108+00",
+   "notes": "92 of 249 pins are CITY-PRECISION census-gazetteer centroids, not facility locations - datacentermap publishes precision='city' for most of its Indiana rows and we had been rendering them as pins. They must never enter distance math and must never style as published coordinates. pins_at_this_point exposes the stacking: the worst single point carries 32 facilities incl. Microsoft Mishawaka ~15 km from New Carlisle."
   },
   {
    "table_name": "in_data_centers_peeringdb",
@@ -1687,6 +1695,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 216,
+ "registry_rows_total": 217,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

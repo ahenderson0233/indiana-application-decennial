@@ -166,10 +166,23 @@ map.on("load", async () => {
 
   state.fac = await fetchGz("data/facilities.geojson.gz");
   map.addSource("fac", { type: "geojson", data: state.fac });
+  // 92 of the 242 data-centre pins are census-gazetteer CITY centroids (datacentermap
+  // publishes precision='city'), not facility locations — 32 of them land on one point near
+  // New Carlisle, Microsoft Mishawaka among them, ~15 km from where it is drawn. A city
+  // centroid must never be drawn like a surveyed coordinate, so the two tiers render apart:
+  // solid = the publisher gave a site coordinate; hollow amber = city precision, position
+  // approximate. Size carries how many facilities share the point.
   map.addLayer({ id: "fac-dc", type: "circle", source: "fac",
-    filter: ["==", ["get", "layer"], "dc"], layout: { visibility: "none" },
+    filter: ["all", ["==", ["get", "layer"], "dc"], ["!=", ["get", "location_precision"], "city"]],
+    layout: { visibility: "none" },
     paint: { "circle-radius": 6.5, "circle-color": "#0ea5e9", "circle-stroke-color": "#0c4a6e",
              "circle-stroke-width": 1.6, "circle-opacity": 0.9 } });
+  map.addLayer({ id: "fac-dc-city", type: "circle", source: "fac",
+    filter: ["all", ["==", ["get", "layer"], "dc"], ["==", ["get", "location_precision"], "city"]],
+    layout: { visibility: "none" },
+    paint: { "circle-radius": ["interpolate", ["linear"], ["get", "pins_at_this_point"], 1, 7, 32, 15],
+             "circle-color": "#f59e0b", "circle-opacity": 0.12,
+             "circle-stroke-color": "#b45309", "circle-stroke-width": 1.6 } });
   map.addLayer({ id: "fac-gen", type: "circle", source: "fac",
     filter: ["in", ["get", "layer"], ["literal", ["plant", "plant_hifld", "solar", "wind"]]],
     layout: { visibility: "none" },
@@ -177,13 +190,22 @@ map.on("load", async () => {
              "circle-color": ["case", ["==", ["get", "layer"], "solar"], "#eab308",
                ["==", ["get", "layer"], "wind"], "#38bdf8", "#6b7280"],
              "circle-opacity": 0.75 } });
-  for (const id of ["fac-dc", "fac-gen"]) {
+  for (const id of ["fac-dc", "fac-dc-city", "fac-gen"]) {
     map.on("click", id, (e) => {
       if (state.measure.on) return;
       const p = e.features[0].properties;
       const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10).map(([k, v]) => row(k, v)).join("");
       show(p.layer === "dc" ? `Existing data centre: ${p.name || ""}` : `Facility (${p.layer})`,
-        `<table>${rows_}</table>${p.layer === "dc" && String(p.unnamed_cannot_dedupe) === "true"
+        `<table>${rows_}</table>${p.layer === "dc" && p.location_precision === "city"
+           ? `<div class="cannot">THIS IS NOT THE FACILITY'S LOCATION. datacentermap publishes
+              <code>precision=city</code> for this record, and the coordinate is a census-gazetteer
+              CITY CENTROID${p.precision_method ? ` (method: ${p.precision_method})` : ""} — the town it
+              sits in, not the site. ${Number(p.pins_at_this_point) > 1
+                ? `<b>${p.pins_at_this_point} facilities share this exact point</b>, so they are drawn on
+                   top of one another. ` : ""}It is shown hollow, it is excluded from distance
+              calculations, and it must not be used to site anything. 92 of our 242 data-centre
+              records are like this.</div>` : ""}
+         ${p.layer === "dc" && String(p.unnamed_cannot_dedupe) === "true"
            ? `<div class="cannot">This point has no name in its source (OpenStreetMap), so the
               name-stem dedupe rule cannot judge whether it duplicates a named building nearby.
               It is shown rather than merged or dropped — 8 of the 242 are like this.</div>` : ""}
@@ -367,7 +389,7 @@ const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
-  "L-dc": ["fac-dc"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
+  "L-dc": ["fac-dc", "fac-dc-city"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))

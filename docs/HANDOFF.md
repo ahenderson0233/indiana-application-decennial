@@ -244,6 +244,42 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **CLOUDSCENE GAP INVESTIGATED 2026-08-15 — and it exposed a far worse defect in our own map.**
+  Chasing the 25 unmatched colo facilities turned up something bigger than the gap itself.
+  **⚠ 92 of our (then) 242 data-centre pins were census-gazetteer CITY CENTROIDS rendered as
+  facility locations.** `data_centers_datacentermap_coords` carries `method` and `precision`
+  columns nobody had read. In the Indiana bbox: **119 of 149 rows are
+  `method='census_gazetteer', precision='city'`, collapsed onto 11 distinct points; only 3 are
+  `precision='site'`.** The visible consequence: **32 facilities stacked on ONE point** near New
+  Carlisle — including Microsoft Mishawaka, drawn ~15 km from where it is. This broke two
+  standing rules at once (*city-precision coordinates never in distance math*; *estimated
+  locations never style as published ones*) and a census city point is a centroid, which the
+  project bans outright. Fixed by `scripts/fix_dc_location_precision.py` →
+  `in_data_centers_located`: every pin carries `location_precision` (site/city/unknown),
+  `precision_method` and `pins_at_this_point`. The map now draws the tiers apart — solid blue
+  for a published site coordinate, **hollow amber sized by stack depth** for a city centroid —
+  and the panel says plainly that it is not the facility's location. **Nothing city-precision
+  may enter distance math.** The DCM tail is national, not Indiana-only: 4,370 rows sit in
+  coordinate stacks of 5+, worst 251 — **flag this for the national app.**
+  **peeringdb was never merged.** The DC union was OSM + Baxtel + Wikidata + DCM-via-coords;
+  peeringdb had been clipped as a separate "connectivity layer", so 19 Indiana facilities with
+  real SITE-precision coordinates never reached the map while 92 city centroids did. Merged
+  (150 m / name-stem dedupe), adding **7**: SITCO Evansville, IUPUI ICT Complex, Wintek, INdigital,
+  Ligonier CO, Lagrange CO, Aunalytics South Bend. Layer is now **249 pins, 157 site-precision**.
+  **The gap itself is small and mostly illusory.** Of 260 cloudscene Indiana rows, 229 are
+  carrier central offices (223 Frontier) — telecom plant, never data centres. Of the 31 real
+  colo facilities, ~20 were already on the map, ~4 were recoverable from peeringdb/baxtel, and
+  **7 remain unaccounted for, all in Indianapolis**. Cloudscene publishes no address, and
+  Indianapolis colo is concentrated in the Indy Telcom carrier-hotel campus (701/733 W Henry —
+  peeringdb reports 21 and 41 network presences there), so the likeliest reading is that these
+  are **provider presences inside buildings we already hold**, not missing buildings. Resolving
+  them properly needs an address source; cloudscene's own pages were NOT scraped (permission
+  unchecked — ask before acquiring). `docs/CLOUDSCENE_GAP.md` has the per-facility table.
+  **Matcher caveat, stated because it matters:** the name matcher is triage, not proof. It was
+  wrong three ways before settling (missed `GAP` = Global Access Point until acronyms were
+  added; let a useless "indianapolis" overlap outrank a real one until place tokens were
+  stripped from scoring; and it still puts IUPUI at the Bloomington coordinate). Treat its
+  counts as approximately right, not exact.
 - **ALL EIGHT SIGN-OFFS APPROVED AND WIRED 2026-08-15.** Operator approved the v2 recommendation
   table wholesale. `scripts/build_signoff_wiring.py` builds seven tables (each registered in the
   same run, each deleting its own prior registry row so re-runs cannot accumulate);

@@ -81,14 +81,21 @@ fp = os.path.join(REPO, "data", "facilities.geojson.gz")
 fc = json.loads(gzip.decompress(open(fp, "rb").read()).decode())
 kept = [f for f in fc["features"] if f["properties"].get("layer") != "dc"]
 before = len(fc["features"]) - len(kept)
+# Source the DC layer from in_data_centers_located, which carries the PUBLISHER'S precision
+# label. 92 of 242 are census-gazetteer CITY centroids, not facility locations - the map has
+# to say so rather than draw them like the 150 real ones.
 dc = 0
-for r in rows(f"""SELECT src, name, operator, lat, lon, unnamed_cannot_dedupe, dedupe_note
-                  FROM `{DS}.in_data_centers_deduped` WHERE lat IS NOT NULL AND lon IS NOT NULL"""):
+for r in rows(f"""SELECT src, name, operator, lat, lon, unnamed_cannot_dedupe, dedupe_note,
+                         location_precision, precision_method, pins_at_this_point
+                  FROM `{DS}.in_data_centers_located` WHERE lat IS NOT NULL AND lon IS NOT NULL"""):
     kept.append({"type": "Feature",
                  "properties": {"layer": "dc", "src": r["src"], "name": r["name"],
                                 "operator": r["operator"],
                                 "unnamed_cannot_dedupe": r["unnamed_cannot_dedupe"],
-                                "dedupe_note": r["dedupe_note"]},
+                                "dedupe_note": r["dedupe_note"],
+                                "location_precision": r["location_precision"],
+                                "precision_method": r["precision_method"],
+                                "pins_at_this_point": r["pins_at_this_point"]},
                  "geometry": {"type": "Point", "coordinates": [round(r["lon"], 7), round(r["lat"], 7)]}})
     dc += 1
 with gzip.open(fp, "wt", encoding="utf-8", compresslevel=6) as f:
