@@ -177,18 +177,29 @@ for (const id of ["e-padus", "e-bonus"]) {
 }
 
 /* ---------- land parcels (unchanged mechanics) ---------- */
+function recencyCutoff() {
+  if (!document.getElementById("f-recent").checked) return null;
+  const days = Number(document.getElementById("f-recent-days").value) || 90;
+  return new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+}
 function currentFilter() {
   const p = [], mw = Number(document.getElementById("f-mw-val").value) || 25;
   if (document.getElementById("f-ci").checked) p.push(["==", ["get", "occ_group"], "ci"]);
   if (document.getElementById("f-mw").checked) p.push([">=", ["to-number", ["get", "mw_datacenter_4_per_acre"]], mw]);
-  if (document.getElementById("f-si").checked) p.push(["==", ["get", "has_si_signal"], true]);
+  const cut = recencyCutoff();
+  if (document.getElementById("f-si").checked)
+    p.push(cut ? ["all", ["==", ["get", "has_si_signal"], true],
+                  [">=", ["coalesce", ["get", "si_last_event_date"], ""], cut]]
+               : ["==", ["get", "has_si_signal"], true]);
   return p.length ? ["any", ...p] : ["==", ["get", "occ_group"], "__none__"];
 }
 function jsMatches(p) {
   const mw = Number(document.getElementById("f-mw-val").value) || 25;
+  const cut = recencyCutoff();
+  const siOk = document.getElementById("f-si").checked && p.has_si_signal === true &&
+               (!cut || (p.si_last_event_date || "") >= cut);
   return (document.getElementById("f-ci").checked && p.occ_group === "ci") ||
-         (document.getElementById("f-mw").checked && Number(p.mw_datacenter_4_per_acre) >= mw) ||
-         (document.getElementById("f-si").checked && p.has_si_signal === true);
+         (document.getElementById("f-mw").checked && Number(p.mw_datacenter_4_per_acre) >= mw) || siOk;
 }
 const FILL_COLOR = ["case", ["==", ["get", "has_si_signal"], true], "#d97706",
   ["==", ["get", "occ_group"], "ci"], "#2563eb", "#059669"];
@@ -229,7 +240,7 @@ function applyFilters() {
   }
   renderDenominator();
 }
-for (const id of ["f-ci", "f-mw", "f-si", "f-mw-val"])
+for (const id of ["f-ci", "f-mw", "f-si", "f-mw-val", "f-recent", "f-recent-days"])
   document.getElementById(id).addEventListener("change", applyFilters);
 
 /* ---------- header, ledger, denominators ---------- */
@@ -429,6 +440,26 @@ document.getElementById("btn-market").onclick = async () => {
     <div class="prov">${prov("in_gas_state_capacity")} · DESIGN capacity — daily operational availability (EBB) is an open acquisition lane</div>`);
 };
 
+// source-identity county labels for staged acquisitions (publisher identity, not a name guess)
+const ACQ_COUNTY = { indy: "Marion", evansville: "Vanderburgh", southbend: "St. Joseph",
+                     state: "statewide", refresh: "statewide refresh" };
+document.getElementById("btn-acq").onclick = () => {
+  if (!state.summary) return;
+  const rows_ = state.summary.provenance
+    .filter((p) => p.table_name.startsWith("in_si_") && p.table_name !== "in_si_signals")
+    .map((p) => {
+      const key = Object.keys(ACQ_COUNTY).find((k) => p.table_name.includes(k)) || "";
+      const subject = p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ");
+      return `<tr><td>${subject}<br><span class="hint">${ACQ_COUNTY[key] || ""} · built ${String(p.built_at).slice(0, 10)}</span></td><td>${fmt(p.n_rows)} rows</td></tr>`;
+    }).join("");
+  show("Staged SI acquisitions — held, not yet scored", `
+    <div class="hint">New Indiana seller-intent sources landed by the acquisition lanes, each awaiting
+    the human subject test before wiring into scoring (auto-wiring on a name is a documented defect
+    class). Every row here is queryable in BigQuery today; counts update as lanes run.</div>
+    <table>${rows_}</table>
+    <div class="prov">source: indiana_app._registry · county attribution is by publisher identity</div>`);
+};
+
 const FEATURE_HOME = {
   in_sites: "Land preset — parcels + filters + evidence", in_si_signals: "Land evidence (SI section)",
   in_sites_county: "county assignment (spine)", in_county_rollup: "county layer + county evidence",
@@ -454,13 +485,16 @@ const FEATURE_HOME = {
   in_gas_processing_plants: "measured zero in Indiana — evidence of absence, registered",
   in_gas_lng_terminals: "measured zero in Indiana — evidence of absence, registered",
   in_site_gates: "parcel evidence panel (environmental gates)",
+  in_miso_poi: "SUPERSEDED by in_bus_headroom_miso (identity columns were degenerate at source)",
 };
 document.getElementById("btn-inventory").onclick = () => {
   if (!state.summary) return; // still loading
   const rows_ = state.summary.provenance.map((p) => {
     let home = FEATURE_HOME[p.table_name];
-    if (!home) home = p.table_name.startsWith("in_si_") ?
-      "STAGED: new SI acquisitions awaiting subject wiring" : "STAGED: refresh/staging table";
+    if (!home) home = p.table_name.startsWith("in_si_refresh_") ?
+      "Acquisitions panel — freshness refresh (all fields)" :
+      (p.table_name.startsWith("in_si_") ? "Acquisitions panel — new source, awaiting subject wiring"
+                                         : "STAGED: refresh/staging table");
     const cls = home.startsWith("DEFERRED") || home.startsWith("STAGED") ? ' class="cannot"' : "";
     return `<tr><td>${p.table_name}<br><span class="hint">${fmt(p.n_rows)} rows · ${String(p.built_at).slice(0, 10)}</span></td><td${cls}>${home}</td></tr>`;
   }).join("");

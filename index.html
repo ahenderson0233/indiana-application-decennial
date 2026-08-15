@@ -29,6 +29,9 @@
         <input type="number" id="f-mw-val" value="25" min="1" step="1"> MW
         <span class="hint">at 4 MW/acre default — adjustable, not the answer</span></label>
       <label><input type="checkbox" id="f-si" checked> Carries a seller-intent signal</label>
+      <label><input type="checkbox" id="f-recent"> SI event in last
+        <input type="number" id="f-recent-days" value="90" min="1" step="1"> days
+        <span class="hint">"new this week" at your chosen window — narrows the SI class</span></label>
       <h2>Legend</h2>
       <div class="legend">
         <div><span class="sw" style="background:#d97706"></span> seller-intent signal</div>
@@ -81,6 +84,7 @@
     </div>
     <div class="rowbtns">
       <button id="btn-market">Market (P6)</button>
+      <button id="btn-acq">Acquisitions</button>
     </div>
     <div class="hint" style="margin-top:8px">Upload door (your own site list → same pipeline): next milestone.</div>
   </aside>
