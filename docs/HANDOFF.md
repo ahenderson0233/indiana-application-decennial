@@ -244,6 +244,44 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **COMPOSITE SCORING SHIPPED 2026-08-15 (PLAN Phase 3 ②, spec §11).** 0–100 sub-scores each
+  carrying a stated basis → six part scores → composite; **assessable-only averaging at every
+  level** (a part we cannot measure leaves the denominator, never becomes a zero); six weight
+  sliders with visible defaults; every ranked row opens a breakdown showing each part's score,
+  its basis and its weight, plus a link into the full parcel evidence. All tunables live in one
+  `SCORE_CFG` object — the "no hard-coded weights, config-driven" rule.
+  **Two scales were invented and had to be replaced by measured ones — the §4 trap again:**
+  · P5 first scored `opposition_intensity` linearly to a guessed ceiling of 8, and **every
+    Marion County parcel came out 0**. The real distribution across 92 counties is min 0,
+    median 0, p75 2, p90 4 — and then Marion alone at 25, three times the next county
+    (Marshall, 8). A linear scale either flattens 90% of the state or zeroes its largest metro.
+    P5 now scores the publisher's own posture vocabulary (quiet 61 counties / active_discussion
+    22 / restricted 8 / contested 1), honours `has_local_restriction` as a hard floor, and
+    reports intensity as context — with the caveat that intensity partly tracks news volume, so
+    large metros read higher.
+  · P6 saturated at a round 1,000 MW; it now uses the measured p90 of the 87 counties holding a
+    queue figure (median 259, p75 700, **p90 1,493**, max 7,977).
+  **§2.21 check (a ranked list dominated by one subgroup means ranking selects for the error),
+  run on Marion's 43,086 parcels:** healthy. Top-100 median 18.7 ac against an overall max of
+  1,286 ac — the saturating P3 stops the biggest polygon winning by default, which is the
+  failure mode that lets an inverted full-globe parcel top a siting search. Zero disputed-acreage
+  parcels reach the top 100. Composites spread 25–75 across 48 distinct values with no top tie.
+  **Two honest limits to state to users:** P1 yields only two distinct values (0 or 65) because
+  `si_signal_types` rarely exceeds 1, so it ranks has-signal vs not, nothing finer; and top-100
+  is 88% `no_structure` against 70% overall, because a C&I parcel with a building on it has less
+  buildable outdoor space — defensible, but C&I sites are structurally outranked and the operator
+  should know before weighting.
+  **Assumption flagged for the operator:** county active-queue MW is scored as FAVOURABLE
+  (generation arriving nearby). It can be read the opposite way — those projects compete for the
+  same interconnection capacity. Stated in the basis text rather than buried.
+- **SI-RECENCY FILTER FIXED (same pass) — it was dropping 99.4% of SI parcels.** The test read
+  `(p.si_last_event_date || "") < cutoff`, so a NULL date sorted below every cutoff and the parcel
+  was silently excluded as if it were stale. Measured over 7 counties: **165,494 parcels carry an
+  SI signal and only 935 (0.6%) carry an event date.** That penalised sites for OUR coverage gap —
+  precisely what the spec's availability-normalisation rule forbids. Undated parcels now pass the
+  recency filter and are COUNTED, with the count shown under the denominator as a cannot-assess
+  line. Root cause is upstream: `si_last_event_date` is essentially unpopulated in `in_sites`;
+  worth a data-ops question if recency is ever to be a real filter.
 - **EXACT-ACRES RE-EXPORT CLOSED 2026-08-15** — see the ✅ block at the top of this file for the
   measurements, the `acreageOf()` fix and the two questions still open for the operator. Script:
   `scripts/export_sites_exact.py` (idempotent, guarded, one snapshot for all 92 counties).

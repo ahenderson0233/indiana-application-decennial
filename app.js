@@ -290,7 +290,13 @@ function jsMatches(p) {
   if ($("f-si").checked) {
     if (p.has_si_signal !== true) return false;
     const cut = recencyCutoff();
-    if (cut && (p.si_last_event_date || "") < cut) return false;
+    // A MISSING date is not an old date. Measured over 7 counties: 165,494 parcels carry an SI
+    // signal and only 935 (0.6%) carry an event date, so the old `(date || "") < cut` test
+    // silently dropped 99.4% of them as if they were stale. That penalised sites for OUR
+    // coverage gap — the exact thing the spec's availability-normalisation rule forbids.
+    // Undated parcels now pass and are COUNTED, so the user sees what recency could not judge.
+    if (cut && p.si_last_event_date && p.si_last_event_date < cut) return false;
+    if (cut && !p.si_last_event_date) state.undatedSI++;
   }
   if ($("f-noflood").checked && p.sfha_flood === true) return false;
   if ($("f-nowet").checked && p.wetland_on_parcel === true) return false;
@@ -513,13 +519,206 @@ function renderDenominator() {
   let classTotal = 0, match = 0, loaded = 0;
   for (const f of state.counties.features)
     if (inView.includes(f.properties.fips)) classTotal += f.properties.class_union;
+  state.undatedSI = 0;   // counted by jsMatches during THIS pass, so reset immediately before it
   for (const fips of inView) {
     const feats = state.loaded.get(fips); if (!feats) continue;
     loaded++;
     if (countyOk(fips)) for (const ft of feats) if (jsMatches(ft.properties)) match++;
   }
-  el.innerHTML = `<b>${fmt(match)}</b> sites pass the screener, of <b>${fmt(classTotal)}</b> class sites in view (${loaded}/${inView.length} counties loaded${state.loading.size ? "…" : ""}).<br><span class="hint">County shading counts every parcel — nothing is dropped by the screen.</span>`;
+  const undated = state.undatedSI
+    ? `<br><span class="cannot">${fmt(state.undatedSI)} of these carry an SI signal with no event date — recency cannot be assessed for them, so they are kept rather than dropped.</span>` : "";
+  el.innerHTML = `<b>${fmt(match)}</b> sites pass the screener, of <b>${fmt(classTotal)}</b> class sites in view (${loaded}/${inView.length} counties loaded${state.loading.size ? "…" : ""}).${undated}<br><span class="hint">County shading counts every parcel — nothing is dropped by the screen.</span>`;
   btn.disabled = match === 0;
+}
+
+/* ================= COMPOSITE SCORING (spec §11) =================================
+   Contract: 0-100 sub-scores each with a STATED BASIS -> part scores -> composite;
+   ASSESSABLE-ONLY AVERAGING AT EVERY LEVEL; defaults the user can override; every score
+   opens its evidence.
+
+   Two rules from ANALYSIS_METHODOLOGY shaped this:
+   · "No hard-coded floors/ceilings/radii/weights - config-driven." Everything tunable lives
+     in SCORE_CFG below and the weights are sliders, not constants buried in a formula.
+   · §2.21 "a ranked list dominated by one unusual subgroup means ranking selects for the
+     error." So P3 SATURATES: a parcel twice the size you asked for scores 100, and a parcel
+     fifty times the size also scores 100. Scoring size linearly would rank the biggest
+     polygon in Indiana first every time - which is how an inverted full-globe parcel wins a
+     siting search (see the platform's D85).
+
+   cannot-assess returns null and is DROPPED FROM THE DENOMINATOR. It never becomes a zero,
+   because zero means "measured and bad" and null means "we could not look". */
+const SCORE_CFG = {
+  weights: { p1: 2, p2: 5, p3: 4, p4: 3, p5: 3, p6: 1 },   // defaults; user overrides via sliders
+  p2: { subMiFull: 0.5, subMiZero: 6, kvGood: 138, lineMiFull: 0.5, lineMiZero: 4 },
+  p3: { saturateAtMultiple: 2 },        // hits 100 at 2x the MW you asked for
+  p4: { flood: -35, wetland: -20, protected: -45, bonusEach: 12, bonusCap: 24 },
+  // P5 scores the publisher's OWN posture category, not a scale I invented. The first version
+  // of this scored opposition_intensity linearly to a guessed ceiling of 8 and every Marion
+  // County parcel came out 0 — because the measured distribution is nothing like 0-8: across
+  // the 92 counties it runs min 0, median 0, p75 2, p90 4, and then Marion alone at 25. One
+  // county is 3x the next (Marshall, 8). A linear scale either flattens 90% of the state or
+  // zeroes its largest metro. The categorical posture is the publisher's judgment and is
+  // robust to that outlier; intensity is reported as context with its rank.
+  p5: { posture: { quiet: 100, active_discussion: 70, contested: 45, restricted: 20 }, unknown: 60 },
+  // P6 saturates at the MEASURED p90 of the 87 counties holding a queue figure (median 259 MW,
+  // p75 700, p90 1493, max 7977) rather than a round number.
+  p6: { queueMwSaturate: 1493 },
+};
+const clamp100 = (x) => Math.max(0, Math.min(100, x));
+const lerpDown = (v, full, zero) => v == null ? null : clamp100(100 * (zero - v) / (zero - full));
+
+/* Each sub-score returns {score, basis} or null for cannot-assess. */
+function scoreP1(p) {
+  const n = Number(p.si_signal_events) || 0, types = Number(p.si_signal_types) || 0;
+  if (p.has_si_signal !== true)
+    return { score: 0, basis: "no seller-intent signal fired on this parcel (measured, not missing)" };
+  const breadth = clamp100(35 + 25 * Math.min(types, 2) + 5 * Math.min(n, 3));
+  return { score: breadth, basis: `${n} signal event${n === 1 ? "" : "s"} across ${types} signal type${types === 1 ? "" : "s"}` +
+    (p.si_last_event_date ? ` · latest ${p.si_last_event_date}` : " · no event date held, so recency is not scored") };
+}
+function scoreP2(p) {
+  if (p._dsub_mi == null && p._dline_mi == null) return null;   // distances not computed for this parcel
+  const parts = [], why = [];
+  if (p._dsub_mi != null) {
+    let s = lerpDown(p._dsub_mi, SCORE_CFG.p2.subMiFull, SCORE_CFG.p2.subMiZero);
+    if (p._dsub_kv != null && p._dsub_kv < SCORE_CFG.p2.kvGood) s *= 0.75;   // low-voltage is worth less
+    parts.push(s);
+    why.push(`${p._dsub_mi} mi to ${p._dsub_name || "a substation"}${p._dsub_kv ? ` (${p._dsub_kv} kV)` : ""}`);
+  }
+  if (p._dline_mi != null) {
+    parts.push(lerpDown(p._dline_mi, SCORE_CFG.p2.lineMiFull, SCORE_CFG.p2.lineMiZero));
+    why.push(`${p._dline_mi} mi to a transmission line`);
+  }
+  return { score: parts.reduce((a, b) => a + b, 0) / parts.length, basis: why.join(" · ") };
+}
+function scoreP3(p) {
+  const a = acreageOf(p), target = V("f-mw-val") || 25, density = V("f-density") || 4;
+  const fits = a.acres * density;
+  const s = clamp100(100 * fits / (target * SCORE_CFG.p3.saturateAtMultiple));
+  return { score: s, basis: `${a.acres.toFixed(1)} ac (${a.basis}) fits ~${Math.floor(fits)} MW at ` +
+    `${density} MW/acre; you asked for ${target} MW, and this saturates at ${target * SCORE_CFG.p3.saturateAtMultiple} MW` +
+    (a.disputed ? " — sources disagree on this parcel's size, see the panel" : "") };
+}
+function scoreP4(p) {
+  const c = SCORE_CFG.p4; let s = 100; const why = [];
+  if (p.sfha_flood === true) { s += c.flood; why.push("in an SFHA flood zone"); }
+  if (p.wetland_on_parcel === true) { s += c.wetland; why.push("wetland on parcel"); }
+  if (p.protected_land === true) { s += c.protected; why.push("overlaps protected land"); }
+  const bonus = p.bonus_kinds ? String(p.bonus_kinds).split(",").filter(Boolean) : [];
+  if (bonus.length) { s += Math.min(bonus.length * c.bonusEach, c.bonusCap); why.push(`bonus-credit: ${bonus.join(", ")}`); }
+  if (!why.length) why.push("measured clear on flood, wetland and protected land; no bonus geography");
+  return { score: clamp100(s), basis: why.join(" · ") };
+}
+function scoreP5(p, fips) {
+  const po = (state.ctx.by_fips[fips] || {}).posture;
+  if (!po) return null;
+  const cfg = SCORE_CFG.p5;
+  const key = String(po.posture || "").toLowerCase();
+  let s = key in cfg.posture ? cfg.posture[key] : cfg.unknown;
+  const why = [`county posture: ${po.posture || "unrecorded"}`];
+  // has_local_restriction is a HARD fact; honour it even when the category has not caught up.
+  if (po.has_local_restriction === true && s > cfg.posture.restricted) {
+    s = cfg.posture.restricted; why.push("a local restriction is on the books");
+  }
+  const oi = Number(po.opposition_intensity);
+  if (Number.isFinite(oi)) why.push(`opposition intensity ${oi} (statewide median 0, p90 4, max 25)`);
+  if (po.local_moratoriums) why.push(`${po.local_moratoriums} moratorium(s)`);
+  if (po.local_bans) why.push(`${po.local_bans} ban(s)`);
+  return { score: clamp100(s),
+    basis: why.join(" · ") + " — COUNTY grain, not parcel; intensity partly tracks news volume, so large metros read higher" };
+}
+function scoreP6(p, fips) {
+  const c = state.ctx.by_fips[fips] || {}, parts = [], why = [];
+  if (c.fcc && c.fcc.units) {
+    const share = 100 * (c.fcc.fiber_units || 0) / c.fcc.units;
+    parts.push(clamp100(share));
+    why.push(`${share.toFixed(0)}% of county business units have fibre ≥100/20 (statewide median 60%)`);
+  }
+  if (c.queue && c.queue.active_mw != null) {
+    parts.push(clamp100(100 * c.queue.active_mw / SCORE_CFG.p6.queueMwSaturate));
+    // DIRECTION IS AN ASSUMPTION, stated rather than buried: active queue MW is scored as
+    // FAVOURABLE (generation arriving nearby). It can be read the other way — the same
+    // projects compete for interconnection capacity. Flagged for the operator.
+    why.push(`${fmt(c.queue.active_mw)} MW active in the county queue, scored as favourable supply`);
+  }
+  if (!parts.length) return null;
+  return { score: parts.reduce((a, b) => a + b, 0) / parts.length,
+           basis: why.join(" · ") + " — COUNTY grain, not parcel" };
+}
+function currentWeights() {
+  const w = {};
+  for (const k of Object.keys(SCORE_CFG.weights)) w[k] = Number($(`w-${k}`).value);
+  return w;
+}
+/* The composite. Parts that cannot be assessed leave the denominator entirely. */
+function scoreSite(p, fips, w) {
+  const parts = { p1: scoreP1(p), p2: scoreP2(p), p3: scoreP3(p),
+                  p4: scoreP4(p), p5: scoreP5(p, fips), p6: scoreP6(p, fips) };
+  let num = 0, den = 0;
+  for (const k of Object.keys(parts)) if (parts[k] && w[k] > 0) { num += parts[k].score * w[k]; den += w[k]; }
+  const missing = Object.keys(parts).filter((k) => !parts[k] && w[k] > 0);
+  return { composite: den ? num / den : null, parts, missing, weightUsed: den };
+}
+const PART_NAME = { p1: "Seller intent", p2: "Grid access", p3: "Land & size",
+                    p4: "Environmental", p5: "Community", p6: "Market & infra" };
+
+$("sc-on").addEventListener("change", (e) => {
+  $("sc-weights").classList.toggle("hidden", !e.target.checked);
+});
+for (const k of Object.keys(SCORE_CFG.weights))
+  $(`w-${k}`).addEventListener("input", (e) => { $(`wv-${k}`).textContent = e.target.value; });
+$("sc-reset").onclick = () => {
+  for (const [k, v] of Object.entries(SCORE_CFG.weights)) { $(`w-${k}`).value = v; $(`wv-${k}`).textContent = v; }
+};
+$("sc-rank").onclick = () => {
+  const w = currentWeights();
+  if (!Object.values(w).some((x) => x > 0)) { $("sc-out").innerHTML = `<span class="cannot">Every weight is zero — nothing to rank on.</span>`; return; }
+  const rows = [];
+  const cannot = { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 };
+  for (const fips of countiesInView()) {
+    const feats = state.loaded.get(fips); if (!feats || !countyOk(fips)) continue;
+    for (const ft of feats) {
+      const p = ft.properties; if (!jsMatches(p)) continue;
+      const r = scoreSite(p, fips, w);
+      for (const k of r.missing) cannot[k]++;
+      if (r.composite != null) rows.push({ p, fips, ...r });
+    }
+  }
+  if (!rows.length) { $("sc-out").innerHTML = `<span class="cannot">No screened sites in view to rank.</span>`; return; }
+  rows.sort((a, b) => b.composite - a.composite);
+  state.ranked = rows;
+  const top = rows.slice(0, 12);
+  const cannotLine = Object.entries(cannot).filter(([, n]) => n > 0)
+    .map(([k, n]) => `${PART_NAME[k]} ${fmt(n)}`).join(" · ");
+  $("sc-out").innerHTML =
+    `<b>${fmt(rows.length)}</b> screened sites ranked. Click a row for its score breakdown.
+     <table>${top.map((r, i) => `<tr><td class="rank">${i + 1}</td>
+       <td><a data-i="${i}">${r.p.parcel_key}</a><div class="hint">${(state.ctx.by_fips[r.fips]?.posture?.county_name) || r.fips} · ${r.p.occ_group}</div></td>
+       <td class="sc">${Math.round(r.composite)}</td></tr>`).join("")}</table>
+     ${cannotLine ? `<div class="cannot" style="margin-top:5px">Left out of the denominator where unmeasurable — ${cannotLine}. These sites are ranked on the parts we could assess, not marked down for the parts we could not.</div>` : ""}
+     <div class="prov">weights ${Object.entries(w).map(([k, v]) => `${k.toUpperCase()}:${v}`).join(" ")} · composite = weighted mean of assessable parts only</div>`;
+  for (const a of $("sc-out").querySelectorAll("a[data-i]"))
+    a.onclick = () => { const r = top[Number(a.dataset.i)]; openScoreEvidence(r); };
+};
+function openScoreEvidence(r) {
+  const w = currentWeights();
+  const rows_ = Object.keys(PART_NAME).map((k) => {
+    const s = r.parts[k];
+    if (!s) return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td>
+      <td colspan="2" class="cannot">cannot assess — left out of the denominator</td></tr>`;
+    return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td><td class="sc">${Math.round(s.score)}</td>
+      <td><div class="scorebar"><i style="width:${Math.round(s.score)}%"></i></div>
+      <span class="hint">${s.basis}</span></td></tr>`;
+  }).join("");
+  show(`Score ${Math.round(r.composite)} — parcel ${r.p.parcel_key}`,
+    `<h3>How this score was built</h3><table>${rows_}</table>
+     <div class="prov">Composite = weighted mean over the ${Object.values(r.parts).filter(Boolean).length}
+       assessable parts (total weight ${r.weightUsed}); parts we could not measure were dropped from the
+       denominator, never scored zero. Weights are yours — change them and re-rank.
+       ${prov("in_sites")}</div>
+     <div class="rowbtns" style="margin-top:6px"><button id="sc-open-parcel">Open the full parcel evidence</button></div>`,
+    `${r.p.parcel_source}|${r.p.parcel_key}`);   // same shortlist key the parcel panel uses
+  $("sc-open-parcel").onclick = () => openParcelEvidence(r.p, r.fips);
 }
 
 /* ---------- evidence panels ---------- */

@@ -108,6 +108,20 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
     display: block; font-size: 10px; color: #666; margin: 14px; }
   .prov { color: #444; }
 }
+/* composite score panel */
+#sc-weights.hidden { display: none; }
+#sc-weights label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; margin: 2px 0; }
+#sc-weights input[type=range] { flex: 1; min-width: 0; }
+#sc-weights .wv { width: 12px; text-align: right; font-weight: 700; color: #0f172a; }
+#sc-out { margin-top: 6px; }
+#sc-out table { width: 100%; border-collapse: collapse; font-size: 11px; }
+#sc-out td { padding: 2px 3px; border-bottom: 1px solid #eef1f5; }
+#sc-out .rank { color: #7a8a9c; width: 16px; }
+#sc-out .sc { font-weight: 700; color: #0f172a; text-align: right; width: 28px; }
+#sc-out a { color: #0f172a; cursor: pointer; text-decoration: none; border-bottom: 1px dotted #94a3b8; }
+.scorebar { height: 6px; background: #eef1f5; border-radius: 3px; overflow: hidden; margin: 2px 0 5px; }
+.scorebar > i { display: block; height: 100%; background: #d97706; }
+
 ::-webkit-scrollbar { width: 9px; }
 ::-webkit-scrollbar-thumb { background: #c7ced9; border-radius: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
