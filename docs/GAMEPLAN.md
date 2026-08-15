@@ -11,8 +11,8 @@ immediately — the point of this file is that the order survives a context refr
 |---|---:|
 | tables physically in `indiana_app` | 198 |
 | registered in `_registry` | 196 |
-| **reach a user-facing surface** | **139 (71%)** |
-| reach nothing yet | 57 |
+| **reach a user-facing surface** | **147 (75%)** — was 139 before A1 |
+| reach nothing yet | 48 |
 | pages live | 6 (Map · Grid · Market · Community · SI Feed · Data) |
 | parcels held / rendered class-union | 3,553,194 / 1,200,916 |
 
@@ -31,12 +31,30 @@ The first wiring count said 196/196 because it counted each table's own build sc
 The motto is one feature per table. 57 registered tables reach no screen. No new acquisition is
 required for any of this — it is all held, clipped and registered already.
 
-**A1 — openstates legislative family (9 tables).** `energy_bills`, `_v2`, `votes`,
-`vote_people`, `actions`, `sponsorships`, `versions`, `sources`, `abstracts`. Build the P7
-legislative preview section on **Community**: bill list → status → sponsors → vote roll, filtered
-to Indiana energy/DC bills, joined to the existing IURC docket browser.
-*Acceptance:* every one of the 9 tables feeds a column, filter or drill-down; each bill row
-reaches its votes and its sponsors; provenance line per table.
+**A1 — openstates legislative family (9 tables). ✅ DONE 2026-08-15.** P7 preview live on
+Community: 66 energy bills across sessions 2024/2025/2026, filterable by session, chamber,
+data-centre relevance and free text; each bill opens a drill-down with abstract, sponsors,
+every recorded vote with its **full member roll-call**, the action timeline and links to the
+Indiana General Assembly's own pages. **8 tables wired, 1 waived:**
+`in_openstates_energy_bills` (21) was measured a STRICT SUBSET of `_v2` (21 shared ids, 0
+unique) — a superseded generation, waived per build spec §0.2 with the waiver stated on the page.
+Measured and conserved: 66 bills · 7 naming data centres · 22 reaching a vote · 126 vote events ·
+9,197 individual member votes · 811 actions · 300 sponsorships · 140 versions · 132 sources.
+Referential integrity: **zero orphans** across all six child tables; every roll-call row reaches
+one of the 126 vote events. Script: `scripts/export_legislature.py` → `data/legislature.json.gz`
+(80 KB).
+**`match_field` is carried to the screen** as "qualified on: …" — it is the subject-selection
+instrument (abstract 44 · title+abstract 14 · title+subject+abstract 4 · title 3 ·
+subject+abstract 1), and a bill matched on its abstract alone is a weaker claim to the subject
+than one matching title AND subject AND abstract. The reader sees which.
+**The 7 data-centre bills**, the reason this section exists: HB 1043 (DC water regulation),
+HB 1189 (labor requirements for DC incentives), HB 1245 (IURC study of data centers), SB 257
+(electricity rate increases due to data centers), SB 79 + SB 135 (DC development), SB 431
+(construction by a foreign adversary — passed the Senate 48–0).
+*Lesson recorded:* the first provenance line abbreviated the child tables (`_abstracts`,
+`_actions`). That breaks the rule that every number carries its source table — a reader cannot
+look up `_actions` — and it also made the wiring measurement under-count by 7. Write table names
+in full on screen.
 
 **A2 — context layers with no home (19 tables).** storm_events · fema_disaster_declarations ·
 weather_stations · wind_turbines · ghgrp_facilities + ghgrp_emitter_facilities · eia860_generators

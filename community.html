@@ -19,6 +19,34 @@
   <div class="card"><h2>County posture (from held receipts)</h2>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
+  <div class="card"><h2>Indiana legislature — energy &amp; data-centre bills <span class="hint">(the P7 preview)</span></h2>
+    <div id="leg-stats" class="hint" style="margin-bottom:8px"></div>
+    <div style="margin-bottom:8px">
+      session <select id="leg-session"><option value="">all</option></select> ·
+      chamber <select id="leg-chamber"><option value="">both</option><option value="lower">House</option><option value="upper">Senate</option></select> ·
+      <label style="display:inline"><input type="checkbox" id="leg-dc"> data-centre bills only</label> ·
+      <input id="leg-q" placeholder="filter title / sponsor…" style="padding:3px 7px;border:1px solid #ccd3de;border-radius:5px;width:200px">
+    </div>
+    <div class="scroll" style="max-height:420px"><table id="t-leg">
+      <tr><th>bill</th><th>title</th><th>session</th><th>sponsors</th><th>latest action</th><th>vote</th></tr></table></div>
+    <div class="prov">sources, in full so each can be looked up:
+      <code>in_openstates_energy_bills_v2</code> (66 bills) ·
+      <code>in_openstates_energy_bill_abstracts</code> (66) ·
+      <code>in_openstates_energy_bill_actions</code> (811) ·
+      <code>in_openstates_energy_bill_sponsorships</code> (300) ·
+      <code>in_openstates_energy_bill_versions</code> (140) ·
+      <code>in_openstates_energy_bill_sources</code> (132) ·
+      <code>in_openstates_energy_bill_votes</code> (126) ·
+      <code>in_openstates_energy_bill_vote_people</code> (9,197 roll-call rows).
+      Referential integrity measured: zero orphans, every roll-call row reaches one of the 126
+      vote events.
+      <b>`in_openstates_energy_bills` (21) is WAIVED</b> — measured a strict subset of _v2
+      (21 shared ids, 0 unique), i.e. a superseded generation; the successor is wired.
+      <b>How a bill qualified as "energy" is shown per row</b> — matching on the abstract alone is
+      a weaker claim to the subject than matching title AND subject AND abstract.</div></div>
+
+  <div id="leg-detail" class="card hidden"><h2 id="leg-detail-title"></h2><div id="leg-detail-body"></div></div>
+
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
     <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
       court-statistics workbook: one row per court, with each case-type code as a COLUMN of counts. There are
@@ -53,6 +81,92 @@
     .map(f => ({ n: f.properties.county_name, fips: f.properties.fips, c: ctx.by_fips[f.properties.fips] || {} }))
     .sort((a, b) => (b.c.posture?.opposition_intensity || 0) - (a.c.posture?.opposition_intensity || 0))
     .map(x => `<tr><td>${x.n}</td><td>${x.c.posture?.posture ?? "—"}</td><td>${x.c.posture?.opposition_intensity ?? "—"}</td><td>${x.c.posture?.has_local_restriction ?? "—"}</td><td>${x.c.queue?.active_mw != null ? fmt(x.c.queue.active_mw) : "—"}</td><td>${x.c.eia861?.utilities ?? "—"}</td></tr>`).join(""));
+  /* ---------- P7 legislative preview ---------- */
+  const L = await fetchGz("data/legislature.json.gz");
+  const c_ = L.counts;
+  document.getElementById("leg-stats").innerHTML =
+    `<b>${fmt(c_.bills)}</b> energy bills across 3 sessions · <b>${fmt(c_.dc_bills)}</b> name data centres
+     directly · <b>${fmt(c_.bills_with_votes)}</b> reached a recorded vote (${fmt(c_.votes)} vote events,
+     ${fmt(c_.rollcall_rows)} individual member votes) · ${fmt(c_.actions)} actions · ${fmt(c_.versions)} bill versions.
+     Bills without a vote are not failures — most are still in committee.`;
+  const sessions = [...new Set(L.bills.map(b => b.session))].sort().reverse();
+  for (const s_ of sessions)
+    document.getElementById("leg-session").insertAdjacentHTML("beforeend", `<option>${s_}</option>`);
+  const CH = { lower: "House", upper: "Senate" };
+  const esc_ = (x) => String(x ?? "").replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
+
+  function sponsorNames(id) {
+    return (L.sponsors[id] || []).filter(s => String(s.is_primary) === "True").map(s => s.name);
+  }
+  function latestAction(id) {
+    const a = L.actions[id] || [];
+    return a.length ? a[a.length - 1] : null;
+  }
+  function renderLeg() {
+    const ses = document.getElementById("leg-session").value;
+    const ch = document.getElementById("leg-chamber").value;
+    const dcOnly = document.getElementById("leg-dc").checked;
+    const q = (document.getElementById("leg-q").value || "").toLowerCase();
+    const rows_ = L.bills.filter(b =>
+      (!ses || b.session === ses) && (!ch || b.chamber === ch) && (!dcOnly || b.is_dc) &&
+      (!q || (b.title || "").toLowerCase().includes(q) || (b.identifier || "").toLowerCase().includes(q)
+          || sponsorNames(b.id).join(" ").toLowerCase().includes(q)));
+    document.getElementById("t-leg").innerHTML =
+      "<tr><th>bill</th><th>title</th><th>session</th><th>sponsors</th><th>latest action</th><th>vote</th></tr>" +
+      (rows_.length ? rows_.map(b => {
+        const sp = sponsorNames(b.id), la = latestAction(b.id);
+        const vs = L.votes_by_bill[b.id] || [];
+        const last = vs.length ? vs[vs.length - 1] : null;
+        return `<tr><td><a data-bill="${b.id}">${esc_(b.identifier)}</a>${b.is_dc ? ' <span title="names data centres">🖥</span>' : ""}
+          <div class="hint">${CH[b.chamber] || b.chamber || ""}</div></td>
+          <td>${esc_(b.title)}<div class="hint">qualified on: ${b.match_on.join(" + ")}</div></td>
+          <td>${b.session}</td>
+          <td>${sp.length ? esc_(sp.slice(0, 2).join(", ")) + (sp.length > 2 ? ` +${sp.length - 2}` : "") : "—"}</td>
+          <td class="hint">${la ? esc_(String(la.description).slice(0, 54)) + `<br>${la.date || ""}` : "—"}</td>
+          <td>${last ? `${last.result === "pass" ? "passed" : esc_(last.result)} ${last.yea}-${last.nay}` : '<span class="hint">no vote yet</span>'}</td></tr>`;
+      }).join("") : `<tr><td colspan="6" class="hint">No bills match this filter.</td></tr>`);
+    for (const a of document.querySelectorAll("#t-leg a[data-bill]")) a.onclick = () => openBill(a.dataset.bill);
+  }
+  function openBill(id) {
+    const b = L.bills.find(x => x.id === id);
+    const acts = L.actions[id] || [], sps = L.sponsors[id] || [];
+    const vers = L.versions[id] || [], srcs = L.sources[id] || [], vs = L.votes_by_bill[id] || [];
+    const card = document.getElementById("leg-detail");
+    document.getElementById("leg-detail-title").innerHTML =
+      `${esc_(b.identifier)} — ${esc_(b.title)} <span class="hint">${b.session} ${CH[b.chamber] || ""}</span>`;
+    document.getElementById("leg-detail-body").innerHTML = `
+      ${b.abstract ? `<p>${esc_(b.abstract)}</p>` : `<p class="cannot">No abstract held for this bill.</p>`}
+      <div class="hint">Subjects: ${b.subject.length ? b.subject.map(esc_).join(" · ") : "—"}<br>
+        Qualified as an energy bill by matching on: <b>${b.match_on.join(" + ")}</b></div>
+      <h3>Sponsors (${sps.length})</h3>
+      <div class="hint">${sps.length ? sps.map(s => `${esc_(s.name)} <i>(${esc_(s.classification)}${String(s.is_primary) === "True" ? ", primary" : ""})</i>`).join(" · ") : "none held"}</div>
+      <h3>Votes (${vs.length})</h3>
+      ${vs.length ? vs.map(v => {
+        const rc = L.rollcall[v.id] || [];
+        const by = {}; rc.forEach(([n, o]) => (by[o] = by[o] || []).push(n));
+        return `<div style="margin-bottom:8px"><b>${esc_(v.motion_text)}</b> — ${esc_(v.result)}
+          <span class="hint">${String(v.start_date).slice(0, 10)}</span><br>
+          <span class="hint">yes ${v.yea} · no ${v.nay} · other ${v.other_ct} · ${rc.length} members recorded</span>
+          ${Object.keys(by).sort().map(o => `<div class="hint"><b>${esc_(o)}</b> (${by[o].length}): ${by[o].map(esc_).join(", ")}</div>`).join("")}
+        </div>`;
+      }).join("") : `<div class="hint">No recorded vote — most bills die in committee without one.</div>`}
+      <h3>Action timeline (${acts.length})</h3>
+      <div class="scroll" style="max-height:220px"><table>${acts.map(a =>
+        `<tr><td style="white-space:nowrap">${a.date || "—"}</td><td>${esc_(a.description)}</td></tr>`).join("")}</table></div>
+      <h3>Documents</h3>
+      <div class="hint">${vers.length ? vers.map(v => v.link_urls
+          ? `<a href="${esc_(v.link_urls)}" target="_blank" rel="noopener">${esc_(v.note || "version")}</a>`
+          : esc_(v.note || "version")).join(" · ") : "no versions held"}
+        ${srcs.length ? "<br>Official: " + srcs.map(s => `<a href="${esc_(s.url)}" target="_blank" rel="noopener">${esc_(s.url).slice(0, 62)}</a>`).join(" · ") : ""}</div>
+      <div class="prov">openstates via indiana_app.in_openstates_* · every figure above is the
+        publisher's, unmodified; links open the Indiana General Assembly's own pages</div>`;
+    card.classList.remove("hidden");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  for (const id of ["leg-session", "leg-chamber", "leg-dc"]) document.getElementById(id).onchange = renderLeg;
+  document.getElementById("leg-q").oninput = renderLeg;
+  renderLeg();
+
   document.getElementById("t-iocs").insertAdjacentHTML("beforeend", counties.features
     .map(f => ({ n: f.properties.county_name, c: ctx.by_fips[f.properties.fips] || {} }))
     .filter(x => x.c.iocs)

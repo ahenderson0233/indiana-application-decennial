@@ -110,6 +110,10 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 }
 /* composite score panel */
 #sc-weights.hidden { display: none; }
+#leg-detail.hidden { display: none; }
+#t-leg a[data-bill] { color: #0f172a; font-weight: 700; cursor: pointer;
+  border-bottom: 1px dotted #94a3b8; }
+#leg-detail h3 { margin: 10px 0 4px; font-size: 12.5px; }
 #sc-weights label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; margin: 2px 0; }
 #sc-weights input[type=range] { flex: 1; min-width: 0; }
 #sc-weights .wv { width: 12px; text-align: right; font-weight: 700; color: #0f172a; }
