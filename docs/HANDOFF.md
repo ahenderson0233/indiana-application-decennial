@@ -1,13 +1,15 @@
 # HANDOFF — Indiana Siting Intelligence (updated 2026-08-15, session closed clean)
 
-**⚠ UNCOMMITTED ON PURPOSE (first thing to resolve):** 44 of 92 `data/sites/*.geojson.gz`
-(counties 18001–18087) sit MODIFIED in the working tree carrying NEW exact-acreage columns
-(`exact_parcel_acres`, `exact_outdoor_acres`, `exact_bldg_acres`, `footprints_intersecting`)
-— a PARTIAL re-export that incorporated the data-ops session's `mat_parcel_outdoor_exact`
-work and stopped mid-run. DO NOT commit a half-set (§AC partial-swap hazard). Fix: identify
-which export script produced it (check with the operator — not launched by this session),
-re-run it to completion for all 92 counties, verify one county's keys, THEN commit all 92
-together and add the exact-acres fields to the parcel evidence panel.
+**⚠ FIRST THING TO RESOLVE — the partial exact-acres re-export.** A re-export of
+`data/sites/*.geojson.gz` incorporating the data-ops session's `mat_parcel_outdoor_exact`
+columns (`exact_parcel_acres`, `exact_outdoor_acres`, `exact_bldg_acres`,
+`footprints_intersecting`) ran for counties 18001–18087 (44 of 92) and stopped — NOT
+launched by this session; ask the operator what ran it. HEAD serves the consistent
+92-county set (no exact columns); **the partial 44 are preserved at commit `0c9405c`**.
+Fix: `git checkout 0c9405c -- data/sites` to recover them, re-run the producing export for
+the remaining 48 counties, verify one county's keys per half, commit all 92 together, then
+surface the exact-acres fields in the parcel evidence panel (they are better numbers than
+the current outdoor_acres — the platform's $45 exact-intersection milestone delivered).
 
 **SESSION-CLOSE STATE:** roadmap T1–T8 all closed or operator-gated (T2 packet awaits
 per-item sign-off; T7 awaits the WSL/Docker install; T8 cadence awaits venue choice).
