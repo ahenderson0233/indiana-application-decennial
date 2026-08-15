@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-15T16:13:27+00:00",
+ "built_at_utc": "2026-08-15T17:40:17+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -25,1130 +25,1562 @@
   {
    "table_name": "in_acs_county",
    "source": "energy.acs_county",
+   "method": "census-keyed clip (geoid:geoid)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:39.201293+00"
+   "built_at": "2026-08-15 06:07:39.201293+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_acs_tract_vacancy",
    "source": "energy.acs_tract_vacancy",
+   "method": "census-keyed clip (state:state_fips)",
    "n_rows": 1696,
-   "built_at": "2026-08-15 06:03:33.930384+00"
+   "built_at": "2026-08-15 06:03:33.930384+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_balancing_authority_areas",
    "source": "energy.balancing_authority_areas",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 06:18:28.713591+00"
+   "built_at": "2026-08-15 06:18:28.713591+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_bonus_geo",
    "source": "energy.incentive_qct",
+   "method": "APPEND qct kind",
    "n_rows": 1394,
-   "built_at": "2026-08-15 06:03:59.786735+00"
+   "built_at": "2026-08-15 06:03:59.786735+00",
+   "notes": "qct added: 337 IN tracts - fifth bonus geography"
   },
   {
    "table_name": "in_bus_headroom_300",
    "source": "in_miso_poi_300mw",
+   "method": "MIN(PMax) per POI at pMax=300 (+dfax5 variant)",
    "n_rows": 642,
-   "built_at": "2026-08-15 06:10:53.538048+00"
+   "built_at": "2026-08-15 06:10:53.538048+00",
+   "notes": "THE single representative number: headroom for a 300MW-class request, per operator ruling"
   },
   {
    "table_name": "in_bus_headroom_miso",
    "source": "energy.miso_poi_monitored_facilities x indiana_app.in_miso_poi_identity",
+   "method": "worst/best/median mw_available per POI + publisher coords join",
    "n_rows": 11820,
-   "built_at": "2026-08-15 05:48:53.737236+00"
+   "built_at": "2026-08-15 05:48:53.737236+00",
+   "notes": "probe ran at pmax_request=99999 so worst_mw=0 on ~88 pct of POIs - display worst AND best, never one fused number; vintage DPP-2021-Cycle per publisher disclaimer"
   },
   {
    "table_name": "in_candidate_sites_colleges",
    "source": "energy.candidate_sites_colleges",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 151,
-   "built_at": "2026-08-15 06:08:11.546290+00"
+   "built_at": "2026-08-15 06:08:11.546290+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_candidate_sites_private_schools",
    "source": "energy.candidate_sites_private_schools",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 590,
-   "built_at": "2026-08-15 06:03:51.412368+00"
+   "built_at": "2026-08-15 06:03:51.412368+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_candidate_sites_schools",
    "source": "energy.candidate_sites_schools",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 1928,
-   "built_at": "2026-08-15 06:03:47.455932+00"
+   "built_at": "2026-08-15 06:03:47.455932+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_cbp_county_industry",
    "source": "energy.cbp_county_industry",
+   "method": "census-keyed clip (geoid:geoid)",
    "n_rows": 234,
-   "built_at": "2026-08-15 06:07:54.535785+00"
+   "built_at": "2026-08-15 06:07:54.535785+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_cems_monthly",
    "source": "energy.cems_hourly aggregated to plant-unit-month",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 50132,
-   "built_at": "2026-08-14 22:21:03.627645+00"
+   "built_at": "2026-08-14 22:21:03.627645+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_cloudscene_crosscheck",
+   "source": "energy.data_centers_cloudscene",
+   "method": "operator sign-off 2026-08-15: Data-page completeness cross-check only",
+   "n_rows": 260,
+   "built_at": "2026-08-15 17:39:54.900148+00",
+   "notes": "260 Indiana rows found via `market`, which IS cloudscene's state key (<state>-regional buckets run across the table). `state` is blank for 5,283 of 5,388 rows and is useless. THIS TABLE HAS NO COORDINATES - lat/lon are explicit NULLs so nothing can plot it by accident. Its only job is to answer 'how many cloudscene names do we already hold pinned?'"
   },
   {
    "table_name": "in_commission_posture",
    "source": "energy.commission_posture",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 06:18:18.823400+00"
+   "built_at": "2026-08-15 06:18:18.823400+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_county_fibre",
    "source": "indiana_app.in_fcc_bdc",
+   "method": "county aggregate",
    "n_rows": 92,
-   "built_at": "2026-08-14 23:52:45.721008+00"
+   "built_at": "2026-08-14 23:52:45.721008+00",
+   "notes": "fiber defined by publisher tech desc, value-sampled"
   },
   {
    "table_name": "in_county_flood",
    "source": "indiana_app.in_flood",
+   "method": "county aggregate",
    "n_rows": 89,
-   "built_at": "2026-08-14 23:52:56.854115+00"
+   "built_at": "2026-08-14 23:52:56.854115+00",
+   "notes": "greatest-intersection county"
   },
   {
    "table_name": "in_county_rollup",
    "source": "in_sites + in_sites_county",
+   "method": "spine build 2026-08-14",
    "n_rows": 92,
-   "built_at": "2026-08-14 22:36:27.059105+00"
+   "built_at": "2026-08-14 22:36:27.059105+00",
+   "notes": null
   },
   {
    "table_name": "in_county_wetlands",
    "source": "indiana_app.in_wetlands",
+   "method": "county aggregate",
    "n_rows": 92,
-   "built_at": "2026-08-14 23:53:15.103880+00"
+   "built_at": "2026-08-14 23:53:15.103880+00",
+   "notes": "greatest-intersection county"
   },
   {
    "table_name": "in_data_centers",
    "source": "energy.data_centers",
+   "method": "adaptive clip (spatial:geog)",
    "n_rows": 13,
-   "built_at": "2026-08-15 06:28:00.664150+00"
+   "built_at": "2026-08-15 06:28:00.664150+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_data_centers_all",
    "source": "data_centers + baxtel + wikidata + datacentermap(+coords slug-join)",
+   "method": "coords point-in-state union",
    "n_rows": 244,
-   "built_at": "2026-08-15 06:31:54.764691+00"
+   "built_at": "2026-08-15 06:31:54.764691+00",
+   "notes": "EXISTING-DC layer, per-source rows; DEDUPE FLAGGED not done (same facility appears in multiple sources); DCM pinless status in gap register is STALE - coords exist"
   },
   {
    "table_name": "in_data_centers_cloudscene",
    "source": "energy.data_centers_cloudscene",
+   "method": "adaptive clip (state:state)",
    "n_rows": 0,
-   "built_at": "2026-08-15 06:28:05.616392+00"
+   "built_at": "2026-08-15 06:28:05.616392+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_data_centers_datacentermap",
    "source": "energy.data_centers_datacentermap",
+   "method": "census-keyed clip (state:state_slug)",
    "n_rows": 157,
-   "built_at": "2026-08-15 06:06:35.403866+00"
+   "built_at": "2026-08-15 06:06:35.403866+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
+  },
+  {
+   "table_name": "in_data_centers_deduped",
+   "source": "indiana_app.in_data_centers_all",
+   "method": "operator sign-off 2026-08-15: same name-stem within 500 m collapses to one row",
+   "n_rows": 242,
+   "built_at": "2026-08-15 17:40:06.381254+00",
+   "notes": "Rule applied honestly: it collapses exactly 3 pairs (Expedient Indianapolis 5 m; Digital Crossroad at 17 m and 127 m). It deliberately does NOT merge 'Amazon: New Carlisle II DC8' into OSM's generic 'Amazon AWS Data Center' - those are separate buildings on one campus, and a distance-only rule would have eaten the whole campus into a single pin. OSM's 8 UNNAMED rows cannot be judged by a name rule, so they are KEPT and flagged unnamed_cannot_dedupe - visible as possible duplicates rather than silently merged or silently dropped."
   },
   {
    "table_name": "in_data_centers_peeringdb",
    "source": "energy.data_centers_peeringdb",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 20,
-   "built_at": "2026-08-15 06:17:46.885839+00"
+   "built_at": "2026-08-15 06:17:46.885839+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_dc_actions",
    "source": "CORRECTION note (no data change)",
+   "method": "source wall record",
    "n_rows": 0,
-   "built_at": "2026-08-14 23:12:59+00"
+   "built_at": "2026-08-14 23:12:59+00",
+   "notes": "datacenterwatch.org quarterly pages (/q22025, /q3-q4-2025, /q1-2026) render content client-side from /api/* which robots.txt DISALLOWS -> quarterly content BLOCKED for compliant crawling (0 'Indiana' strings in served HTML). Original /report page is server-rendered: parsed; its 2nd IN entry (Burns Harbor) split-format missed by parser but already held in energy.dc_opposition_tracker."
   },
   {
    "table_name": "in_dc_docket_tracker",
    "source": "energy.dc_docket_tracker",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 06:18:23.121893+00"
+   "built_at": "2026-08-15 06:18:23.121893+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_dc_eei_tariffs",
    "source": "energy.dc_eei_tariffs",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 5,
-   "built_at": "2026-08-15 05:57:24.756252+00"
+   "built_at": "2026-08-15 05:57:24.756252+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_drought_by_state",
    "source": "energy.drought_by_state",
+   "method": "stateabbreviation=IN",
    "n_rows": 105,
-   "built_at": "2026-08-15 06:32:13.738953+00"
+   "built_at": "2026-08-15 06:32:13.738953+00",
+   "notes": "drought monitor series"
   },
   {
    "table_name": "in_echo_cwa_facilities",
    "source": "energy.echo_cwa_facilities",
+   "method": "census-keyed clip (state:query_state)",
    "n_rows": 13209,
-   "built_at": "2026-08-15 05:57:17.240952+00"
+   "built_at": "2026-08-15 05:57:17.240952+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_econ_gjf_megadeals",
    "source": "energy.econ_gjf_megadeals",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 26,
-   "built_at": "2026-08-15 05:57:28.512600+00"
+   "built_at": "2026-08-15 05:57:28.512600+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_eia860_generators",
    "source": "energy.eia860_generators",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 12479,
-   "built_at": "2026-08-15 06:01:59.139356+00"
+   "built_at": "2026-08-15 06:01:59.139356+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_eia860m_generators",
    "source": "energy.eia860m_generators",
+   "method": "census-keyed clip (state:plant_state)",
    "n_rows": 648,
-   "built_at": "2026-08-15 06:02:09.168893+00"
+   "built_at": "2026-08-15 06:02:09.168893+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_eia861_demand_response",
    "source": "energy.eia861_demand_response",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 660,
-   "built_at": "2026-08-15 06:03:12.058263+00"
+   "built_at": "2026-08-15 06:03:12.058263+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_eia861_reliability",
    "source": "energy.eia861_reliability",
+   "method": "state=IN",
    "n_rows": 36,
-   "built_at": "2026-08-15 05:01:22.392424+00"
+   "built_at": "2026-08-15 05:01:22.392424+00",
+   "notes": "SAIDI/SAIFI outage reliability per utility-year"
   },
   {
    "table_name": "in_eia861_sales",
    "source": "energy.eia861_sales",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 50,
-   "built_at": "2026-08-15 06:08:15.247680+00"
+   "built_at": "2026-08-15 06:08:15.247680+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_eia861_sales_ult_cust",
    "source": "energy.eia861_sales_ult_cust",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 51,
-   "built_at": "2026-08-15 06:08:18.883482+00"
+   "built_at": "2026-08-15 06:08:18.883482+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_eia861_territory",
    "source": "energy.eia861_service_territory",
+   "method": "state=IN",
    "n_rows": 10928,
-   "built_at": "2026-08-15 04:01:37.166373+00"
+   "built_at": "2026-08-15 04:01:37.166373+00",
+   "notes": ""
   },
   {
    "table_name": "in_eia923_fuel_receipts_costs",
    "source": "energy.eia923_fuel_receipts_costs",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 880,
-   "built_at": "2026-08-15 06:03:07.844765+00"
+   "built_at": "2026-08-15 06:03:07.844765+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_eia_plants",
    "source": "energy.eia_plants",
+   "method": "census-keyed clip (state:transmission_distribution_owner_state)",
    "n_rows": 2675,
-   "built_at": "2026-08-15 06:02:04.383625+00"
+   "built_at": "2026-08-15 06:02:04.383625+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_elec_power_operational",
    "source": "energy.elec_power_operational",
+   "method": "location=IN",
    "n_rows": 15178,
-   "built_at": "2026-08-15 06:32:06.360088+00"
+   "built_at": "2026-08-15 06:32:06.360088+00",
+   "notes": "EIA state-month operations"
   },
   {
    "table_name": "in_eqr_identity",
    "source": "energy.eqr_identity",
+   "method": "census-keyed clip (state:contact_state)",
    "n_rows": 2635,
-   "built_at": "2026-08-15 06:03:38.252643+00"
+   "built_at": "2026-08-15 06:03:38.252643+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_faa_obstacles",
    "source": "energy.faa_obstacles",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 15638,
-   "built_at": "2026-08-15 05:57:13.156586+00"
+   "built_at": "2026-08-15 05:57:13.156586+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_fcc_bdc",
    "source": "energy.fcc_bdc_fixed_availability",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 12649532,
-   "built_at": "2026-08-14 22:19:48.941824+00"
+   "built_at": "2026-08-14 22:19:48.941824+00",
+   "notes": null
   },
   {
    "table_name": "in_fcc_bdc_fixed_summary_by_geography",
    "source": "energy.fcc_bdc_fixed_summary_by_geography",
+   "method": "adaptive clip (geoid:geography_id)",
    "n_rows": 15900,
-   "built_at": "2026-08-15 06:28:10.586408+00"
+   "built_at": "2026-08-15 06:28:10.586408+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_fcc_bdc_mobile_summary",
    "source": "energy.fcc_bdc_mobile_summary_by_geography",
+   "method": "geoid prefix (regex bug fixed)",
    "n_rows": 533,
-   "built_at": "2026-08-15 06:31:58.446629+00"
+   "built_at": "2026-08-15 06:31:58.446629+00",
+   "notes": "mobile coverage summaries"
   },
   {
    "table_name": "in_fcc_bdc_mobile_summary_by_geography",
    "source": "energy.fcc_bdc_mobile_summary_by_geography",
+   "method": "adaptive clip (state:mobilebb_3g_area_st_pct)",
    "n_rows": 0,
-   "built_at": "2026-08-15 06:28:15.868301+00"
+   "built_at": "2026-08-15 06:28:15.868301+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_fcc_bdc_provider_summary",
    "source": "energy.fcc_bdc_provider_summary_by_geography",
+   "method": "geoid prefix (regex bug fixed)",
    "n_rows": 12196,
-   "built_at": "2026-08-15 06:32:02.505202+00"
+   "built_at": "2026-08-15 06:32:02.505202+00",
+   "notes": "per-provider summaries"
   },
   {
    "table_name": "in_fcc_bdc_provider_summary_by_geography",
    "source": "energy.fcc_bdc_provider_summary_by_geography",
+   "method": "adaptive clip (state:res_st_pct)",
    "n_rows": 0,
-   "built_at": "2026-08-15 06:28:20.054516+00"
+   "built_at": "2026-08-15 06:28:20.054516+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_fema_disaster_declarations",
    "source": "energy.fema_disaster_declarations",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1442,
-   "built_at": "2026-08-15 06:02:59.477781+00"
+   "built_at": "2026-08-15 06:02:59.477781+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_fema_nri_counties",
    "source": "energy.fema_nri_counties",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:30.841014+00"
+   "built_at": "2026-08-15 06:07:30.841014+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_ferc714_state_demand",
    "source": "energy.ferc714_state_demand",
+   "method": "census-keyed clip (state:state_id_fips)",
    "n_rows": 166554,
-   "built_at": "2026-08-15 05:56:59.128914+00"
+   "built_at": "2026-08-15 05:56:59.128914+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_flood",
    "source": "energy.nfhl_flood_zones",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 66140,
-   "built_at": "2026-08-14 22:20:23.852585+00"
+   "built_at": "2026-08-14 22:20:23.852585+00",
+   "notes": null
   },
   {
    "table_name": "in_fsis_establishments",
    "source": "energy.fsis_establishments",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 90,
-   "built_at": "2026-08-15 06:08:22.927409+00"
+   "built_at": "2026-08-15 06:08:22.927409+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_fsis_establishments_inactive",
    "source": "energy.fsis_establishments_inactive",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 13,
-   "built_at": "2026-08-15 06:18:14.939018+00"
+   "built_at": "2026-08-15 06:18:14.939018+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_gas_capacity_anr",
    "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacityANR&pAssetNbr=3005",
+   "method": "SSRS URL-access CSV export (&rs:Format=CSV), same renderer as the page's own PDF button; current posting, all locations kept. RE-SCRAPE: python pull_ebb_capacity.py tce && python load_to_bq.py anr",
    "n_rows": 554,
-   "built_at": "2026-08-15 04:35:49.332717+00"
+   "built_at": "2026-08-15 04:35:49.332717+00",
+   "notes": "ANR Pipeline (TC Energy). NAESB OA posting: EffGasDay+Cycle+PostingDate in-row. Loc id+name+zone, no state/county -> joinable-identity. Old ebb.anrpl.com EBB is dead (expired TLS cert since migration to TC eConnects)."
   },
   {
    "table_name": "in_gas_capacity_crossroads",
    "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacity&pAssetNbr=44",
+   "method": "SSRS URL-access CSV export (&rs:Format=CSV); current posting. RE-SCRAPE: python pull_ebb_capacity.py tce && python load_to_bq.py crossroads",
    "n_rows": 24,
-   "built_at": "2026-08-15 04:35:51.682453+00"
+   "built_at": "2026-08-15 04:35:51.682453+00",
+   "notes": "Crossroads Pipeline (XRD, TC Energy since CPG spinoff - NOT NiSource anymore). Schererville IN -> Cygnet OH. Loc id+name -> joinable-identity."
   },
   {
    "table_name": "in_gas_capacity_midwestern",
    "source": "DT Midstream Trellis PTMS public infopost, https://dtmidstream.trellisenergy.com/ptms/public/infopost/getInfoPostRpts.do?tspId=10&rptId=2 -> getInfoPostRptExportCsvFile.do?infoPostDataId=<id>",
+   "method": "public .do endpoints of the infopost UI (no auth); last-7-days postings, every cycle's CSV. RE-SCRAPE: python pull_ebb_capacity.py mgt && python load_to_bq.py midwestern",
    "n_rows": 3367,
-   "built_at": "2026-08-15 04:40:49.202028+00"
+   "built_at": "2026-08-15 04:40:49.202028+00",
+   "notes": "CORRECTION+RELOAD (same run): first load parsed the two-block Trellis CSV as one table (posting-metadata header became column set, 3,441 mixed rows); re-parsed into location rows + _hdr_* posting metadata. This row supersedes the 3,441-row registry row. Midwestern Gas Transmission - moved off oneok.com to DTM Trellis 2025-11-17 (DTM bought MGT/Guardian/Viking from ONEOK). tspId=10, rptId=2=OA capacity."
   },
   {
    "table_name": "in_gas_capacity_ngpl",
    "source": "Kinder Morgan DART infopost, https://pipeline2.kindermorgan.com/Capacity/OpAvailPoint.aspx?code=NGPL",
+   "method": "replicated the page's own EXCEL download button (WebForms postback, DownloadDDL=EXCEL), once per location purpose (Delivery+Receipt); current posting. robots.txt only disallows specific documents, capacity pages permitted. RE-SCRAPE: python pull_ebb_capacity.py ngpl && python load_to_bq.py ngpl",
    "n_rows": 693,
-   "built_at": "2026-08-15 04:35:56.324350+00"
+   "built_at": "2026-08-15 04:35:56.324350+00",
+   "notes": "NGPL (Kinder Morgan). Only a ~7km sliver clips Indiana in held geometry. Header block (gas day, cycle, posting time, meas basis) propagated onto every row as _hdr_* columns. Loc+LocName+Zone+Segment -> joinable-identity."
   },
   {
    "table_name": "in_gas_capacity_northern_border",
    "source": "TC eConnects infopost (public SSRS), https://www.tceconnects.com/infopost/ReportViewer.aspx?/InfoPost/OperationallyAvailableCapacity&pAssetNbr=3029",
+   "method": "SSRS URL-access CSV export (&rs:Format=CSV); current posting. RE-SCRAPE: python pull_ebb_capacity.py tce && python load_to_bq.py northern_border",
    "n_rows": 290,
-   "built_at": "2026-08-15 04:35:53.999293+00"
+   "built_at": "2026-08-15 04:35:53.999293+00",
+   "notes": "Northern Border Pipeline (TC Energy). Only ~49km clips NW Indiana in held geometry. Loc id+name -> joinable-identity."
   },
   {
    "table_name": "in_gas_capacity_panhandle_eastern",
    "source": "Energy Transfer Messenger ipost, https://peplmessenger.energytransfer.com/ipost/capacity/operationally-available-by-location?asset=PEPL (+by-segment)",
+   "method": "page's native CSV export (&f=csv&extension=csv&max=ALL); gasDay lookback attempted and honoured/refused per _requested_gas_day column. RE-SCRAPE: python pull_ebb_capacity.py et && python load_to_bq.py panhandle_eastern",
    "n_rows": 1979,
-   "built_at": "2026-08-15 04:35:58.923694+00"
+   "built_at": "2026-08-15 04:35:58.923694+00",
+   "notes": "PEPL. CSV carries State+County+Operator+Miles per location -> strongest identity class short of coordinates (county-plottable). Gas day/cycle are page-state; _requested_gas_day records what was asked."
   },
   {
    "table_name": "in_gas_capacity_texas_gas",
    "source": "Boardwalk GasQuest anonymous reporting API, POST https://reporting.prod.bwpmlp.org/infopost/infopostdetails {infoPostId:1,tspId:100000} -> GET /infopost/postings?postingsDocumentId=<id>",
+   "method": "replicated the public SPA's own calls (no login, no cognito needed - endpoints answer anonymously); CSV files are base64-in-transit; last-7-days postings, all cycles. RE-SCRAPE: python pull_ebb_capacity.py texas_gas && python load_to_bq.py texas_gas",
    "n_rows": 23220,
-   "built_at": "2026-08-15 04:37:19.991869+00"
+   "built_at": "2026-08-15 04:37:19.991869+00",
+   "notes": "Texas Gas Transmission (Boardwalk). infopost.bwpipelines.com now redirects to gasquest.com. NAESB CSV: LineCode+Segment+Loc+LocName+Zone, Effective Gas Day+Time+Post Date in-row -> joinable-identity."
   },
   {
    "table_name": "in_gas_capacity_trunkline",
    "source": "Energy Transfer Messenger ipost, https://tgcmessenger.energytransfer.com/ipost/capacity/operationally-available-by-location?asset=TGC (+by-segment)",
+   "method": "page's native CSV export (&f=csv&extension=csv&max=ALL); gasDay lookback attempted per _requested_gas_day column. RE-SCRAPE: python pull_ebb_capacity.py et && python load_to_bq.py trunkline",
    "n_rows": 1231,
-   "built_at": "2026-08-15 04:36:02.342081+00"
+   "built_at": "2026-08-15 04:36:02.342081+00",
+   "notes": "Trunkline Gas Company. CSV carries State+County+Operator -> county-plottable identity."
   },
   {
    "table_name": "in_gas_capacity_vector",
    "source": "Vector Pipeline informational postings via vendor EBB https://www.gasnom.com/ip/vector/cap_operationally_available.cfm (iframed by vector-pipeline.com)",
+   "method": "HTML table parse, ?dt=<Month D, YYYY> for 7-day lookback; gasnom.com has no robots.txt (404); vector-pipeline.com robots allows all. RE-SCRAPE: python pull_ebb_capacity.py vector && python load_to_bq.py vector",
    "n_rows": 4620,
-   "built_at": "2026-08-15 04:36:07.410460+00"
+   "built_at": "2026-08-15 04:36:07.410460+00",
+   "notes": "Vector Pipeline L.P. Per-row Eff Gas Day/Time + Cycle + Posting Date/Time. Loc id+name only -> joinable-identity."
   },
   {
    "table_name": "in_gas_compressor_stations",
    "source": "energy.gas_compressor_stations",
+   "method": "spatial clip to IN",
    "n_rows": 24,
-   "built_at": "2026-08-15 03:50:05.920049+00"
+   "built_at": "2026-08-15 03:50:05.920049+00",
+   "notes": null
   },
   {
    "table_name": "in_gas_lng_terminals",
    "source": "energy.gas_lng_terminals",
+   "method": "spatial clip to IN",
    "n_rows": 0,
-   "built_at": "2026-08-15 03:50:22.739512+00"
+   "built_at": "2026-08-15 03:50:22.739512+00",
+   "notes": null
   },
   {
    "table_name": "in_gas_phmsa_distribution",
    "source": "energy.gas_phmsa_distribution",
+   "method": "census-keyed clip (state:hq_address_state)",
    "n_rows": 266,
-   "built_at": "2026-08-15 06:03:42.779919+00"
+   "built_at": "2026-08-15 06:03:42.779919+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_gas_pipelines",
    "source": "energy.gas_pipelines_hifld",
+   "method": "spatial clip to IN",
    "n_rows": 215,
-   "built_at": "2026-08-15 03:47:35.274640+00"
+   "built_at": "2026-08-15 03:47:35.274640+00",
+   "notes": "geometry parse failures disclosed in export log"
   },
   {
    "table_name": "in_gas_processing_plants",
    "source": "energy.gas_processing_plants",
+   "method": "spatial clip to IN",
    "n_rows": 0,
-   "built_at": "2026-08-15 03:50:17.407360+00"
+   "built_at": "2026-08-15 03:50:17.407360+00",
+   "notes": null
   },
   {
    "table_name": "in_gas_state_capacity",
    "source": "energy.gas_eia_state_capacity",
+   "method": "IN-border filter",
    "n_rows": 1017,
-   "built_at": "2026-08-15 03:50:27.556061+00"
+   "built_at": "2026-08-15 03:50:27.556061+00",
+   "notes": "EIA state-to-state DESIGN capacity - not operational availability"
   },
   {
    "table_name": "in_gas_storage",
    "source": "energy.gas_storage",
+   "method": "spatial clip to IN",
    "n_rows": 22,
-   "built_at": "2026-08-15 03:50:11.617317+00"
+   "built_at": "2026-08-15 03:50:11.617317+00",
+   "notes": null
   },
   {
    "table_name": "in_ghgrp_emissions",
    "source": "energy.ghgrp_emissions x in_ghgrp_facilities",
+   "method": "facility-id join",
    "n_rows": 9310,
-   "built_at": "2026-08-15 06:32:17.216575+00"
+   "built_at": "2026-08-15 06:32:17.216575+00",
+   "notes": "emissions series for IN facilities"
   },
   {
    "table_name": "in_ghgrp_emitter_facilities",
    "source": "energy.ghgrp_emitter_facilities",
+   "method": "census-keyed clip (state:state_name)",
    "n_rows": 2882,
-   "built_at": "2026-08-15 06:02:46.748920+00"
+   "built_at": "2026-08-15 06:02:46.748920+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_ghgrp_facilities",
    "source": "energy.ghgrp_facilities",
+   "method": "census-keyed clip (state:state_name)",
    "n_rows": 3391,
-   "built_at": "2026-08-15 06:02:42.782907+00"
+   "built_at": "2026-08-15 06:02:42.782907+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_gov_auction_gsa",
    "source": "energy.gov_auction_gsa",
+   "method": "census-keyed clip (state:iso_state_name)",
    "n_rows": 2,
-   "built_at": "2026-08-15 05:57:35.994814+00"
+   "built_at": "2026-08-15 05:57:35.994814+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_gov_surplus_frpp",
    "source": "energy.gov_surplus_frpp",
+   "method": "census-keyed clip (state:state_code)",
    "n_rows": 1594,
-   "built_at": "2026-08-15 06:02:55.241461+00"
+   "built_at": "2026-08-15 06:02:55.241461+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_gov_surplus_nces",
    "source": "energy.gov_surplus_nces",
+   "method": "widened-predicate clip (st_leaid, mstate, out_of_state_flag)",
    "n_rows": 1928,
-   "built_at": "2026-08-15 06:24:20.830516+00"
+   "built_at": "2026-08-15 06:24:20.830516+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
   },
   {
    "table_name": "in_grid_plans",
    "source": "IURC TDSIC public XLSX workpapers (iurc.portal.in.gov filings)",
+   "method": "APPEND pass-3: openpyxl extraction from public xlsx exhibits/workpapers of current TDSIC dockets",
    "n_rows": 7,
-   "built_at": "2026-08-14 23:09:28+00"
+   "built_at": "2026-08-14 23:09:28+00",
+   "notes": "table total now 618. Pulled 2026-08-14 23:09:13 UTC."
   },
   {
    "table_name": "in_groundwater_sites",
    "source": "energy.groundwater_sites",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 06:18:33.155511+00"
+   "built_at": "2026-08-15 06:18:33.155511+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
+  },
+  {
+   "table_name": "in_iocs_county_context",
+   "source": "indiana_app.in_si_refresh_iocs_eviction x energy.county_boundaries",
+   "method": "operator sign-off 2026-08-15: COUNTY GRAIN ONLY, poison rows excluded",
+   "n_rows": 92,
+   "built_at": "2026-08-15 17:39:48.841306+00",
+   "notes": "MF is a per-court COLUMN of counts, never a per-address event, so it cannot be a parcel-grain signal at any confidence. EXCLUDES County_Name='STATE' (a statewide TOTAL row) and 'nan' - together they were 62% of the MF sum (83,446 -> 31,535) and 66% of EV (442,076 -> 151,986), which is why the raw county list read 94 names for a 92-county state. All 92 names join county_boundaries exactly."
   },
   {
    "table_name": "in_iurc_dockets",
    "source": "https://iurc.portal.in.gov/advanced-search/ via companion API https://zus1iurcprodd365companionappmaster-appservice.azurewebsites.net",
+   "method": "POST /api/search/advanced (anonymous public backend of the search page); sweeps by petition type (LLC Project/Econ Dev/TDSIC/TAR/EGR/SDC/CoN/Contract), big-5 electric utilities x rate petitions (kept 2022+), and data-center party names; 1.1s/request",
    "n_rows": 516,
-   "built_at": "2026-08-14 22:50:16+00"
+   "built_at": "2026-08-14 22:50:16+00",
+   "notes": "observed date=iurc_petitiondate (filing). No free-text title field exists in this API; relevance from petition_type+parties. matched_terms lists sweep provenance. Refutes registry 'Indiana URC (EDS) BLOCKED (SPA)'. Pulled 2026-08-14 22:50:12 UTC."
   },
   {
    "table_name": "in_land_faa_sua",
    "source": "energy.land_faa_sua",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 19,
-   "built_at": "2026-08-15 06:18:00.722923+00"
+   "built_at": "2026-08-15 06:18:00.722923+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_land_military_bases",
    "source": "energy.land_military_bases",
+   "method": "adaptive clip (spatial:geometry_geojson)",
    "n_rows": 13,
-   "built_at": "2026-08-15 06:29:32.574238+00"
+   "built_at": "2026-08-15 06:29:32.574238+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_lbnl_interconnection_costs",
    "source": "energy.lbnl_interconnection_costs",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 116,
-   "built_at": "2026-08-15 06:06:44.069730+00"
+   "built_at": "2026-08-15 06:06:44.069730+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_miso_poi",
    "source": "energy.miso_poi_monitored_facilities (points in IN polygon)",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 0,
-   "built_at": "2026-08-14 22:19:31.536846+00"
+   "built_at": "2026-08-14 22:19:31.536846+00",
+   "notes": null
   },
   {
    "table_name": "in_miso_poi_300mw",
    "source": "giqueue.misoenergy.org POI/api/poi_mf?pMaxValue=300",
+   "method": "bounded re-harvest, Indiana POIs only",
    "n_rows": 40007,
-   "built_at": "2026-08-15 06:08:39.159412+00"
+   "built_at": "2026-08-15 06:08:39.159412+00",
+   "notes": "the 300MW-class request the 99999 probe could not answer; observed vintage per publisher payload"
   },
   {
    "table_name": "in_miso_poi_identity",
    "source": "MISO giqueue legacy POI viewer https://giqueue.misoenergy.org/POI/api/pois (via held energy.miso_poi_attributes, pulled 2026-08-02; AES blob the viewer decrypts client-side for every visitor, key ships in the public JS bundle)",
+   "method": "derived: SELECT from held energy.miso_poi_attributes LEFT JOIN facility counts from energy.miso_poi_monitored_facilities; registry-first, no re-scrape. CartoVista re-probe 2026-08-14: maps/details+DataColumns 200, geojson/DataRows/dataQueryExecute all 403 (MISO_POIs_2025-11-11, 19,223 rows, ProtectedData) - identity NOT served by CartoVista.",
    "n_rows": 12845,
-   "built_at": "2026-08-14 22:39:42.260106+00"
+   "built_at": "2026-08-14 22:39:42.260106+00",
+   "notes": "poi_name -> bus_number/bus_name/kV/area/lat-lon, footprint-wide as served: 12,845 POIs, 12,179 distinct bus_number, 9,981 with usable coords (publisher serves 0,0 as its own unknown; flagged, never dropped). Joins energy.miso_poi_monitored_facilities on poi_name at 11,820/11,820 = 100%. VINTAGE DPP-2021-Cycle (publisher disclaimer) - NOT the 2025-11-11 vintage of the protected CartoVista layer; the held DPP2025 geometry-only set is energy.cartovista_miso_poi_locations (8,219 x/y) with energy.miso_poi_location_crosswalk relating the two."
   },
   {
    "table_name": "in_news_dc",
    "source": "CORRECTION note (no data change)",
+   "method": "provider outcome record",
    "n_rows": 0,
-   "built_at": "2026-08-14 23:12:56+00"
+   "built_at": "2026-08-14 23:12:56+00",
+   "notes": "Of the two permitted providers, Bing News RSS produced all 283 rows (114 queries OK). GDELT DOC API returned HTTP 429 on every call despite 5.5s spacing (server text demands 5s) - 0 rows this run; treat GDELT as rate-limited-unavailable from this network, retry later if needed."
   },
   {
    "table_name": "in_nfirs_basicincident_2020",
    "source": "energy.nfirs_basicincident_2020",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 38287,
-   "built_at": "2026-08-15 06:29:15.312521+00"
+   "built_at": "2026-08-15 06:29:15.312521+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_basicincident_2021",
    "source": "energy.nfirs_basicincident_2021",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 38492,
-   "built_at": "2026-08-15 06:29:02.388785+00"
+   "built_at": "2026-08-15 06:29:02.388785+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_basicincident_2022",
    "source": "energy.nfirs_basicincident_2022",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 40044,
-   "built_at": "2026-08-15 05:58:04.223895+00"
+   "built_at": "2026-08-15 05:58:04.223895+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nfirs_basicincident_2023",
    "source": "energy.nfirs_basicincident_2023",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 46748,
-   "built_at": "2026-08-15 05:57:55.744576+00"
+   "built_at": "2026-08-15 05:57:55.744576+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nfirs_basicincident_2024",
    "source": "energy.nfirs_basicincident_2024",
+   "method": "census-keyed clip (state:STATE)",
    "n_rows": 49811,
-   "built_at": "2026-08-15 05:57:47.457474+00"
+   "built_at": "2026-08-15 05:57:47.457474+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nfirs_fireincident_2020",
    "source": "energy.nfirs_fireincident_2020",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 9652,
-   "built_at": "2026-08-15 06:29:25.157092+00"
+   "built_at": "2026-08-15 06:29:25.157092+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_fireincident_2021",
    "source": "energy.nfirs_fireincident_2021",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 9798,
-   "built_at": "2026-08-15 06:29:11.241608+00"
+   "built_at": "2026-08-15 06:29:11.241608+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_fireincident_2022",
    "source": "energy.nfirs_fireincident_2022",
+   "method": "widened-predicate clip (ST_DAM_HVY, ST_DAM_XTR, MOB_STATE)",
    "n_rows": 1221,
-   "built_at": "2026-08-15 06:24:29.408262+00"
+   "built_at": "2026-08-15 06:24:29.408262+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
   },
   {
    "table_name": "in_nfirs_fireincident_2024",
    "source": "energy.nfirs_fireincident_2024",
+   "method": "census-keyed clip (state:MOB_STATE)",
    "n_rows": 1255,
-   "built_at": "2026-08-15 06:03:55.423970+00"
+   "built_at": "2026-08-15 06:03:55.423970+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_nfirs_incidentaddress_2020",
    "source": "energy.nfirs_incidentaddress_2020",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 38287,
-   "built_at": "2026-08-15 06:29:19.964884+00"
+   "built_at": "2026-08-15 06:29:19.964884+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_incidentaddress_2021",
    "source": "energy.nfirs_incidentaddress_2021",
+   "method": "adaptive clip (state:STATE)",
    "n_rows": 38492,
-   "built_at": "2026-08-15 06:29:06.832549+00"
+   "built_at": "2026-08-15 06:29:06.832549+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_nfirs_incidentaddress_2022",
    "source": "energy.nfirs_incidentaddress_2022",
+   "method": "census-keyed clip (state:STATE_ID)",
    "n_rows": 40091,
-   "built_at": "2026-08-15 05:58:08.351990+00"
+   "built_at": "2026-08-15 05:58:08.351990+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nfirs_incidentaddress_2023",
    "source": "energy.nfirs_incidentaddress_2023",
+   "method": "census-keyed clip (state:STATE_ID)",
    "n_rows": 46717,
-   "built_at": "2026-08-15 05:57:59.819176+00"
+   "built_at": "2026-08-15 05:57:59.819176+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nfirs_incidentaddress_2024",
    "source": "energy.nfirs_incidentaddress_2024",
+   "method": "census-keyed clip (state:STATE_ID)",
    "n_rows": 49895,
-   "built_at": "2026-08-15 05:57:51.638853+00"
+   "built_at": "2026-08-15 05:57:51.638853+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nhd_waterbody",
    "source": "energy.nhd_waterbody",
+   "method": "census-keyed clip (state:src_state)",
    "n_rows": 186667,
-   "built_at": "2026-08-15 05:57:04.425363+00"
+   "built_at": "2026-08-15 05:57:04.425363+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_nonattainment",
    "source": "energy.nonattainment_areas",
+   "method": "spatial clip to IN",
    "n_rows": 62,
-   "built_at": "2026-08-15 05:02:02.992883+00"
+   "built_at": "2026-08-15 05:02:02.992883+00",
+   "notes": "air-permitting gate for on-site generation"
   },
   {
    "table_name": "in_nrc_reactors",
    "source": "energy.nrc_reactors",
+   "method": "adaptive clip (state:state)",
    "n_rows": 0,
-   "built_at": "2026-08-15 06:28:29.131474+00"
+   "built_at": "2026-08-15 06:28:29.131474+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_openstates_energy_bill_abstracts",
    "source": "energy.openstates_energy_bill_abstracts",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 66,
-   "built_at": "2026-08-15 06:07:21.541262+00"
+   "built_at": "2026-08-15 06:07:21.541262+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_openstates_energy_bill_actions",
    "source": "energy.openstates_energy_bill_actions",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 811,
-   "built_at": "2026-08-15 06:02:32.989958+00"
+   "built_at": "2026-08-15 06:02:32.989958+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_openstates_energy_bill_sources",
    "source": "energy.openstates_energy_bill_sources",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 132,
-   "built_at": "2026-08-15 06:07:12.891540+00"
+   "built_at": "2026-08-15 06:07:12.891540+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_openstates_energy_bill_sponsorships",
    "source": "energy.openstates_energy_bill_sponsorships",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 300,
-   "built_at": "2026-08-15 06:02:37.830480+00"
+   "built_at": "2026-08-15 06:02:37.830480+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_openstates_energy_bill_versions",
    "source": "energy.openstates_energy_bill_versions",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 140,
-   "built_at": "2026-08-15 06:06:48.380783+00"
+   "built_at": "2026-08-15 06:06:48.380783+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_openstates_energy_bill_vote_people",
    "source": "energy.openstates_energy_bill_vote_people",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 9197,
-   "built_at": "2026-08-15 06:02:28.226201+00"
+   "built_at": "2026-08-15 06:02:28.226201+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_openstates_energy_bill_votes",
    "source": "energy.openstates_energy_bill_votes",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 126,
-   "built_at": "2026-08-15 06:07:17.288056+00"
+   "built_at": "2026-08-15 06:07:17.288056+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_openstates_energy_bills",
    "source": "energy.openstates_energy_bills",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 21,
-   "built_at": "2026-08-15 06:17:56.039777+00"
+   "built_at": "2026-08-15 06:17:56.039777+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_openstates_energy_bills_v2",
    "source": "energy.openstates_energy_bills_v2",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 66,
-   "built_at": "2026-08-15 06:07:25.907269+00"
+   "built_at": "2026-08-15 06:07:25.907269+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_operating_generators",
    "source": "energy.operating_generators",
+   "method": "stateid=IN",
    "n_rows": 11795,
-   "built_at": "2026-08-15 06:32:10.016932+00"
+   "built_at": "2026-08-15 06:32:10.016932+00",
+   "notes": "EIA-860M live generators"
   },
   {
    "table_name": "in_ordinances_dc",
    "source": "https://api.municode.com/search (public JSON API of library.municode.com)",
+   "method": "exact-phrase search \"data center\"/\"data centers\", contentTypeId=CODES, all 45 IN clients, paged 25/page, 1.1s/request",
    "n_rows": 4,
-   "built_at": "2026-08-14 22:53:50+00"
+   "built_at": "2026-08-14 22:53:50+00",
+   "notes": "3 jurisdictions with hits of 45 IN Municode clients. AmLegal (codelibrary.amlegal.com) BLOCKED today: Cloudflare JS challenge 403 on HTML+/api/search/ despite robots Allow; held energy.amlegal_dc_ordinances IN rows (183) are loose data/center mentions, not phrase hits. county from census 2020 place_by_county. Pulled 2026-08-14 22:51:35 UTC."
   },
   {
    "table_name": "in_osm_power_lines",
    "source": "energy.osm_power_lines",
+   "method": "census-keyed clip (state:state_scraped)",
    "n_rows": 10906,
-   "built_at": "2026-08-15 06:02:19.434495+00"
+   "built_at": "2026-08-15 06:02:19.434495+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_osm_power_substations",
    "source": "energy.osm_power_substations",
+   "method": "census-keyed clip (state:state_scraped)",
    "n_rows": 2873,
-   "built_at": "2026-08-15 06:02:23.891864+00"
+   "built_at": "2026-08-15 06:02:23.891864+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_padus",
    "source": "energy.padus",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 4736,
-   "built_at": "2026-08-14 22:20:34.164806+00"
+   "built_at": "2026-08-14 22:20:34.164806+00",
+   "notes": null
   },
   {
    "table_name": "in_parcel_attrs",
    "source": "energy.mat_parcel_attrs x in_sites",
+   "method": "CORRECTION",
    "n_rows": 1143873,
-   "built_at": "2026-08-15 04:04:54.316021+00"
+   "built_at": "2026-08-15 04:04:54.316021+00",
+   "notes": "DEFECT: the IN slice of mat_parcel_attrs is 100 pct NULL on owner/zoning/land_use/year_built/assessed_value (all 3,553,381 rows) - upstream build gap, question filed with operator; keys join at 95.2 pct so the wiring is ready when values land"
   },
   {
    "table_name": "in_peeringdb_facilities",
    "source": "energy.peeringdb_facilities",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 19,
-   "built_at": "2026-08-15 06:17:51.317115+00"
+   "built_at": "2026-08-15 06:17:51.317115+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_pjm_bus_locations_candidate",
    "source": "DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-published points), energy.nat_substations_hifld + energy.osm_power_substations (AEP-footprint states), indiana_app.in_pjm_rtep_upgrades (name bridge); universe = energy.pjm_queuescope_results owner_label='AEP'",
+   "method": "tiered name-match ladder, tiers never blended, every row carries location_method + match_confidence + match_basis + collision_count; kV gate hard for 'high'; buses with no single-site defensible match keep NULL coords (never guessed); interpolation tier SKIPPED-BY-MEASUREMENT (QueueScope PSS/E bus numbers join energy.bus_hifld synthetic ids at 0/1,475)",
    "n_rows": 1475,
-   "built_at": "2026-08-14 23:35:59.232666+00"
+   "built_at": "2026-08-14 23:35:59.232666+00",
+   "notes": "One row per distinct AEP QueueScope bus (1,475). Located 229 = 15.5%. Methods: none/None=1246; substation_match_prefix/med=91; substation_match_exact/high=91; substation_match_exact/med=34; rtep_bridge/med=13. CANDIDATE table - estimation product, NOT publisher truth; style estimates differently. T0 'pjm_queue_facid' (added method value) uses PJM's own queue-point coordinates keyed by FAC_ID name+state+kV; T0 requires >=5-char name overlap AND a FAC code claimed by exactly one bus-name family (REBUILD: first build's 4-char rule produced false highs - CLIN matched both CLINCHFLD and CLINTO; this row supersedes the prior registry row for this table). No Orennia/commercial data touched."
   },
   {
    "table_name": "in_pjm_bus_withdrawal",
    "source": "in_pjm_queuescope_aep",
+   "method": "MIN(available_mw) per bus, WITHDRAWAL, dfax>=5pct, pre-existing overloads excluded+counted",
    "n_rows": 1475,
-   "built_at": "2026-08-15 06:15:07.288235+00"
+   "built_at": "2026-08-15 06:15:07.288235+00",
+   "notes": "2027 RTEP Summer Peak; the DC-direction single number; measured: every zero row was a pre-existing overload"
   },
   {
    "table_name": "in_pjm_gis_queues",
    "source": "PJM public GIS queue-point layer https://gis.pjm.com/arcgis/rest/services/Renewables/Queue/MapServer/0 (folder Renewables, anonymous Query capability; discovered behind pjm.com map pages)",
+   "method": "ArcGIS REST query, outFields=*, outSR=4326 (publisher reprojection), ordered paging by QUEUE_KEY, truncation alarm vs returnCountOnly; all rows in-session",
    "n_rows": 6923,
-   "built_at": "2026-08-14 23:30:44.881407+00"
+   "built_at": "2026-08-14 23:30:44.881407+00",
+   "notes": "6,923 queue POINTS with PJM's own coordinates. FAC_ID encodes facility name-prefix + state + kV (e.g. BERGNJ230); 24 rows have FAC_ID ending IN+kV (Indiana facilities). QUEUE_ID gives the queue position. PLOTTABILITY: DIRECTLY PLOTTABLE (publisher points, EPSG:4326). This is the top rung for in_pjm_bus_locations_candidate: PJM-published coordinates keyed by facility code. VOLTAGE column is the facility kV."
   },
   {
    "table_name": "in_pjm_nucra_costs",
    "source": "PJM NUCRA (Network Upgrade Cost Responsibility Allocation) - public XLSX export of the cycle-service-request-status page, endpoint https://www.pjm.com/m/ProjectTransition/GenerateExcelNUCRAProjectsAll",
+   "method": "replicated the page's own 'export all' POST (jsonModel GridName=ProjectTransition, ReportType=NUCRA); parsed verbatim, every column kept + names_indiana token-match flag; no login, no terms dialogue",
    "n_rows": 55,
-   "built_at": "2026-08-14 23:15:01.505719+00"
+   "built_at": "2026-08-14 23:15:01.505719+00",
+   "notes": "THE public machine-readable queue-project -> network-upgrade-cost mapping: network upgrade id -> allocated queue project ids -> cost -> TO -> state. 55 rows all-states, 1 name Indiana. Costs in $M per the page's conventions (same family as RTEP export). PLOTTABILITY: JOINABLE_IDENTITY (upgrade id joins in_pjm_rtep_upgrades/held txexp_pjm_tcic_upgrade_info; queue project ids join the PJM queue/queuescope universe; no coords served). Per-upgrade drilldowns exist at /m/ProjectTransition/NucraProjectDetails|UpgradeProjectsWithCostAlloc?upgradeId={id} (not crawled this run)."
   },
   {
    "table_name": "in_pjm_queuescope_aep",
    "source": "energy.pjm_queuescope_results (AEP = the I&M sliver)",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 303671,
-   "built_at": "2026-08-14 22:19:36.870082+00"
+   "built_at": "2026-08-14 22:19:36.870082+00",
+   "notes": null
   },
   {
    "table_name": "in_pjm_rtep_cost_allocations",
    "source": "PJM RTEP per-upgrade cost-allocation splits (public GET, no login) https://www.pjm.com/m/ProjectConst/UpgradeCostAllocations?upgradeId={id}",
+   "method": "same crawl as in_pjm_rtep_upgrade_details; sections 'Non-Load Ratio Share'/'Load Ratio Share' parsed to one row per (upgrade_id, share_type, zone, percent)",
    "n_rows": 375,
-   "built_at": "2026-08-14 23:47:00.365806+00"
+   "built_at": "2026-08-14 23:47:00.365806+00",
+   "notes": "Cost-split percentages by transmission zone for the Indiana-naming RTEP upgrades (932 ids crawled; INDIANA SLICE of 15,443). percent is the published allocation %, not dollars; dollars = percent x cost columns in in_pjm_rtep_upgrades (units $M per PJM definitions sheet). PLOTTABILITY: JOINABLE_IDENTITY via upgrade_id and zone code."
   },
   {
    "table_name": "in_pjm_rtep_upgrade_details",
    "source": "PJM RTEP upgrade detail fragments (public GET, no login) https://www.pjm.com/m/ProjectConst/UpgradeDetails?upgradeId={id}",
+   "method": "one GET per upgrade id over the Indiana-naming ids from in_pjm_rtep_upgrades; HTML fragment parsed verbatim (criteria violation, description, type, driver, sub-region, location, task, equipment, related-materials links). RE-SCRAPE (this slice): python pull_pjm_upgrade_details.py --crawl --load ; FULL UNIVERSE: add --all (~9.4h at 1.1s/request, resumable)",
    "n_rows": 932,
-   "built_at": "2026-08-14 23:46:54.748742+00"
+   "built_at": "2026-08-14 23:46:54.748742+00",
+   "notes": "One row per upgrade id; 932 ids crawled this run (932 Indiana-naming of 15,443 total - INDIANA SLICE, not the universe). No dates served in fragments (dates live in in_pjm_rtep_upgrades columns); related_materials carries TEAC/proposal-window links incl. 'N/A' hrefs exactly as published. PLOTTABILITY: JOINABLE_IDENTITY (upgrade_id -> in_pjm_rtep_upgrades; named locations; no coords)."
   },
   {
    "table_name": "in_pjm_rtep_upgrades",
    "source": "PJM Project Status & Cost Allocation (RTEP upgrades) - public grid export at https://www.pjm.com/planning/m/project-construction, endpoint https://www.pjm.com/m/ProjectConst/ProjectConstructionUpgrades",
+   "method": "replicated the page's own export: POST jsonModel (GridName=CostAllocation, no filters) -> XLSX blob (2.58 MB, sheets Data + Definitions-Mapping); parsed verbatim, all 31 columns kept; no login, no terms dialogue encountered",
    "n_rows": 15443,
-   "built_at": "2026-08-14 22:49:05.406779+00"
+   "built_at": "2026-08-14 22:49:05.406779+00",
+   "notes": "Full PJM RTEP upgrade list, all states; 932 rows name Indiana in the state column (state can be multi-valued). Observed event dates are the in-service/status/TEAC date columns in the data; _pulled_at=2026-08-14 stored separately. PLOTTABILITY: no coordinates served - JOINABLE-IDENTITY (upgrade id b/n/s-numbers, named substation endpoints in Location/Description, kV in Voltage, Transmission Owner, State). Named endpoints let Indiana buses join to the held substation layer; never geocoded here."
   },
   {
    "table_name": "in_power_plants",
    "source": "energy.power_plants",
+   "method": "census-keyed clip (state:State)",
    "n_rows": 208,
-   "built_at": "2026-08-15 06:06:30.993486+00"
+   "built_at": "2026-08-15 06:06:30.993486+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_puc_state_access_ledger",
    "source": "energy.puc_state_access_ledger",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 06:18:37.126847+00"
+   "built_at": "2026-08-15 06:18:37.126847+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_qcew_county_labor",
    "source": "energy.qcew_county_labor",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:35.269550+00"
+   "built_at": "2026-08-15 06:07:35.269550+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_queue",
    "source": "energy.interconnection_queue",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 948,
-   "built_at": "2026-08-14 22:19:18.970281+00"
+   "built_at": "2026-08-14 22:19:18.970281+00",
+   "notes": null
   },
   {
    "table_name": "in_queue_counties",
    "source": "energy.vw_grid_queue_counties",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 87,
-   "built_at": "2026-08-14 22:19:24.002393+00"
+   "built_at": "2026-08-14 22:19:24.002393+00",
+   "notes": null
   },
   {
    "table_name": "in_queue_miso",
    "source": "energy.queue_miso",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 456,
-   "built_at": "2026-08-15 05:57:43.196006+00"
+   "built_at": "2026-08-15 05:57:43.196006+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
+  },
+  {
+   "table_name": "in_queue_miso_extras",
+   "source": "energy.queue_miso",
+   "method": "operator sign-off 2026-08-15: JOIN table, not a second queue layer",
+   "n_rows": 456,
+   "built_at": "2026-08-15 17:40:00.233509+00",
+   "notes": "456 Indiana rows; 452 of their project numbers already exist in interconnection_queue, so rendering both would double-count the queue on any map or total. Kept for the columns the other table has no field for: studyphase (442 filled), poiname (455 - joins to our bus work), and the DPP ERIS/NRIS MW split (456)."
   },
   {
    "table_name": "in_railroads",
    "source": "energy.railroads",
+   "method": "adaptive clip (geoid:stcntyfips)",
    "n_rows": 2117,
-   "built_at": "2026-08-15 06:29:36.793975+00"
+   "built_at": "2026-08-15 06:29:36.793975+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_roads_primary",
    "source": "energy.roads_primary",
+   "method": "adaptive clip (spatial:geom)",
    "n_rows": 225,
-   "built_at": "2026-08-15 06:29:41.774004+00"
+   "built_at": "2026-08-15 06:29:41.774004+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_roads_secondary",
    "source": "energy.roads_secondary",
+   "method": "adaptive clip (spatial:geom)",
    "n_rows": 861,
-   "built_at": "2026-08-15 06:29:47.545224+00"
+   "built_at": "2026-08-15 06:29:47.545224+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_rto_expansion",
    "source": "MISO MTEP (held energy.txexp_miso_mtep_appendix_a_in_service/_status/_under_evaluation, cdn.misoenergy.org public XLSX, pulled 2026-08-07) + PJM RTEP Project Status & Cost Allocation (indiana_app.in_pjm_rtep_upgrades, public export pulled 2026-08-14)",
+   "method": "derived UNION, Indiana token-match on the publishers' own state columns; MISO side registry-first from held tables (not re-scraped); cost units kept per publisher and never fused (MISO: USD; PJM: millions USD)",
    "n_rows": 2034,
-   "built_at": "2026-08-14 22:50:44.445870+00"
+   "built_at": "2026-08-14 22:50:44.445870+00",
+   "notes": "RTO-level expansion/upgrade projects naming Indiana: {'MISO/txexp_miso_mtep_appendix_a_in_service': 697, 'MISO/txexp_miso_mtep_appendix_a_status': 328, 'MISO/txexp_miso_mtep_under_evaluation': 77, 'PJM/in_pjm_rtep_upgrades': 932}. Columns: project_id, facility_id, name, description, type, kv_max/min, from/to_endpoint (named subs where published), states_named, owner, status, in_service_date, approval_date, cost_raw+cost_unit, cycle. PLOTTABILITY: JOINABLE_IDENTITY on every row (no coords served; named endpoints + kV + owner are the join keys; nothing geocoded). State-jurisdictional plans (IURC TDSIC/IRP) deliberately absent - other lane's scope."
   },
   {
    "table_name": "in_sba_foia_loans",
    "source": "energy.sba_foia_loans",
+   "method": "census-keyed clip (state:cdc_state)",
    "n_rows": 5135,
-   "built_at": "2026-08-15 06:03:29.695206+00"
+   "built_at": "2026-08-15 06:03:29.695206+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_sec_cik_registrant_state",
    "source": "energy.sec_cik_registrant_state",
+   "method": "census-keyed clip (state:state_of_incorporation)",
    "n_rows": 8,
-   "built_at": "2026-08-15 06:18:10.740834+00"
+   "built_at": "2026-08-15 06:18:10.740834+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_seismic",
    "source": "energy.seismic_design",
+   "method": "geoid prefix 18",
    "n_rows": 88,
-   "built_at": "2026-08-15 04:01:32.566673+00"
+   "built_at": "2026-08-15 04:01:32.566673+00",
+   "notes": ""
   },
   {
    "table_name": "in_si_candidates",
    "source": "in_si_evansville_demolition_permits x in_sites",
+   "method": "normalized parcel-id join",
    "n_rows": 4170,
-   "built_at": "2026-08-15 04:30:45.930636+00"
+   "built_at": "2026-08-15 04:30:45.930636+00",
+   "notes": "CANDIDATE signals for THIS app only - never the national engine; southbend orders are address-keyed, county-grain pending"
+  },
+  {
+   "table_name": "in_si_d11_admitted",
+   "source": "indiana_app.in_si_d11_entity_dissolution",
+   "method": "operator sign-off 2026-08-15: admit terminal status families only",
+   "n_rows": 983,
+   "built_at": "2026-08-15 17:39:31.153386+00",
+   "notes": "983 of 2,129. EXCLUDES status_family='withdrawn' (1,146) - 'Surrendered'/'Withdrawn - Can Reinstate' is an out-of-state entity giving up authority or a reinstatable lapse, which is weaker evidence that a property is coming free. Every admitted row carries an address."
   },
   {
    "table_name": "in_si_d11_entity_dissolution",
    "source": "energy.si_d11_entity_dissolution",
+   "method": "widened-predicate clip (state, addr_state)",
    "n_rows": 2129,
-   "built_at": "2026-08-15 06:24:16.564251+00"
+   "built_at": "2026-08-15 06:24:16.564251+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
+  },
+  {
+   "table_name": "in_si_d25_admitted",
+   "source": "indiana_app.in_si_d25_stb_abandonment_state",
+   "method": "operator sign-off 2026-08-15: admit abandonment EVENTS, not the paperwork about them",
+   "n_rows": 127,
+   "built_at": "2026-08-15 17:39:36.660473+00",
+   "notes": "127 of 874. EXCLUDES procedural filings (Reply 185, Request For Extension Of Time 150, Certificate Of Service 26, Modify/Supplement 30, Protest 22, ...) which are correspondence about a docket, not an abandonment. filed_date is a STRING m/d/Y upstream - parsed into filed_date_parsed, all 127 parsing cleanly. Range 2002-06-21 to 2026-01-05; the newest is a Central Railroad Company of Indianapolis abandonment exemption. NOTE for anyone reading this column: MIN/MAX on the raw STRING date is LEXICOGRAPHIC and lies - '9/5/2019' outranks '1/23/2017' on the leading character. Always aggregate filed_date_parsed."
   },
   {
    "table_name": "in_si_d25_stb_abandonment_state",
    "source": "energy.si_d25_stb_abandonment_state",
+   "method": "widened-predicate clip (state_parse_rule, state, state_count_in_docket)",
    "n_rows": 874,
-   "built_at": "2026-08-15 06:24:24.927500+00"
+   "built_at": "2026-08-15 06:24:24.927500+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
+  },
+  {
+   "table_name": "in_si_d27_admitted",
+   "source": "indiana_app.in_si_d27_ucc_lapse_v2",
+   "method": "operator sign-off 2026-08-15: admit all rows as D27 candidates",
+   "n_rows": 156,
+   "built_at": "2026-08-15 17:39:42.849574+00",
+   "notes": "156 rows, all keying='address' at quality_mult 0.8, every one carrying address+zip. NOTE 154 distinct filing_id over 156 rows - two ids repeat; not deduped pending a rule."
   },
   {
    "table_name": "in_si_d27_ucc_lapse_v2",
    "source": "energy.si_d27_ucc_lapse_v2",
+   "method": "widened-predicate clip (state, addr_state)",
    "n_rows": 156,
-   "built_at": "2026-08-15 06:24:34.348821+00"
+   "built_at": "2026-08-15 06:24:34.348821+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
   },
   {
    "table_name": "in_si_evansville_demolition_permits",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/BC/BUILDING_COMMISSION_PERMITS/MapServer/0",
+   "method": "arcgis_rest POST objectIds-chunked WHERE UPPER(USER_Project_Activity) LIKE '%WRECK%' (lane_c)",
    "n_rows": 4190,
-   "built_at": "2026-08-14 23:10:41.204776+00"
+   "built_at": "2026-08-14 23:10:41.204776+00",
+   "notes": "D21_demolition (Vanderburgh building-commission WRECKING permits). Subject values 'BUILDING WRECKING COMMERCIAL'/'BUILDING WRECKING RESIDENTIAL' - corpus has NO 'DEMOLITION' label (all 31 USER_Project_Activity values enumerated; DEMO=0, WRECK=4190, RAZ=0). OBSERVED EVENT DATE: USER_Application_Recv_d (epoch ms) = application received; USER_Actual_Start_Date/End_Date when present. USER_Parcel_ID + address keys. publisher_count=4190. Parent corpus 153,909 permits/31 types; only the wrecking subject pulled as seller-intent. activity_breakdown={'BUILDING WRECKING  COMMERCIAL': 419, 'BUILDING WRECKING  RESIDENTIAL': 3771}"
   },
   {
    "table_name": "in_si_evansville_foreclosures",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/ASSESSOR/FORECLOSURES/MapServer",
+   "method": "arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c)",
    "n_rows": 5758,
-   "built_at": "2026-08-14 23:05:53.327391+00"
+   "built_at": "2026-08-14 23:05:53.327391+00",
+   "notes": "D2_foreclosure (Vanderburgh assessor annual foreclosure layers 2006-2019) | layers: 14:Foreclosures_2019=373(pub 373); 12:Foreclosures_2018=221(pub 221); 11:Foreclosures_2017=250(pub 250); 0:Foreclosures - 2016=332(pub 332); 1:Foreclosures - 2015=334(pub 334); 2:Foreclosures - 2014=363(pub 363); 3:Foreclosures - 2013=519(pub 519); 4:Foreclosures - 2012=446(pub 446); 5:Foreclosures - 2011=439(pub 439); 6:Foreclosures - 2010=397(pub 397); 7:Foreclosures - 2009=613(pub 613); 8:Foreclosures - 2008=524(pub 524); 9:Foreclosures - 2007=413(pub 413); 10:Foreclosures - 2006=534(pub 534) | OBSERVED EVENT DATE granularity = the sale year in src_layer_name (assessor publishes one layer per year; no per-row filing date). Parcel-keyed via Current_Parcels_StatePIN/StatePIN (82-...). Full CAMA attributes incl owner, assessments, LastSaleDate. Duplicate standalone services ASSESSOR/FORECLOSURES_2017 and _2018 NOT pulled (same layers)."
   },
   {
    "table_name": "in_si_evansville_taxsale",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/SITE_PROJECTS/TAX_SALE/MapServer",
+   "method": "arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c)",
    "n_rows": 3202,
-   "built_at": "2026-08-14 23:06:34.909650+00"
+   "built_at": "2026-08-14 23:06:34.909650+00",
+   "notes": "D1_tax_sale (Vanderburgh county tax-sale property lists Aug2020-Aug2026) | layers: 0:Tax Sale Property as of  Aug 3, 2026=513(pub 513); 1:Tax Sale Property From Aug 2025=502(pub 502); 2:Tax Sale Property From July 2024=628(pub 628); 3:Tax Sale Property From Aug 2023=503(pub 503); 4:Tax Sale Property From Aug 2022=454(pub 454); 5:Tax Sale Property From Aug 2020=602(pub 602) | OBSERVED EVENT DATE = sale-list date embedded in src_layer_name ('Tax Sale Property as of Aug 3, 2026' is the CURRENT list; earlier layers Aug 2025/July 2024/Aug 2023/Aug 2022/Aug 2020). StatePIN parcel-keyed; AMT_DUE_BEFORE_SALE, MINIMUM_BID, SALE_ID, OWNER_NAME verbatim. Complements si_d1_sri_taxsale_listings (SRI) and Marion county archive."
   },
   {
    "table_name": "in_si_evansville_taxsale_transfers",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/ASSESSOR/TAX_SALES/MapServer",
+   "method": "arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c)",
    "n_rows": 941,
-   "built_at": "2026-08-14 23:07:09.383457+00"
+   "built_at": "2026-08-14 23:07:09.383457+00",
+   "notes": "D1_tax_sale outcome (Vanderburgh tax-sale TRANSFERS 2006-2011) | layers: 0:Tax Sale Transfers - 2011=146(pub 146); 1:Tax Sale Transfers - 2010=228(pub 228); 2:Tax Sale Transfers - 2009=165(pub 165); 3:Tax Sale Transfers - 2008=57(pub 57); 4:Tax Sale Transfers - 2007=183(pub 183); 5:Tax Sale Transfers - 2006=162(pub 162) | Parcels actually transferred at tax sale, one layer per year (year in src_layer_name = observed event year). StatePIN parcel-keyed, owner + assessment attributes."
   },
   {
    "table_name": "in_si_indy_abandoned_vacant",
    "source": "https://gis.indy.gov/server/rest/services/OpenData/OpenData_Infrastructure/MapServer/2",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 7120,
-   "built_at": "2026-08-14 22:56:07.935014+00"
+   "built_at": "2026-08-14 22:56:07.935014+00",
+   "notes": "D5_vacancy (city abandoned+vacant property registry) | publisher_count=7120 | Indy 'Abandoned and Vacant Houses' registry, parcel-keyed, STATUS in {Abandoned, Vacant}. NO event-date field exists on the layer - registry membership as of _pulled_at only (snapshot semantics). Identical copies exist at MapIndy/MapIndyProperty/MapServer/11 and /16 (same 7,120 count, same rows) - pulled ONCE from the OpenData copy; do not also wire the MapIndy copies."
   },
   {
    "table_name": "in_si_indy_surplus_parcels",
    "source": "https://gis.indy.gov/server/rest/services/SurplusProperties/SurplusPropertiesFeatures2/MapServer/7",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 595,
-   "built_at": "2026-08-14 22:55:47.287584+00"
+   "built_at": "2026-08-14 22:55:47.287584+00",
+   "notes": "surplus_auction (county-owned parcels offered at commissioners auction) | publisher_count=595 | SurplusProperties.dbo.SurplusParcels table. AuctionID embeds the auction date (e.g. '08162018 Commissioners'); SaleDate/SaleStatus/MinimumBid/VacantImpr present on subset. Observed event date = auction date in AuctionID or SaleDate. Government-owned surplus inventory, A1-adjacent (actively marketed by county)."
   },
   {
    "table_name": "in_si_indy_taxsale_parcels",
    "source": "https://gis.indy.gov/server/rest/services/TaxSaleViewer/TaxSaleParcels_BuildingBlocks/MapServer/0",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 62368,
-   "built_at": "2026-08-14 22:55:37.190846+00"
+   "built_at": "2026-08-14 22:55:37.190846+00",
+   "notes": "D1_tax_sale (Marion County archive w/ per-sale status) | publisher_count=62368 | Marion County tax-sale parcel records, TaxSaleViewer app layer. TAXYEAR spans 2009->2024; STATUSNAME (Satisfied/Deed Issued/...); STATUSDATE epoch-ms is the observed status event date; SALEID+RECORDTYPE identify the sale. PARCELNUMBER is the LOCAL Marion parcel id (7-digit), not the 18-digit state id. Distinct provenance from si_d1_sri_taxsale_listings (SRI actives): this is the county's own archive with outcomes. Geometry not stored (parcel-keyed)."
   },
   {
    "table_name": "in_si_refresh_brownfield_epa_in",
    "source": "EPA RE-Powering Mapper Sites 2022 ArcGIS FeatureServer, State='IN' slice of a national layer",
+   "method": "arcgis outFields=* WHERE State='IN' resultOffset paging to exhaustion",
    "n_rows": 1483,
-   "built_at": "2026-08-14 23:54:28.922167+00"
+   "built_at": "2026-08-14 23:54:28.922167+00",
+   "notes": "Lane D freshness refresh of brownfield_epa_repowering (1,378 IN rows held in si_signals; STATE-class signal, no observed_date expected). National layer holds 190976 features; Indiana slice (State='IN', a real published field, not a guessed column) = 1483 per publisher returnCountOnly, 1483 pulled. Other states deliberately NOT pulled -- out of scope for this Indiana lane. Programme/status-shaped columns (Program, Landfill, AML, REPwrPrfle) are candidate columns for the new-signal-candidates review."
   },
   {
    "table_name": "in_si_refresh_ibtr_appeals",
    "source": "www.in.gov IBTR DevExtreme determinations API",
+   "method": "POST loadOptions, paged skip/take, publisher currently returns whole corpus per call",
    "n_rows": 10152,
-   "built_at": "2026-08-14 23:48:44.116054+00"
+   "built_at": "2026-08-14 23:48:44.116054+00",
+   "notes": "Lane D freshness refresh of appeals_in_ibtr_determinations (6,953 IN rows held in si_signals, observed 2004-01-07..2026-08-05). Pulled 10152 determination records this run. ALL published fields captured raw-first (nested structures JSON-serialized). Time-sensitivity payoff: compare the publisher's own disposition/type/date fields against held rows to find petitions that have since been decided."
   },
   {
    "table_name": "in_si_refresh_indy_code_enforcement",
    "source": "gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indianapolis/Marion County code enforcement)",
+   "method": "arcgis outFields=* resultOffset paging to exhaustion",
    "n_rows": 910483,
-   "built_at": "2026-08-15 04:36:20.180741+00"
+   "built_at": "2026-08-15 04:36:20.180741+00",
+   "notes": "Lane D freshness refresh of si_d12_indy_marion_code_enforcement (747,211 IN rows held in si_signals, observed 2010-03-29..2024-02-27). Publisher returnCountOnly=910483; pulled 910483. All 12 layer fields captured, not just the originally-wired subset. Registry note: a separate agis_indy_code_enforcement/si_d12 acquisition already holds 910,483 rows (DUPLICATE-OF-HELD per Lane C) - this refresh re-measures the LIVE publisher state independently for the freshness diff."
   },
   {
    "table_name": "in_si_refresh_iocs_eviction",
    "source": "www.in.gov/courts/iocs (Indiana Office of Court Services statewide case statistics XLSX)",
+   "method": "direct file download (requests), all sheets/columns parsed with pandas",
    "n_rows": 6519,
-   "built_at": "2026-08-14 23:51:53.156997+00"
+   "built_at": "2026-08-14 23:51:53.156997+00",
+   "notes": "Lane D freshness refresh of si_d17_in_iocs_court_year/D17 eviction (370 IN rows held in si_signals, observed 2022-01-01..2025-01-01; registry separately measured 1,543 rows in BigQuery - discrepancy vs si_signals's 370 is itself a finding, see LANE_D_FINDINGS.md). 2026 filename probe (https://www.in.gov/courts/iocs/files/rpts-ijs-2026-pending-incoming-disposed-miscellaneous.xlsx): HTTP 404 - no 2026 file published yet under the same naming pattern, so the 2025 file remains the latest; re-pulled anyway in case the publisher revised the current file in place. All 19 sheet(s) and all columns captured, not just the originally-wired subset."
   },
   {
    "table_name": "in_si_refresh_sri_taxsale_in",
    "source": "sriservicesusermgmtprod.azurewebsites.net (SRI Services tax-sale platform, IN slice only)",
+   "method": "POST carddetail per IN county, recordCount=50000, state='IN' param scoped by the endpoint itself",
    "n_rows": 83547,
-   "built_at": "2026-08-14 23:56:08.472884+00"
+   "built_at": "2026-08-14 23:56:08.472884+00",
+   "notes": "Lane D freshness refresh of si_d1_sri_taxsale_listings/D1, INDIANA SLICE ONLY (80,056 IN rows held in si_signals, observed 2000-03-27..2026-10-20). Pulled 83547 rows across 82 of 91 IN roster counties this run. Other 4 active states (AL/CO/FL/LA/MI) deliberately NOT re-pulled here -- Lane C's 2026-08-14 registry pre-check already re-acquired the full multi-state corpus (217,226 rows total) via the existing loader; this is an independent Indiana-only measurement for the freshness diff, not a duplicate of that acquisition. saleTypeDescription/saleStatusCode/Description carry the remediation signal (Redemption/Adjudicated/etc. vs an active upcoming sale)."
   },
   {
    "table_name": "in_si_refresh_warn_notices",
    "source": "www.in.gov/dwd/warn-notices/current-warn-notices/ (Indiana DWD WARN notices, full history table)",
+   "method": "HTML table scrape (bs4), single page, robots.txt allowed",
    "n_rows": 1220,
-   "built_at": "2026-08-14 23:51:06.753943+00"
+   "built_at": "2026-08-14 23:51:06.753943+00",
+   "notes": "Lane D freshness refresh of warn_notices/D19 (1,039 IN rows held in si_signals, observed 1994-05-12..2026-07-21; registry separately measured 1,220 IN rows in BigQuery for source_state=IN). Parsed 1220 rows from the current single-page table this run. ALL columns captured: ['Company', 'City', 'Affected Workers', 'Notice Date', 'LO/CL Date', 'NAICS', 'Description of Work/Industry', 'Notice Type', 'col_8']. Time-sensitivity payoff: 'LO/CL Date' (layoff/closure date) and 'Notice Type' (WARN vs CL) per row let a consumer identify notices whose layoff/closure has since occurred."
   },
   {
    "table_name": "in_si_signals",
    "source": "energy.si_signals",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 1818158,
-   "built_at": "2026-08-14 22:18:49.242540+00"
+   "built_at": "2026-08-14 22:18:49.242540+00",
+   "notes": null
   },
   {
    "table_name": "in_si_southbend_chronic_problem",
    "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Chronic_Problem_Properties_List/FeatureServer/0",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 7,
-   "built_at": "2026-08-14 22:57:01.761139+00"
+   "built_at": "2026-08-14 22:57:01.761139+00",
+   "notes": "D12_code_violation (chronic problem property designations) | publisher_count=7 | South Bend Chronic Problem Properties List (municipal designation under city ordinance). OBSERVED EVENT DATE: Designation_Date (epoch ms). Address-keyed. Tiny list but the designation is a strong distress marker."
   },
   {
    "table_name": "in_si_southbend_code_enforcement",
    "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Code_Enforcement_Cases/FeatureServer/0",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 20414,
-   "built_at": "2026-08-14 22:57:27.527288+00"
+   "built_at": "2026-08-14 22:57:27.527288+00",
+   "notes": "D12_code_violation (case-level, St. Joseph County - NEW county for D12) | publisher_count=20414 | South Bend Code Enforcement Cases 2018-2020 (Historic). State_ID__ = 18-digit state parcel id -> parcel-keyed. OBSERVED EVENT DATE: Record_Open_Date (epoch ms); Record_Status_Date = status-change date. Record_Type spans Litter/Grass and Weeds/housing etc - consumer must read Record_Type (a name is not a subject). Extends D12 beyond Marion County."
   },
   {
    "table_name": "in_si_southbend_continuous_enforcement",
    "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Continuous_Enforcement/FeatureServer/4",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 241,
-   "built_at": "2026-08-14 22:57:08.179989+00"
+   "built_at": "2026-08-14 22:57:08.179989+00",
+   "notes": "D12_code_violation (continuous-enforcement orders) | publisher_count=241 | South Bend Continuous Enforcement orders. PARCELID (county) + STATE_ID (18-digit state parcel id). OBSERVED EVENT DATE: HEARING__OR_LETTER_DATE; EXPIRATION_DATE bounds the order. Status Active/... kept verbatim."
   },
   {
    "table_name": "in_si_southbend_demolition_orders",
    "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Active_Demolition_Orders/FeatureServer/0",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 80,
-   "built_at": "2026-08-14 22:56:49.635148+00"
+   "built_at": "2026-08-14 22:56:49.635148+00",
+   "notes": "D21_demolition (FIRST D21-type source held for Indiana) | publisher_count=80 | South Bend 'Demolition Orders (Historic / Non-Authoritative)' from data-southbend DCAT. Parcel-keyed: 'State' column IS the 18-digit state parcel id (71-...), 'County' is the county tax id - publisher swapped the labels, value-verified. OBSERVED EVENT DATES: Bid_Awarded_Date / Bid_Opening_Date (epoch ms when present). Sourced from the city's SharePoint code_enforcement/demolitions list. Snapshot, not live Accela."
   },
   {
    "table_name": "in_si_southbend_vacant_abandoned",
    "source": "https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/AllVacantandAbandonedProperties/FeatureServer/3",
+   "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 47,
-   "built_at": "2026-08-14 22:56:55.655576+00"
+   "built_at": "2026-08-14 22:56:55.655576+00",
+   "notes": "D5_vacancy (city V&A program list w/ outcomes) | publisher_count=47 | South Bend 'All Vacant and Abandoned Properties (Historic / Non-Authoritative)'. State_ID_LU = 18-digit state parcel id. OBSERVED EVENT DATE: Added_to_V_A_on_ (program entry) and State_ID_LU_Date_of_Outcome (outcome). Condition codes + repair cost estimates included."
   },
   {
    "table_name": "in_si_state_warn_notices",
    "source": "https://www.in.gov/dwd/warn-notices/current-warn-notices/",
+   "method": "html_table_parse (lane_c, robots-checked)",
    "n_rows": 1220,
-   "built_at": "2026-08-14 22:49:08.102582+00"
+   "built_at": "2026-08-14 22:49:08.102582+00",
+   "notes": "D19_warn extension: Indiana DWD current WARN notice list. Columns verbatim from page table: Company/City/Affected Workers/Notice Date/LO-CL Date/NAICS/Description/Notice Type + notice_pdf_urls. OBSERVED EVENT DATE = 'Notice Date'; 'LO/CL Date' is the announced layoff/closure effective date. Notice Type LO=layoff CL=closure. 1016/1220 rows have parseable Notice Date. Extends held D19 (1,039 rows) with current-period rows; dedupe on company+notice_date downstream."
   },
   {
    "table_name": "in_site_gates",
    "source": "in_sites x in_flood/in_wetlands/in_padus/in_bonus_geo",
+   "method": "per-parcel ST_INTERSECTS gates, class union",
    "n_rows": 1200923,
-   "built_at": "2026-08-15 16:02:56.569643+00"
+   "built_at": "2026-08-15 16:02:56.569643+00",
+   "notes": "FALSE = measured clear; joined only for class-union parcels"
   },
   {
    "table_name": "in_sites",
    "source": "energy.vw_parcel_sites (now incl. mat_parcel_outdoor_exact)",
+   "method": "RE-CLIP with exact building/outdoor columns",
    "n_rows": 3553194,
-   "built_at": "2026-08-15 16:02:19.648024+00"
+   "built_at": "2026-08-15 16:02:19.648024+00",
+   "notes": "exact coverage 3552799 of 3553194; ge25MW exact 511665 vs approx 511715"
   },
   {
    "table_name": "in_sites_county",
    "source": "in_sites x geo_us_boundaries.counties, greatest-intersection",
+   "method": "spine build 2026-08-14",
    "n_rows": 3553186,
-   "built_at": "2026-08-14 22:36:18.966515+00"
+   "built_at": "2026-08-14 22:36:18.966515+00",
+   "notes": null
   },
   {
    "table_name": "in_solar_potential",
    "source": "energy.solar_potential",
+   "method": "census-keyed clip (state:STATE_NAME)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:46.738720+00"
+   "built_at": "2026-08-15 06:07:46.738720+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_solar_pv_facilities",
    "source": "energy.solar_pv_facilities",
+   "method": "census-keyed clip (state:p_state)",
    "n_rows": 114,
-   "built_at": "2026-08-15 06:06:40.198838+00"
+   "built_at": "2026-08-15 06:06:40.198838+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_spc_severe_events",
    "source": "energy.spc_severe_events",
+   "method": "census-keyed clip (state:st)",
    "n_rows": 24716,
-   "built_at": "2026-08-15 05:57:09.134307+00"
+   "built_at": "2026-08-15 05:57:09.134307+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_state_irp_catalog",
    "source": "energy.state_irp_catalog",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 1,
-   "built_at": "2026-08-15 05:57:32.096552+00"
+   "built_at": "2026-08-15 05:57:32.096552+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_storm_events",
    "source": "energy.storm_events",
+   "method": "census-keyed clip (state:state_fips)",
    "n_rows": 12460,
-   "built_at": "2026-08-15 06:02:14.378190+00"
+   "built_at": "2026-08-15 06:02:14.378190+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_substations",
    "source": "energy.mat_grid_substations (HIFLD+OSM deduped)",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 3858,
-   "built_at": "2026-08-14 22:19:05.190261+00"
+   "built_at": "2026-08-14 22:19:05.190261+00",
+   "notes": null
   },
   {
    "table_name": "in_territories",
    "source": "energy.vw_grid_territories",
+   "method": "spatial clip+intersection to IN",
    "n_rows": 145,
-   "built_at": "2026-08-15 04:04:48.062009+00"
+   "built_at": "2026-08-15 04:04:48.062009+00",
+   "notes": "clipped to state boundary for payload; source polygons uncut in energy.*"
   },
   {
    "table_name": "in_transmission_lines",
    "source": "energy.transmission_lines (HIFLD), spatial clip",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 2623,
-   "built_at": "2026-08-14 22:19:13.484325+00"
+   "built_at": "2026-08-14 22:19:13.484325+00",
+   "notes": null
   },
   {
    "table_name": "in_tribal_land",
    "source": "energy.tribal_land",
+   "method": "census-keyed clip (geoid:geoid)",
    "n_rows": 14,
-   "built_at": "2026-08-15 06:18:05.363179+00"
+   "built_at": "2026-08-15 06:18:05.363179+00",
+   "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
    "table_name": "in_txexp_miso_mtep_appendix_a_status",
    "source": "energy.txexp_miso_mtep_appendix_a_status",
+   "method": "widened-predicate clip (state_2, state_1)",
    "n_rows": 328,
-   "built_at": "2026-08-15 06:24:38.293252+00"
+   "built_at": "2026-08-15 06:24:38.293252+00",
+   "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
   },
   {
    "table_name": "in_urdb_rates",
    "source": "energy.urdb_rates",
+   "method": "Indiana-named utilities (regex, disclosed)",
    "n_rows": 969,
-   "built_at": "2026-08-15 04:01:41.347366+00"
+   "built_at": "2026-08-15 04:01:41.347366+00",
+   "notes": "floor - a utility not name-matching Indiana is missed; territory join is the upgrade"
   },
   {
    "table_name": "in_usa_structures_county",
    "source": "energy.usa_structures_county",
+   "method": "census-keyed clip (geoid:geoid)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:50.878245+00"
+   "built_at": "2026-08-15 06:07:50.878245+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_ustp_ch7_tfr",
    "source": "energy.ustp_ch7_tfr",
+   "method": "census-keyed clip (state:ch7_state_tax_paid)",
    "n_rows": 33,
-   "built_at": "2026-08-15 05:57:39.544592+00"
+   "built_at": "2026-08-15 05:57:39.544592+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_utility_tariff_riders",
    "source": "energy.utility_tariff_riders",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 3,
-   "built_at": "2026-08-15 05:57:20.972941+00"
+   "built_at": "2026-08-15 05:57:20.972941+00",
+   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
   },
   {
    "table_name": "in_water",
    "source": "energy.nhd_flowline",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 2415369,
-   "built_at": "2026-08-14 22:19:43.020712+00"
+   "built_at": "2026-08-14 22:19:43.020712+00",
+   "notes": null
   },
   {
    "table_name": "in_water_aqueduct",
    "source": "energy.water_aqueduct",
+   "method": "adaptive clip (spatial:geometry_geojson)",
    "n_rows": 56,
-   "built_at": "2026-08-15 06:28:57.652145+00"
+   "built_at": "2026-08-15 06:28:57.652145+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_water_cwns_2022",
    "source": "energy.water_cwns_2022",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 404,
-   "built_at": "2026-08-15 06:03:16.352787+00"
+   "built_at": "2026-08-15 06:03:16.352787+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_water_use",
    "source": "energy.water_use",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 92,
-   "built_at": "2026-08-15 06:07:42.988746+00"
+   "built_at": "2026-08-15 06:07:42.988746+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_weather_stations",
    "source": "energy.weather_stations",
+   "method": "census-keyed clip (state:state)",
    "n_rows": 2108,
-   "built_at": "2026-08-15 06:03:03.613717+00"
+   "built_at": "2026-08-15 06:03:03.613717+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_wetlands",
    "source": "energy.nwi_wetlands",
+   "method": "one-time clip 2026-08-14",
    "n_rows": 453995,
-   "built_at": "2026-08-14 22:20:05.655666+00"
+   "built_at": "2026-08-14 22:20:05.655666+00",
+   "notes": null
   },
   {
    "table_name": "in_wind_turbines",
    "source": "energy.wind_turbines",
+   "method": "census-keyed clip (state:t_state)",
    "n_rows": 1652,
-   "built_at": "2026-08-15 06:02:50.856838+00"
+   "built_at": "2026-08-15 06:02:50.856838+00",
+   "notes": "WIRE-NEXT batch 2 (audit batch 2)"
   },
   {
    "table_name": "in_workforce_ipeds_cs_eng",
    "source": "energy.workforce_ipeds_cs_eng",
+   "method": "adaptive clip (geoid:fips)",
    "n_rows": 4830,
-   "built_at": "2026-08-15 06:28:24.965066+00"
+   "built_at": "2026-08-15 06:28:24.965066+00",
+   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
    "table_name": "in_workforce_ipeds_directory",
    "source": "energy.workforce_ipeds_directory",
+   "method": "census-keyed clip (state:state_abbr)",
    "n_rows": 112,
-   "built_at": "2026-08-15 06:08:07.477116+00"
+   "built_at": "2026-08-15 06:08:07.477116+00",
+   "notes": "WIRE-NEXT batch 3 (audit batch 3)"
   },
   {
    "table_name": "in_zctas",
    "source": "energy.zctas",
+   "method": "ZCTA 46/47 prefix (18-prefix was wrong - ZCTAs are not FIPS)",
    "n_rows": 807,
-   "built_at": "2026-08-15 06:32:22.223064+00"
+   "built_at": "2026-08-15 06:32:22.223064+00",
+   "notes": "IN zip-code areas"
   }
  ],
  "si_by_signal": [
@@ -1254,5 +1686,7 @@
    "counties": 0,
    "latest": "2026-06-05"
   }
- ]
+ ],
+ "registry_rows_total": 216,
+ "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

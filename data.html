@@ -15,6 +15,13 @@
     <div class="card"><div class="bigstat" id="s-built">…</div><div class="hint">last build (UTC)</div></div>
   </div>
   <div class="card"><h2>Honesty ledger</h2><div class="hint" id="ledger"></div></div>
+  <div class="card"><h2>Cloudscene cross-check — how complete is our data-centre layer?</h2>
+    <div class="hint" id="cs-summary"></div>
+    <div class="scroll" style="max-height:320px"><table id="t-cs"><tr><th>cloudscene name</th><th>city</th><th>market</th><th>held with coordinates?</th></tr></table></div>
+    <div class="prov">indiana_app.in_cloudscene_crosscheck · Indiana rows found through <code>market</code>,
+      which IS cloudscene's state key (<code>&lt;state&gt;-regional</code> buckets run across the table;
+      <code>state</code> is blank for 5,283 of 5,388 rows). <b>Cloudscene holds no coordinates</b>, so it can
+      never be a map layer — its only job is to tell us what our 242 pinned data centres might be missing.</div></div>
   <div class="card"><h2>Provenance — all registered tables</h2>
     <input id="f-q" placeholder="filter…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px;margin-bottom:8px">
     <div class="scroll" style="max-height:640px"><table id="t-prov"><tr><th>table</th><th>rows</th><th>source</th><th>built</th></tr></table></div></div>
@@ -40,6 +47,44 @@
   }
   document.getElementById("f-q").oninput = render;
   render();
+
+  // Cloudscene completeness cross-check: match its names against the data centres we hold PINNED.
+  const so = await fetchGz("data/signoff.json.gz");
+  const fac = await fetchGz("data/facilities.geojson.gz");
+  const stem = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const held = fac.features.filter((f) => f.properties.layer === "dc")
+    .map((f) => stem(f.properties.name)).filter((x) => x.length > 3);
+  const rowsCs = so.cloudscene.map((r) => {
+    const s = stem(r.name);
+    const hit = s.length > 3 && held.some((h) => h.startsWith(s) || s.startsWith(h));
+    return { ...r, hit };
+  });
+  // READ THE NAMES BEFORE REPORTING A GAP. 229 of the 260 are carrier central offices — 223 of
+  // them Frontier — not data centres. Reporting "254 unmatched" as a shortfall would claim we are
+  // missing 254 data centres when most were never data centres to begin with. Split the two.
+  const TELCO = /^(frontier|at&t|centurylink|lumen|windstream|comcast|charter|spectrum|verizon|smithville|mediacom|nex-tech|tds|citizens)/i;
+  for (const r of rowsCs) r.telco = TELCO.test(r.name || "");
+  const colo = rowsCs.filter((r) => !r.telco), telco = rowsCs.filter((r) => r.telco);
+  const matched = colo.filter((r) => r.hit).length;
+  document.getElementById("cs-summary").innerHTML =
+    `Cloudscene lists <b>${fmt(rowsCs.length)}</b> Indiana facilities, but <b>${fmt(telco.length)}</b> of them are
+     carrier central offices (${fmt(rowsCs.filter((r) => /^frontier/i.test(r.name || "")).length)} Frontier alone) —
+     telecom plant, not data centres, and correctly outside our layer.
+     Of the <b>${fmt(colo.length)}</b> genuine colo/enterprise facilities, <b>${fmt(matched)}</b> match something we
+     already hold pinned and <b>${fmt(colo.length - matched)}</b> do not. Those are the ones worth a look: either
+     absent from our layer, or the same site under a different name. Name matching is evidence, not proof —
+     this is a prompt to investigate, not a count of missing sites.`;
+  document.getElementById("t-cs").insertAdjacentHTML("beforeend", rowsCs
+    .sort((a, b) => Number(a.telco) - Number(b.telco) || Number(a.hit) - Number(b.hit))
+    .map((r) => `<tr><td>${String(r.name).slice(0, 46)}</td><td>${r.city || "—"}</td><td class="hint">${r.market}</td>
+      <td>${r.telco ? `<span class="hint">carrier central office — not a data centre</span>`
+                    : r.hit ? "yes — already pinned"
+                            : `<span class="cannot">no name match in our 242</span>`}</td></tr>`).join(""));
+  if (s.registry_note)
+    document.getElementById("ledger").innerHTML +=
+      `<br>Provenance lists the latest build per table (${fmt(s.provenance.length)}); the _registry ledger keeps
+       every build as an audit trail, so its raw row count (${fmt(s.registry_rows_total)}) is higher. The figure
+       above is tables held, not ledger rows.`;
 })();
 </script>
 </body></html>

@@ -183,7 +183,15 @@ map.on("load", async () => {
       const p = e.features[0].properties;
       const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10).map(([k, v]) => row(k, v)).join("");
       show(p.layer === "dc" ? `Existing data centre: ${p.name || ""}` : `Facility (${p.layer})`,
-        `<table>${rows_}</table><div class="prov">${p.layer === "dc" ? prov("in_data_centers_all") + " · 4-source union; cross-source dedupe pending operator rule" : prov("in_eia_plants")}</div>`);
+        `<table>${rows_}</table>${p.layer === "dc" && String(p.unnamed_cannot_dedupe) === "true"
+           ? `<div class="cannot">This point has no name in its source (OpenStreetMap), so the
+              name-stem dedupe rule cannot judge whether it duplicates a named building nearby.
+              It is shown rather than merged or dropped — 8 of the 242 are like this.</div>` : ""}
+         <div class="prov">${p.layer === "dc"
+           ? prov("in_data_centers_deduped") + " · 4-source union, deduped by operator rule 2026-08-15 "
+             + "(same name-stem within 500 m → one row; 244 → 242). Separate buildings on one campus are "
+             + "deliberately NOT merged — a distance-only rule would collapse the whole New Carlisle campus into one pin."
+           : prov("in_eia_plants")}</div>`);
     });
     map.on("mousemove", id, (e) => showTip(e, tipText(e.features[0].properties)));
     map.on("mouseleave", id, hideTip);

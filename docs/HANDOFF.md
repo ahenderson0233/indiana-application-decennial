@@ -244,6 +244,40 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **ALL EIGHT SIGN-OFFS APPROVED AND WIRED 2026-08-15.** Operator approved the v2 recommendation
+  table wholesale. `scripts/build_signoff_wiring.py` builds seven tables (each registered in the
+  same run, each deleting its own prior registry row so re-runs cannot accumulate);
+  `scripts/export_signoff_payloads.py` exports them. Both idempotent, both dry-run first, total
+  cost under 0.01 GB.
+  | # | table | rows | what was EXCLUDED, and why |
+  |---|---|---:|---|
+  | 1 | `in_si_d11_admitted` | 983 | 1,146 `withdrawn` — surrendered/reinstatable authority is weaker evidence a property is coming free |
+  | 2 | `in_si_d25_admitted` | 127 | 747 procedural filings — a law firm's extension request is not an abandonment |
+  | 3 | `in_si_d27_admitted` | 156 | nothing; all address-keyed at quality 0.8 |
+  | 4 | `in_iocs_county_context` | 92 | the `STATE` total row and `nan` residue — **62% of the raw MF sum** |
+  | 5 | `in_cloudscene_crosscheck` | 260 | nothing, but lat/lon are explicit NULLs so nothing can plot it |
+  | 7 | `in_queue_miso_extras` | 456 | kept as a JOIN only — 452 ids duplicate interconnection_queue |
+  | 8 | `in_data_centers_deduped` | 242 | 2 rows absorbed by 3 name-stem pairs (two pairs absorb the same OSM row) |
+  Item 6 (airports) needed no table — the flag was closed as a false alarm.
+  **Pages wired:** SI Feed gains an admitted-vs-source table (every count with its denominator
+  and the rule that produced it) plus D11/D25/D27 browsers; Community gains county court activity;
+  Data gains the cloudscene cross-check; Grid gains the MISO study-cycle table with a phase filter.
+  **Two errors caught during this work, both mine:**
+  · **A string date lied about a signal's vintage.** `filed_date` is a STRING `m/d/Y`, so my probe's
+    `MIN/MAX` was LEXICOGRAPHIC — `'9/5/2019'` outranked `'1/23/2017'` on the leading character. I
+    recorded "events run 2007-2019, treat as historic". Parsed properly the range is
+    **2002-06-21 → 2026-01-05**, the newest being a Central Railroad of Indianapolis abandonment
+    exemption. D25 is a CURRENT signal. The page now derives its own span from ISO dates and only
+    warns when the newest event is genuinely over two years old. **Never aggregate a string date.**
+  · **The Data page overstated the table count by 11%.** Early scripts INSERTed a registry row per
+    re-run without clearing the old one, so `_registry` held 216 rows for 195 tables
+    (`in_grid_plans` and `in_si_candidates` 4× each) and the management-facing "registered tables"
+    stat read 216. Provenance now takes the latest row per table; the ledger keeps every build as
+    an audit trail and the page explains the difference rather than hiding it.
+  **And one that would have embarrassed us in a deck:** the cloudscene cross-check first read
+  "254 of 260 not in our layer". Reading the names shows **229 are carrier central offices, 223 of
+  them Frontier** — telecom plant, never data centres. The real question is the 31 genuine colo
+  facilities, of which 6 match and **25 are worth investigating**. The card now splits them.
 - **OPERATOR RULINGS 2026-08-15 — buildable area now depends on the use case.**
   *"C&I outdoor space is only for BESS, as a hyperscale DC would build over it or remove the
   structure."* So `acreageOf()` takes a use case: **DC = whole parcel** (the structure is

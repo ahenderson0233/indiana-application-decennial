@@ -29,6 +29,16 @@
   <div class="card"><h2>Interconnection queue (county grain — includes withdrawn, a deliberate signal)</h2>
     <div class="scroll"><table id="t-queue"><tr><th>county</th><th>project</th><th>MW</th><th>type</th><th>status</th></tr></table></div>
     <div class="prov" id="p-queue"></div></div>
+  <div class="card"><h2>MISO study-cycle detail — where each Indiana project actually sits</h2>
+    <div class="hint" style="margin-bottom:6px">These are the <b>same 456 projects</b> as the queue above, not
+      extra ones: 452 of their project numbers already appear there, so counting both would double the queue.
+      What <code>queue_miso</code> adds is the study-cycle state that the other source has no field for —
+      the phase a project has reached, its point of interconnection (which joins to our bus work), and the
+      DPP ERIS/NRIS megawatt split.</div>
+    <div style="margin-bottom:6px">phase <select id="f-phase"><option value="">all</option></select></div>
+    <div class="scroll" style="max-height:420px"><table id="t-qm"><tr><th>project</th><th>county</th><th>POI</th><th>phase</th><th>ERIS MW</th><th>NRIS MW</th><th>type</th></tr></table></div>
+    <div class="prov">indiana_app.in_queue_miso_extras · operator sign-off 2026-08-15: kept as a JOIN, never
+      rendered as a second queue layer</div></div>
 </div>
 <script src="common.js"></script>
 <script>
@@ -80,6 +90,24 @@
   document.getElementById("t-queue").insertAdjacentHTML("beforeend", pl.queue_projects.slice(0, 120).map(r =>
     `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`).join(""));
   document.getElementById("p-queue").textContent = prov("in_queue");
+
+  const so = await fetchGz("data/signoff.json.gz");
+  const qm = so.queue_miso;
+  const sel = document.getElementById("f-phase");
+  for (const ph of [...new Set(qm.map(r => r.studyphase).filter(x => x && x.trim()))].sort())
+    sel.insertAdjacentHTML("beforeend", `<option>${ph}</option>`);
+  function renderQm() {
+    const want = sel.value;
+    const rows = qm.filter(r => !want || r.studyphase === want);
+    document.getElementById("t-qm").innerHTML =
+      "<tr><th>project</th><th>county</th><th>POI</th><th>phase</th><th>ERIS MW</th><th>NRIS MW</th><th>type</th></tr>" +
+      rows.map(r => `<tr><td>${r.project_key || "—"}</td><td>${r.county || "—"}</td>
+        <td>${String(r.poiname || "—").slice(0, 30)}</td><td>${r.studyphase || "—"}</td>
+        <td>${r.dp1erismw || "—"}</td><td>${r.dp1nrismw || "—"}</td>
+        <td class="hint">${String(r.facilitytype || r.fueltype || "").slice(0, 22)}</td></tr>`).join("");
+  }
+  sel.onchange = renderQm;
+  renderQm();
 })();
 </script>
 </body></html>

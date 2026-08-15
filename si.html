@@ -17,6 +17,26 @@
   <div class="card"><h2>Signal inventory — Indiana, by signal</h2>
     <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
     <div class="prov" id="p-sig"></div></div>
+  <div class="card"><h2>Admitted by operator sign-off — what was let in, and what was not</h2>
+    <div class="hint" style="margin-bottom:6px">Each row shows the admitted count against the source
+      count, and the rule that separated them. A count without its denominator is a claim you cannot check.</div>
+    <div class="scroll"><table id="t-adm"><tr><th>signal</th><th>admitted</th><th>of source</th><th>rule applied</th></tr></table></div>
+    <div class="prov">operator sign-off 2026-08-15 · docs/SIGNOFF_PACKET.md · built by scripts/build_signoff_wiring.py</div></div>
+
+  <div class="gridcards">
+    <div class="card"><h2>D11 — entity dissolutions (983 terminal)</h2>
+      <div class="scroll" style="max-height:300px"><table id="t-d11"><tr><th>entity</th><th>status</th><th>observed</th><th>city</th></tr></table></div>
+      <div class="prov">indiana_app.in_si_d11_admitted · <b>excludes</b> 1,146 'withdrawn' rows — surrendered
+        or reinstatable authority is weaker evidence a property is coming free</div></div>
+    <div class="card"><h2>D27 — UCC lapses (all 156)</h2>
+      <div class="scroll" style="max-height:300px"><table id="t-d27"><tr><th>debtor</th><th>lapse</th><th>city</th></tr></table></div>
+      <div class="prov">indiana_app.in_si_d27_admitted · every row address-keyed at quality 0.8</div></div>
+  </div>
+  <div class="card"><h2>D25 — rail abandonment EVENTS (127 of 874)</h2>
+    <div class="scroll" style="max-height:280px"><table id="t-d25"><tr><th>docket</th><th>filing type</th><th>filed</th><th>title</th></tr></table></div>
+    <div class="prov" id="p-d25">indiana_app.in_si_d25_admitted · <b>excludes</b> 747 procedural filings
+      (Reply, Extension, Certificate Of Service…) — correspondence about a docket is not an abandonment</div></div>
+
   <div class="card"><h2>Staged acquisitions — held, awaiting the subject test</h2>
     <div class="scroll"><table id="t-acq"><tr><th>source</th><th>rows</th><th>built</th></tr></table></div>
     <div class="prov">source: indiana_app._registry · county attribution by publisher identity</div></div>
@@ -38,6 +58,28 @@
      <td style="width:36%"><div style="background:#2563eb;height:9px;border-radius:4px;width:${Math.max(1, x.n/mx*100)}%"></div></td></tr>`).join(""));
   document.getElementById("p-sig").textContent = `source: indiana_app.in_si_signals · totals conserve to ${fmt(sig.reduce((a,b)=>a+b.n,0))}`;
   document.getElementById("s-cand").textContent = fmt(PROV["in_si_candidates"]?.n_rows);
+  const so = await fetchGz("data/signoff.json.gz");
+  document.getElementById("t-adm").insertAdjacentHTML("beforeend", so.admission.map(a =>
+    `<tr><td>${a.signal}</td><td><b>${fmt(a.admitted)}</b></td><td>${fmt(a.source_rows)}</td>
+     <td class="hint">${a.rule}</td></tr>`).join(""));
+  document.getElementById("t-d11").insertAdjacentHTML("beforeend", so.d11.slice(0, 400).map(r =>
+    `<tr><td>${String(r.entity_name || "").slice(0, 42)}</td><td>${r.status_family}
+     <span class="hint">${String(r.raw_status || "").replace(/\s+/g, " ").slice(0, 34)}</span></td>
+     <td>${r.observed_date || "—"}</td><td>${r.city || "—"}</td></tr>`).join(""));
+  document.getElementById("t-d27").insertAdjacentHTML("beforeend", so.d27.map(r =>
+    `<tr><td>${String(r.debtor_name || "").slice(0, 40)}</td><td>${r.lapse_date || "—"}</td><td>${r.city || "—"}</td></tr>`).join(""));
+  document.getElementById("t-d25").insertAdjacentHTML("beforeend", so.d25.map(r =>
+    `<tr><td>${r.docket || "—"}</td><td>${r.filing_type}</td><td>${r.filed_date || "—"}</td>
+     <td class="hint">${String(r.docket_title || "").slice(0, 60)}</td></tr>`).join(""));
+  // ISO dates sort correctly as strings; the raw m/d/Y filed_date would NOT (lexicographic).
+  const ds = so.d25.map(r => r.filed_date).filter(Boolean).sort();
+  if (ds.length) {
+    const newest = ds[ds.length - 1], ageDays = (Date.now() - Date.parse(newest)) / 864e5;
+    document.getElementById("p-d25").innerHTML +=
+      ` · span ${ds[0]} → <b>${newest}</b>` + (ageDays > 730
+        ? ` · <span class="cannot">the newest admitted event is over two years old — treat as historic</span>`
+        : ` · current`);
+  }
   document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
     .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
     .map(p => `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}</td><td>${fmt(p.n_rows)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join(""));

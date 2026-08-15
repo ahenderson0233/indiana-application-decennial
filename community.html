@@ -19,6 +19,15 @@
   <div class="card"><h2>County posture (from held receipts)</h2>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
+  <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
+    <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
+      court-statistics workbook: one row per court, with each case-type code as a COLUMN of counts. There are
+      no per-address events here, so this can never become a parcel-level signal — it tells you what a county's
+      courts are processing, not which building is in trouble.</div>
+    <div class="scroll"><table id="t-iocs"><tr><th>county</th><th>mortgage foreclosures</th><th>evictions</th><th>small claims</th><th>courts</th></tr></table></div>
+    <div class="prov">indiana_app.in_iocs_county_context · <b>excludes</b> the <code>STATE</code> row (a statewide
+      TOTAL, 21,300 MF) and the <code>nan</code> residue (10,235) — together 62% of the raw MF sum and the reason
+      the unfiltered county list read 94 names for a 92-county state. All 92 join county boundaries exactly.</div></div>
 </div>
 <script src="common.js"></script>
 <script>
@@ -44,6 +53,11 @@
     .map(f => ({ n: f.properties.county_name, fips: f.properties.fips, c: ctx.by_fips[f.properties.fips] || {} }))
     .sort((a, b) => (b.c.posture?.opposition_intensity || 0) - (a.c.posture?.opposition_intensity || 0))
     .map(x => `<tr><td>${x.n}</td><td>${x.c.posture?.posture ?? "—"}</td><td>${x.c.posture?.opposition_intensity ?? "—"}</td><td>${x.c.posture?.has_local_restriction ?? "—"}</td><td>${x.c.queue?.active_mw != null ? fmt(x.c.queue.active_mw) : "—"}</td><td>${x.c.eia861?.utilities ?? "—"}</td></tr>`).join(""));
+  document.getElementById("t-iocs").insertAdjacentHTML("beforeend", counties.features
+    .map(f => ({ n: f.properties.county_name, c: ctx.by_fips[f.properties.fips] || {} }))
+    .filter(x => x.c.iocs)
+    .sort((a, b) => (b.c.iocs.mf || 0) - (a.c.iocs.mf || 0))
+    .map(x => `<tr><td>${x.n}</td><td>${fmt(x.c.iocs.mf)}</td><td>${fmt(x.c.iocs.ev)}</td><td>${fmt(x.c.iocs.sc)}</td><td>${x.c.iocs.courts}</td></tr>`).join(""));
 })();
 </script>
 </body></html>
