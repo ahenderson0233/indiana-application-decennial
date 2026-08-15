@@ -131,15 +131,16 @@ operator the value vocabulary; ask them to confirm each mapping. DO NOT wire wit
 answer. For in_data_centers_all dedupe: propose "same name-stem within 500 m across
 sources → keep one row, list sources"; implement ONLY after approval.
 
-**T3 — FCC county detail into county evidence.** Data: indiana_app.in_fcc_bdc_fixed_summary_by_geography
-(15,900) + in_fcc_bdc_mobile_summary (533). Read 5 rows first. Add per-county fields into
-data/county_context.json (extend scripts/build_p36_wiring.py pattern: merge into
-ctx["by_fips"][fips]["fcc"]) and render 2-3 rows in openCountyEvidence (app.js).
-Acceptance: click Marion County → FCC rows appear with a prov() line.
+**T3 — DONE 2026-08-15.** FCC county detail lives in data/county_context.json as
+ctx.by_fips[fips].fcc {units, fiber_units, gig_units, cable_100_20_units} +
+.fcc_mobile {pct_4g, pct_5g}; rendered in BOTH the parcel panel's county section and the
+county panel (app.js). Grain lesson recorded: the fixed summary is geography×technology×
+biz_res×area_data_type — the county slice is geography_type='County', area_data_type='Total',
+biz_res='B', technology IN ('Fiber','Cable'). Script: scripts/build_t3_t4.py (replaces, never
+accumulates). Verified: Marion = 297,517 of 480,853 business units fiber ≥100/20.
 
-**T4 — SI inventory chart on si.html.** One BQ export: signal × count from
-indiana_app.in_si_signals GROUP BY signal → add to data/state_summary.json as
-"si_by_signal"; render a table+bars on si.html. Acceptance: 17 rows, totals match 1,818,158.
+**T4 — DONE 2026-08-15.** si_by_signal {signal, n, counties, latest} in state_summary.json;
+si.html renders the 17-row inventory with bars; totals conserve to 1,818,158 exactly.
 
 **T5 — Gas OAC locations table on market.html.** From in_gas_capacity_panhandle_eastern +
 _trunkline (State='IN'): location name, county, design capacity, OAC, gas day → new
