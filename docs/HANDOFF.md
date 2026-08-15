@@ -1,5 +1,14 @@
 # HANDOFF — Indiana Siting Intelligence (updated 2026-08-15, session closed clean)
 
+**⚠ UNCOMMITTED ON PURPOSE (first thing to resolve):** 44 of 92 `data/sites/*.geojson.gz`
+(counties 18001–18087) sit MODIFIED in the working tree carrying NEW exact-acreage columns
+(`exact_parcel_acres`, `exact_outdoor_acres`, `exact_bldg_acres`, `footprints_intersecting`)
+— a PARTIAL re-export that incorporated the data-ops session's `mat_parcel_outdoor_exact`
+work and stopped mid-run. DO NOT commit a half-set (§AC partial-swap hazard). Fix: identify
+which export script produced it (check with the operator — not launched by this session),
+re-run it to completion for all 92 counties, verify one county's keys, THEN commit all 92
+together and add the exact-acres fields to the parcel evidence panel.
+
 **SESSION-CLOSE STATE:** roadmap T1–T8 all closed or operator-gated (T2 packet awaits
 per-item sign-off; T7 awaits the WSL/Docker install; T8 cadence awaits venue choice).
 Nothing running, nothing uncommitted, no open instrument questions. The next session
