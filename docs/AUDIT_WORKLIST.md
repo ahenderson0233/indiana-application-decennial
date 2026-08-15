@@ -104,6 +104,38 @@ disclosed). PJM WITHDRAWAL headroom derived per bus (all 1,475 positive after ex
 pre-existing overloads — measured identity: every zero row was a pre-overload; 2027 RTEP
 Summer Peak); 229 located buses display load MW. Open lane: a MISO LOAD-direction source.
 
+## Batches 5-6 — zeros finds + the 151-table eyeball queue (2026-08-15) — QUEUE COMPLETE
+
+**Batch 5 (zeros-class genuine finds, 6 clips):** si_d11_entity_dissolution (2,129 — D11's first
+IN rows), gov_surplus_nces (1,928), si_d25_stb_abandonment_state (874), nfirs_fireincident_2022,
+si_d27_ucc_lapse_v2 (156 — D27 dent), txexp MTEP status. All carry SUBJECT-CHECK-PENDING notes.
+
+**Batch 6/6b (eyeball queue, 23 clips):** ⭐ in_data_centers_all — **244 existing Indiana DCs
+with coordinates** (OSM 13 + Baxtel + Wikidata + DCM-via-coords-join; the gap register's
+"DCM pinless" status is STALE; per-source rows kept, cross-source DEDUPE FLAGGED for review);
+FCC fixed/mobile/provider summaries by geography (15,900 / 533 / 12,196); elec_power_operational
+(15,178 EIA state-month rows); operating_generators (11,795); ghgrp_emissions (9,310, facility-join);
+workforce_ipeds_cs_eng (4,830); NFIRS 2020+2021 vintages; railroads (2,117), roads primary/secondary,
+zctas (807 — ZCTA codes are 46/47-prefixed, NOT FIPS-18: instrument bug caught+fixed),
+land_military_bases (13), water_aqueduct (56), drought_by_state, nrc_reactors (measured zero —
+plausible, no operating commercial reactors).
+
+**Instrument bugs caught by the queue itself:** `_st_pct` percentage columns matched my state
+regex (§2.17 embedded-token class) — FCC mobile/provider zeros were the instrument, re-clipped
+by geography_id; zctas 18-prefix likewise.
+
+**WAIVE (measured/identity):** meta/docs tables (registry, census, decisions, backlog, …);
+headroom_*_bt/linreg (EXCLUDED bus projections per standing ruling); competitor_gap_matrix
+(never renders, per ruling); other-state distress sets (ga_probate, wv_sao, tax_delinquent_ca/fl);
+CAISO/ERCOT/GA large-load (other ISO); hurdat2 + submarine cables (geography); hc_app_features
+(superseded by vw_hc_map); natural_gas_pipelines (declared duplicate).
+
+**National-baseline note:** spp_hct_poi_buses (7,874) + spp_hct_poi_headroom (83,383) exist —
+the historically-blocked SPP tool was evidently harvested; not Indiana, flagged for the national app.
+
+**FLAGS remaining:** cloudscene state-vocabulary unknown (0 on 'IN'; value-read pending);
+in_data_centers_all cross-source dedupe (operator judgment on matching rule).
+
 ## Remaining batches
 Batch 2+: rest of the 308 (rows 46-308) · then the 465 measured zeros (eyeball samples for
 disguised Indiana) · then spatial-only via source identity + PARCEL_SOURCE_GEOGRAPHY ·
