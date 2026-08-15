@@ -92,8 +92,23 @@ warn = list(client.query(f"""
             INTERSECT DISTINCT
             SELECT CONCAT(IFNULL(Company,''),'|',IFNULL(City,''),'|',IFNULL(Notice_Date,''))
             FROM `{DS}.in_si_state_warn_notices`)) shared"""))[0]
+# A4: NFIRS structure fires, filtered to the building/structure incident range and to Indiana
+nf = [dict(r) for r in client.query(f"""
+  SELECT yr, COUNT(*) fires, COUNTIF(non_residential='Y') non_res,
+         COUNTIF(address_quality='number + street') keyable,
+         COUNTIF(address_quality='street only, no number') street_only,
+         COUNTIF(address_quality='no street name') no_street,
+         COUNT(DISTINCT city) cities, COUNT(DISTINCT fdid) departments
+  FROM `{DS}.in_nfirs_structure_fires` GROUP BY 1 ORDER BY 1""")]
+nf_cities = [dict(r) for r in client.query(f"""
+  SELECT city, COUNT(*) fires, COUNTIF(non_residential='Y') non_res
+  FROM `{DS}.in_nfirs_structure_fires`
+  WHERE city IS NOT NULL AND TRIM(CAST(city AS STRING)) NOT IN ('','None')
+  GROUP BY 1 ORDER BY fires DESC LIMIT 30""")]
+
 payload = {"sources": out, "warn_dup": {"refresh_rows": warn.a, "state_rows": warn.b,
-                                        "shared_keys": warn.shared}}
+                                        "shared_keys": warn.shared},
+           "nfirs": {"by_year": nf, "top_cities": nf_cities}}
 p = os.path.join(REPO, "data", "si_sources.json.gz")
 with gzip.open(p, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(payload, f, separators=(",", ":"), default=str)

@@ -9,10 +9,10 @@ immediately — the point of this file is that the order survives a context refr
 
 | | |
 |---|---:|
-| tables physically in `indiana_app` | 198 |
-| registered in `_registry` | 196 |
-| **reach a user-facing surface** | **165 (84%)** — 139 before A1, 147 after |
-| reach nothing yet | 28 — the A3 SI sources (20) + A4 NFIRS (7) + A5 empties (2) |
+| tables physically in `indiana_app` | 200 |
+| registered in `_registry` | 199 |
+| **reach a user-facing surface** | **196 of 199 (98%)** — 139 at Phase A start |
+| reach nothing yet | 3, all deliberate: 1 meta table + 2 zero-row tables, each with a written waiver |
 | pages live | 6 (Map · Grid · Market · Community · SI Feed · Data) |
 | parcels held / rendered class-union | 3,553,194 / 1,200,916 |
 
@@ -86,24 +86,35 @@ clears it. **The fix that works: `await fetch(f, {cache:"reload"})` for each cha
 navigate.** A stale-JS symptom looks exactly like a code bug — `ensureContextLayers` undefined
 while a function defined *after* it exists.
 
-**A3 — SI source visibility (20 tables).** The city-level sources (Evansville, Indy, South Bend)
-and the six `si_refresh_*` sets feed `in_si_signals` upstream but no screen shows them. Build a
-**source-level panel on SI Feed**: per source, rows held, last observed event, publisher staleness,
-and which signal it feeds.
-*Acceptance:* each of the 20 named with its row count and freshness; the Lane-D remediation
-counts become visible rather than living only in a findings file.
+**A3 — SI source visibility. ✅ DONE 2026-08-15.** All 18 sources on SI Feed with what they hold,
+what one row IS, the PUBLISHER'S event range and our pull date. **The find that made it work:**
+seven of the eighteen date columns store **epoch milliseconds as strings** (`1656424281000` =
+2022-06-28, the Esri/ArcGIS convention). A string-only parse reported all seven as unparseable and
+would have shipped a freshness panel blind to the majority of our SI rows, including the 910,483-row
+Indy code-enforcement set. Now: 9 parse cleanly, 4 partially, 4 hold no publisher date (said so
+rather than substituting a pull stamp), 1 has an empty column. Seven are 2+ years stale.
+**Duplicate resolved:** `in_si_refresh_warn_notices` and `in_si_state_warn_notices` both hold 1,220
+notices sharing 1,104 company|city|date keys — same source twice; kept the one with `notice_pdf_urls`.
 
-**A4 — NFIRS structure-fire vintages (7 tables).** 2020/2021/2024 basic, fire and address sets.
-Value-read before wiring — confirm what an "incident" row is at parcel grain before claiming D16.
-*Acceptance:* either wired as a D16 candidate layer with its keying quality stated, or waived in
-writing with the measurement that justified it.
+**A4 — NFIRS structure fires. ✅ DONE 2026-08-15 — WIRED, not waived.** `in_nfirs_structure_fires`
+(16,264 rows) is a D16 candidate at ADDRESS grain, explicitly not claimed as parcel grain.
+**Two defects fixed on the way in:**
+· Only **~21% of NFIRS incidents are structure fires** (8,145 of 38,287 in 2020). The rest are gas
+  leaks (412), downed power lines (444), rubbish (151), vehicle (131) and cooking fires (113).
+  Admitting the raw tables would have inflated D16 roughly **fivefold**. Filtered to INC_TYPE 111–123.
+· **`in_nfirs_fireincident_2024` IS NOT INDIANA-CLIPPED** — only 848 of 1,255 rows are `IN`;
+  **407 (32%) belong to 43 other states** (IL 74, OH 49, KY 29, MI 25, TX 12 …). An `in_*` table
+  carrying a third out-of-state rows breaks the clipped-at-the-border rule, so `STATE='IN'` is
+  enforced on every input rather than trusting the prefix. 2020/2021 are clean.
+Addresses are better than expected: 91% carry number+street, enough for a future parcel join, and
+the keying quality rides on every row.
 
-**A5 — housekeeping (2 empty + 1 unregistered).**
-`in_fcc_bdc_mobile_summary_by_geography` and `in_fcc_bdc_provider_summary_by_geography` hold **0
-rows** — leftovers of the `_st_pct` instrument bug; drop them or record why an empty table is kept.
-`_indiana_census` is unregistered — register it or move it out; an unregistered table trips the
-other session's checkpoint invariant 3.
-*Acceptance:* `indiana_app` has no empty table and no unregistered table.
+**A5 — housekeeping. ✅ DONE 2026-08-15.** `_indiana_census` registered (773 rows, meta table,
+deliberately not rendered) so it stops tripping checkpoint invariant 3. The two zero-row FCC
+tables were KEPT rather than dropped, each with a registry note explaining that they are empty
+**by defect** — the `_st_pct` regex matched percentage columns like `mobilebb_4g_area_st_pct`, so
+the clip filtered on the wrong field — and that both are superseded by working tables already
+wired. A dropped table teaches nothing and the next census would rediscover the names as a gap.
 
 **A6 — UNION-AND-DEDUPE EVERY DUPLICATED SUBJECT (operator ruling 2026-08-15).**
 *"We want the full picture, not a partial picture — this should be recognised throughout the
@@ -127,8 +138,11 @@ from OSM alone") so the merge is auditable, not magic.
 *Acceptance:* for each subject, ONE layer with a source badge, a stated dedupe rule, and a
 measured before/after count. The user should never have to toggle two layers to see one thing.
 
-> **Phase A target: 139/196 → ~196/196.** This is the single largest quality jump available and
-> the operator has ruled it precedes front-end work.
+> **PHASE A COMPLETE 2026-08-15: 139 → 196 of 199 reaching a surface (98%).** The 3 remaining are
+> deliberate and each carries a written waiver: `_indiana_census` (meta table behind the audit
+> docs) and the two zero-row FCC tables kept as the record of the `_st_pct` bug.
+> **A6 is partly done** — transmission and substations merged; generation, gas pipelines,
+> brownfields and the WARN pair remain (see the table above).
 
 ---
 

@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-15T17:54:52+00:00",
+ "built_at_utc": "2026-08-15T22:54:52+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -22,6 +22,14 @@
   "note": "defaults only, user-adjustable"
  },
  "provenance": [
+  {
+   "table_name": "_indiana_census",
+   "source": "energy.INFORMATION_SCHEMA + per-table Indiana counts",
+   "method": "estate census: every table classified and counted for Indiana rows",
+   "n_rows": 773,
+   "built_at": "2026-08-15 22:53:58.353215+00",
+   "notes": "Meta table, not a data feature: the census behind docs/BQ_INDIANA_CENSUS.md. Registered so it stops tripping checkpoint invariant 3 as an unregistered object; it is deliberately not rendered anywhere."
+  },
   {
    "table_name": "in_acs_county",
    "source": "energy.acs_county",
@@ -388,7 +396,7 @@
    "method": "adaptive clip (state:mobilebb_3g_area_st_pct)",
    "n_rows": 0,
    "built_at": "2026-08-15 06:28:15.868301+00",
-   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
+   "notes": "EMPTY BY DEFECT, superseded. The `_st_pct` instrument bug: a state-column regex matched percentage columns (mobilebb_4g_area_st_pct), so this clip filtered on the wrong field and wrote 0 rows. Superseded by in_fcc_bdc_mobile_summary (533), which is wired to the county broadband panel. Kept as the record of a caught bug."
   },
   {
    "table_name": "in_fcc_bdc_provider_summary",
@@ -404,7 +412,7 @@
    "method": "adaptive clip (state:res_st_pct)",
    "n_rows": 0,
    "built_at": "2026-08-15 06:28:20.054516+00",
-   "notes": "WIRE-NEXT batch 6 (eyeball queue)"
+   "notes": "EMPTY BY DEFECT, superseded. Same `_st_pct` regex bug as the mobile summary above. Superseded by in_fcc_bdc_provider_summary (12,196). Kept as the record of a caught bug."
   },
   {
    "table_name": "in_fema_disaster_declarations",
@@ -829,6 +837,14 @@
    "n_rows": 49895,
    "built_at": "2026-08-15 05:57:51.638853+00",
    "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
+  },
+  {
+   "table_name": "in_nfirs_structure_fires",
+   "source": "indiana_app.in_nfirs_basicincident_2020/2021 x in_nfirs_incidentaddress_* x in_nfirs_fireincident_*",
+   "method": "INC_TYPE 111-123 (building/structure fires) only, STATE='IN' enforced on every input",
+   "n_rows": 16264,
+   "built_at": "2026-08-15 22:51:07.860688+00",
+   "notes": "D16 candidate at ADDRESS grain - not yet keyed to parcels, and not claimed to be. Two defects fixed on the way in: (1) only ~21% of NFIRS incidents are structure fires, so admitting the raw tables would have inflated D16 about fivefold; (2) in_nfirs_fireincident_2024 is NOT Indiana-clipped - 407 of 1,255 rows (32%) are from 43 other states - so STATE='IN' is enforced explicitly rather than trusting the in_* name. Keying quality is carried per row: ~91% have number+street."
   },
   {
    "table_name": "in_nhd_waterbody",
@@ -1463,6 +1479,14 @@
    "notes": null
   },
   {
+   "table_name": "in_transmission_union",
+   "source": "indiana_app.in_transmission_lines + in_osm_power_lines (>=100 kV)",
+   "method": "spatial union: OSM line kept only when NO HIFLD line lies within 100 m; src retained per row",
+   "n_rows": 3737,
+   "built_at": "2026-08-15 22:39:54.742149+00",
+   "notes": "ONE transmission layer replacing two partial ones. 27,866 km total; OSM contributes 2,706 km that HIFLD does not carry. Dedupe is spatial, not by name - 70% of substation names in this estate are blank or UNKNOWN####, so names cannot carry a merge. NOTE substations were ALREADY unioned in in_substations (sources=HIFLD+OSM 2,354 / OSM 933 / HIFLD 571); no rival substation layer should be built."
+  },
+  {
    "table_name": "in_tribal_land",
    "source": "energy.tribal_land",
    "method": "census-keyed clip (geoid:geoid)",
@@ -1695,6 +1719,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 217,
+ "registry_rows_total": 220,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

@@ -51,6 +51,18 @@
       <div class="prov">source: <code>in_sba_foia_loans</code> · a business-formation and
         expansion signal; the counterpart to the distress signals above</div></div>
   </div>
+  <div class="card"><h2>D16 candidate — structure fires (NFIRS)</h2>
+    <div class="hint" style="margin-bottom:6px">A fire at a commercial building is a distress
+      signal. But <b>only ~21% of NFIRS incidents are structure fires</b> — the rest are gas leaks,
+      downed power lines, vehicle and cooking fires. Filtered to NFIRS incident types 111–123.
+      <b>Address grain, not parcel grain</b>: these are not yet keyed to parcels and are not
+      claimed to be.</div>
+    <div class="gridcards">
+      <div class="card"><div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-residential</th><th>number+street</th><th>cities</th></tr></table></div></div>
+      <div class="card"><div class="scroll" style="max-height:220px"><table id="t-nfirs-city"><tr><th>city</th><th>fires</th><th>non-res</th></tr></table></div></div>
+    </div>
+    <div class="prov" id="p-nfirs"></div></div>
+
   <div class="card"><h2>Where the signals come from — every source, with its real freshness</h2>
     <div class="hint" style="margin-bottom:6px">These 18 tables feed <code>in_si_signals</code>
       upstream. <b>Event range is the PUBLISHER'S date, never our pull stamp</b> — reporting when
@@ -100,8 +112,29 @@
         ? ` · <span class="cannot">the newest admitted event is over two years old — treat as historic</span>`
         : ` · current`);
   }
-  /* ---------- SI source visibility ---------- */
+  /* ---------- D16 candidate: NFIRS structure fires ---------- */
   const SRC = await fetchGz("data/si_sources.json.gz");
+  const NF = SRC.nfirs;
+  document.getElementById("t-nfirs").insertAdjacentHTML("beforeend", NF.by_year.map(y =>
+    `<tr><td>${y.yr}</td><td><b>${fmt(y.fires)}</b></td><td>${fmt(y.non_res)}</td>
+     <td>${fmt(y.keyable)} <span class="hint">(${Math.round(100 * y.keyable / y.fires)}%)</span></td>
+     <td>${fmt(y.cities)}</td></tr>`).join(""));
+  document.getElementById("t-nfirs-city").insertAdjacentHTML("beforeend", NF.top_cities.map(c =>
+    `<tr><td>${c.city}</td><td>${fmt(c.fires)}</td><td>${fmt(c.non_res)}</td></tr>`).join(""));
+  document.getElementById("p-nfirs").innerHTML =
+    `source: <code>in_nfirs_structure_fires</code>, built from all seven vintages, each named in
+     full so it can be looked up: <code>in_nfirs_basicincident_2020</code>,
+     <code>in_nfirs_basicincident_2021</code>, <code>in_nfirs_incidentaddress_2020</code>,
+     <code>in_nfirs_incidentaddress_2021</code>, <code>in_nfirs_fireincident_2020</code>,
+     <code>in_nfirs_fireincident_2021</code>, <code>in_nfirs_fireincident_2024</code>.
+     <b>Two defects fixed on the way in.</b> (1) Admitting the raw tables would have inflated D16
+     roughly fivefold, since ~79% of incidents are not structure fires. (2)
+     <code>in_nfirs_fireincident_2024</code> is <b>not Indiana-clipped</b> — 407 of its 1,255 rows
+     (32%) come from 43 other states — so <code>STATE='IN'</code> is enforced on every input rather
+     than trusting the <code>in_</code> prefix. Keying quality is carried per row; roughly 91% have
+     a house number and street, which is what a future parcel join would need.`;
+
+  /* ---------- SI source visibility ---------- */
   const today = new Date("2026-08-15");
   const staleness = (iso) => {
     if (!iso) return "";
