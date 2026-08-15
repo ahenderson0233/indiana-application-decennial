@@ -37,15 +37,20 @@ rebuild GitHub Pages. Total BigQuery spend across the whole build: ~$6.
 ## 0. REQUIRED READING, IN THIS ORDER
 
 **This repo (the app's own context):**
-1. `docs/HANDOFF.md` — this file
-2. `docs/PLAN.md` — the locked plan (wire → pages → functionality)
-3. `docs/AUDIT_WORKLIST.md` — every table's verdict, batch by batch, flags included
-4. `docs/BQ_INDIANA_CENSUS.md` — the estate classification + verified per-table IN counts
-5. `docs/AUDIT_CLASSES_REPORT.md` — zeros/spatial/national resolutions
-6. `docs/DATA.md`, `docs/ARCHITECTURE.md`, `docs/SCRAPE_LANES.md`, `docs/DATA_BACKLOG.md`
-7. `docs/SAMPLES_INDIANA.md` + `docs/SAMPLES_ALL_PART2.md` — 1-3 raw rows of every estate
+1. `docs/HANDOFF.md` — this file (the RECORD: what has been done, and must not be redone)
+2. **`docs/GAMEPLAN.md` — the PLAN: every phase from here to completion, in working order.**
+   Phase A (wire the 57 orphan tables) is the operator's stated priority and precedes front-end
+   work. Add newly-noticed work to the right phase there rather than starting it immediately.
+3. `docs/PLAN.md` — the earlier phase plan (wire → pages → functionality); GAMEPLAN supersedes
+   its ordering and carries the measured state
+4. `docs/AUDIT_WORKLIST.md` — every table's verdict, batch by batch, flags included
+5. `docs/BQ_INDIANA_CENSUS.md` — the estate classification + verified per-table IN counts
+6. `docs/AUDIT_CLASSES_REPORT.md` — zeros/spatial/national resolutions
+7. `docs/DATA.md`, `docs/ARCHITECTURE.md`, `docs/SCRAPE_LANES.md`, `docs/DATA_BACKLOG.md`
+8. `docs/SAMPLES_INDIANA.md` + `docs/SAMPLES_ALL_PART2.md` — 1-3 raw rows of every estate
    table (grep per table; never load whole — 2.3 MB combined)
-8. `scrapers/lane_[a-e]/LANE_*_FINDINGS.md` — per-lane results, walls, next endpoints
+9. `docs/CLOUDSCENE_GAP.md` — the DC completeness cross-check, per facility
+10. `scrapers/lane_[a-e]/LANE_*_FINDINGS.md` — per-lane results, walls, next endpoints
 
 **The platform (parent project — read-only reference, another session owns it):**
 9. `energy-platform/CLAUDE.md` — the real one (repo-root and mirror copies are pointers);
