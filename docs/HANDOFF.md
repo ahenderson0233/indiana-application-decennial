@@ -152,14 +152,35 @@ yearly cost band per tariff, labeled "proxy from published tariff structure — 
 Add to market.html with adjustable inputs. Acceptance: CPS-style decomposition shown
 (fixed/demand/energy) and every number carries the tariff's name.
 
-**T7 — PMTiles (BLOCKED until the operator installs WSL or Docker).** Then: export
+**T2 — PACKET DELIVERED 2026-08-15:** docs/SIGNOFF_PACKET.md holds the measured vocabularies
+for all 8 pending judgments (D11/D25/D27/MF/cloudscene/airports/queue_miso/DC-dedupe preview).
+Await the operator's per-item APPROVE/REJECT/DEFER; wire only what is approved.
+
+**T5 — DONE 2026-08-15:** data/gas_locations.json.gz (203 IN locations, PEPL+Trunkline,
+design/OAC verbatim) rendered on market.html.
+
+**T6 — DONE 2026-08-15 (cross-check grade, per ANALYSIS_METHODOLOGY §4 which was read first):**
+yearly-cost proxy on market.html — MW/load-factor/sector inputs → per-tariff $/yr range +
+effective ¢/kWh from URDB demand+energy maxima. URDB is FLATTENED (no riders/fixed/seasonal),
+so this is explicitly a cross-check; the itemised rate engine (four-proxy rule, 1.75×
+wholesale-floor gate, CPS_35MW_Rate_Model.xlsx shape) remains the full milestone.
+
+**T7 — PMTiles (BLOCKED until the operator installs WSL or Docker — re-measured absent 2026-08-15).** Then: export
 in_sites (all 3.55M, exact geometry) to GeoJSONL, tippecanoe -Z12 -z16 --no-feature-limit,
 split files <100 MB, swap the per-county gz loader for a pmtiles source. Do not start
 before the install exists.
 
-**T8 — Refresh cadence.** All scrapers/lane_d + lane_e scripts are idempotent; propose a
-weekly script-run schedule to the operator (zero agent tokens). Registry rows get a new
-append per refresh.
+**T8 — Refresh cadence (PROPOSED 2026-08-15, awaiting operator approval to schedule):**
+| script | cadence | why |
+|---|---|---|
+| scrapers/lane_e/pull_ebb_capacity.py + load_to_bq.py | daily (gas day) | OAC changes every gas day |
+| scrapers/lane_a/pull_miso_poi_300mw.py | quarterly | study-cycle vintage |
+| scrapers/lane_d/0*.py (all six SI refreshes) | weekly | the P1 refresh commitment |
+| lane_b 04_iurc_dockets + 09_news | weekly | new filings/news |
+| scripts/build_* re-exports + provenance | after any refresh | payloads must match BQ |
+| I&M PROD_MI_HC_GRID groupBy probe | quarterly | catch the day Indiana rows appear |
+All idempotent; zero agent tokens; each refresh appends a registry row. Windows Task
+Scheduler or a cloud cron both work — operator picks the venue.
 
 **DO NOT (Opus-specific guardrails):** do not re-audit the estate (it is DONE — read the
 verdicts); do not launch agents for anything a script in scripts/ or scrapers/ already

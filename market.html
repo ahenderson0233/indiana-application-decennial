@@ -24,6 +24,20 @@
   <div class="card"><h2>Gas — daily operationally-available capacity (EBB), 9 pipelines held</h2>
     <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
     <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
+  <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
+    <div style="margin-bottom:8px">
+      Load: <input id="rp-mw" type="number" value="300" min="1" style="width:70px"> MW ·
+      load factor <input id="rp-lf" type="number" value="0.85" min="0.1" max="1" step="0.05" style="width:60px"> ·
+      sector <select id="rp-sec"><option>Industrial</option><option>Commercial</option></select>
+    </div>
+    <div class="scroll"><table id="t-proxy"><tr><th>utility · tariff</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr></table></div>
+    <div class="prov">METHOD (ANALYSIS_METHODOLOGY §4): URDB is FLATTENED — no riders, fixed charges, or seasonal blocks —
+    so this is a CROSS-CHECK, not an itemised quote. annual = demand_max·kW·12 + energy·kWh·8760·LF.
+    Large-load tariffs have MW FLOORS (eligibility minimums). A bundled rate must clear the ISO wholesale
+    floor by ≥1.75× — treat anything cheaper as a modelling error. The itemised rate engine is the full milestone.</div></div>
+  <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
+    <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th></tr></table></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline · latest held posting; values verbatim from the EBB</div></div>
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
@@ -45,6 +59,32 @@
     .filter(r => r.year >= 2015).sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 40).map(r =>
     `<tr><td>${r.pipeline || ""} ${r.year}</td><td>${r.state_from}→${r.state_to}</td><td>${fmt(r.capacity_mmcfd)}</td></tr>`).join(""));
   document.getElementById("p-gas").textContent = prov("in_gas_state_capacity") + " · daily operationally-available capacity held for 9 pipelines (in_gas_capacity_*) — page section next";
+  function renderProxy() {
+    const mw = Number(document.getElementById("rp-mw").value) || 300;
+    const lf = Number(document.getElementById("rp-lf").value) || 0.85;
+    const sec = document.getElementById("rp-sec").value.toLowerCase();
+    const kw = mw * 1000, kwh = kw * 8760 * lf;
+    const rows = (m.tariffs || [])
+      .filter(t => (t.sector || "").toLowerCase() === sec && t.demand_rate_max_usd_kw != null
+                   && t.energy_rate_min_usd_kwh != null)
+      .map(t => {
+        const demand = Number(t.demand_rate_max_usd_kw) * kw * 12;
+        const eLo = Number(t.energy_rate_min_usd_kwh) * kwh, eHi = Number(t.energy_rate_max_usd_kwh || t.energy_rate_min_usd_kwh) * kwh;
+        return { t, lo: demand + eLo, hi: demand + eHi };
+      }).sort((a, b) => a.lo - b.lo).slice(0, 14);
+    document.getElementById("t-proxy").innerHTML =
+      "<tr><th>utility · tariff</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr>" +
+      rows.map(x => `<tr><td>${String(x.t.utility).slice(0, 34)}<br><span class="hint">${(x.t.name || "").slice(0, 44)}</span></td>
+        <td>$${fmt(Math.round(x.lo / 1e6))}M – $${fmt(Math.round(x.hi / 1e6))}M</td>
+        <td>${(x.lo / kwh * 100).toFixed(1)}–${(x.hi / kwh * 100).toFixed(1)}</td></tr>`).join("");
+  }
+  for (const id of ["rp-mw", "rp-lf", "rp-sec"]) document.getElementById(id).addEventListener("change", renderProxy);
+  renderProxy();
+  try {
+    const gl = await fetchGz("data/gas_locations.json.gz");
+    document.getElementById("t-gasloc").insertAdjacentHTML("beforeend", gl.slice(0, 210).map(r =>
+      `<tr><td>${r.pipeline}</td><td>${(r.location || "").slice(0, 40)}</td><td>${r.county}</td><td>${r.design}</td><td><b>${r.oac}</b></td></tr>`).join(""));
+  } catch (e) { console.error(e); }
   document.getElementById("t-oac").insertAdjacentHTML("beforeend", (m.gas_oac || []).map(r =>
     `<tr><td>${r.pipeline}</td><td>${fmt(r.n_rows)}</td><td>${r.indiana_locations != null ? fmt(r.indiana_locations) : "—"}</td><td>${r.indiana_counties ?? "—"}</td><td>${String(r.pulled).slice(0, 10)}</td></tr>`).join(""));
   document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
