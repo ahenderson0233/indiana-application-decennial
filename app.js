@@ -257,7 +257,8 @@ function classOk(p) {
 function jsMatches(p) {
   if (!classOk(p)) return false;
   if ($("f-mw").checked) {
-    const acres = Number(p.outdoor_acres ?? p.parcel_acres) || 0;
+    // exact outdoor space (parcel minus measured footprint intersection) wins when present
+    const acres = Number(p.exact_outdoor_acres ?? p.outdoor_acres ?? p.parcel_acres) || 0;
     if (acres * V("f-density") < V("f-mw-val")) return false;
   }
   if ($("f-si").checked) {
@@ -523,10 +524,13 @@ function openParcelEvidence(p, fips) {
   const density = V("f-density");
   show(`Parcel ${p.parcel_key}`, `
     <h3>Land & size (P3)</h3><table>
-      ${row("class", p.occ_group)}${row("parcel acres", a(p.parcel_acres))}${row("outdoor acres", a(p.outdoor_acres))}
-      ${row(`fits @ ${density} MW/acre (your setting)`, Math.floor((p.outdoor_acres ?? p.parcel_acres ?? 0) * density) + " MW")}
+      ${row("class", p.occ_group)}${row("parcel acres", a(p.parcel_acres))}
+      ${row("outdoor acres (EXACT: parcel − measured building intersection)", a(p.exact_outdoor_acres))}
+      ${row("outdoor acres (approximate)", a(p.outdoor_acres))}
+      ${row("building acres (exact)", a(p.exact_bldg_acres))}
+      ${row(`fits @ ${density} MW/acre (your setting)`, Math.floor((p.exact_outdoor_acres ?? p.outdoor_acres ?? p.parcel_acres ?? 0) * density) + " MW")}
       ${row("structures", p.structure_count)}${row("structure sqft", p.structure_sqft)}</table>
-    <div class="prov">${prov("in_sites")} · density is your adjustable assumption, not an answer</div>
+    <div class="prov">${prov("in_sites")} · exact figures from mat_parcel_outdoor_exact (footprint∩parcel measured, shared buildings not double-counted) · density is your adjustable assumption, not an answer</div>
     <h3>Grid access (P2) — computed to nearest mapped feature</h3><table>
       ${row("nearest substation", p._dsub_name ? `${p._dsub_name} (${p._dsub_kv} kV) · ${p._dsub_mi} mi` : null)}
       ${row("nearest transmission line", p._dline_mi != null ? `${p._dline_kv} kV · ${p._dline_mi} mi (to nearest vertex)` : null)}
@@ -547,6 +551,8 @@ function openParcelEvidence(p, fips) {
       ${row("wetlands (county)", c.wetlands ? `${fmt(c.wetlands.wetland_features)} features / ${fmt(c.wetlands.wetland_acres)} ac` : null)}
       ${row("fibre-served locations", c.fibre ? `${fmt(c.fibre.fiber_locations)} of ${fmt(c.fibre.locations)} (${c.fibre.fiber_providers} providers)` : null)}
       ${row("seismic design category", c.seismic?.sdc)}
+      ${row("business broadband units (FCC)", c.fcc ? `${fmt(c.fcc.units)} (fiber ${fmt(c.fcc.fiber_units)} · gig ${fmt(c.fcc.gig_units)})` : null)}
+      ${row("5G area coverage %", c.fcc?.pct_5g_area)}
       ${row("utilities serving county", c.eia861?.utilities)}
       ${row("county opposition intensity", c.posture?.opposition_intensity)}
       ${row("active queue MW (county)", c.queue?.active_mw)}</table>

@@ -14,6 +14,9 @@
     <div class="card"><div class="bigstat" id="s-types">17 / 29</div><div class="hint">weighted signal types present (missing: A1 D4 D9 D10 D11 D13 D15 D18 D21 D22 D23 D27 — D11/D21/D25/D27 have first rows STAGED)</div></div>
     <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (D21 demolition, this app only)</div></div>
   </div>
+  <div class="card"><h2>Signal inventory — Indiana, by signal</h2>
+    <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
+    <div class="prov" id="p-sig"></div></div>
   <div class="card"><h2>Staged acquisitions — held, awaiting the subject test</h2>
     <div class="scroll"><table id="t-acq"><tr><th>source</th><th>rows</th><th>built</th></tr></table></div>
     <div class="prov">source: indiana_app._registry · county attribution by publisher identity</div></div>
@@ -28,6 +31,12 @@
 (async () => {
   const s = await loadProv();
   document.getElementById("s-si").textContent = fmt(PROV["in_si_signals"]?.n_rows);
+  const sig = s.si_by_signal || [];
+  const mx = Math.max(...sig.map(x => x.n));
+  document.getElementById("t-sig").insertAdjacentHTML("beforeend", sig.map(x =>
+    `<tr><td>${x.signal}</td><td>${fmt(x.n)}</td><td>${x.counties}</td><td>${x.latest ? String(x.latest).slice(0,10) : "—"}</td>
+     <td style="width:36%"><div style="background:#2563eb;height:9px;border-radius:4px;width:${Math.max(1, x.n/mx*100)}%"></div></td></tr>`).join(""));
+  document.getElementById("p-sig").textContent = `source: indiana_app.in_si_signals · totals conserve to ${fmt(sig.reduce((a,b)=>a+b.n,0))}`;
   document.getElementById("s-cand").textContent = fmt(PROV["in_si_candidates"]?.n_rows);
   document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
     .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))

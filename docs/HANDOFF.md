@@ -167,6 +167,27 @@ SAMPLES_*.md whole (grep per table); do not re-derive headroom (both derivations
 final and documented — §2 above); do not change payload schemas without updating every
 page that reads them (grep the field name across *.html and app.js first).
 
+## 5b. COMPLETED AFTER THE ROADMAP WAS WRITTEN (do not redo)
+
+- **T-upload (DONE, verified):** upload door live on index.html — client-side CSV,
+  point-in-county, grid distances, county context, enriched export, cannot-place kept.
+- **EXACT outdoor space (DONE):** the data-ops session shipped mat_parcel_outdoor_exact
+  (117.4M; 3,552,799 IN) into vw_parcel_sites; in_sites RE-CLIPPED with
+  exact_outdoor_acres/exact_bldg_acres/mw_*_exact (measured: ge25MW 511,715→511,665,
+  avg delta 0.01 ac — aggregate honest, per-parcel shared-footprint overcounts fixed).
+  Screener + parcel evidence now prefer exact; site files re-exported with the columns.
+- **31 lane sources appended to energy.registry_sources** (script:
+  scripts/register_lane_sources.py; updated_by indiana-app-session-20260815).
+- **T3 DONE:** FCC county detail merged into county_context (all 92 counties: business
+  broadband units + fiber/gig units + 5G area pct; scripts/build_t3_t4.py + fix_t3_fcc.py)
+  and rendered in both county evidence panels.
+- **T4 DONE:** SI-by-signal inventory in state_summary (17 signals, conserves to
+  1,818,158 exactly) and charted on si.html.
+- **docs/OPUS5_PROMPT.md** holds the paste-ready opening prompt for the next session.
+- **Site-file re-export with exact columns:** launched this session; if data/sites/*.gz
+  lack exact_outdoor_acres, rerun scripts/build_site_gates.py (idempotent) — check the
+  latest commit message first.
+
 ## 6. CURRENTLY IN FLIGHT / AWAITING OPERATOR
 
 Upload door being built now. Awaiting operator: D11/D25/D27 + MF subject sign-offs;
