@@ -210,7 +210,7 @@ map.on("load", async () => {
               name-stem dedupe rule cannot judge whether it duplicates a named building nearby.
               It is shown rather than merged or dropped — 8 of the 242 are like this.</div>` : ""}
          <div class="prov">${p.layer === "dc"
-           ? prov("in_data_centers_deduped") + " · 4-source union, deduped by operator rule 2026-08-15 "
+           ? prov("in_data_centers_located") + " · 5-source union (peeringdb merged 2026-08-15), deduped by operator rule "
              + "(same name-stem within 500 m → one row; 244 → 242). Separate buildings on one campus are "
              + "deliberately NOT merged — a distance-only rule would collapse the whole New Carlisle campus into one pin."
            : prov("in_eia_plants")}</div>`);
