@@ -91,6 +91,21 @@ map.on("load", async () => {
   map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
     paint: { "fill-color": "#7c3aed", "fill-opacity": 0.22, "fill-outline-color": "#5b21b6" } });
+  state.gas = await fetchGz("data/gas.geojson.gz");
+  map.addSource("gas", { type: "geojson", data: state.gas });
+  map.addLayer({ id: "gas-lines", type: "line", source: "gas",
+    filter: ["==", ["get", "layer"], "gas"], layout: { visibility: "none" },
+    paint: { "line-color": "#b45309", "line-width": 1.6, "line-dasharray": [3, 2] } });
+  map.addLayer({ id: "gas-pts", type: "circle", source: "gas",
+    filter: ["in", ["get", "layer"], ["literal", ["compressor", "storage"]]],
+    layout: { visibility: "none" },
+    paint: { "circle-radius": 5, "circle-color": ["case", ["==", ["get", "layer"], "compressor"], "#b45309", "#78350f"],
+             "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
+  for (const id of ["gas-lines", "gas-pts"]) {
+    map.on("click", id, (e) => openMiscEvidence(e.features[0].properties));
+    map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+  }
   state.pjm = await fetchGz("data/pjm.geojson.gz");
   map.addSource("pjm", { type: "geojson", data: state.pjm });
   map.addLayer({ id: "pjm-queue", type: "circle", source: "pjm",
@@ -137,6 +152,9 @@ function setPreset(p) {
       gridOn && document.getElementById(`g-${id.split("-")[1]}`)?.checked !== false ? "visible" : "none");
   for (const id of ["pjm-queue", "pjm-bus-est"])
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", gridOn ? "visible" : "none");
+  for (const id of ["gas-lines", "gas-pts"])
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility",
+      gridOn && document.getElementById("g-gas").checked ? "visible" : "none");
   if (map.getLayer("env-padus")) {
     map.setLayoutProperty("env-padus", "visibility",
       p === "env" && document.getElementById("e-padus").checked ? "visible" : "none");
@@ -149,7 +167,7 @@ function setPreset(p) {
   renderDenominator();
 }
 document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => setPreset(b.dataset.p));
-for (const id of ["g-lines", "g-subs", "g-bus"]) {
+for (const id of ["g-lines", "g-subs", "g-bus", "g-gas"]) {
   const el = document.getElementById(id);
   if (el) el.onchange = () => setPreset("grid");
 }
@@ -301,8 +319,12 @@ function openParcelEvidence(p) {
       ${row("signal types", p.si_signal_types)}${row("signal events", p.si_signal_events)}
       ${row("signals", p.si_signals)}${row("last event date", p.si_last_event_date)}</table>
     <div class="prov">${prov("in_si_signals")}</div>
-    <h3>Gates in BigQuery, panel wiring next</h3>
-    <div class="hint">Environmental risk/benefit, water & fibre, and per-site grid distance land here from the registered clips.</div>`);
+    <h3>Environmental gates (Part 4)</h3><table>
+      ${row("SFHA flood zone on parcel", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — flag" : "no (measured clear)"))}
+      ${row("wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES — flag" : "no (measured clear)"))}
+      ${row("protected land overlap", p.protected_land === undefined ? null : (p.protected_land ? "YES — flag" : "no (measured clear)"))}
+      ${row("bonus-credit eligibility", p.bonus_kinds === undefined ? null : (p.bonus_kinds || "none intersecting"))}</table>
+    <div class="prov">${prov("in_site_gates")} · water distance + fibre-at-parcel are county-grain pending the tile pipeline</div>`);
 }
 function openGridEvidence(p) {
   if (p.layer === "bus_poi") {
@@ -339,6 +361,15 @@ function openMiscEvidence(p) {
       .map(([k, v]) => row(k, v)).join("");
     show(`PJM queue point`, `<table>${rows_}</table>
       <div class="prov">${prov("in_pjm_gis_queues")} · PJM's own published coordinates (gis.pjm.com)</div>`);
+  } else if (p.layer === "gas") {
+    show(`Gas pipeline`, `
+      <table>${row("operator", p.operator)}${row("type", p.typepipe)}</table>
+      <div class="prov">${prov("in_gas_pipelines")} (HIFLD) · state-border design capacity is in the Market panel; daily operational availability is an open acquisition lane</div>`);
+  } else if (p.layer === "compressor" || p.layer === "storage") {
+    const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 9)
+      .map(([k, v]) => row(k, v)).join("");
+    show(`Gas ${p.layer}`, `<table>${rows_}</table>
+      <div class="prov">${prov(p.layer === "compressor" ? "in_gas_compressor_stations" : "in_gas_storage")}</div>`);
   } else if (p.layer === "padus") {
     show(`Protected: ${p.name || "(unnamed)"}`, `
       <table>${row("designation", p.designation)}${row("owner type", p.owner_type)}
@@ -375,6 +406,29 @@ document.getElementById("btn-pipeline").onclick = async () => {
     <div class="prov">${prov("in_pjm_nucra_costs")}</div>`);
 };
 
+document.getElementById("btn-market").onclick = async () => {
+  if (!state.summary) return;
+  if (!state.market) state.market = await fetchGz("data/market.json.gz");
+  const m = state.market;
+  const recent = m.monthly.slice(-120);
+  const max = Math.max(...recent.map((r) => r.gross_load_mwh || 0));
+  const pts = recent.map((r, i) => `${(i / (recent.length - 1) * 300).toFixed(1)},${(80 - (r.gross_load_mwh || 0) / max * 75).toFixed(1)}`).join(" ");
+  const gas = (m.gas_state_capacity || []).filter((r) => r.year >= 2015)
+    .sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 25);
+  show("Market (P6) — generation & gas capacity", `
+    <h3>CEMS gross generation, Indiana plants (last 10 years, monthly)</h3>
+    <svg viewBox="0 0 300 84" style="width:100%;background:#f8fafc;border:1px solid #e3e6ec;border-radius:6px">
+      <polyline points="${pts}" fill="none" stroke="#0f172a" stroke-width="1.2"/></svg>
+    <div class="prov">${prov("in_cems_monthly")} · ${m.monthly.length} months held (${m.monthly[0]?.month} → ${m.monthly[m.monthly.length - 1]?.month})</div>
+    <h3>Top plants by generation</h3>
+    <table>${m.top_plants.slice(0, 10).map((r) => row(`plant ${r.plant_id_epa}`,
+      `${fmt(r.gross_load_mwh)} MWh · ${fmt(r.co2_tons)} t CO2 · thru ${r.last_month}`)).join("")}</table>
+    <h3>Gas pipeline capacity at Indiana borders (EIA, design)</h3>
+    <table>${gas.map((r) => row(`${r.pipeline || ""} ${r.year}`,
+      `${r.state_from}→${r.state_to} (${r.county_from || "?"}→${r.county_to || "?"}): ${fmt(r.capacity_mmcfd)} MMcf/d`)).join("")}</table>
+    <div class="prov">${prov("in_gas_state_capacity")} · DESIGN capacity — daily operational availability (EBB) is an open acquisition lane</div>`);
+};
+
 const FEATURE_HOME = {
   in_sites: "Land preset — parcels + filters + evidence", in_si_signals: "Land evidence (SI section)",
   in_sites_county: "county assignment (spine)", in_county_rollup: "county layer + county evidence",
@@ -394,7 +448,12 @@ const FEATURE_HOME = {
   in_fcc_bdc: "county evidence via in_county_fibre",
   in_county_fibre: "county evidence", in_county_flood: "county evidence", in_county_wetlands: "county evidence",
   in_iurc_dockets: "Sentiment receipts", in_news_dc: "Sentiment receipts", in_dc_actions: "Sentiment receipts",
-  in_ordinances_dc: "Sentiment receipts", in_cems_monthly: "DEFERRED: P6 market charts",
+  in_ordinances_dc: "Sentiment receipts", in_cems_monthly: "Market panel (P6)",
+  in_gas_pipelines: "Grid preset (gas layer)", in_gas_compressor_stations: "Grid preset (gas layer)",
+  in_gas_storage: "Grid preset (gas layer)", in_gas_state_capacity: "Market panel (gas capacity)",
+  in_gas_processing_plants: "measured zero in Indiana — evidence of absence, registered",
+  in_gas_lng_terminals: "measured zero in Indiana — evidence of absence, registered",
+  in_site_gates: "parcel evidence panel (environmental gates)",
 };
 document.getElementById("btn-inventory").onclick = () => {
   if (!state.summary) return; // still loading
