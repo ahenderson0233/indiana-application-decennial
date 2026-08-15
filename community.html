@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community &amp; Regulatory — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Community &amp; Regulatory</span></div></header>
+<nav id="nav"></nav>
+<div class="page">
+  <h1>Community &amp; Regulatory</h1>
+  <div class="sub">County posture with receipts, IURC dockets, and the Indiana legislative preview (the scope-limited P7). Grey = no receipts held — <b>cannot assess, not calm</b>.</div>
+  <div class="card"><h2>Receipts browser — all 882 county-taggable items</h2>
+    <div style="margin-bottom:8px">
+      <select id="f-kind"><option value="">all kinds</option><option>iurc_docket</option><option>news</option><option>dc_action</option><option>ordinance</option></select>
+      <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
+    </div>
+    <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
+    <div class="prov" id="p-rec"></div></div>
+  <div class="card"><h2>County posture (from held receipts)</h2>
+    <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
+    <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
+</div>
+<script src="common.js"></script>
+<script>
+(async () => {
+  await loadProv();
+  const recs = await fetchGz("data/receipts.json.gz");
+  const ctx = await fetchJson("data/county_context.json");
+  const counties = await fetchGz("data/counties.geojson.gz");
+  const tbl = document.getElementById("t-rec");
+  function render() {
+    const k = document.getElementById("f-kind").value;
+    const q = document.getElementById("f-q").value.toLowerCase();
+    const rows = recs.filter(r => (!k || r.kind === k) &&
+      (!q || JSON.stringify(r).toLowerCase().includes(q))).slice(0, 300);
+    tbl.innerHTML = "<tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr>" + rows.map(r =>
+      `<tr><td>${r.kind}</td><td>${r.county || "state"}</td><td>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${(r.title || "").slice(0, 80)}</a>` : (r.title || "").slice(0, 80)}<br><span class="hint">${(r.detail || "").slice(0, 90)}</span></td><td>${r.observed_date || "—"}</td></tr>`).join("");
+  }
+  document.getElementById("f-kind").onchange = render;
+  document.getElementById("f-q").oninput = render;
+  render();
+  document.getElementById("p-rec").textContent = [prov("in_iurc_dockets"), prov("in_news_dc"), prov("in_dc_actions")].join(" · ");
+  document.getElementById("t-post").insertAdjacentHTML("beforeend", counties.features
+    .map(f => ({ n: f.properties.county_name, fips: f.properties.fips, c: ctx.by_fips[f.properties.fips] || {} }))
+    .sort((a, b) => (b.c.posture?.opposition_intensity || 0) - (a.c.posture?.opposition_intensity || 0))
+    .map(x => `<tr><td>${x.n}</td><td>${x.c.posture?.posture ?? "—"}</td><td>${x.c.posture?.opposition_intensity ?? "—"}</td><td>${x.c.posture?.has_local_restriction ?? "—"}</td><td>${x.c.queue?.active_mw != null ? fmt(x.c.queue.active_mw) : "—"}</td><td>${x.c.eia861?.utilities ?? "—"}</td></tr>`).join(""));
+})();
+</script>
+</body></html>

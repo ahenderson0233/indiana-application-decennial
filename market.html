@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market &amp; Rates — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Market &amp; Rates</span></div></header>
+<nav id="nav"></nav>
+<div class="page">
+  <h1>Market &amp; Rates</h1>
+  <div class="sub">Generation, demand, reliability, tariffs, and gas — Indiana grain. The per-site cost model (tariff-structure proxy for a DC of your size) is the flagged rate-engine milestone.</div>
+  <div class="gridcards">
+    <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2><div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
+    <div class="card"><h2>CEMS gross generation (monthly)</h2><div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
+  </div>
+  <div class="gridcards">
+    <div class="card"><h2>Utility reliability (SAIDI / SAIFI)</h2>
+      <div class="scroll"><table id="t-rel"><tr><th>utility · year</th><th>SAIDI min/yr</th><th>SAIFI</th><th>customers</th></tr></table></div>
+      <div class="prov" id="p-rel"></div></div>
+    <div class="card"><h2>Gas capacity at Indiana borders (EIA design) + daily OAC held</h2>
+      <div class="scroll"><table id="t-gas"><tr><th>pipeline · year</th><th>from→to</th><th>MMcf/d</th></tr></table></div>
+      <div class="prov" id="p-gas"></div></div>
+  </div>
+  <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
+    <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
+    <div class="prov" id="p-tar"></div></div>
+</div>
+<script src="common.js"></script>
+<script>
+(async () => {
+  await loadProv();
+  const m = await fetchGz("data/market.json.gz");
+  if (m.state_demand) { document.getElementById("c-demand").innerHTML = svgLine(m.state_demand, "demand_mwh", "#b45309");
+    document.getElementById("p-demand").textContent = prov("in_ferc714_state_demand") + ` · ${m.state_demand.length} months`; }
+  document.getElementById("c-cems").innerHTML = svgLine(m.monthly, "gross_load_mwh");
+  document.getElementById("p-cems").textContent = prov("in_cems_monthly") + ` · ${m.monthly.length} months`;
+  document.getElementById("t-rel").insertAdjacentHTML("beforeend", (m.reliability || [])
+    .filter(r => r.saidi_minutes_per_year != null).slice(0, 40).map(r =>
+    `<tr><td>${String(r.utility_name).slice(0, 40)} ${r.data_year}</td><td>${fmt(Math.round(r.saidi_minutes_per_year))}</td><td>${r.saifi_times_per_year ?? "—"}</td><td>${fmt(r.number_of_customers)}</td></tr>`).join(""));
+  document.getElementById("p-rel").textContent = prov("in_eia861_reliability");
+  document.getElementById("t-gas").insertAdjacentHTML("beforeend", (m.gas_state_capacity || [])
+    .filter(r => r.year >= 2015).sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 40).map(r =>
+    `<tr><td>${r.pipeline || ""} ${r.year}</td><td>${r.state_from}→${r.state_to}</td><td>${fmt(r.capacity_mmcfd)}</td></tr>`).join(""));
+  document.getElementById("p-gas").textContent = prov("in_gas_state_capacity") + " · daily operationally-available capacity held for 9 pipelines (in_gas_capacity_*) — page section next";
+  document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
+    `<tr><td>${String(r.utility).slice(0, 40)}</td><td>${(r.name || "").slice(0, 44)}</td><td>${r.sector || ""}</td><td>${r.has_demand_charge ? "yes" : "—"}</td><td>${r.energy_rate_max_usd_kwh ?? "—"}</td></tr>`).join(""));
+  document.getElementById("p-tar").textContent = prov("in_urdb_rates") + " · name-matched floor; rate-engine math is the flagged milestone";
+})();
+</script>
+</body></html>

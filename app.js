@@ -164,6 +164,30 @@ map.on("load", async () => {
     filter: ["==", ["get", "layer"], "nonattainment"], layout: { visibility: "none" },
     paint: { "fill-color": "#9f1239", "fill-opacity": 0.18, "fill-outline-color": "#881337" } });
 
+  state.fac = await fetchGz("data/facilities.geojson.gz");
+  map.addSource("fac", { type: "geojson", data: state.fac });
+  map.addLayer({ id: "fac-dc", type: "circle", source: "fac",
+    filter: ["==", ["get", "layer"], "dc"], layout: { visibility: "none" },
+    paint: { "circle-radius": 6.5, "circle-color": "#0ea5e9", "circle-stroke-color": "#0c4a6e",
+             "circle-stroke-width": 1.6, "circle-opacity": 0.9 } });
+  map.addLayer({ id: "fac-gen", type: "circle", source: "fac",
+    filter: ["in", ["get", "layer"], ["literal", ["plant", "plant_hifld", "solar", "wind"]]],
+    layout: { visibility: "none" },
+    paint: { "circle-radius": ["case", ["==", ["get", "layer"], "wind"], 2.5, 4.5],
+             "circle-color": ["case", ["==", ["get", "layer"], "solar"], "#eab308",
+               ["==", ["get", "layer"], "wind"], "#38bdf8", "#6b7280"],
+             "circle-opacity": 0.75 } });
+  for (const id of ["fac-dc", "fac-gen"]) {
+    map.on("click", id, (e) => {
+      if (state.measure.on) return;
+      const p = e.features[0].properties;
+      const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10).map(([k, v]) => row(k, v)).join("");
+      show(p.layer === "dc" ? `Existing data centre: ${p.name || ""}` : `Facility (${p.layer})`,
+        `<table>${rows_}</table><div class="prov">${p.layer === "dc" ? prov("in_data_centers_all") + " · 4-source union; cross-source dedupe pending operator rule" : prov("in_eia_plants")}</div>`);
+    });
+    map.on("mousemove", id, (e) => showTip(e, tipText(e.features[0].properties)));
+    map.on("mouseleave", id, hideTip);
+  }
   state.cand = await fetchGz("data/candidates.geojson.gz");
   map.addSource("cand", { type: "geojson", data: state.cand });
   map.addLayer({ id: "cand-line", type: "line", source: "cand", layout: { visibility: "none" },
@@ -270,7 +294,8 @@ $("f-cand").addEventListener("change", syncLayers);
 const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
-  "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"] };
+  "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
+  "L-dc": ["fac-dc"], "L-fac": ["fac-gen"] };
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))
@@ -294,7 +319,7 @@ const PRESETS = {
               "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
   grid: { metric: "queue_active_mw",
     layers: { "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1,
-              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
+              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0, "L-dc": 1, "L-fac": 1 } },
   env: { metric: "class_union",
     layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
               "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1 } },
@@ -385,6 +410,8 @@ function tipText(p) {
   if (p.layer === "bus_candidate") return `PJM bus ${p.bus_number} · load headroom ${p.withdrawal_mw != null ? Math.round(p.withdrawal_mw) + " MW" : "—"} · ESTIMATE loc (${p.match_confidence})`;
   if (p.candidate_signal) return `CANDIDATE ${p.candidate_signal} · ${p.occ_group || ""}`;
   if (p.layer === "gas") return `gas pipeline · ${p.operator || ""}`;
+  if (p.layer === "dc") return `EXISTING DC: ${p.name || ""} (${p.src})`;
+  if (["plant", "plant_hifld", "solar", "wind"].includes(p.layer)) return `${p.layer}: ${p.name || p.plant_name || ""}`;
   return p.name || p.kind || p.utility || "";
 }
 function showTip(e, text) {
@@ -765,6 +792,22 @@ const FEATURE_HOME = {
   in_commission_posture: "Sentiment context", in_dc_docket_tracker: "Sentiment context",
   in_balancing_authority_areas: "Grid context", in_groundwater_sites: "water gate context",
   in_puc_state_access_ledger: "Regulatory-preview context",
+  in_data_centers_all: "⭐ Existing-DC layer + Grid page", in_data_centers: "feeds in_data_centers_all",
+  in_fcc_bdc_fixed_summary_by_geography: "county fibre detail (page-next)",
+  in_fcc_bdc_mobile_summary: "county mobile coverage (page-next)",
+  in_fcc_bdc_provider_summary: "provider detail (page-next)",
+  in_elec_power_operational: "Market page (operations series — next)",
+  in_operating_generators: "Facilities layer source (860M live)",
+  in_ghgrp_emissions: "emitter detail (joins facilities)", in_workforce_ipeds_cs_eng: "county workforce depth",
+  in_railroads: "logistics layer (page-next)", in_roads_primary: "logistics layer (page-next)",
+  in_roads_secondary: "logistics layer (page-next)", in_zctas: "geography spine",
+  in_land_military_bases: "P4 gate layer (page-next)", in_water_aqueduct: "water-stress context",
+  in_drought_by_state: "water context (Market)", in_nrc_reactors: "measured zero in Indiana — registered",
+  in_data_centers_baxtel: "feeds in_data_centers_all", in_data_centers_cloudscene: "FLAG: state vocabulary unread",
+  in_si_d11_entity_dissolution: "Acquisitions (D11 first IN rows — subject-check pending)",
+  in_gov_surplus_nces: "Acquisitions (A2 school surplus)", in_si_d25_stb_abandonment_state: "Acquisitions (D25 dent)",
+  in_si_d27_ucc_lapse_v2: "Acquisitions (D27 dent)", in_txexp_miso_mtep_appendix_a_status: "Future-capacity source",
+  in_nfirs_fireincident_2022: "Acquisitions (D16 vintage)",
   in_gas_capacity_texas_gas: "Gas OAC (Market page next)", in_gas_capacity_vector: "Gas OAC",
   in_gas_capacity_midwestern: "Gas OAC", in_gas_capacity_panhandle_eastern: "Gas OAC (county-plottable)",
   in_gas_capacity_trunkline: "Gas OAC (county-plottable)", in_gas_capacity_ngpl: "Gas OAC",

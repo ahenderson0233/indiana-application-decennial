@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid &amp; Capacity — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Grid &amp; Capacity</span></div></header>
+<nav id="nav"></nav>
+<div class="page">
+  <h1>Grid &amp; Capacity</h1>
+  <div class="sub">Bus headroom in BOTH directions (PJM load · MISO injection), upgrades, costs, and the queue — every figure sourced. Buses also render on the <a href="index.html">Map console</a>.</div>
+  <div class="gridcards">
+    <div class="card"><h2>PJM / I&amp;M — LOAD headroom per bus (the DC direction)</h2>
+      <div class="hint">MIN(available MW) over facilities the new load stresses (|dfax|≥5%), pre-existing overloads excluded &amp; counted. 2027 RTEP Summer Peak.</div>
+      <div class="scroll"><table id="t-pjm"><tr><th>bus</th><th>kV</th><th>load headroom MW</th><th>binding facility</th><th>pre-overloads</th></tr></table></div>
+      <div class="prov" id="p-pjm"></div></div>
+    <div class="card"><h2>MISO POIs — injection @ a 300 MW request</h2>
+      <div class="hint">⚠ MISO's public viewer is INJECTION-only (generator question). 641/642 Indiana POIs read 0 at 300 MW — real, publisher-computed, DPP-2021 vintage.</div>
+      <div class="scroll"><table id="t-miso"><tr><th>POI</th><th>kV</th><th>inj@300 MW</th><th>median (∞ probe)</th><th>best</th></tr></table></div>
+      <div class="prov" id="p-miso"></div></div>
+  </div>
+  <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
+    <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
+    <div class="prov" id="p-plans"></div></div>
+  <div class="card"><h2>Interconnection queue (county grain — includes withdrawn, a deliberate signal)</h2>
+    <div class="scroll"><table id="t-queue"><tr><th>county</th><th>project</th><th>MW</th><th>type</th><th>status</th></tr></table></div>
+    <div class="prov" id="p-queue"></div></div>
+</div>
+<script src="common.js"></script>
+<script>
+(async () => {
+  await loadProv();
+  const pjm = await fetchGz("data/pjm.geojson.gz");
+  const rows = pjm.features.filter(f => f.properties.layer === "bus_candidate")
+    .sort((a, b) => (b.properties.withdrawal_mw || 0) - (a.properties.withdrawal_mw || 0));
+  document.getElementById("t-pjm").insertAdjacentHTML("beforeend", rows.slice(0, 120).map(f => {
+    const p = f.properties;
+    return `<tr><td>${p.bus_label || p.bus_number}</td><td>${p.bus_kv ?? "—"}</td><td><b>${p.withdrawal_mw != null ? fmt(Math.round(p.withdrawal_mw)) : "—"}</b></td><td>${(p.wd_binding || "").slice(0, 44)}</td><td>${p.wd_existing_overloads ?? "—"}</td></tr>`;
+  }).join(""));
+  document.getElementById("p-pjm").textContent = prov("in_pjm_bus_withdrawal") + " · located buses shown; full 1,475-bus table in BigQuery";
+  const grid = await fetchGz("data/grid.geojson.gz");
+  const pois = grid.features.filter(f => f.properties.layer === "bus_poi")
+    .sort((a, b) => (b.properties.median_mw || 0) - (a.properties.median_mw || 0));
+  document.getElementById("t-miso").insertAdjacentHTML("beforeend", pois.slice(0, 120).map(f => {
+    const p = f.properties;
+    return `<tr><td>${p.poi_name}</td><td>${p.kv ?? "—"}</td><td><b>${p.headroom300_mw != null ? fmt(Math.round(p.headroom300_mw)) : "—"}</b></td><td>${fmt(Math.round(p.median_mw || 0))}</td><td>${fmt(Math.round(p.best_mw || 0))}</td></tr>`;
+  }).join(""));
+  document.getElementById("p-miso").textContent = prov("in_bus_headroom_300");
+  const pl = await fetchGz("data/pipeline.json.gz");
+  const plans = pl.grid_plans.filter(r => r.row_type === "project").slice(0, 80)
+    .map(r => `<tr><td>${r.utility || ""}</td><td>${(r.project_name || r.location_text || "").slice(0, 60)}</td><td>${r.voltage_kv || "—"}</td><td>${r.in_service_year || "—"}</td><td>${r.cost_usd_m || "—"}</td></tr>`);
+  const rto = pl.rto_expansion.slice(0, 80)
+    .map(r => `<tr><td>${r.rto || r.source || "RTO"}</td><td>${(r.project_name || r.upgrade_name || r.description || "").slice(0, 60)}</td><td>${r.voltage_kv || "—"}</td><td>${r.in_service_year || r.isd || "—"}</td><td>${r.cost_usd_m || "—"}</td></tr>`);
+  document.getElementById("t-plans").insertAdjacentHTML("beforeend", plans.join("") + rto.join(""));
+  document.getElementById("p-plans").textContent = prov("in_grid_plans") + " · " + prov("in_rto_expansion");
+  document.getElementById("t-queue").insertAdjacentHTML("beforeend", pl.queue_projects.slice(0, 120).map(r =>
+    `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`).join(""));
+  document.getElementById("p-queue").textContent = prov("in_queue");
+})();
+</script>
+</body></html>

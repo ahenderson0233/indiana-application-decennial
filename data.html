@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Data</span></div></header>
+<nav id="nav"></nav>
+<div class="page">
+  <h1>Data — inventory, provenance, honesty</h1>
+  <div class="sub">Every table in <code>indiana_app</code> with its build record. The audit docs (census, worklist, samples) live in the repo's <code>docs/</code>.</div>
+  <div class="gridcards">
+    <div class="card"><div class="bigstat" id="s-tables">…</div><div class="hint">registered Indiana tables</div></div>
+    <div class="card"><div class="bigstat" id="s-parcels">…</div><div class="hint">parcels held (100% represented at every zoom)</div></div>
+    <div class="card"><div class="bigstat" id="s-built">…</div><div class="hint">last build (UTC)</div></div>
+  </div>
+  <div class="card"><h2>Honesty ledger</h2><div class="hint" id="ledger"></div></div>
+  <div class="card"><h2>Provenance — all registered tables</h2>
+    <input id="f-q" placeholder="filter…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px;margin-bottom:8px">
+    <div class="scroll" style="max-height:640px"><table id="t-prov"><tr><th>table</th><th>rows</th><th>source</th><th>built</th></tr></table></div></div>
+</div>
+<script src="common.js"></script>
+<script>
+(async () => {
+  const s = await loadProv();
+  document.getElementById("s-tables").textContent = fmt(s.provenance.length);
+  document.getElementById("s-parcels").textContent = fmt(s.totals.all_parcels);
+  document.getElementById("s-built").textContent = s.built_at_utc.slice(0, 16) + "Z";
+  const c = s.cannot_assess;
+  document.getElementById("ledger").innerHTML =
+    `${fmt(c.si_observations_unmappable)} SI observations unmappable · ${fmt(c.parcels_without_geometry)} parcel w/o geometry · ` +
+    `${fmt(c.parcels_geometry_but_no_county)} w/o county — listed, never zeroed. Estimates never style as published coordinates. ` +
+    `Headroom direction is disclosed everywhere (PJM=load, MISO viewer=injection-only). MW capacities are adjustable assumptions.`;
+  const tbl = document.getElementById("t-prov");
+  function render() {
+    const q = (document.getElementById("f-q").value || "").toLowerCase();
+    tbl.innerHTML = "<tr><th>table</th><th>rows</th><th>source</th><th>built</th></tr>" + s.provenance
+      .filter(p => !q || p.table_name.includes(q) || String(p.source).toLowerCase().includes(q))
+      .map(p => `<tr><td><code>${p.table_name}</code></td><td>${fmt(p.n_rows)}</td><td class="hint">${String(p.source).slice(0, 60)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join("");
+  }
+  document.getElementById("f-q").oninput = render;
+  render();
+})();
+</script>
+</body></html>

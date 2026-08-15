@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SI Feed — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
+<nav id="nav"></nav>
+<div class="page">
+  <h1>Seller-Intent Feed</h1>
+  <div class="sub">17 of 29 weighted signals held in Indiana; candidates and staged acquisitions shown with their status — a name is never wired without a subject read.</div>
+  <div class="gridcards">
+    <div class="card"><div class="bigstat" id="s-si">…</div><div class="hint">SI observations held (in_si_signals)</div></div>
+    <div class="card"><div class="bigstat" id="s-types">17 / 29</div><div class="hint">weighted signal types present (missing: A1 D4 D9 D10 D11 D13 D15 D18 D21 D22 D23 D27 — D11/D21/D25/D27 have first rows STAGED)</div></div>
+    <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (D21 demolition, this app only)</div></div>
+  </div>
+  <div class="card"><h2>Staged acquisitions — held, awaiting the subject test</h2>
+    <div class="scroll"><table id="t-acq"><tr><th>source</th><th>rows</th><th>built</th></tr></table></div>
+    <div class="prov">source: indiana_app._registry · county attribution by publisher identity</div></div>
+  <div class="card"><h2>Freshness &amp; remediation (Lane D)</h2>
+    <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
+    (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
+    (an unwired MF mortgage-foreclosure code found in the same workbook) · WARN 1,220 · brownfields 1,483.
+    Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
+</div>
+<script src="common.js"></script>
+<script>
+(async () => {
+  const s = await loadProv();
+  document.getElementById("s-si").textContent = fmt(PROV["in_si_signals"]?.n_rows);
+  document.getElementById("s-cand").textContent = fmt(PROV["in_si_candidates"]?.n_rows);
+  document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
+    .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
+    .map(p => `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}</td><td>${fmt(p.n_rows)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join(""));
+})();
+</script>
+</body></html>
