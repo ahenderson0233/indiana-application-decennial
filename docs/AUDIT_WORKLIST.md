@@ -69,6 +69,20 @@ substations/nat_substations_hifld (feed mat_grid_substations), interconnection_q
 (lbnl_/iso_ variants: same-source diff pending), txexp_*, si_d17_in_iocs_court_year,
 brownfields family, gas_eia_state_capacity.
 
+## Batch 3 — verified rows 131-215 (2026-08-15)
+
+**CLIPPED + REGISTERED (21 tables):** data_centers_datacentermap (157 EXISTING Indiana DCs —
+the competitive/demand layer), power_plants (HIFLD 208), solar_pv_facilities (114),
+lbnl_interconnection_costs (116 — cost benchmarks), openstates_energy_bill_{versions,sources,
+votes,abstracts,bills_v2} (legislative family complete), county context pack: fema_nri_counties,
+qcew_county_labor, acs_county, water_use, solar_potential, usa_structures_county,
+cbp_county_industry, workforce_ipeds_directory; candidate_sites_colleges (demo set),
+eia861_sales + _ult_cust (retail P6), fsis_establishments (large occupiers).
+
+**WAIVE:** remaining out-of-state parcels_*/socrata_*/state_bulk_* small-IN-count rows
+(owner-mailing-state class), si_register / parcel_county_register / county_boundaries (meta/spine),
+mat_grid_territories + electric_retail_service_territories (already feed in_territories).
+
 ## Remaining batches
 Batch 2+: rest of the 308 (rows 46-308) · then the 465 measured zeros (eyeball samples for
 disguised Indiana) · then spatial-only via source identity + PARCEL_SOURCE_GEOGRAPHY ·
