@@ -93,22 +93,34 @@ warn = list(client.query(f"""
             SELECT CONCAT(IFNULL(Company,''),'|',IFNULL(City,''),'|',IFNULL(Notice_Date,''))
             FROM `{DS}.in_si_state_warn_notices`)) shared"""))[0]
 # A4: NFIRS structure fires, filtered to the building/structure incident range and to Indiana
+# The SI funnel, per the operator's doctrine: a signal only counts when it would plausibly move
+# an owner to sell. Raw incidents -> structure fires -> NON-RESIDENTIAL -> material loss.
 nf = [dict(r) for r in client.query(f"""
-  SELECT yr, COUNT(*) fires, COUNTIF(non_residential='Y') non_res,
-         COUNTIF(address_quality='number + street') keyable,
-         COUNTIF(address_quality='street only, no number') street_only,
-         COUNTIF(address_quality='no street name') no_street,
-         COUNT(DISTINCT city) cities, COUNT(DISTINCT fdid) departments
+  SELECT yr, COUNT(*) fires,
+         COUNTIF(property_class='non-residential') non_res,
+         COUNTIF(severity != 'no loss reported') with_loss,
+         COUNTIF(property_class='non-residential' AND severity IN
+                 ('moderate >=$10k','major >=$100k','catastrophic >=$500k')) si_grade,
+         COUNTIF(address_quality='number + street') keyable
   FROM `{DS}.in_nfirs_structure_fires` GROUP BY 1 ORDER BY 1""")]
-nf_cities = [dict(r) for r in client.query(f"""
-  SELECT city, COUNT(*) fires, COUNTIF(non_residential='Y') non_res
+nf_sev = [dict(r) for r in client.query(f"""
+  SELECT property_class, severity, COUNT(*) n FROM `{DS}.in_nfirs_structure_fires`
+  GROUP BY 1,2 ORDER BY 1, n DESC""")]
+# the SI-grade incidents themselves - non-residential, material loss, address-keyable
+nf_top = [dict(r) for r in client.query(f"""
+  SELECT CAST(incident_date AS STRING) d, street_address, city, property_use_code,
+         severity, property_loss_usd, contents_loss_usd
   FROM `{DS}.in_nfirs_structure_fires`
-  WHERE city IS NOT NULL AND TRIM(CAST(city AS STRING)) NOT IN ('','None')
-  GROUP BY 1 ORDER BY fires DESC LIMIT 30""")]
+  WHERE property_class='non-residential'
+    AND severity IN ('moderate >=$10k','major >=$100k','catastrophic >=$500k')
+  ORDER BY IFNULL(property_loss_usd,0) + IFNULL(contents_loss_usd,0) DESC LIMIT 40""")]
 
 payload = {"sources": out, "warn_dup": {"refresh_rows": warn.a, "state_rows": warn.b,
                                         "shared_keys": warn.shared},
-           "nfirs": {"by_year": nf, "top_cities": nf_cities}}
+           "nfirs": {"by_year": nf, "severity": nf_sev, "si_grade": nf_top,
+                     "raw_incidents": list(client.query(f"""
+                        SELECT (SELECT COUNT(*) FROM `{DS}.in_nfirs_basicincident_2020` WHERE STATE='IN')
+                             + (SELECT COUNT(*) FROM `{DS}.in_nfirs_basicincident_2021` WHERE STATE='IN') n"""))[0].n}}
 p = os.path.join(REPO, "data", "si_sources.json.gz")
 with gzip.open(p, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(payload, f, separators=(",", ":"), default=str)

@@ -30,10 +30,12 @@ client = bigquery.Client(project="energy-platfrom")
 
 SQL = f"""
 WITH inc AS (
-  SELECT '2020' AS yr, INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE
+  SELECT '2020' AS yr, INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
+         PROP_LOSS, CONT_LOSS, PROP_VAL, PROP_USE, OTH_DEATH, OTH_INJ
   FROM `{DS}.in_nfirs_basicincident_2020` WHERE STATE = 'IN'
   UNION ALL
-  SELECT '2021', INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE
+  SELECT '2021', INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
+         PROP_LOSS, CONT_LOSS, PROP_VAL, PROP_USE, OTH_DEATH, OTH_INJ
   FROM `{DS}.in_nfirs_basicincident_2021` WHERE STATE = 'IN'),
 addr AS (
   SELECT INCIDENT_KEY, NUM_MILE, STREET_PRE, STREETNAME, STREETTYPE, CITY, ZIP5
@@ -54,6 +56,33 @@ fire AS (
 SELECT i.yr, i.INCIDENT_KEY AS incident_key, i.FDID AS fdid,
        SAFE.PARSE_DATE('%m%d%Y', i.INC_DATE) AS incident_date,
        i.INC_TYPE AS inc_type,
+       -- SEVERITY (operator ruling 2026-08-15): a minor contained fire does not move an owner to
+       -- sell, so loss dollars decide whether an incident is seller intent at all. Measured:
+       -- 6,322 of 8,119 structure fires in 2021 report ZERO property loss.
+       SAFE_CAST(i.PROP_LOSS AS INT64) AS property_loss_usd,
+       SAFE_CAST(i.CONT_LOSS AS INT64) AS contents_loss_usd,
+       SAFE_CAST(i.PROP_VAL AS INT64) AS property_value_usd,
+       CASE WHEN IFNULL(SAFE_CAST(i.PROP_LOSS AS INT64), 0)
+                 + IFNULL(SAFE_CAST(i.CONT_LOSS AS INT64), 0) >= 500000 THEN 'catastrophic >=$500k'
+            WHEN IFNULL(SAFE_CAST(i.PROP_LOSS AS INT64), 0)
+                 + IFNULL(SAFE_CAST(i.CONT_LOSS AS INT64), 0) >= 100000 THEN 'major >=$100k'
+            WHEN IFNULL(SAFE_CAST(i.PROP_LOSS AS INT64), 0)
+                 + IFNULL(SAFE_CAST(i.CONT_LOSS AS INT64), 0) >= 10000 THEN 'moderate >=$10k'
+            WHEN IFNULL(SAFE_CAST(i.PROP_LOSS AS INT64), 0)
+                 + IFNULL(SAFE_CAST(i.CONT_LOSS AS INT64), 0) > 0 THEN 'minor <$10k'
+            ELSE 'no loss reported' END AS severity,
+       -- PROPERTY USE (operator ruling): SI only counts at the NON-RESIDENTIAL level. NFIRS 5.0
+       -- property-use codes 400-499 are residential (419 = 1-family, 429 = multifamily); 100s
+       -- assembly, 200s educational, 300s health/detention, 500s mercantile, 600s utility/
+       -- industrial, 700s manufacturing, 800s storage, 900s outside/special.
+       i.PROP_USE AS property_use_code,
+       CASE WHEN i.PROP_USE IS NULL OR CAST(i.PROP_USE AS STRING) IN ('','NNN','UUU')
+              THEN 'unknown'
+            WHEN SAFE_CAST(i.PROP_USE AS INT64) BETWEEN 400 AND 499 THEN 'residential'
+            WHEN SAFE_CAST(i.PROP_USE AS INT64) IS NULL THEN 'unknown'
+            ELSE 'non-residential' END AS property_class,
+       SAFE_CAST(i.OTH_DEATH AS INT64) AS civilian_deaths,
+       SAFE_CAST(i.OTH_INJ AS INT64) AS civilian_injuries,
        TRIM(CONCAT(IFNULL(a.NUM_MILE,''), ' ', IFNULL(a.STREET_PRE,''), ' ',
                    IFNULL(a.STREETNAME,''), ' ', IFNULL(a.STREETTYPE,''))) AS street_address,
        a.CITY AS city, a.ZIP5 AS zip5,
@@ -76,12 +105,21 @@ print(f"dry-run {gb:.3f} GB")
 client.query(f"CREATE OR REPLACE TABLE `{DS}.in_nfirs_structure_fires` AS\n{SQL}").result()
 
 for r in client.query(f"""
-    SELECT yr, COUNT(*) fires, COUNTIF(non_residential='Y') non_res,
-           COUNTIF(address_quality='number + street') keyable,
-           COUNT(DISTINCT city) cities
+    SELECT yr, COUNT(*) fires,
+           COUNTIF(property_class='non-residential') non_res,
+           COUNTIF(severity != 'no loss reported') with_loss,
+           COUNTIF(property_class='non-residential' AND severity IN
+                   ('moderate >=$10k','major >=$100k','catastrophic >=$500k')) si_grade,
+           COUNTIF(address_quality='number + street') keyable
     FROM `{DS}.in_nfirs_structure_fires` GROUP BY 1 ORDER BY 1"""):
     print(f"  {r.yr}: {r.fires:,} structure fires · {r.non_res:,} non-residential · "
-          f"{r.keyable:,} with number+street · {r.cities} cities")
+          f"{r.with_loss:,} with any loss · **{r.si_grade:,} SI-GRADE** (non-res + >=$10k loss) · "
+          f"{r.keyable:,} keyable")
+print("\n  severity x property class:")
+for r in client.query(f"""
+    SELECT property_class, severity, COUNT(*) n FROM `{DS}.in_nfirs_structure_fires`
+    GROUP BY 1,2 ORDER BY property_class, n DESC"""):
+    print(f"    {r.property_class:<16} {r.severity:<22} {r.n:>6,}")
 n = list(client.query(f"SELECT COUNT(*) n FROM `{DS}.in_nfirs_structure_fires`"))[0].n
 
 client.query(f"DELETE FROM `{DS}._registry` WHERE table_name='in_nfirs_structure_fires'").result()

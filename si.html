@@ -51,16 +51,21 @@
       <div class="prov">source: <code>in_sba_foia_loans</code> · a business-formation and
         expansion signal; the counterpart to the distress signals above</div></div>
   </div>
-  <div class="card"><h2>D16 candidate — structure fires (NFIRS)</h2>
-    <div class="hint" style="margin-bottom:6px">A fire at a commercial building is a distress
-      signal. But <b>only ~21% of NFIRS incidents are structure fires</b> — the rest are gas leaks,
-      downed power lines, vehicle and cooking fires. Filtered to NFIRS incident types 111–123.
-      <b>Address grain, not parcel grain</b>: these are not yet keyed to parcels and are not
-      claimed to be.</div>
+  <div class="card"><h2>D16 candidate — structure fires that would actually move an owner to sell</h2>
+    <div class="hint" style="margin-bottom:6px"><b>A signal only counts when it plausibly produces
+      seller intent.</b> A contained kitchen fire does not, and a house is not a hyperscale site.
+      So the raw file is narrowed three times: to structure fires, to <b>non-residential</b>
+      property, and to <b>material loss</b>. Each step is shown, so the discard is auditable rather
+      than a number appearing from nowhere.</div>
+    <div id="nfirs-funnel" class="hint" style="margin-bottom:8px"></div>
     <div class="gridcards">
-      <div class="card"><div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-residential</th><th>number+street</th><th>cities</th></tr></table></div></div>
-      <div class="card"><div class="scroll" style="max-height:220px"><table id="t-nfirs-city"><tr><th>city</th><th>fires</th><th>non-res</th></tr></table></div></div>
+      <div class="card"><h2 style="font-size:12px">By year</h2>
+        <div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-res</th><th>any loss</th><th>SI-grade</th></tr></table></div></div>
+      <div class="card"><h2 style="font-size:12px">Severity × property class</h2>
+        <div class="scroll" style="max-height:230px"><table id="t-nfirs-sev"><tr><th>class</th><th>severity</th><th>n</th></tr></table></div></div>
     </div>
+    <h3 style="margin:10px 0 4px;font-size:12.5px">The SI-grade incidents — non-residential, ≥$10k loss</h3>
+    <div class="scroll" style="max-height:280px"><table id="t-nfirs-si"><tr><th>date</th><th>address</th><th>city</th><th>use</th><th>severity</th><th>loss</th></tr></table></div>
     <div class="prov" id="p-nfirs"></div></div>
 
   <div class="card"><h2>Where the signals come from — every source, with its real freshness</h2>
@@ -115,18 +120,38 @@
   /* ---------- D16 candidate: NFIRS structure fires ---------- */
   const SRC = await fetchGz("data/si_sources.json.gz");
   const NF = SRC.nfirs;
+  const tot = (k) => NF.by_year.reduce((a, y) => a + y[k], 0);
+  const raw = NF.raw_incidents, fires = tot("fires"), nres = tot("non_res"), si = tot("si_grade");
+  document.getElementById("nfirs-funnel").innerHTML =
+    `<b>${fmt(raw)}</b> Indiana incidents logged →
+     <b>${fmt(fires)}</b> structure fires (${Math.round(100 * fires / raw)}%; the rest are gas leaks,
+     downed lines, vehicle and cooking fires) →
+     <b>${fmt(nres)}</b> non-residential (a house is not a hyperscale site) →
+     <b style="color:#b45309">${fmt(si)}</b> with material loss ≥$10k.
+     <b>${(100 * si / raw).toFixed(1)}% of the raw file survives</b> — and that is the honest size
+     of this signal.`;
   document.getElementById("t-nfirs").insertAdjacentHTML("beforeend", NF.by_year.map(y =>
-    `<tr><td>${y.yr}</td><td><b>${fmt(y.fires)}</b></td><td>${fmt(y.non_res)}</td>
-     <td>${fmt(y.keyable)} <span class="hint">(${Math.round(100 * y.keyable / y.fires)}%)</span></td>
-     <td>${fmt(y.cities)}</td></tr>`).join(""));
-  document.getElementById("t-nfirs-city").insertAdjacentHTML("beforeend", NF.top_cities.map(c =>
-    `<tr><td>${c.city}</td><td>${fmt(c.fires)}</td><td>${fmt(c.non_res)}</td></tr>`).join(""));
+    `<tr><td>${y.yr}</td><td>${fmt(y.fires)}</td><td>${fmt(y.non_res)}</td>
+     <td>${fmt(y.with_loss)}</td><td><b>${fmt(y.si_grade)}</b></td></tr>`).join(""));
+  document.getElementById("t-nfirs-sev").insertAdjacentHTML("beforeend", NF.severity.map(s =>
+    `<tr><td>${s.property_class}</td><td>${s.severity}</td><td>${fmt(s.n)}</td></tr>`).join(""));
+  document.getElementById("t-nfirs-si").insertAdjacentHTML("beforeend", NF.si_grade.map(x => {
+    const loss = (x.property_loss_usd || 0) + (x.contents_loss_usd || 0);
+    return `<tr><td>${x.d || "—"}</td><td>${String(x.street_address || "").slice(0, 34)}</td>
+      <td>${x.city || "—"}</td><td class="hint">${x.property_use_code || "—"}</td>
+      <td>${x.severity}</td><td>$${fmt(loss)}</td></tr>`;
+  }).join(""));
   document.getElementById("p-nfirs").innerHTML =
     `source: <code>in_nfirs_structure_fires</code>, built from all seven vintages, each named in
      full so it can be looked up: <code>in_nfirs_basicincident_2020</code>,
      <code>in_nfirs_basicincident_2021</code>, <code>in_nfirs_incidentaddress_2020</code>,
      <code>in_nfirs_incidentaddress_2021</code>, <code>in_nfirs_fireincident_2020</code>,
      <code>in_nfirs_fireincident_2021</code>, <code>in_nfirs_fireincident_2024</code>.
+     <b>Severity</b> is property + contents loss as the fire department reported it;
+     <b>property class</b> uses the NFIRS 5.0 property-use code (400–499 residential — 419 is a
+     1-family dwelling, 429 multifamily; 500s mercantile, 600s utility/industrial, 700s
+     manufacturing, 800s storage). Codes that are blank, <code>NNN</code> or <code>UUU</code> are
+     shown as <i>unknown</i>, never assumed non-residential to inflate the signal.
      <b>Two defects fixed on the way in.</b> (1) Admitting the raw tables would have inflated D16
      roughly fivefold, since ~79% of incidents are not structure fires. (2)
      <code>in_nfirs_fireincident_2024</code> is <b>not Indiana-clipped</b> — 407 of its 1,255 rows
