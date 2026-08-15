@@ -260,12 +260,32 @@ function classOk(p) {
          ($("f-vac").checked && p.occ_group === "no_structure") ||
          ($("f-other").checked && p.occ_group === "other_nonres");
 }
+/* The acreage every surface screens, tooltips and reports on. ONE function so the screener,
+   the tooltip and the evidence panel can never disagree about the same parcel.
+
+   Exact outdoor space (parcel minus the measured footprint intersection) wins when present —
+   it fixes the shared-building overcount. But it carries one contradiction, measured across
+   the class union: 126 of 1,200,924 parcels report an exact parcel area under half the
+   recorded acreage, and for 85 of them footprints_intersecting is ZERO. With nothing
+   intersecting, outdoor area IS the parcel by arithmetic, so an exact figure below it is the
+   exact pipeline's geometry disagreeing with the recorded acreage — not a measurement of
+   buildings. Preferring it blindly dropped 23 parcels of 75+ acres (300 MW at 4 MW/acre) out
+   of the screener with no footprint to blame. So: when nothing intersects, trust the parcel.
+   The disagreement is not swallowed — acreageOf() reports it and the panel prints it. */
+function acreageOf(p) {
+  const parcel = Number(p.parcel_acres) || 0;
+  const exact = p.exact_outdoor_acres == null ? null : Number(p.exact_outdoor_acres);
+  const legacy = p.outdoor_acres == null ? null : Number(p.outdoor_acres);
+  if (exact != null && p.footprints_intersecting === 0 && parcel > 0 && exact < parcel * 0.99)
+    return { acres: parcel, basis: "parcel area (no footprints intersect)", disputed: true };
+  if (exact != null) return { acres: exact, basis: "exact (parcel − measured footprints)", disputed: false };
+  if (legacy != null) return { acres: legacy, basis: "approximate", disputed: false };
+  return { acres: parcel, basis: "parcel area", disputed: false };
+}
 function jsMatches(p) {
   if (!classOk(p)) return false;
   if ($("f-mw").checked) {
-    // exact outdoor space (parcel minus measured footprint intersection) wins when present
-    const acres = Number(p.exact_outdoor_acres ?? p.outdoor_acres ?? p.parcel_acres) || 0;
-    if (acres * V("f-density") < V("f-mw-val")) return false;
+    if (acreageOf(p).acres * V("f-density") < V("f-mw-val")) return false;
   }
   if ($("f-si").checked) {
     if (p.has_si_signal !== true) return false;
@@ -417,7 +437,9 @@ async function maybeLoadCounties() {
 /* ---------- tooltip ---------- */
 const tip = document.getElementById("tooltip");
 function tipText(p) {
-  if (p.parcel_key) return `${p.occ_group || ""} · ${Number(p.parcel_acres || 0).toFixed(1)} ac · fits ${Math.floor((p.outdoor_acres ?? p.parcel_acres ?? 0) * V("f-density"))} MW${p.has_si_signal ? " · SI" : ""}${p._dsub_mi != null ? ` · sub ${p._dsub_mi} mi` : ""}`;
+  // same acreageOf() as the screener and the evidence panel — a tooltip that disagreed with
+  // the panel it opens would be two instruments claiming one parcel
+  if (p.parcel_key) return `${p.occ_group || ""} · ${Number(p.parcel_acres || 0).toFixed(1)} ac · fits ${Math.floor(acreageOf(p).acres * V("f-density"))} MW${p.has_si_signal ? " · SI" : ""}${p._dsub_mi != null ? ` · sub ${p._dsub_mi} mi` : ""}`;
   if (p.layer === "bus_poi") return `${p.poi_name} · median ${fmt(p.median_mw)} MW / best ${fmt(p.best_mw)} MW`;
   if (p.layer === "substation") return `${p.substation_name || "substation"} · ${p.min_kv ?? "?"}–${p.max_kv ?? "?"} kV`;
   if (p.layer === "line") return `${p.voltage || "?"} kV line · ${p.owner || ""}`;
@@ -528,14 +550,23 @@ function openParcelEvidence(p, fips) {
   const a = (x) => x == null ? null : Number(x).toFixed(2);
   const c = state.ctx.by_fips[fips] || {};
   const density = V("f-density");
+  const acr = acreageOf(p);
   show(`Parcel ${p.parcel_key}`, `
     <h3>Land & size (P3)</h3><table>
       ${row("class", p.occ_group)}${row("parcel acres", a(p.parcel_acres))}
       ${row("outdoor acres (EXACT: parcel − measured building intersection)", a(p.exact_outdoor_acres))}
       ${row("outdoor acres (approximate)", a(p.outdoor_acres))}
       ${row("building acres (exact)", a(p.exact_bldg_acres))}
-      ${row(`fits @ ${density} MW/acre (your setting)`, Math.floor((p.exact_outdoor_acres ?? p.outdoor_acres ?? p.parcel_acres ?? 0) * density) + " MW")}
+      ${row("footprints intersecting this parcel", p.footprints_intersecting)}
+      ${row("how outdoor space was measured", p.outdoor_acres_method)}
+      ${row("screened on", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
+      ${row(`fits @ ${density} MW/acre (your setting)`, Math.floor(acr.acres * density) + " MW")}
       ${row("structures", p.structure_count)}${row("structure sqft", p.structure_sqft)}</table>
+    ${acr.disputed ? `<div class="cannot">Sources disagree on this parcel's size: no building footprint
+      intersects it, yet the exact-geometry figure (${Number(p.exact_outdoor_acres).toFixed(2)} ac) falls below
+      the recorded parcel area (${Number(p.parcel_acres).toFixed(2)} ac). With nothing to subtract, the two should
+      match. Screened on the recorded acreage; the exact figure is shown above unchanged so you can judge it.
+      126 of 1,200,924 class-union parcels show this — see docs/HANDOFF.md.</div>` : ""}
     <div class="prov">${prov("in_sites")} · exact figures from mat_parcel_outdoor_exact (footprint∩parcel measured, shared buildings not double-counted) · density is your adjustable assumption, not an answer</div>
     <h3>Grid access (P2) — computed to nearest mapped feature</h3><table>
       ${row("nearest substation", p._dsub_name ? `${p._dsub_name} (${p._dsub_kv} kV) · ${p._dsub_mi} mi` : null)}
@@ -968,7 +999,9 @@ $("export-csv").onclick = () => {
     for (const ft of feats) if (jsMatches(ft.properties)) rows.push(ft.properties);
   }
   if (!rows.length) return;
-  const cols = Object.keys(rows[0]);
+  // union, not rows[0]'s keys: the screener attaches _dsub_*/_dpoi_* per parcel, so a first
+  // row that happens to lack them would silently drop those columns from everyone's export
+  const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   const esc = (v) => v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
   const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
   const a = document.createElement("a");

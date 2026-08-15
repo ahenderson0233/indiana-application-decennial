@@ -1,15 +1,28 @@
 # HANDOFF — Indiana Siting Intelligence (updated 2026-08-15, session closed clean)
 
-**⚠ FIRST THING TO RESOLVE — the partial exact-acres re-export.** A re-export of
-`data/sites/*.geojson.gz` incorporating the data-ops session's `mat_parcel_outdoor_exact`
-columns (`exact_parcel_acres`, `exact_outdoor_acres`, `exact_bldg_acres`,
-`footprints_intersecting`) ran for counties 18001–18087 (44 of 92) and stopped — NOT
-launched by this session; ask the operator what ran it. HEAD serves the consistent
-92-county set (no exact columns); **the partial 44 are preserved at commit `0c9405c`**.
-Fix: `git checkout 0c9405c -- data/sites` to recover them, re-run the producing export for
-the remaining 48 counties, verify one county's keys per half, commit all 92 together, then
-surface the exact-acres fields in the parcel evidence panel (they are better numbers than
-the current outdoor_acres — the platform's $45 exact-intersection milestone delivered).
+**✅ RESOLVED 2026-08-15 — the exact-acres re-export is complete and consistent.** Rather than
+splice the partial 44 counties from `0c9405c` onto the other 48 (two generations, one map —
+the §AC partial-swap hazard), all 92 were rewritten from ONE query snapshot by the new
+`scripts/export_sites_exact.py`, which refuses to write at all if `in_sites` lacks the exact
+columns. Measured: 92 files, 1,200,916 features — **identical to the committed row count**, so
+columns were added and no rows lost; all 92 carry all 7 exact-family fields; 8.5% of sampled
+parcels differ materially from the legacy approximation (had it been ~0%, the columns would
+have been a copy). Cost 2.2 GB ≈ $0.01. `0c9405c` no longer needs recovering.
+
+**A defect the re-export exposed — read this before touching the acreage ladder.** Preferring
+`exact_outdoor_acres` blindly is wrong for a measurable minority. Across the class union,
+**126 of 1,200,924** parcels report an exact parcel area below half the recorded acreage, and
+for **85** of them `footprints_intersecting` is ZERO. With nothing intersecting, outdoor area
+*is* the parcel by arithmetic — so a smaller exact figure is the exact pipeline's geometry
+disagreeing with the recorded acreage, not a measurement of buildings. The cost was concrete:
+**23 parcels of 75+ acres (300 MW at 4 MW/acre) dropped out of the screener with no footprint
+to blame**, on the exact use case this app exists for. Fixed by a single `acreageOf(p)` used by
+the screener, the tooltip AND the panel (they could otherwise disagree about one parcel): when
+nothing intersects, trust the parcel area, and say so. The example parcel `020406400005000062`
+went from "fits 2 MW" to "fits 181 MW". Nothing is swallowed — the panel prints the exact figure
+unchanged and a banner naming the disagreement. **Still open for the operator:** the other
+41 shrunk parcels (footprints > 0, so a large building *might* explain them) and 107 parcels
+where exact runs over 200% of legacy. Neither is auto-corrected.
 
 **SESSION-CLOSE STATE:** roadmap T1–T8 all closed or operator-gated (T2 packet awaits
 per-item sign-off; T7 awaits the WSL/Docker install; T8 cadence awaits venue choice).
@@ -231,6 +244,13 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **EXACT-ACRES RE-EXPORT CLOSED 2026-08-15** — see the ✅ block at the top of this file for the
+  measurements, the `acreageOf()` fix and the two questions still open for the operator. Script:
+  `scripts/export_sites_exact.py` (idempotent, guarded, one snapshot for all 92 counties).
+- **CSV export fidelity fixed (same pass):** `export-csv` built its header from `rows[0]`'s keys,
+  so a first row lacking the screener's per-parcel `_dsub_*`/`_dpoi_*` attachments would silently
+  drop those columns for the whole file. Now a union of all rows' keys, matching what the upload
+  export already did.
 - **T2 PACKET REBUILT 2026-08-15 (v2) — v1 was not answerable.** Measured on open: items 1, 4
   and 7 were BigQuery *errors* (`status`, `case_type`, `q_id` — all guessed, none read first;
   the §4 worst practice, committed by the packet builder itself) and items 5-6 answered a
