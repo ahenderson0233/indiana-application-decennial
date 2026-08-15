@@ -1,4 +1,10 @@
-# HANDOFF — Indiana Siting Intelligence (updated 2026-08-15)
+# HANDOFF — Indiana Siting Intelligence (updated 2026-08-15, session closed clean)
+
+**SESSION-CLOSE STATE:** roadmap T1–T8 all closed or operator-gated (T2 packet awaits
+per-item sign-off; T7 awaits the WSL/Docker install; T8 cadence awaits venue choice).
+Nothing running, nothing uncommitted, no open instrument questions. The next session
+(Opus 5) starts at §5's roadmap — first action is T1's verification check, second is
+processing whatever sign-offs the operator has returned from docs/SIGNOFF_PACKET.md.
 
 The single document a fresh session reads first. Everything is committed on `main` at
 github.com/ahenderson0233/indiana-application-decennial; the operator pulls/pushes to
