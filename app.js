@@ -35,7 +35,7 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
 map.on("load", async () => {
-  state.summary = await (await fetch("data/state_summary.json")).json();
+  state.summary = await (await fetch("data/state_summary.json?v=" + Date.now())).json();
   for (const p of state.summary.provenance) state.provenance[p.table_name] = p;
   state.ctx = await (await fetch("data/county_context.json")).json();
   renderStatebar(); renderLedger();
@@ -91,6 +91,16 @@ map.on("load", async () => {
   map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
     paint: { "fill-color": "#7c3aed", "fill-opacity": 0.22, "fill-outline-color": "#5b21b6" } });
+  state.terr = await fetchGz("data/territories.geojson.gz");
+  map.addSource("terr", { type: "geojson", data: state.terr });
+  map.addLayer({ id: "terr-fill", type: "fill", source: "terr", layout: { visibility: "none" },
+    paint: { "fill-color": ["case", ["==", ["get", "utility_type"], "investor_owned"], "#93c5fd",
+             ["==", ["get", "utility_type"], "cooperative"], "#fcd34d", "#d1d5db"],
+             "fill-opacity": 0.3, "fill-outline-color": "#475569" } }, "county-line");
+  map.on("click", "terr-fill", (e) => {
+    if (state.preset === "grid" && document.getElementById("g-terr").checked)
+      openMiscEvidence({ ...e.features[0].properties, layer: "territory" });
+  });
   state.gas = await fetchGz("data/gas.geojson.gz");
   map.addSource("gas", { type: "geojson", data: state.gas });
   map.addLayer({ id: "gas-lines", type: "line", source: "gas",
@@ -155,6 +165,8 @@ function setPreset(p) {
   for (const id of ["gas-lines", "gas-pts"])
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility",
       gridOn && document.getElementById("g-gas").checked ? "visible" : "none");
+  if (map.getLayer("terr-fill")) map.setLayoutProperty("terr-fill", "visibility",
+    gridOn && document.getElementById("g-terr").checked ? "visible" : "none");
   if (map.getLayer("env-padus")) {
     map.setLayoutProperty("env-padus", "visibility",
       p === "env" && document.getElementById("e-padus").checked ? "visible" : "none");
@@ -167,7 +179,7 @@ function setPreset(p) {
   renderDenominator();
 }
 document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => setPreset(b.dataset.p));
-for (const id of ["g-lines", "g-subs", "g-bus", "g-gas"]) {
+for (const id of ["g-lines", "g-subs", "g-bus", "g-gas", "g-terr"]) {
   const el = document.getElementById(id);
   if (el) el.onchange = () => setPreset("grid");
 }
@@ -381,6 +393,13 @@ function openMiscEvidence(p) {
       .map(([k, v]) => row(k, v)).join("");
     show(`Gas ${p.layer}`, `<table>${rows_}</table>
       <div class="prov">${prov(p.layer === "compressor" ? "in_gas_compressor_stations" : "in_gas_storage")}</div>`);
+  } else if (p.layer === "territory") {
+    show(`Territory: ${p.utility}`, `
+      <table>${row("utility type", p.utility_type)}${row("holding company", p.holding_company)}
+      ${row("regulated", p.regulated)}${row("control area", p.control_area)}
+      ${row("customers", p.customers)}${row("summer peak MW", p.summer_peak_mw)}
+      ${row("retail MWh", p.retail_mwh)}${row("data year", p.data_year)}</table>
+      <div class="prov">${prov("in_territories")} · "utility" = wires owner; boundaries clipped to Indiana for payload</div>`);
   } else if (p.layer === "padus") {
     show(`Protected: ${p.name || "(unnamed)"}`, `
       <table>${row("designation", p.designation)}${row("owner type", p.owner_type)}
@@ -437,7 +456,12 @@ document.getElementById("btn-market").onclick = async () => {
     <h3>Gas pipeline capacity at Indiana borders (EIA, design)</h3>
     <table>${gas.map((r) => row(`${r.pipeline || ""} ${r.year}`,
       `${r.state_from}→${r.state_to} (${r.county_from || "?"}→${r.county_to || "?"}): ${fmt(r.capacity_mmcfd)} MMcf/d`)).join("")}</table>
-    <div class="prov">${prov("in_gas_state_capacity")} · DESIGN capacity — daily operational availability (EBB) is an open acquisition lane</div>`);
+    <div class="prov">${prov("in_gas_state_capacity")} · DESIGN capacity — daily operational availability (EBB) is an open acquisition lane</div>
+    <h3>Indiana C&I tariffs (URDB) — ${fmt((m.tariffs || []).length)} rates</h3>
+    <table>${(m.tariffs || []).slice(0, 30).map((r) => row(`${r.utility}`.slice(0, 38),
+      `${r.name || ""} · ${r.sector || ""}${r.has_demand_charge ? " · demand-charged" : ""}` +
+      `${r.energy_rate_max_usd_kwh ? " · ≤$" + r.energy_rate_max_usd_kwh + "/kWh" : ""}`)).join("")}</table>
+    <div class="prov">${prov("in_urdb_rates")} · name-matched utilities (a floor); full tariff math reuses the platform rate engine — next milestone</div>`);
 };
 
 // source-identity county labels for staged acquisitions (publisher identity, not a name guess)
@@ -486,6 +510,10 @@ const FEATURE_HOME = {
   in_gas_lng_terminals: "measured zero in Indiana — evidence of absence, registered",
   in_site_gates: "parcel evidence panel (environmental gates)",
   in_miso_poi: "SUPERSEDED by in_bus_headroom_miso (identity columns were degenerate at source)",
+  in_territories: "Grid preset (service territories)", in_seismic: "county evidence (gates)",
+  in_eia861_territory: "county evidence (utilities serving)", in_urdb_rates: "Market panel (tariff table)",
+  in_parcel_attrs: "BLOCKED-UPSTREAM: IN slice of mat_parcel_attrs is 100% NULL on every attribute column — question filed",
+  in_county_water: "DEFERRED: tile pipeline",
 };
 document.getElementById("btn-inventory").onclick = () => {
   if (!state.summary) return; // still loading
@@ -520,7 +548,9 @@ async function openCountyEvidence(p) {
       ${row("flood features (SFHA)", c.flood ? `${fmt(c.flood.flood_features)} (${fmt(c.flood.sfha_features)} SFHA)` : null)}
       ${row("fibre-served locations (FCC)", c.fibre ? `${fmt(c.fibre.fiber_locations)} of ${fmt(c.fibre.locations)}` : null)}
       ${row("fibre providers", c.fibre?.fiber_providers)}
-      ${row("gig-capable locations", c.fibre?.gig_locations)}</table>
+      ${row("gig-capable locations", c.fibre?.gig_locations)}
+      ${row("seismic design category", c.seismic?.sdc)}
+      ${row("utilities serving (EIA-861)", c.eia861?.utilities)}</table>
     <div class="prov">${prov("in_county_wetlands")} · ${prov("in_county_fibre")} · per-parcel gate columns are the tile-pipeline milestone</div>
     <h3>Community posture</h3><table>
       ${row("posture", c.posture?.posture)}${row("opposition intensity", c.posture?.opposition_intensity)}

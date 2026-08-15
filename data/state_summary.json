@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-14T23:53:51+00:00",
+ "built_at_utc": "2026-08-15T04:04:56+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -71,6 +71,12 @@
    "built_at": "2026-08-14 23:12:59+00"
   },
   {
+   "table_name": "in_eia861_territory",
+   "source": "energy.eia861_service_territory",
+   "n_rows": 10928,
+   "built_at": "2026-08-15 04:01:37.166373+00"
+  },
+  {
    "table_name": "in_fcc_bdc",
    "source": "energy.fcc_bdc_fixed_availability",
    "n_rows": 12649532,
@@ -81,6 +87,42 @@
    "source": "energy.nfhl_flood_zones",
    "n_rows": 66140,
    "built_at": "2026-08-14 22:20:23.852585+00"
+  },
+  {
+   "table_name": "in_gas_compressor_stations",
+   "source": "energy.gas_compressor_stations",
+   "n_rows": 24,
+   "built_at": "2026-08-15 03:50:05.920049+00"
+  },
+  {
+   "table_name": "in_gas_lng_terminals",
+   "source": "energy.gas_lng_terminals",
+   "n_rows": 0,
+   "built_at": "2026-08-15 03:50:22.739512+00"
+  },
+  {
+   "table_name": "in_gas_pipelines",
+   "source": "energy.gas_pipelines_hifld",
+   "n_rows": 215,
+   "built_at": "2026-08-15 03:47:35.274640+00"
+  },
+  {
+   "table_name": "in_gas_processing_plants",
+   "source": "energy.gas_processing_plants",
+   "n_rows": 0,
+   "built_at": "2026-08-15 03:50:17.407360+00"
+  },
+  {
+   "table_name": "in_gas_state_capacity",
+   "source": "energy.gas_eia_state_capacity",
+   "n_rows": 1017,
+   "built_at": "2026-08-15 03:50:27.556061+00"
+  },
+  {
+   "table_name": "in_gas_storage",
+   "source": "energy.gas_storage",
+   "n_rows": 22,
+   "built_at": "2026-08-15 03:50:11.617317+00"
   },
   {
    "table_name": "in_grid_plans",
@@ -123,6 +165,12 @@
    "source": "energy.padus",
    "n_rows": 4736,
    "built_at": "2026-08-14 22:20:34.164806+00"
+  },
+  {
+   "table_name": "in_parcel_attrs",
+   "source": "energy.mat_parcel_attrs x in_sites",
+   "n_rows": 1143873,
+   "built_at": "2026-08-15 04:04:54.316021+00"
   },
   {
    "table_name": "in_pjm_bus_locations_candidate",
@@ -185,6 +233,12 @@
    "built_at": "2026-08-14 22:50:44.445870+00"
   },
   {
+   "table_name": "in_seismic",
+   "source": "energy.seismic_design",
+   "n_rows": 88,
+   "built_at": "2026-08-15 04:01:32.566673+00"
+  },
+  {
    "table_name": "in_si_evansville_demolition_permits",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/BC/BUILDING_COMMISSION_PERMITS/MapServer/0",
    "n_rows": 4190,
@@ -227,6 +281,12 @@
    "built_at": "2026-08-14 22:55:37.190846+00"
   },
   {
+   "table_name": "in_si_refresh_brownfield_epa_in",
+   "source": "EPA RE-Powering Mapper Sites 2022 ArcGIS FeatureServer, State='IN' slice of a national layer",
+   "n_rows": 1483,
+   "built_at": "2026-08-14 23:54:28.922167+00"
+  },
+  {
    "table_name": "in_si_refresh_ibtr_appeals",
    "source": "www.in.gov IBTR DevExtreme determinations API",
    "n_rows": 10152,
@@ -237,6 +297,12 @@
    "source": "www.in.gov/courts/iocs (Indiana Office of Court Services statewide case statistics XLSX)",
    "n_rows": 6519,
    "built_at": "2026-08-14 23:51:53.156997+00"
+  },
+  {
+   "table_name": "in_si_refresh_sri_taxsale_in",
+   "source": "sriservicesusermgmtprod.azurewebsites.net (SRI Services tax-sale platform, IN slice only)",
+   "n_rows": 83547,
+   "built_at": "2026-08-14 23:56:08.472884+00"
   },
   {
    "table_name": "in_si_refresh_warn_notices",
@@ -287,6 +353,12 @@
    "built_at": "2026-08-14 22:49:08.102582+00"
   },
   {
+   "table_name": "in_site_gates",
+   "source": "in_sites x in_flood/in_wetlands/in_padus/in_bonus_geo",
+   "n_rows": 1200923,
+   "built_at": "2026-08-15 03:48:43.695690+00"
+  },
+  {
    "table_name": "in_sites",
    "source": "energy.vw_parcel_sites (all parcels, SI-agnostic)",
    "n_rows": 3553194,
@@ -305,10 +377,22 @@
    "built_at": "2026-08-14 22:19:05.190261+00"
   },
   {
+   "table_name": "in_territories",
+   "source": "energy.vw_grid_territories",
+   "n_rows": 145,
+   "built_at": "2026-08-15 04:04:48.062009+00"
+  },
+  {
    "table_name": "in_transmission_lines",
    "source": "energy.transmission_lines (HIFLD), spatial clip",
    "n_rows": 2623,
    "built_at": "2026-08-14 22:19:13.484325+00"
+  },
+  {
+   "table_name": "in_urdb_rates",
+   "source": "energy.urdb_rates",
+   "n_rows": 969,
+   "built_at": "2026-08-15 04:01:41.347366+00"
   },
   {
    "table_name": "in_water",
