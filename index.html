@@ -42,6 +42,14 @@
       <label><input type="checkbox" id="f-vac" checked> Vacant (no structure)</label>
       <label><input type="checkbox" id="f-other"> Other non-residential</label>
       <div class="subhead">Size &amp; intent</div>
+      <label>Use case
+        <select id="f-usecase">
+          <option value="dc">Hyperscale DC — whole parcel</option>
+          <option value="bess">BESS — outdoor space only</option>
+        </select></label>
+      <div class="hint" id="usecase-note" style="margin:-2px 0 4px">A hyperscale DC builds over or
+        removes an existing structure, so its buildable area is the <b>whole parcel</b>. BESS sites
+        <i>around</i> what is already there, so it uses <b>outdoor space</b> (parcel − footprints).</div>
       <label><input type="checkbox" id="f-mw" checked> Fits ≥ <input type="number" id="f-mw-val" value="25" min="1"> MW
         <span class="hint">@ <input type="number" id="f-density" value="4" min="1" max="20" step="0.5"> MW/acre (4=DC, 10=BESS — defaults, adjustable)</span></label>
       <label><input type="checkbox" id="f-si"> Requires seller-intent signal</label>

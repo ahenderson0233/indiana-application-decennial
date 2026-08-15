@@ -244,6 +244,20 @@ page that reads them (grep the field name across *.html and app.js first).
   ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
 
 
+- **OPERATOR RULINGS 2026-08-15 — buildable area now depends on the use case.**
+  *"C&I outdoor space is only for BESS, as a hyperscale DC would build over it or remove the
+  structure."* So `acreageOf()` takes a use case: **DC = whole parcel** (the structure is
+  demolition scope, not an obstacle), **BESS = outdoor space** (parcel − measured footprints).
+  A `Use case` selector drives it and moves the density default 4↔10 — but only when the density
+  is still one of those defaults, so a number the user typed is never silently overwritten.
+  For vacant land the two bases are identical, so the ruling only moves parcels with structures.
+  **Measured in Marion County: C&I parcels passing "fits ≥25 MW" go 853 → 1,099 (+29%);
+  ≥300 MW goes 159 → 166.** The RANKING barely moves (P3 saturates at 2× target, so anything
+  over ~12.5 ac already scored 100) — the ruling's effect is on ELIGIBILITY, not ordering. The
+  parcel panel shows both bases side by side so the other use case is always one glance away.
+  *Second ruling:* county active-queue MW **counts as supply** (favourable). The competing
+  reading — those projects contend for the same interconnection capacity — was considered and
+  rejected; the basis text now states it as a ruling, not an open assumption.
 - **COMPOSITE SCORING SHIPPED 2026-08-15 (PLAN Phase 3 ②, spec §11).** 0–100 sub-scores each
   carrying a stated basis → six part scores → composite; **assessable-only averaging at every
   level** (a part we cannot measure leaves the denominator, never becomes a zero); six weight

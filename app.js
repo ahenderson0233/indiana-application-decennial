@@ -263,24 +263,39 @@ function classOk(p) {
 /* The acreage every surface screens, tooltips and reports on. ONE function so the screener,
    the tooltip and the evidence panel can never disagree about the same parcel.
 
-   Exact outdoor space (parcel minus the measured footprint intersection) wins when present —
-   it fixes the shared-building overcount. But it carries one contradiction, measured across
-   the class union: 126 of 1,200,924 parcels report an exact parcel area under half the
-   recorded acreage, and for 85 of them footprints_intersecting is ZERO. With nothing
-   intersecting, outdoor area IS the parcel by arithmetic, so an exact figure below it is the
-   exact pipeline's geometry disagreeing with the recorded acreage — not a measurement of
-   buildings. Preferring it blindly dropped 23 parcels of 75+ acres (300 MW at 4 MW/acre) out
-   of the screener with no footprint to blame. So: when nothing intersects, trust the parcel.
-   The disagreement is not swallowed — acreageOf() reports it and the panel prints it. */
-function acreageOf(p) {
+   THE BUILDABLE AREA DEPENDS ON WHAT YOU ARE BUILDING (operator ruling, 2026-08-15):
+   a hyperscale DC builds over or removes an existing structure, so its buildable area is the
+   WHOLE PARCEL. A BESS sites around what is already there, so it gets OUTDOOR SPACE
+   (parcel − measured footprints). Scoring every use case on outdoor space structurally
+   under-rated C&I parcels — they carry the buildings — which is exactly backwards for a DC.
+   For vacant land the two are the same number, so the ruling only moves parcels with structures.
+
+   Either basis can disagree with itself. Measured across the class union: 126 of 1,200,924
+   parcels report an exact area under half the recorded acreage, and for 85 of them
+   footprints_intersecting is ZERO. With nothing intersecting, outdoor area IS the parcel by
+   arithmetic, so a smaller exact figure is the exact pipeline's geometry disagreeing with the
+   recorded acreage — not a measurement of buildings. Preferring it blindly dropped 23 parcels
+   of 75+ acres (300 MW at 4 MW/acre) out of the screener with no footprint to blame. So when
+   the two disagree that way, trust the recorded parcel area — and say so, rather than swallow it. */
+function useCase() { const el = $("f-usecase"); return el ? el.value : "dc"; }
+function acreageOf(p, uc) {
+  const mode = uc || useCase();
   const parcel = Number(p.parcel_acres) || 0;
+  const exactParcel = p.exact_parcel_acres == null ? null : Number(p.exact_parcel_acres);
+  if (mode === "dc") {
+    // whole parcel: the structure is not an obstacle, it is demolition scope
+    if (exactParcel != null && parcel > 0 && exactParcel < parcel * 0.5)
+      return { acres: parcel, basis: "recorded parcel area (exact geometry disagrees)", disputed: true, mode };
+    if (exactParcel != null) return { acres: exactParcel, basis: "whole parcel, exact geometry", disputed: false, mode };
+    return { acres: parcel, basis: "whole parcel, recorded acreage", disputed: false, mode };
+  }
   const exact = p.exact_outdoor_acres == null ? null : Number(p.exact_outdoor_acres);
   const legacy = p.outdoor_acres == null ? null : Number(p.outdoor_acres);
   if (exact != null && p.footprints_intersecting === 0 && parcel > 0 && exact < parcel * 0.99)
-    return { acres: parcel, basis: "parcel area (no footprints intersect)", disputed: true };
-  if (exact != null) return { acres: exact, basis: "exact (parcel − measured footprints)", disputed: false };
-  if (legacy != null) return { acres: legacy, basis: "approximate", disputed: false };
-  return { acres: parcel, basis: "parcel area", disputed: false };
+    return { acres: parcel, basis: "parcel area (no footprints intersect)", disputed: true, mode };
+  if (exact != null) return { acres: exact, basis: "outdoor space, exact (parcel − measured footprints)", disputed: false, mode };
+  if (legacy != null) return { acres: legacy, basis: "outdoor space, approximate", disputed: false, mode };
+  return { acres: parcel, basis: "parcel area", disputed: false, mode };
 }
 function jsMatches(p) {
   if (!classOk(p)) return false;
@@ -329,6 +344,14 @@ for (const id of ["f-ci", "f-ag", "f-vac", "f-other", "f-mw", "f-mw-val", "f-den
   "f-recent", "f-recent-days", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
   "f-dsub", "f-dsub-mi", "f-dsub-kv", "f-dline", "f-dline-mi", "f-sent", "f-sent-max", "f-norestrict"])
   $(id).addEventListener("change", applyFilters);
+// Switching use case moves the density to that use case's default — but only if the user has
+// not typed their own number, because silently overwriting a deliberate value is worse than
+// leaving a stale default. Both defaults stay adjustable either way.
+$("f-usecase").addEventListener("change", () => {
+  const d = $("f-density"), cur = Number(d.value);
+  if (cur === 4 || cur === 10) d.value = useCase() === "bess" ? 10 : 4;
+  applyFilters();
+});
 $("f-cand").addEventListener("change", syncLayers);
 
 /* ---------- layers panel ---------- */
@@ -595,8 +618,8 @@ function scoreP3(p) {
   const a = acreageOf(p), target = V("f-mw-val") || 25, density = V("f-density") || 4;
   const fits = a.acres * density;
   const s = clamp100(100 * fits / (target * SCORE_CFG.p3.saturateAtMultiple));
-  return { score: s, basis: `${a.acres.toFixed(1)} ac (${a.basis}) fits ~${Math.floor(fits)} MW at ` +
-    `${density} MW/acre; you asked for ${target} MW, and this saturates at ${target * SCORE_CFG.p3.saturateAtMultiple} MW` +
+  return { score: s, basis: `${a.acres.toFixed(1)} ac — ${a.basis} (${a.mode === "dc" ? "hyperscale DC: builds over structures" : "BESS: sites around structures"}) ` +
+    `— fits ~${Math.floor(fits)} MW at ${density} MW/acre; you asked for ${target} MW, and this saturates at ${target * SCORE_CFG.p3.saturateAtMultiple} MW` +
     (a.disputed ? " — sources disagree on this parcel's size, see the panel" : "") };
 }
 function scoreP4(p) {
@@ -636,10 +659,10 @@ function scoreP6(p, fips) {
   }
   if (c.queue && c.queue.active_mw != null) {
     parts.push(clamp100(100 * c.queue.active_mw / SCORE_CFG.p6.queueMwSaturate));
-    // DIRECTION IS AN ASSUMPTION, stated rather than buried: active queue MW is scored as
-    // FAVOURABLE (generation arriving nearby). It can be read the other way — the same
-    // projects compete for interconnection capacity. Flagged for the operator.
-    why.push(`${fmt(c.queue.active_mw)} MW active in the county queue, scored as favourable supply`);
+    // Direction RULED by the operator 2026-08-15: active queue MW counts as SUPPLY, i.e.
+    // favourable — generation arriving near the site. (The competing reading, that those
+    // projects contend for the same interconnection capacity, was considered and rejected.)
+    why.push(`${fmt(c.queue.active_mw)} MW active in the county queue, counted as supply`);
   }
   if (!parts.length) return null;
   return { score: parts.reduce((a, b) => a + b, 0) / parts.length,
@@ -760,11 +783,18 @@ function openParcelEvidence(p, fips) {
       ${row("how outdoor space was measured", p.outdoor_acres_method)}
       ${row("screened on", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
       ${row(`fits @ ${density} MW/acre (your setting)`, Math.floor(acr.acres * density) + " MW")}
+      ${row("the other use case would use", (() => {
+          const alt = acreageOf(p, acr.mode === "dc" ? "bess" : "dc");
+          return `${alt.acres.toFixed(2)} ac → ${Math.floor(alt.acres * density)} MW (${acr.mode === "dc" ? "BESS, outdoor only" : "hyperscale DC, whole parcel"})`;
+        })())}
       ${row("structures", p.structure_count)}${row("structure sqft", p.structure_sqft)}</table>
-    ${acr.disputed ? `<div class="cannot">Sources disagree on this parcel's size: no building footprint
-      intersects it, yet the exact-geometry figure (${Number(p.exact_outdoor_acres).toFixed(2)} ac) falls below
-      the recorded parcel area (${Number(p.parcel_acres).toFixed(2)} ac). With nothing to subtract, the two should
-      match. Screened on the recorded acreage; the exact figure is shown above unchanged so you can judge it.
+    <div class="hint">Use case <b>${acr.mode === "dc" ? "hyperscale DC" : "BESS"}</b>: a DC builds over
+      or removes an existing structure, so it is sized on the whole parcel; a BESS sites around what is
+      there, so it is sized on outdoor space. Switch it in the screener.</div>
+    ${acr.disputed ? `<div class="cannot">Sources disagree on this parcel's size: the exact-geometry
+      figure falls well below the recorded parcel area (${Number(p.parcel_acres).toFixed(2)} ac)${p.footprints_intersecting === 0
+        ? ", and no building footprint intersects it — with nothing to subtract, the two should match" : ""}.
+      Screened on the recorded acreage; the exact figures are shown above unchanged so you can judge them.
       126 of 1,200,924 class-union parcels show this — see docs/HANDOFF.md.</div>` : ""}
     <div class="prov">${prov("in_sites")} · exact figures from mat_parcel_outdoor_exact (footprint∩parcel measured, shared buildings not double-counted) · density is your adjustable assumption, not an answer</div>
     <h3>Grid access (P2) — computed to nearest mapped feature</h3><table>
