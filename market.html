@@ -21,6 +21,9 @@
       <div class="scroll"><table id="t-gas"><tr><th>pipeline · year</th><th>from→to</th><th>MMcf/d</th></tr></table></div>
       <div class="prov" id="p-gas"></div></div>
   </div>
+  <div class="card"><h2>Gas — daily operationally-available capacity (EBB), 9 pipelines held</h2>
+    <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
@@ -42,6 +45,8 @@
     .filter(r => r.year >= 2015).sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 40).map(r =>
     `<tr><td>${r.pipeline || ""} ${r.year}</td><td>${r.state_from}→${r.state_to}</td><td>${fmt(r.capacity_mmcfd)}</td></tr>`).join(""));
   document.getElementById("p-gas").textContent = prov("in_gas_state_capacity") + " · daily operationally-available capacity held for 9 pipelines (in_gas_capacity_*) — page section next";
+  document.getElementById("t-oac").insertAdjacentHTML("beforeend", (m.gas_oac || []).map(r =>
+    `<tr><td>${r.pipeline}</td><td>${fmt(r.n_rows)}</td><td>${r.indiana_locations != null ? fmt(r.indiana_locations) : "—"}</td><td>${r.indiana_counties ?? "—"}</td><td>${String(r.pulled).slice(0, 10)}</td></tr>`).join(""));
   document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
     `<tr><td>${String(r.utility).slice(0, 40)}</td><td>${(r.name || "").slice(0, 44)}</td><td>${r.sector || ""}</td><td>${r.has_demand_charge ? "yes" : "—"}</td><td>${r.energy_rate_max_usd_kwh ?? "—"}</td></tr>`).join(""));
   document.getElementById("p-tar").textContent = prov("in_urdb_rates") + " · name-matched floor; rate-engine math is the flagged milestone";

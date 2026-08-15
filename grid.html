@@ -22,6 +22,10 @@
   <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
     <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
     <div class="prov" id="p-plans"></div></div>
+  <div class="card"><h2>RTEP upgrade drill-down — per-upgrade details &amp; cost allocations (932 Indiana upgrades)</h2>
+    <input id="f-up" placeholder="filter upgrades…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:280px;margin-bottom:8px">
+    <div class="scroll"><table id="t-up"><tr><th>upgrade</th><th>detail</th><th>allocation</th></tr></table></div>
+    <div class="prov" id="p-up"></div></div>
   <div class="card"><h2>Interconnection queue (county grain — includes withdrawn, a deliberate signal)</h2>
     <div class="scroll"><table id="t-queue"><tr><th>county</th><th>project</th><th>MW</th><th>type</th><th>status</th></tr></table></div>
     <div class="prov" id="p-queue"></div></div>
@@ -53,6 +57,26 @@
     .map(r => `<tr><td>${r.rto || r.source || "RTO"}</td><td>${(r.project_name || r.upgrade_name || r.description || "").slice(0, 60)}</td><td>${r.voltage_kv || "—"}</td><td>${r.in_service_year || r.isd || "—"}</td><td>${r.cost_usd_m || "—"}</td></tr>`);
   document.getElementById("t-plans").insertAdjacentHTML("beforeend", plans.join("") + rto.join(""));
   document.getElementById("p-plans").textContent = prov("in_grid_plans") + " · " + prov("in_rto_expansion");
+  const dets = pl.rtep_details || [], allocs = pl.rtep_cost_allocations || [];
+  const allocBy = {};
+  for (const a of allocs) {
+    const k = a.upgrade_id || a.upgrade || a.project_id || JSON.stringify(a).slice(0, 20);
+    (allocBy[k] = allocBy[k] || []).push(a);
+  }
+  const upTbl = document.getElementById("t-up");
+  function renderUp() {
+    const q = (document.getElementById("f-up").value || "").toLowerCase();
+    const rows = dets.filter(d => !q || JSON.stringify(d).toLowerCase().includes(q)).slice(0, 60);
+    upTbl.innerHTML = "<tr><th>upgrade</th><th>detail</th><th>allocation</th></tr>" + rows.map(d => {
+      const k = d.upgrade_id || d.upgrade || d.project_id;
+      const al = (allocBy[k] || []).map(a => `${a.zone || a.share_type || ""} ${a.percent || ""}%`).join(", ");
+      const vals = Object.entries(d).slice(0, 6).map(([kk, v]) => `${kk}=${String(v).slice(0, 30)}`).join(" · ");
+      return `<tr><td>${String(k).slice(0, 28)}</td><td class="hint">${vals.slice(0, 140)}</td><td>${al.slice(0, 60) || "—"}</td></tr>`;
+    }).join("");
+  }
+  document.getElementById("f-up").oninput = renderUp;
+  renderUp();
+  document.getElementById("p-up").textContent = prov("in_pjm_rtep_upgrade_details") + " · " + prov("in_pjm_rtep_cost_allocations");
   document.getElementById("t-queue").insertAdjacentHTML("beforeend", pl.queue_projects.slice(0, 120).map(r =>
     `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`).join(""));
   document.getElementById("p-queue").textContent = prov("in_queue");
