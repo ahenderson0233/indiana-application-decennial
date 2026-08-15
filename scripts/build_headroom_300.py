@@ -8,27 +8,26 @@ REPO = r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Cali
 DS = "energy-platfrom.indiana_app"
 client = bigquery.Client(project="energy-platfrom")
 
-cols = [s.name for s in client.get_table(f"{DS}.in_miso_poi_300mw").schema]
-print("300mw cols:", cols[:20])
-avail = next((c for c in cols if "available" in c.lower()), None)
-poic = "_poi_name_requested"
-fac = next((c for c in cols if "monitored" in c.lower() or c.lower() == "facility"), None)
-assert avail, f"no available-MW column found in {cols}"
-
+# Measured schema: PMax = per-facility allowable injection at the 300MW request
+# (verified: 3,593 distinct values, 0..300, not an echo). PercentDf = distribution factor %.
 client.query(f"""
 CREATE OR REPLACE TABLE `{DS}.in_bus_headroom_300` AS
-SELECT {poic} AS poi_name,
-       MIN(SAFE_CAST({avail} AS FLOAT64)) AS headroom300_mw,
+SELECT _poi_name_requested AS poi_name,
+       MIN(SAFE_CAST(PMax AS FLOAT64)) AS headroom300_mw,
+       MIN(IF(ABS(SAFE_CAST(PercentDf AS FLOAT64)) >= 5,
+              SAFE_CAST(PMax AS FLOAT64), NULL)) AS headroom300_dfax5_mw,
        COUNT(*) AS facilities_300,
-       {f"ARRAY_AGG({fac} ORDER BY SAFE_CAST({avail} AS FLOAT64) ASC LIMIT 1)[OFFSET(0)]" if fac else "CAST(NULL AS STRING)"} AS binding_300
+       ARRAY_AGG(MonitoredFacilityName ORDER BY SAFE_CAST(PMax AS FLOAT64) ASC LIMIT 1)[OFFSET(0)] AS binding_300
 FROM `{DS}.in_miso_poi_300mw` GROUP BY 1""").result()
 stats = list(client.query(f"""
 SELECT COUNT(*) AS pois, COUNTIF(headroom300_mw > 0) AS positive,
+       COUNTIF(headroom300_mw >= 300) AS full_300,
+       COUNTIF(headroom300_dfax5_mw > 0) AS positive_dfax5,
        APPROX_QUANTILES(headroom300_mw, 4) AS q
 FROM `{DS}.in_bus_headroom_300`"""))[0]
 print("headroom300:", dict(stats))
 client.query(f"""INSERT `{DS}._registry` (table_name, source, method, n_rows, gb_scanned, built_at, notes)
-  VALUES ('in_bus_headroom_300','in_miso_poi_300mw','MIN({avail}) per POI at pMax=300',
+  VALUES ('in_bus_headroom_300','in_miso_poi_300mw','MIN(PMax) per POI at pMax=300 (+dfax5 variant)',
           {stats.pois}, 0.01, CURRENT_TIMESTAMP(),
           'THE single representative number: headroom for a 300MW-class request, per operator ruling')""").result()
 
@@ -48,7 +47,7 @@ fc["features"] = [ft for ft in fc["features"] if ft["properties"].get("layer") !
 n = 0
 for r in client.query(f"""
   SELECT b.poi_name, b.bus_number, b.bus_name, b.kv, b.area_name, h.headroom300_mw,
-         h.binding_300, b.worst_mw, b.best_mw, b.median_mw, b.monitored_facilities,
+         h.headroom300_dfax5_mw, h.binding_300, b.worst_mw, b.best_mw, b.median_mw, b.monitored_facilities,
          b.worst_binding_facility, b.vintage, b.lat, b.lon
   FROM `{DS}.in_bus_headroom_miso` b
   LEFT JOIN `{DS}.in_bus_headroom_300` h USING (poi_name)

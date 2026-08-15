@@ -382,7 +382,7 @@ function tipText(p) {
   if (p.layer === "substation") return `${p.substation_name || "substation"} · ${p.min_kv ?? "?"}–${p.max_kv ?? "?"} kV`;
   if (p.layer === "line") return `${p.voltage || "?"} kV line · ${p.owner || ""}`;
   if (p.layer === "queue_point") return "PJM queue point (published coords)";
-  if (p.layer === "bus_candidate") return `PJM bus ${p.bus_number} · ESTIMATE (${p.match_confidence})`;
+  if (p.layer === "bus_candidate") return `PJM bus ${p.bus_number} · load headroom ${p.withdrawal_mw != null ? Math.round(p.withdrawal_mw) + " MW" : "—"} · ESTIMATE loc (${p.match_confidence})`;
   if (p.candidate_signal) return `CANDIDATE ${p.candidate_signal} · ${p.occ_group || ""}`;
   if (p.layer === "gas") return `gas pipeline · ${p.operator || ""}`;
   return p.name || p.kind || p.utility || "";
@@ -435,7 +435,8 @@ function renderLedger() {
     `<b>Honesty ledger:</b> ${fmt(c.si_observations_unmappable)} SI observations unmappable · ` +
     `${fmt(c.parcels_without_geometry)} parcel w/o geometry · ${fmt(c.parcels_geometry_but_no_county)} w/o county · ` +
     `substations without published coords stay off-map but in counts · MISO values are DPP-2021 study results (worst/median/best shown together) · ` +
-    `PJM bus locations marked ESTIMATE render as hollow red rings · grid distances are to the nearest mapped feature (a floor, not a guarantee).`;
+    `PJM bus locations marked ESTIMATE render as hollow red rings · grid distances are to the nearest mapped feature (a floor, not a guarantee) · ` +
+    `headroom DIRECTION matters: PJM buses carry LOAD (withdrawal) headroom — the DC question; MISO's public viewer is INJECTION-only, so its 300MW numbers answer the generator question and a MISO load-direction source is an open acquisition lane.`;
 }
 function renderDenominator() {
   if (state.measure.on) return;
@@ -522,7 +523,11 @@ function gridEv(p) {
     show(`MISO POI: ${p.poi_name}`, `
       <h3>Bus identity</h3><table>
       ${row("bus number", p.bus_number)}${row("bus name", p.bus_name)}${row("kV", p.kv)}${row("area", p.area_name)}</table>
-      <h3>Transfer capability (study results — not an offer)</h3><table>
+      <h3>Injection headroom at a 300 MW request (bounded re-harvest)</h3><table>
+      ${row("available for a 300MW-class INJECTION", p.headroom300_mw != null ? `${fmt(Math.round(p.headroom300_mw))} MW` : null)}
+      ${row("binding facility @300MW", p.binding_300)}</table>
+      <div class="prov">${prov("in_bus_headroom_300")} · ⚠ this MISO viewer is INJECTION-only (generators); it cannot answer the data-centre LOAD question — PJM buses carry the withdrawal number; a MISO load-direction source is an open lane</div>
+      <h3>Transfer capability at infinite request (study detail)</h3><table>
       ${row("worst across facilities (MW)", p.worst_mw)}${row("median (MW)", p.median_mw)}${row("best (MW)", p.best_mw)}
       ${row("monitored facilities", p.monitored_facilities)}${row("at zero", p.facilities_at_zero)}
       ${row("worst binding facility", p.worst_binding_facility)}${row("vintage", p.vintage)}</table>
@@ -543,7 +548,13 @@ function miscEv(p) {
   if (p.layer === "bus_candidate") {
     show(`PJM bus ${p.bus_number} — ESTIMATED location`, `
       <div class="est-badge">ESTIMATE — ${p.location_method}, confidence ${p.match_confidence}</div>
-      <table>${row("bus label", p.bus_label)}${row("kV", p.bus_kv)}
+      <h3>Load headroom (withdrawal — the DC direction)</h3><table>
+      ${row("available before first NEW constraint", p.withdrawal_mw != null ? `${fmt(Math.round(p.withdrawal_mw))} MW` : null)}
+      ${row("binding facility", p.wd_binding)}
+      ${row("pre-existing overloads (disclosed, not counted)", p.wd_existing_overloads)}
+      ${row("study case", p.wd_case)}</table>
+      <div class="prov">${prov("in_pjm_bus_withdrawal")} · facilities with |dfax|≥5%; a 300MW-class load needs upgrades everywhere in this case — see Future capacity for which and what cost</div>
+      <h3>Bus identity</h3><table>${row("bus label", p.bus_label)}${row("kV", p.bus_kv)}
       ${row("matched substation", p.matched_substation_name)}${row("kV consistent", p.kv_consistent)}
       ${row("competing matches", p.collision_count)}</table>
       <div class="prov">${prov("in_pjm_bus_locations_candidate")}</div>`);
