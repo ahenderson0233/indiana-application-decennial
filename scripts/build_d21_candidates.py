@@ -40,18 +40,36 @@ exact_m AS (
   SELECT s.parcel_source, s.parcel_key, s.parcel_geog, ev.activity, ev.observed_date, ev.owner,
          'exact' AS match_method, ev.k AS evk
   FROM s JOIN ev USING (k)),
-md10_m AS (
-  SELECT s.parcel_source, s.parcel_key, s.parcel_geog, ev.activity, ev.observed_date, ev.owner,
-         'md10_unique' AS match_method, ev.k AS evk
+-- PARENT-GRAIN TIER (operator-approved 2026-08-15): Indiana 18-digit keys are
+-- county(2)-twp(2)-sec(2)-block(3)-parcel(3).subparcel(3)-district(3). A permit on a
+-- child parcel absent from the statewide layer is placed on its PARENT (subparcel 000),
+-- labeled parent_grain — a coarser location tier, never styled as exact.
+-- Indiana spines carry no .000 parent rows (measured: subparcels start at .001), so the
+-- family representative = the spine parcel sharing the permit's 12-digit prefix. Placed
+-- only when the family is a SINGLE spine parcel, or on the lowest-subparcel member with
+-- family_size disclosed — never styled as exact.
+families AS (
+  SELECT SUBSTR(REGEXP_REPLACE(parcel_key, r'[^0-9]', ''), 1, 12) AS p12,
+         ARRAY_AGG(STRUCT(parcel_source, parcel_key, parcel_geog)
+                   ORDER BY parcel_key LIMIT 1)[OFFSET(0)] AS rep,
+         COUNT(*) AS family_size
+  FROM `{DS}.in_sites` WHERE parcel_geog IS NOT NULL
+  GROUP BY 1),
+parent_m AS (
+  SELECT f.rep.parcel_source, f.rep.parcel_key, f.rep.parcel_geog,
+         ev.activity, ev.observed_date, ev.owner,
+         CONCAT('parent_family_of_', CAST(f.family_size AS STRING)) AS match_method,
+         ev.k AS evk
   FROM ev
-  JOIN md10_unique u ON u.md10 = ev.md10
-  JOIN s ON s.md10 = ev.md10
+  JOIN families f ON f.p12 = SUBSTR(REGEXP_REPLACE(ev.k, r'[^0-9]', ''), 1, 12)
   WHERE ev.k NOT IN (SELECT evk FROM exact_m))
-SELECT parcel_source, parcel_key, 'D21_demolition' AS candidate_signal,
+SELECT c.parcel_source, c.parcel_key, 'D21_demolition' AS candidate_signal,
        'in_si_evansville_demolition_permits' AS candidate_source,
-       activity, observed_date, owner, match_method,
-       ST_ASGEOJSON(parcel_geog) AS gj
-FROM (SELECT * FROM exact_m UNION ALL SELECT * FROM md10_m)""").result()
+       c.activity, c.observed_date, c.owner, c.match_method, si.occ_group,
+       ST_ASGEOJSON(c.parcel_geog) AS gj
+FROM (SELECT * FROM exact_m UNION ALL SELECT * FROM parent_m) c
+LEFT JOIN (SELECT parcel_source, parcel_key, occ_group FROM `{DS}.in_sites`) si
+  USING (parcel_source, parcel_key)""").result()
 n = list(client.query(f"SELECT COUNT(*) AS n FROM `{DS}.in_si_candidates`"))[0].n
 client.query(f"""INSERT `{DS}._registry` (table_name, source, method, n_rows, gb_scanned, built_at, notes)
   VALUES ('in_si_candidates','in_si_evansville_demolition_permits x in_sites','normalized parcel-id join',
