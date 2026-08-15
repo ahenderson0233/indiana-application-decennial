@@ -208,6 +208,29 @@ page that reads them (grep the field name across *.html and app.js first).
 
 ## 5b. COMPLETED AFTER THE ROADMAP WAS WRITTEN (do not redo)
 
+- **T1 VERIFIED 2026-08-15 (Opus 5 session), both checks PASS + one defect fixed:**
+  data.html reads **188 registered tables** / 3,553,194 parcels / built 2026-08-15T16:13Z
+  (188 is the true count — "~190" in T1 was approximate, not a shortfall). Upload door:
+  a 2-row lat/lon CSV returns *"2 placed · 0 outside Indiana · 0 cannot-place"*, and the
+  placements are correct on inspection — Terre Haute→Vigo County (0.3 mi to substation),
+  Fort Wayne→Allen County (0.45 mi).
+  **DEFECT FOUND AND FIXED — the logistics layer never rendered.** `line-dasharray` is a
+  data-CONSTANT property in MapLibre; app.js passed it a `["case", …]` expression, so
+  `addLayer` rejected `log-lines` outright while the source loaded fine. The `L-log`
+  checkbox therefore toggled a layer that did not exist and the `getLayer` guard swallowed
+  it silently — 3,203 rail/road segments (shipped in a7a8a9b) had been invisible ever since.
+  Fix: split into `log-lines` (roads, solid, filter `layer != rail`) and `log-lines-rail`
+  (dashed, filter `layer == rail`); registry entry `L-log` now lists both ids. Verified
+  after the fix: both layers exist and read `visible`, 392 road + 620 rail features
+  rendered in-viewport, source holds all 3,203.
+  **Lesson for the class:** a MapLibre paint property that rejects an expression fails
+  SILENTLY behind a `getLayer` guard. When a toggle appears to do nothing, check
+  `map.getLayer(id)` before suspecting the data.
+  **Testing note:** Python's `SimpleHTTP` sends `Last-Modified` but no `Cache-Control`, so
+  Chrome serves a stale app.js from memory cache after an edit; `location.reload(true)` is
+  ignored. Open a NEW TAB to load edited JS — that worked deterministically every time.
+
+
 - **T-upload (DONE, verified):** upload door live on index.html — client-side CSV,
   point-in-county, grid distances, county context, enriched export, cannot-place kept.
 - **EXACT outdoor space (DONE):** the data-ops session shipped mat_parcel_outdoor_exact

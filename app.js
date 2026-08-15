@@ -190,12 +190,18 @@ map.on("load", async () => {
   }
   state.log = await fetchGz("data/logistics.geojson.gz");
   map.addSource("log", { type: "geojson", data: state.log });
+  // line-dasharray is data-CONSTANT in MapLibre — a ["case", …] here makes addLayer reject the
+  // whole layer (silently: the toggle then does nothing). Split rail/road into two layers.
   map.addLayer({ id: "log-lines", type: "line", source: "log", layout: { visibility: "none" },
-    paint: { "line-color": ["case", ["==", ["get", "layer"], "rail"], "#57534e", "#a8a29e"],
-             "line-width": ["case", ["==", ["get", "layer"], "rail"], 1.4, 1],
-             "line-dasharray": ["case", ["==", ["get", "layer"], "rail"], ["literal", [4, 2]], ["literal", [1, 0]]] } });
-  map.on("mousemove", "log-lines", (e) => showTip(e, `${e.features[0].properties.layer}: ${e.features[0].properties.name || e.features[0].properties.fullname || ""}`));
-  map.on("mouseleave", "log-lines", hideTip);
+    filter: ["!=", ["get", "layer"], "rail"],
+    paint: { "line-color": "#a8a29e", "line-width": 1 } });
+  map.addLayer({ id: "log-lines-rail", type: "line", source: "log", layout: { visibility: "none" },
+    filter: ["==", ["get", "layer"], "rail"],
+    paint: { "line-color": "#57534e", "line-width": 1.4, "line-dasharray": [4, 2] } });
+  for (const id of ["log-lines", "log-lines-rail"]) {
+    map.on("mousemove", id, (e) => showTip(e, `${e.features[0].properties.layer}: ${e.features[0].properties.name || e.features[0].properties.fullname || ""}`));
+    map.on("mouseleave", id, hideTip);
+  }
   state.cand = await fetchGz("data/candidates.geojson.gz");
   map.addSource("cand", { type: "geojson", data: state.cand });
   map.addLayer({ id: "cand-line", type: "line", source: "cand", layout: { visibility: "none" },
@@ -304,7 +310,7 @@ const LAYER_MAP = { "L-subs": ["grid-subs"], "L-lines": ["grid-lines"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
-  "L-dc": ["fac-dc"], "L-fac": ["fac-gen"], "L-log": ["log-lines"] };
+  "L-dc": ["fac-dc"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))
