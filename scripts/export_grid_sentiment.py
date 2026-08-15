@@ -41,8 +41,9 @@ for r in client.query(f"""
     feats.append({"type": "Feature", "properties": d, "geometry": rc(json.loads(gj))})
 # MISO bus POIs (publisher coordinates only)
 for r in client.query(f"""
-  SELECT poi_name, bus_number, bus_name, kv, area_name, worst_mw, best_mw, median_mw,
-         facilities_at_zero, monitored_facilities, worst_binding_facility, vintage, lat, lon
+  SELECT poi_name, bus_number, bus_name, kv, area_name, headroom_mw, worst_mw, best_mw,
+         median_mw, facilities_at_zero, monitored_facilities, worst_binding_facility,
+         vintage, lat, lon
   FROM `{DS}.in_bus_headroom_miso` WHERE location_status='indiana'"""):
     d = dict(r); lat, lon = d.pop("lat"), d.pop("lon")
     d["layer"] = "bus_poi"

@@ -20,6 +20,11 @@ WITH headroom AS (
   -- bare MIN reads 0 on 88% of POIs. Keep WORST and BEST and the binding facility;
   -- never fuse them into one number (the platform's mat_bus_headroom pattern).
   SELECT poi_name,
+         -- THE single representative number (operator ruling 2026-08-15): MIN over
+         -- facilities a realistic request actually stresses (|dfax| >= 5%, the standard
+         -- study cutoff) — removes infinite-probe zeros from remote constraints.
+         MIN(IF(ABS(SAFE_CAST(percent_dfax AS FLOAT64)) >= 5,
+                SAFE_CAST(mw_available AS FLOAT64), NULL)) AS headroom_mw,
          MIN(SAFE_CAST(mw_available AS FLOAT64)) AS worst_mw,
          MAX(SAFE_CAST(mw_available AS FLOAT64)) AS best_mw,
          APPROX_QUANTILES(SAFE_CAST(mw_available AS FLOAT64), 2)[OFFSET(1)] AS median_mw,
@@ -39,7 +44,7 @@ ident AS (
   FROM `{DS}.in_miso_poi_identity`
 )
 SELECT h.poi_name, i.bus_number, i.bus_name, i.kv, i.area_name,
-       h.worst_mw, h.best_mw, h.median_mw, h.facilities_at_zero,
+       h.headroom_mw, h.worst_mw, h.best_mw, h.median_mw, h.facilities_at_zero,
        h.worst_binding_facility, h.monitored_facilities, h.vintage, h.pulled_at,
        i.lat, i.lon, i.has_real_coords,
        CASE
