@@ -39,6 +39,18 @@ re-launching anything.
 3. **Abandoned-property agent** — writing `scrapers/lane_f/ABANDONED_PROPERTY_FINDINGS.md`.
    Task: find abandoned/vacant STRUCTURE registries beyond Indy and South Bend across the other
    90 counties.
+   **WHEN IT FINISHES, do this:** read its verdict table; for every source marked VIABLE, write an
+   ALL-COLUMNS loader in `scrapers/lane_f/` following the pattern of
+   `pull_d22_environmental.py` (bounded retry on 500/502/503/429 only, publisher-count check,
+   register in the same run, `_pulled_at` stored separately from the publisher's event date).
+   Load into `indiana_app` as `in_si_d5_abandoned_<jurisdiction>`, then UNION them into
+   `in_si_d5_abandoned_buildings` (currently 7,174 rows, Indy + South Bend only). Prioritise any
+   source that (a) carries an EVENT DATE — ours currently do not, which is their main weakness —
+   and (b) includes COMMERCIAL structures; a 100%-residential registry is low value because a
+   house cannot host a hyperscale DC. Record every BLOCKED source in `registry_sources` with its
+   wall verbatim.
+   **The SI date-keying agent has already finished** — its result is in the B2 section below and
+   `docs/SI_DATE_KEYING.md`.
 
 ## The five findings from this session that change what the app claims
 
