@@ -1249,6 +1249,82 @@ async function openCountyEvidence(p) {
 
 /* ---------- shortlist ---------- */
 function renderShortlistCount() { $("sl-count").textContent = state.shortlist.length; }
+
+/* ---------- C4: saved workspaces (spec §13 "user-saved custom workspaces") ----------
+   Persists the whole analytical position — every screener setting, the scoring weights, which
+   layers are on, and the map view — under a name, in localStorage.
+
+   CONTROLS ARE ENUMERATED, NOT LISTED. A hardcoded list of ids is the same defect as a hardcoded
+   wiring count: it is correct until someone adds a control, and then it silently saves an
+   incomplete workspace. Anything matching f-* / sc-* / L-* is captured, so a new filter is
+   included the day it ships without touching this code.
+
+   Stored per-browser and said so on screen — a workspace that silently fails to follow the user
+   to another machine would be worse than no workspace at all. */
+const WS_KEY = "in_workspaces";
+const wsControls = () => [...document.querySelectorAll('[id^="f-"],[id^="sc-"],[id^="L-"]')]
+  .filter((el) => el.tagName === "INPUT" || el.tagName === "SELECT");
+const wsAll = () => { try { return JSON.parse(localStorage.getItem(WS_KEY) || "{}"); } catch { return {}; } };
+
+function wsCapture() {
+  const controls = {};
+  for (const el of wsControls()) {
+    controls[el.id] = el.type === "checkbox" || el.type === "radio"
+      ? { checked: el.checked } : { value: el.value };
+  }
+  const ctr = map.getCenter();
+  return { controls, view: { lng: +ctr.lng.toFixed(5), lat: +ctr.lat.toFixed(5), zoom: +map.getZoom().toFixed(2) },
+           saved_at: new Date().toISOString(), n_controls: Object.keys(controls).length };
+}
+
+function wsApply(ws) {
+  let applied = 0, missing = [];
+  for (const [id, v] of Object.entries(ws.controls || {})) {
+    const el = document.getElementById(id);
+    if (!el) { missing.push(id); continue; }        // a control that no longer exists is REPORTED
+    if ("checked" in v) el.checked = v.checked; else el.value = v.value;
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    applied++;
+  }
+  if (ws.view) map.jumpTo({ center: [ws.view.lng, ws.view.lat], zoom: ws.view.zoom });
+  try { syncLayers(); applyFilters(); } catch (e) { console.warn("workspace applied, redraw failed", e); }
+  return { applied, missing };
+}
+
+function wsRefreshList() {
+  const all = wsAll(), sel = $("ws-list");
+  sel.innerHTML = `<option value="">— saved workspaces —</option>` +
+    Object.keys(all).sort().map((n) =>
+      `<option value="${n.replace(/"/g, "&quot;")}">${n} (${String(all[n].saved_at || "").slice(0, 10)})</option>`).join("");
+}
+
+if ($("ws-save")) {
+  $("ws-save").addEventListener("click", () => {
+    const name = ($("ws-name").value || "").trim();
+    if (!name) { $("ws-status").innerHTML = `<span class="cannot">Name it first.</span>`; return; }
+    const all = wsAll(); const existed = !!all[name];
+    all[name] = wsCapture();
+    localStorage.setItem(WS_KEY, JSON.stringify(all));
+    wsRefreshList();
+    $("ws-status").innerHTML = `${existed ? "Overwrote" : "Saved"} <b>${name}</b> — ` +
+      `${all[name].n_controls} controls + map view. Stored in this browser only.`;
+  });
+  $("ws-load").addEventListener("click", () => {
+    const name = $("ws-list").value, all = wsAll();
+    if (!name || !all[name]) { $("ws-status").innerHTML = `<span class="cannot">Pick a workspace first.</span>`; return; }
+    const { applied, missing } = wsApply(all[name]);
+    $("ws-status").innerHTML = `Loaded <b>${name}</b> — ${applied} controls restored` +
+      (missing.length ? `. <span class="cannot">${missing.length} no longer exist and were skipped: ${missing.slice(0, 4).join(", ")}</span>` : ".");
+  });
+  $("ws-del").addEventListener("click", () => {
+    const name = $("ws-list").value, all = wsAll();
+    if (!name || !all[name]) { $("ws-status").innerHTML = `<span class="cannot">Pick a workspace first.</span>`; return; }
+    delete all[name]; localStorage.setItem(WS_KEY, JSON.stringify(all));
+    wsRefreshList(); $("ws-status").textContent = `Deleted ${name}.`;
+  });
+  wsRefreshList();
+}
 function toggleShortlist(key, title) {
   const i = state.shortlist.findIndex((s) => s.key === key);
   if (i >= 0) state.shortlist.splice(i, 1);

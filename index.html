@@ -121,6 +121,23 @@
     <div id="denominator" class="railcard panelbox">loading…</div>
 
     <div class="railcard">
+      <h2>Saved workspaces <span class="hint">(C4 — screener + weights + layers)</span></h2>
+      <div class="hint">Saves every screener setting, your scoring weights, which layers are on and
+        the current map view, under a name. Stored <b>in this browser only</b> — nothing is uploaded,
+        and it will not follow you to another machine.</div>
+      <div style="display:flex;gap:5px;margin-top:6px">
+        <input id="ws-name" placeholder="name this workspace…" style="flex:1;padding:3px 7px;border:1px solid #ccd3de;border-radius:5px">
+        <button id="ws-save">Save</button>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:6px">
+        <select id="ws-list" style="flex:1"><option value="">— saved workspaces —</option></select>
+        <button id="ws-load">Load</button>
+        <button id="ws-del">Delete</button>
+      </div>
+      <div id="ws-status" class="hint" style="margin-top:6px"></div>
+    </div>
+
+    <div class="railcard">
       <h2>Score your own sites <span class="hint">(first-class, same pipeline)</span></h2>
       <input type="file" id="upload" accept=".csv" style="font-size:11.5px;width:100%">
       <div class="hint">CSV with <code>lat</code>/<code>lon</code> columns (any casing; <code>latitude/longitude</code> ok).
