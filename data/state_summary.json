@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-16T20:26:28+00:00",
+ "built_at_utc": "2026-08-16T21:31:07+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -211,7 +211,7 @@
    "source": "indiana_app.in_data_centers_deduped x energy.data_centers_datacentermap_coords",
    "method": "attach the publisher's own precision/method labels; count pins sharing each coordinate",
    "n_rows": 249,
-   "built_at": "2026-08-15 17:54:42.894108+00",
+   "built_at": "2026-08-16 21:30:32.220018+00",
    "notes": "92 of 249 pins are CITY-PRECISION census-gazetteer centroids, not facility locations - datacentermap publishes precision='city' for most of its Indiana rows and we had been rendering them as pins. They must never enter distance math and must never style as published coordinates. pins_at_this_point exposes the stacking: the worst single point carries 32 facilities incl. Microsoft Mishawaka ~15 km from New Carlisle."
   },
   {
@@ -255,12 +255,44 @@
    "notes": "DO NOT UNION THIS WITH in_dc_actions_county_v2 \u2014 it is a comparison instrument. The two passes CONTRADICT on Jasper Cause #PC-22-25 (NIPSCO Ag->I-2, Kankakee Twp): this pass says 'denied', the loaded re-sweep says 'petition-pending', BOTH graded VERIFIED_AT_OFFICIAL_SOURCE. Neither pass dominates: 17 actions/11 verified here vs 20/9 in the re-sweep; this pass verified more in Jasper, Lake and Starke, the re-sweep more in Tippecanoe and found Fountain at all. Resolve against fresh official-source verification, never by picking between the two agents. See scrapers/lane_f/COUNTY_DC_ACTION_FINDINGS.md \u00a76."
   },
   {
+   "table_name": "in_dc_actions_nw_reconciled",
+   "source": "indiana_app.in_dc_actions_nw_first_pass x in_dc_actions_county_v2 (batch A) x in_dc_actions_resolved",
+   "method": "FULL OUTER JOIN of the two northwest sweeps, with official-source verification as a third instrument where it exists. Nothing is merged and no winner is picked by preference; disagreements are carried.",
+   "n_rows": 24,
+   "built_at": "2026-08-16 21:10:27.310498+00",
+   "notes": "THE HEADLINE: on Jasper Cause #PC-22-25 both sweeps reported a VERIFIED fact and BOTH WERE WRONG. The Plan Commission issued an unfavourable RECOMMENDATION on 2025-12-15 (advisory, not a denial) and the Commissioners APPROVED the rezone on 2026-02-02 with nine written commitments. 'denied' was never true; 'petition-pending' was true only for those seven weeks. A disagreement between two instruments means at least one is wrong \u2014 it is not a tie to break by preference. This table is a COMPARISON, not a posture source: read in_dc_actions_resolved for what may be rendered. KEY IS NOT UNIQUE: (county, action_type) carries multiple rows on both sides for Jasper approval-permissive (two distinct instruments each), so that comparison appears 2x2=4 times. Tolerable in a COMPARISON table and stated rather than hidden; it is why this must not be counted as findings."
+  },
+  {
    "table_name": "in_dc_actions_resolved",
    "source": "Indiana county/municipal government websites \u2014 official-source verification of the sweep's REPORTED_NEEDS_VERIFICATION leads (4 agents, 46 counties)",
    "method": "Each lead re-checked against the government's OWN site, minutes, agenda or ordinance PDF. robots.txt read per host before any fetch; crawl-delays honoured (up to 300s); honest UA. Verdicts: VERIFIED_AT_OFFICIAL_SOURCE / NOT_FOUND_AT_OFFICIAL_SOURCE / CONTRADICTED / BLOCKED.",
    "n_rows": 86,
    "built_at": "2026-08-16 19:36:58.078281+00",
    "notes": "READ posture_renderable BEFORE RENDERING ANYTHING. It is TRUE only where a government source was actually fetched and quoted. CONTRADICTED rows are MISATTRIBUTED OUT-OF-STATE leads \u2014 Brown County's action belongs to Brown County WISCONSIN and Clay County's to Clay County FLORIDA; both were live in the app as Indiana postures. NOT_FOUND means checked-and-absent, which is NOT the same as never-checked and must not be scored as permissive. match_method records how each verification was tied to its lead: (county, action_type) is NOT unique \u2014 9 keys carry multiple rows on both sides."
+  },
+  {
+   "table_name": "in_dc_actions_resweep",
+   "source": "Indiana county government websites, second pass over the counties whose official site was never fetched in the first sweep",
+   "method": "robots.txt read per host BEFORE any fetch; Crawl-delay honoured up to 300s; honest UA; >=2 Indiana-qualified queries per county plus full-text reads of minutes/agendas/ordinance lists wherever the county publishes text.",
+   "n_rows": 3,
+   "built_at": "2026-08-16 20:38:49.189811+00",
+   "notes": "THREE counties flipped from SEARCHED_NONE_FOUND to ACTION_FOUND, so the original negatives were not earned. Henry (~1 GW Surge Development PUD, Knightstown) and Tipton (moratorium recommended, docket CO-ZO-13-26) are VERIFIED at the county's own source; Sullivan is REPORTED -- no county zoning exists there and its online minutes end ~2020, so the Potentia/Heartland (~$65B, construction began 2026-04-23) and Fluidstack 430 MW agreements need a records request. Tipton's 2026-07-13 outcome is NOT yet posted and is left open."
+  },
+  {
+   "table_name": "in_dc_actions_resweep_coverage",
+   "source": "the 18 counties recorded SEARCHED_NONE_FOUND without their official site ever being fetched",
+   "method": "Each county's own website located and fetched, then searched for data-centre land-use action; >=2 Indiana-qualified queries; name collisions identified and discarded explicitly.",
+   "n_rows": 18,
+   "built_at": "2026-08-16 20:38:54.955197+00",
+   "notes": "The defining defect of these 18 was that a search-engine look had been recorded as a county-level negative. All 18 now have the official site fetched. Name collisions defeated this pass and named in the notes: Knox TN, Carroll GA/MD, Newton GA, Warren NC/MO, Henry IA, Union AR, plus Indianapolis's own Pike and Warren TOWNSHIPS -- which is the same trap that put Brown County WISCONSIN and Clay County FLORIDA into this app as Indiana postures."
+  },
+  {
+   "table_name": "in_dc_actions_resweep_walls",
+   "source": "robots.txt and HTTP refusals during the re-sweep",
+   "method": "Quoted verbatim; no wall worked around.",
+   "n_rows": 1,
+   "built_at": "2026-08-16 20:39:01.314634+00",
+   "notes": "NOTE: four walls recorded in the first sweep (Montgomery, Tipton, Pike, Sullivan) did NOT reproduce -- all served robots.txt with Crawl-delay: 300 this run. A wall is an observation at a point in time, not a permanent property of a host, and a BLOCKED record should be re-tested before it is treated as final."
   },
   {
    "table_name": "in_dc_actions_verify_walls",
@@ -1431,6 +1463,14 @@
    "notes": null
   },
   {
+   "table_name": "in_si_d22_idem_dated",
+   "source": "https://oe.idem.in.gov/idem_oe_order search form (380 month windows, 1995-01 to 2026-08) + per-case document pages at apps.idem.in.gov/idem/oe/cause/",
+   "method": "TWO INDEPENDENT ROUTES. Window slicing dates all 22,565 to MONTH precision by partitioning the publisher's own search by date range and matching rows back on a 7-field identity tuple plus normalised document_url. Document scraping extracts the PRINTED signature date to DAY precision. Where both exist they agree on the month 97.5% of the time (1,897 v 49).",
+   "n_rows": 22565,
+   "built_at": "2026-08-16 21:26:20.934531+00",
+   "notes": "READ date_precision BEFORE USING event_date. 'month' rows carry the FIRST OF THE MONTH as a placeholder and the day is NOT known \u2014 rendering one as a precise date would be an estimate styled as a published fact. Only date_precision='day' rows carry a date the publisher actually printed. The 49 rows where the window month and the printed date disagree are KEPT and flagged in month_agrees_with_document, not reconciled: they are mostly a few days across a month boundary, where IDEM's internal action date and the signature date genuinely differ. IDEM remains OWNER-KEYED and still cannot reach a parcel \u2014 dating it makes it filterable and usable as owner-grain context, not parcel-grain evidence."
+  },
+  {
    "table_name": "in_si_d22_idem_enforcement",
    "source": "https://oe.idem.in.gov/idem_oe_order",
    "method": "IDEM Monthly Actions and Orders, single POST county=All media=All type=All 1995-01-01..current-year-12-31, page=F (All Records), all result columns kept",
@@ -1575,6 +1615,14 @@
    "notes": null
   },
   {
+   "table_name": "in_si_indy_code_widened",
+   "source": "indiana_app.in_si_refresh_indy_code_enforcement x in_marion_address_crosswalk (gis.indy.gov sde_Addressing/0) x in_sites",
+   "method": "SEVERITY-GATED widening from 2 case types to 7. Placement via Indy's OWN FULL_ADDRESS -> STATEPARCELNUMBER authority, both sides canonicalised identically (upper, strip punctuation, collapse whitespace) and no further. Addresses mapping to >1 state parcel number are DROPPED, never guessed. D85 excluded.",
+   "n_rows": 88544,
+   "built_at": "2026-08-16 21:03:07.649277+00",
+   "notes": "40% of this corpus is High Weeds & Grass (363,844 rows) and a further 150,000+ is trash and untagged vehicles. Admitting it wholesale would inflate D12 by ~750,000 rows of lawn care -- the same error that made South Bend's corpus 95% litter. Only distress ON THE STRUCTURE is admitted: Unsafe Buildings, Vacant Board Order, Building violation, Repair, Repair No Hearing, Demolition, Environmental. MARION ONLY -- 1 of 92 counties, a publishing footprint, not statewide coverage."
+  },
+  {
    "table_name": "in_si_indy_surplus_parcels",
    "source": "https://gis.indy.gov/server/rest/services/SurplusProperties/SurplusPropertiesFeatures2/MapServer/7",
    "method": "arcgis_rest_paged outFields=* (lane_c)",
@@ -1626,8 +1674,8 @@
    "table_name": "in_si_parcel_signals_v2",
    "source": "indiana_app.in_si_signals + in_si_signals_parcel_dated + in_si_southbend_* + in_si_evansville_* + in_si_indy_abandoned_vacant + in_si_refresh_indy_code_enforcement",
    "method": "every parcel-reachable SI signal after normalising THREE key namespaces (IN: prefix strip, punctuated state-id strip, address bridge), with a SEVERITY gate on South Bend code enforcement (95% litter/weeds) and Evansville demolition (90% residential teardowns). D85 whole-Earth parcel excluded. admit_status records WHY a row was excluded; nothing dropped.",
-   "n_rows": 119995,
-   "built_at": "2026-08-16 20:04:33.242934+00",
+   "n_rows": 135563,
+   "built_at": "2026-08-16 21:04:16.131024+00",
    "notes": null
   },
   {
@@ -1683,7 +1731,7 @@
    "source": "indiana_app.in_si_signals + in_si_parcel_signals_v2",
    "method": "per-signal coverage: corpus rows, keying, publisher date range, parcels reached and admitted, and what each ruling excluded. source_block keeps the corpus and new publisher tables apart.",
    "n_rows": 24,
-   "built_at": "2026-08-16 20:04:40.086586+00",
+   "built_at": "2026-08-16 21:04:31.573096+00",
    "notes": null
   },
   {
@@ -1706,8 +1754,8 @@
    "table_name": "in_si_sites_flags_v2",
    "source": "indiana_app.in_si_parcel_signals_v2",
    "method": "per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gated), signal list, first/last event date and 3/5/10-year event counts so recency is filterable on screen.",
-   "n_rows": 102444,
-   "built_at": "2026-08-16 20:04:36.457793+00",
+   "n_rows": 106640,
+   "built_at": "2026-08-16 21:04:19.146329+00",
    "notes": null
   },
   {
@@ -2199,6 +2247,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 280,
+ "registry_rows_total": 286,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }
