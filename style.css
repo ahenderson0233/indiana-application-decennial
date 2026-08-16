@@ -98,7 +98,13 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 
 /* dossier: printing isolates the evidence panel as a branded one-pager */
 @media print {
-  #topbar, #rail, #map, #ev-close, #ev-star, #ev-print, #tooltip { display: none !important; }
+  #topbar, #rail, #map, #ev-close, #ev-star, #ev-print, #ev-dossier, #tooltip { display: none !important; }
+  /* a dossier runs to several pages, so a part must not be guillotined across a page break and a
+     heading must never be the last thing on a page */
+  .dossier h3 { break-after: avoid; page-break-after: avoid; margin-top: 14px; }
+  .dossier table, .dossier .prov { break-inside: avoid; page-break-inside: avoid; }
+  .dossier .prov { font-size: 9.5px; }
+  a[href]::after { content: ""; }   /* URLs are in the provenance lines already */
   #layout { height: auto; display: block; }
   #evidence { display: block !important; width: 100%; min-width: 0; border: none; }
   #evidence::before { content: "DECENNIAL — Indiana Siting Intelligence · site dossier";

@@ -884,7 +884,12 @@ function openScoreEvidence(r) {
 /* ---------- evidence panels ---------- */
 const panel = $("evidence");
 $("ev-close").onclick = () => panel.classList.add("hidden");
-$("ev-print").onclick = () => window.print(); // print stylesheet isolates the evidence panel as a dossier
+$("ev-print").onclick = () => window.print(); // print stylesheet isolates the panel for printing
+// The dossier button only appears on a PARCEL panel — a dossier for a substation or a queue point
+// would be a document about nothing. state.dossierFor carries the parcel the panel is showing.
+$("ev-dossier").onclick = () => {
+  if (state.dossierFor) openDossier(state.dossierFor.p, state.dossierFor.fips);
+};
 function prov(t) {
   const p = state.provenance[t];
   return p ? `source: indiana_app.${t} · rows ${fmt(p.n_rows)} · built ${String(p.built_at).slice(0, 16)}Z` : `source: ${t}`;
@@ -895,6 +900,12 @@ function row(k, v) {
   return `<tr><td>${k}</td><td>${val}</td></tr>`;
 }
 function show(title, html, starKey) {
+  // every panel hides the dossier button; openParcelEvidence and openDossier re-show it, so a
+  // substation or queue-point panel can never offer a dossier for a parcel it is not about
+  if (!/^(Parcel|Dossier)/.test(title)) {
+    $("ev-dossier").classList.add("hidden");
+    state.dossierFor = null;
+  }
   $("ev-title").textContent = title;
   $("evidence-body").innerHTML = html;
   const star = $("ev-star");
@@ -905,7 +916,147 @@ function show(title, html, starKey) {
   } else star.classList.add("hidden");
   panel.classList.remove("hidden");
 }
+/* ---------- C1: the dossier ----------
+   The evidence panel answers "what do we know about this parcel". A dossier answers the question
+   management actually asks: "should we pursue this site, and what would we need to check next".
+   Those are different documents. This assembles all six parts into one printable verdict, and it
+   is deliberately built from the SAME functions the screener and the panel use — acreageOf(),
+   scoreSite(), prov() — so a dossier can never disagree with the map that produced it.
+
+   Three rules it must not break:
+     · every figure names its source table and build date
+     · cannot-assess is printed as itself and is LEFT OUT of the score denominator, never zeroed
+     · MW figures are adjustable assumptions at the user's own density, and say so             */
+function openDossier(p, fips) {
+  const a = (x) => x == null ? null : Number(x).toFixed(2);
+  // county context is NESTED — {posture, queue, iocs, fcc}, not flat. Reading it flat produced
+  // ten spurious "cannot assess" rows on the first build, which is a dossier lying about our
+  // coverage rather than about the county. Read the shape, do not assume it.
+  const c = state.ctx.by_fips[fips] || {};
+  const po = c.posture || {}, q = c.queue || {}, ioc = c.iocs || {};
+  const w = currentWeights();
+  const r = scoreSite(p, fips, w);
+  const uc = useCase();
+  const density = V("f-density");
+  const acr = acreageOf(p, uc);
+  const mw = Math.floor(acr.acres * density);
+  const assessable = Object.values(r.parts).filter(Boolean).length;
+  const missing = Object.keys(PART_NAME).filter((k) => !r.parts[k]);
+
+  // the verdict line: capability first, because a motivated seller on a 0.1-acre lot is not a site
+  const fitsDC = (Number(p.mw_datacenter_4_per_acre) || 0) >= 25;
+  const fitsBESS = (Number(p.parcel_acres) || 0) >= 0.5;
+  const verdict = !fitsBESS
+    ? `<b class="cannot">Too small for either use case</b> — ${acr.acres.toFixed(2)} ac cannot host a ~5 MW BESS`
+    : fitsDC ? `<b>Viable for a hyperscale search</b> — fits ${mw} MW at ${density} MW/acre`
+             : `<b>BESS-scale only</b> — fits ${mw} MW at ${density} MW/acre; below the 25 MW datacentre floor`;
+
+  const partRows = Object.keys(PART_NAME).map((k) => {
+    const s = r.parts[k];
+    if (!s) return `<tr><td>${PART_NAME[k]}</td><td class="cannot">cannot assess</td>
+      <td class="hint">left out of the denominator, not scored zero</td></tr>`;
+    return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td>
+      <td class="sc">${Math.round(s.score)}</td><td class="hint">${s.basis}</td></tr>`;
+  }).join("");
+
+  const siDetail = p.has_si_signal === true ? `
+      ${row("signals", p.si_signals)}
+      ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null)}
+      ${row("events in 3 / 5 / 10 yrs", p.si_events_3y != null ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
+      ${row("how it reached this parcel", p.si_keying)}
+      ${row("where the date came from", p.si_date_basis)}`
+    : `<tr><td>seller-intent signal</td><td>none admitted on this parcel</td>
+       <td class="hint">measured, not missing</td></tr>`;
+
+  const tables = ["in_sites", "in_si_sites_flags_v2", "in_site_gates", "in_substations",
+                  "in_transmission_union", "in_si_d22_echo_indiana"];
+
+  show(`Dossier — parcel ${p.parcel_key}`, `
+    <div class="dossier">
+    <h3>Verdict</h3>
+    <div class="hint" style="font-size:12.5px;margin-bottom:6px">${verdict}.
+      Composite <b>${Math.round(r.composite)}</b> over ${assessable} of 6 assessable parts
+      (total weight ${r.weightUsed}).${missing.length ? ` Not assessable here:
+      ${missing.map((k) => PART_NAME[k]).join(", ")} — excluded from the denominator.` : ""}</div>
+    <table>${partRows}</table>
+    <div class="prov">Weights are the user's own and change the ranking. A part we could not
+      measure is dropped from the denominator rather than scored zero, so a data gap never
+      masquerades as a bad site.</div>
+
+    <h3>P3 · Land &amp; size</h3><table>
+      ${row("county", po.county_name || fips)}${row("class", p.occ_group)}
+      ${row("recorded parcel acres", a(p.parcel_acres))}
+      ${row("exact parcel acres (measured geometry)", a(p.exact_parcel_acres))}
+      ${row("screened on", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
+      ${acr.disputed ? `<tr><td>acreage dispute</td><td class="cannot">the two measures disagree</td>
+        <td class="hint">the SMALLER is used; never the larger, which is the number that makes a site look viable</td></tr>` : ""}
+      ${row(`capacity @ ${density} MW/acre (${uc === "dc" ? "whole parcel — a structure is demolition scope" : "outdoor space only"})`, mw + " MW")}
+      ${row("fits ≥25 MW datacentre", fitsDC ? "yes" : "no")}
+      ${row("fits ≥5 MW BESS", fitsBESS ? "yes" : "no")}</table>
+    <div class="prov">${prov("in_sites")}</div>
+
+    <h3>P1 · Seller intent</h3><table>${siDetail}</table>
+    <div class="prov">${prov("in_si_sites_flags_v2")} · admitted at the NON-RESIDENTIAL level only
+      and only where severity would plausibly move an owner to sell</div>
+
+    <h3>P2 · Grid access</h3><table>
+      ${row("nearest substation", p._dsub_name ? `${p._dsub_name} (${p._dsub_kv} kV) · ${p._dsub_mi} mi` : null)}
+      ${row("nearest transmission line", p._dline_mi != null ? `${p._dline_kv} kV · ${p._dline_mi} mi` : null)}
+      ${row("nearest MISO POI", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
+    <div class="prov">${prov("in_substations")} · distances are floors against mapped features,
+      not service guarantees. Headroom direction is disclosed: PJM figures are LOAD, the MISO
+      viewer publishes INJECTION only.</div>
+
+    <h3>P4 · Environmental gates</h3><table>
+      ${row("SFHA flood", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — flag" : "clear (measured)"))}
+      ${row("wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES — flag" : "clear (measured)"))}
+      ${row("protected land", p.protected_land === undefined ? null : (p.protected_land ? "YES — flag" : "clear (measured)"))}
+      ${row("energy-community bonus", p.bonus_kinds)}</table>
+    <div class="prov">${prov("in_site_gates")}</div>
+
+    <h3>P5 · Community posture <span class="hint">(COUNTY grain, not parcel)</span></h3><table>
+      ${row("county posture", po.posture)}
+      ${row("local restriction on the books", po.has_local_restriction === undefined ? null : (po.has_local_restriction ? "YES" : "none recorded"))}
+      ${row("moratoriums / bans", po.local_moratoriums != null ? `${po.local_moratoriums} / ${po.local_bans ?? 0}` : null)}
+      ${row("opposition intensity", po.opposition_intensity != null ? `${po.opposition_intensity} (statewide median 0, p90 4, max 25)` : null)}
+      ${row("opposition actions / news articles", po.opp_actions != null ? `${po.opp_actions} / ${po.news_articles ?? 0}` : null)}
+      ${row("court activity — mortgage foreclosures / evictions", ioc.mf != null ? `${fmt(ioc.mf)} / ${fmt(ioc.ev)}` : null)}</table>
+    <div class="prov">Opposition intensity partly tracks NEWS VOLUME, so large metros read higher
+      for reasons that are not posture. <b>Codified ordinances are not the whole picture</b> —
+      Indiana's decision-relevant data-centre regulation is currently county moratoria published on
+      county websites, which no code library contains. See Community.</div>
+
+    <h3>P6 · Market &amp; cost</h3><table>
+      ${row("active interconnection queue MW in county", q.active_mw != null ? `${fmt(q.active_mw)} MW — counts as SUPPLY, not competing demand` : null)}
+      ${row("queue projects (active / total)", q.projects != null ? `${q.active_projects ?? 0} / ${q.projects}` : null)}
+      ${row("withdrawn projects", q.withdrawn_projects)}
+      ${row("business fibre ≥100/20", c.fcc && c.fcc.units ? `${(100*(c.fcc.fiber_units||0)/c.fcc.units).toFixed(0)}% of county business units` : null)}</table>
+    <div class="prov">There is <b>no per-parcel tariff figure here, deliberately</b>: the itemised
+      rate engine is C2 and is not built. The flattened-URDB cross-check on Market is an ordering
+      hint, not a number to underwrite, and putting it on a parcel dossier would lend it a
+      precision it does not have.</div>
+
+    <h3>What to check next</h3>
+    <div class="hint">${[
+      !fitsBESS ? "Parcel is below the smallest use case — deprioritise unless assembled with neighbours." : null,
+      acr.disputed ? "Acreage is disputed between recorded and measured geometry — confirm with the assessor before relying on capacity." : null,
+      p.has_si_signal !== true ? "No admitted seller-intent signal — this is a cold approach." : null,
+      p.si_events_3y === 0 && p.has_si_signal === true ? "Signal exists but nothing inside 3 years — confirm the owner's position is still current." : null,
+      p.sfha_flood ? "In an SFHA flood zone — a gate, not a preference." : null,
+      "Owner identity is NOT held: mat_parcel_attrs.parcel_owner is NULL on all 3,553,381 Indiana parcels.",
+    ].filter(Boolean).map((s) => `• ${s}`).join("<br>")}</div>
+
+    <div class="prov" style="margin-top:10px">Sources used in this dossier:<br>
+      ${tables.map((t) => prov(t)).join("<br>")}</div>
+    </div>`,
+    `${p.parcel_source}|${p.parcel_key}`);
+  state.dossierFor = { p, fips };
+  $("ev-dossier").classList.remove("hidden");
+}
+
 function openParcelEvidence(p, fips) {
+  state.dossierFor = { p, fips };
+  $("ev-dossier").classList.remove("hidden");
   const a = (x) => x == null ? null : Number(x).toFixed(2);
   const c = state.ctx.by_fips[fips] || {};
   const density = V("f-density");
