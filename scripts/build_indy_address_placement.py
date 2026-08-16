@@ -51,24 +51,28 @@ CREATE TEMP FUNCTION pdate(s STRING) AS (
 SQL = f"""{CANON}
 CREATE OR REPLACE TABLE `{DS}.in_si_indy_code_placed` AS
 WITH addr AS (
-  SELECT canon(FULL_ADDRESS) a,
+  SELECT canon(FULL_ADDRESS) ak,
          REGEXP_REPLACE(STATEPARCELNUMBER, r'[^0-9]', '') pk
   FROM `{DS}.in_marion_address_crosswalk`
   WHERE FULL_ADDRESS IS NOT NULL AND STATEPARCELNUMBER IS NOT NULL
-    AND LENGTH(REGEXP_REPLACE(STATEPARCELNUMBER, r'[^0-9]','')) = 18
-  GROUP BY 1, 2),
+    AND LENGTH(REGEXP_REPLACE(STATEPARCELNUMBER, r'[^0-9]','')) = 18),
+-- an address that maps to MORE THAN ONE parcel cannot place a case on one of them without
+-- guessing, so those are excluded and counted rather than resolved arbitrarily
+-- NOTE the alias: naming the output `pk` would make `MAX(pk)` in HAVING resolve to the ALIAS
+-- (i.e. MAX(MIN(pk))), which BigQuery rejects as an aggregation of an aggregation.
+addr1 AS (SELECT ak, MIN(pk) AS parcel_pk FROM addr GROUP BY ak HAVING MIN(pk) = MAX(pk)),
 code AS (
-  SELECT canon(STREET_ADDRESS) a,
+  SELECT canon(STREET_ADDRESS) ak,
          IF(CASE_TYPE LIKE '%Unsafe Buildings%', 'D5_unsafe_building', 'D5_vacant_board_order') signal,
          pdate(OPEN_DATE) obs, CASE_NUMBER, CASE_STATUS, OWNER
   FROM `{DS}.in_si_refresh_indy_code_enforcement`
   WHERE (CASE_TYPE LIKE '%Unsafe Buildings%' OR CASE_TYPE LIKE '%Vacant Board Order%')
     AND STREET_ADDRESS IS NOT NULL)
-SELECT c.signal, a.pk AS parcel_key, c.a AS address_canon,
+SELECT c.signal, x.parcel_pk AS parcel_key, c.ak AS address_canon,
        c.obs AS event_date, c.CASE_NUMBER case_number, c.CASE_STATUS case_status, c.OWNER owner_name,
        TIMESTAMP('{BUILT}') AS built_at
-FROM code c JOIN addr a USING (a)
-WHERE a.pk != '{D85}'
+FROM code c JOIN addr1 x ON x.ak = c.ak
+WHERE x.parcel_pk != '{D85}'
 """
 job = client.query(SQL); job.result()
 print(f"built in_si_indy_code_placed ({job.total_bytes_processed/1e9:.2f} GB)")

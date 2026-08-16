@@ -198,17 +198,19 @@ e_indy_abandoned AS (
     ON x.loc = a.PARCEL_I
 ),
 -- ---- F. the derive-from-held win: Unsafe Buildings + Vacant Board Order, WITH open dates ------
+-- Placed through INDY'S OWN ADDRESS AUTHORITY (sde_Addressing layer 0, 465,050 addresses each
+-- carrying FULL_ADDRESS *and* STATEPARCELNUMBER) rather than the generic address bridge. Same
+-- publisher as the code corpus, so the address text agrees without an invented normaliser, and
+-- the result is a PUBLISHED crosswalk rather than a geocode estimate.
+-- 46,411 of 54,995 rows (84.4%) on 14,378 parcels — the generic bridge reached 711.
+-- Built by scripts/build_indy_address_placement.py.
 f_indy_unsafe AS (
-  SELECT b.parcel_key pk,
-         IF(e.CASE_TYPE LIKE '%Unsafe Buildings%', 'D5_unsafe_building', 'D5_vacant_board_order') signal,
-         pdate(e.OPEN_DATE) obs, 'publisher event date' basis, 'address_bridge' keying,
-         'STREET_ADDRESS+CITY -> mat_si_address_location' bridge,
-         CONCAT('indy_code_enforcement:', IFNULL(e.CASE_TYPE,'?')) source_id,
+  SELECT parcel_key pk, signal, event_date obs,
+         'publisher event date' basis, 'indy_address_authority' keying,
+         'STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER' bridge,
+         CONCAT('indy_code_enforcement:', signal) source_id,
          'publisher table (new in v2)' blk, TRUE
-  FROM `{DS}.in_si_refresh_indy_code_enforcement` e
-  JOIN `{DS}.in_si_address_parcel_bridge` b
-    ON b.address_norm = UPPER(TRIM(e.STREET_ADDRESS)) || ' ' || UPPER(TRIM(e.CITY))
-  WHERE e.CASE_TYPE LIKE '%Unsafe Buildings%' OR e.CASE_TYPE LIKE '%Vacant Board Order%'
+  FROM `{DS}.in_si_indy_code_placed`
 ),
 -- ---- G. D22 environmental (EPA ECHO bulk export), already spatially joined to parcels --------
 -- Two DIFFERENT signals, deliberately kept apart: a facility in violation is owner distress; a
