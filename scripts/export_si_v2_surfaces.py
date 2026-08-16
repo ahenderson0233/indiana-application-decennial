@@ -140,6 +140,26 @@ out["landbank_summary"] = rows(f"""
          (SELECT COUNT(*) FROM allp WHERE p NOT IN (SELECT p FROM cur)) disposed,
          (SELECT d FROM mx) latest_snapshot, p.* FROM placed p""")[0]
 
+# CAPABILITY, not just evidence. A signal says an owner may sell; it says nothing about whether
+# the parcel can host anything. 69% of flagged parcels cannot hold even a 5 MW BESS — that is a
+# useful filter, not a defect, and it belongs on screen next to the flag rather than buried.
+out["capability"] = rows(f"""
+  SELECT COUNTIF(has_si_signal) flagged,
+    COUNTIF(has_si_signal AND fits_min_bess_5mw) fits_bess,
+    COUNTIF(has_si_signal AND fits_dc_25mw) fits_dc,
+    COUNTIF(has_si_signal AND NOT fits_min_bess_5mw) too_small,
+    ROUND(APPROX_QUANTILES(IF(has_si_signal, parcel_acres, NULL), 100)[OFFSET(50)], 2) median_ac
+  FROM `{DS}.in_si_sites_flags_v2`""")[0]
+
+# the Lane D columns that were pulled and never wired — their measured vocabularies
+out["lane_d"] = rows(f"""
+  SELECT src, col, val, n, n_located FROM `{DS}.in_si_lane_d_enrichment`
+  WHERE val IS NOT NULL AND val != ''
+  ORDER BY src, col, n DESC LIMIT 120""")
+out["lane_d_summary"] = rows(f"""
+  SELECT src, col, COUNT(*) distinct_values, SUM(n) rows_covered, SUM(n_located) located
+  FROM `{DS}.in_si_lane_d_enrichment` GROUP BY 1,2 ORDER BY rows_covered DESC""")
+
 p = os.path.join(REPO, "data", "si_v2.json.gz")
 with gzip.open(p, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(out, f, separators=(",", ":"), default=str)

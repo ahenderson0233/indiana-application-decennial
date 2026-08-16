@@ -23,6 +23,26 @@
     <div class="prov">indiana_app.in_si_sites_flags_v2 · built by scripts/build_si_signal_v2.py ·
       full per-signal detail in <code>docs/SI_COVERAGE.md</code></div></div>
 
+  <div class="card"><h2>Can the parcel host anything? — signal and capability are different questions</h2>
+    <div class="hint" id="cap-note"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="cap-bess">…</div><div class="hint">can host ≥5 MW BESS (≥0.5 ac)</div></div>
+      <div class="card"><div class="bigstat" id="cap-dc">…</div><div class="hint">can host ≥25 MW datacentre</div></div>
+      <div class="card"><div class="bigstat" id="cap-small">…</div><div class="hint">too small for either — filtered out, not deleted</div></div>
+    </div>
+    <div class="prov">indiana_app.in_si_sites_flags_v2 · <code>fits_min_bess_5mw</code> /
+      <code>fits_dc_25mw</code> · the screener's MW filter applies the same test at whatever
+      density and MW floor you set</div></div>
+
+  <div class="card"><h2>Lane D — columns that were pulled and never wired</h2>
+    <div class="hint">Six sources were pulled with ALL columns, which turned up signal-bearing
+      fields nobody had asked for. Two were <b>placement</b>, not enrichment: SRI publishes its own
+      lat/lon (24,948 parcels) and IBTR publishes <code>stateParcelNumber</code> (3,338 parcels) —
+      no geocoder, no centroid, no estimate. These are the measured vocabularies of the rest.</div>
+    <div class="scroll" style="max-height:200px;margin-top:8px"><table id="t-laned-sum"><tr><th>source</th><th>column</th><th>distinct values</th><th>rows covered</th></tr></table></div>
+    <div class="scroll" style="max-height:280px;margin-top:8px"><table id="t-laned"><tr><th>source</th><th>column</th><th>value</th><th>rows</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_lane_d_enrichment · built by scripts/wire_lane_d_columns.py</div></div>
+
   <div class="card"><h2>D5 — vacancy is two different things, and only one is a signal</h2>
     <div class="hint" id="d5-note"></div>
     <div class="scroll" style="max-height:220px;margin-top:8px"><table id="t-d5"><tr><th>source</th><th>rows</th><th>parcel-keyed</th></tr></table></div>
@@ -168,6 +188,26 @@
     [["commercial / industrial", fs.ci], ["other non-residential", fs.other_nonres],
      ["agriculture", fs.ag], ["vacant land (BESS)", fs.land]]
     .map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`).join(""));
+
+  const cap = V2.capability;
+  document.getElementById("cap-bess").textContent = fmt(cap.fits_bess);
+  document.getElementById("cap-dc").textContent = fmt(cap.fits_dc);
+  document.getElementById("cap-small").textContent = fmt(cap.too_small);
+  document.getElementById("cap-note").innerHTML =
+    `A seller-intent signal says an owner may be motivated. It says <b>nothing</b> about whether
+     the parcel can hold a project. Of <b>${fmt(cap.flagged)}</b> flagged parcels, the median is
+     <b>${cap.median_ac} acres</b> and <b>${fmt(cap.too_small)}</b> cannot host even a ~5 MW BESS.
+     That is the expected shape of a distress signal — tax sales and code cases land
+     overwhelmingly on small urban lots — and it is a <i>filter</i>, not a defect. The parcels are
+     kept and labelled rather than dropped, so the flag stays a fact about the parcel and
+     capability is a separate, adjustable test.`;
+
+  document.getElementById("t-laned-sum").insertAdjacentHTML("beforeend", V2.lane_d_summary.map(s =>
+    `<tr><td class="hint">${s.src}</td><td><code>${s.col}</code></td><td>${fmt(s.distinct_values)}</td>
+     <td>${fmt(s.rows_covered)}</td></tr>`).join(""));
+  document.getElementById("t-laned").insertAdjacentHTML("beforeend", V2.lane_d.map(s =>
+    `<tr><td class="hint">${s.src}</td><td class="hint">${s.col}</td>
+     <td>${String(s.val).slice(0, 60)}</td><td>${fmt(s.n)}</td></tr>`).join(""));
 
   const d5 = V2.d5_split;
   document.getElementById("d5-note").innerHTML =
