@@ -4,8 +4,11 @@
 
 > **The B2 headline item is DONE, and D22 is acquired and wired.** `has_si_signal` was
 > 847,410 parcels of which 99.2% was empty land; it is now **9,383 non-residential,
-> severity-gated parcels, 92% of them dated**. Phase A closed at 196 of 199 tables reaching a
-> surface; the last three now have real panels, so it is **199 of 199**.
+> severity-gated parcels, 90% of them dated**.
+>
+> **On the wiring count: "199 of 199" was wrong the moment it was written.** The denominator
+> MOVES every time a build registers a new object, so any carried-over "N of N" is stale. It is
+> now measured by `scripts/audit_wiring_census.py` on every run — see `docs/WIRING_CENSUS.md`.
 
 ## What changed on 2026-08-16
 

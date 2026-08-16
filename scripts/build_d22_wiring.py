@@ -118,7 +118,10 @@ SELECT county_norm, ANY_VALUE(county_fips) county_fips,
   COUNT(*) facilities,
   COUNTIF(is_distress) distress_facilities,
   COUNTIF(distress_class='significant_violation') significant_violations,
-  COUNTIF(distress_class='high_priority_violator') high_priority_violators,
+  -- HPV is counted from ITS OWN FLAG, not from distress_class. distress_class is a priority
+  -- ladder and all 95 Indiana HPVs are ALSO in significant violation, so reading it off the
+  -- ladder returned 0 — a zero that contradicts a known count, rendered as if none existed.
+  COUNTIF(CAA_HPV_FLAG='Y') high_priority_violators,
   COUNTIF(is_inactive_facility) inactive_facilities,
   ROUND(SUM(SAFE_CAST(FAC_TOTAL_PENALTIES AS FLOAT64))) total_penalties,
   COUNTIF(FAC_MAJOR_FLAG='Y') major_facilities,

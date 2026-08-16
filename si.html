@@ -8,12 +8,50 @@
 <nav id="nav"></nav>
 <div class="page">
   <h1>Seller-Intent Feed</h1>
-  <div class="sub">17 of 29 weighted signals held in Indiana; candidates and staged acquisitions shown with their status — a name is never wired without a subject read.</div>
+  <div class="sub">Signals are admitted at the <b>non-residential</b> level only and only where severity
+    would plausibly move an owner to sell. A name is never wired without a subject read.</div>
   <div class="gridcards">
+    <div class="card"><div class="bigstat" id="s-flag">…</div><div class="hint">parcels carrying an ADMITTED seller-intent signal (<code>in_si_sites_flags_v2</code>)</div></div>
+    <div class="card"><div class="bigstat" id="s-dated">…</div><div class="hint">of those, carrying an event date</div></div>
     <div class="card"><div class="bigstat" id="s-si">…</div><div class="hint">SI observations held (in_si_signals)</div></div>
-    <div class="card"><div class="bigstat" id="s-types">17 / 29</div><div class="hint">weighted signal types present (missing: A1 D4 D9 D10 D11 D13 D15 D18 D21 D22 D23 D27 — D11/D21/D25/D27 have first rows STAGED)</div></div>
-    <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (D21 demolition, this app only)</div></div>
+    <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (<code>in_si_candidates</code>)</div></div>
   </div>
+
+  <div class="card"><h2>The flag was a vacancy flag — what changed</h2>
+    <div class="hint" id="v2-note"></div>
+    <div class="scroll" style="margin-top:8px"><table id="t-v2class"><tr><th>class</th><th>parcels with an admitted signal</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_sites_flags_v2 · built by scripts/build_si_signal_v2.py ·
+      full per-signal detail in <code>docs/SI_COVERAGE.md</code></div></div>
+
+  <div class="card"><h2>D5 — vacancy is two different things, and only one is a signal</h2>
+    <div class="hint" id="d5-note"></div>
+    <div class="scroll" style="max-height:220px;margin-top:8px"><table id="t-d5"><tr><th>source</th><th>rows</th><th>parcel-keyed</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_d5_abandoned_buildings + in_si_d5_vacant_land_NOT_A_SIGNAL ·
+      built by scripts/build_si_vacancy_split.py</div></div>
+
+  <div class="card"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
+    <div class="hint" style="margin-bottom:6px"><b>held</b> is rows in the corpus and says nothing about
+      usability · <b>reached</b> is parcels the signal can be joined to · <b>admitted</b> passes both
+      rulings · and the two exclusion columns show what each ruling removed, so nothing is dropped
+      in silence.</div>
+    <div class="scroll" style="max-height:460px"><table id="t-cov"><tr><th>signal</th><th>held</th><th>reached</th><th>admitted</th><th>C/I</th><th>event range</th><th>excl. resid</th><th>excl. low-sev</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_signal_coverage</div></div>
+
+  <div class="card"><h2>D22 — environmental compliance (EPA ECHO)</h2>
+    <div class="hint" id="d22-note"></div>
+    <div class="scroll" style="max-height:320px;margin-top:8px"><table id="t-d22"><tr><th>county</th><th>facilities</th><th>in distress</th><th>significant violation</th><th>high-priority</th><th>inactive</th><th>penalties</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_d22_echo_indiana + in_si_d22_county_rollup · source: EPA ECHO
+      <b>bulk export</b> (echo_exporter.zip), not the REST service — the county walk needed ~25,000
+      requests against a 1,500/day quota. 133 columns kept.</div></div>
+
+  <div class="card"><h2>Owner-grain signals — D11, D27 and D19, which cannot reach a parcel</h2>
+    <div class="hint" id="own-note"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-owncounty"><tr><th>county</th><th>dissolutions</th><th>UCC lapses</th><th>WARN</th><th>in 3 yrs</th></tr></table></div>
+        <div class="prov">county is <b>inferred from the city</b> — the sources publish none</div></div>
+      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-own"><tr><th>signal</th><th>party</th><th>event</th><th>city</th></tr></table></div>
+        <div class="prov">indiana_app.in_si_owner_signals</div></div>
+    </div></div>
   <div class="card"><h2>Signal inventory — Indiana, by signal</h2>
     <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
     <div class="prov" id="p-sig"></div></div>
@@ -95,6 +133,77 @@
      <td style="width:36%"><div style="background:#2563eb;height:9px;border-radius:4px;width:${Math.max(1, x.n/mx*100)}%"></div></td></tr>`).join(""));
   document.getElementById("p-sig").textContent = `source: indiana_app.in_si_signals · totals conserve to ${fmt(sig.reduce((a,b)=>a+b.n,0))}`;
   document.getElementById("s-cand").textContent = fmt(PROV["in_si_candidates"]?.n_rows);
+  // ---- SI v2: the widened, non-residential, severity-gated flag ----------------------------
+  const V2 = await fetchGz("data/si_v2.json.gz");
+  const fs = V2.flag_summary;
+  document.getElementById("s-flag").textContent = fmt(fs.flagged);
+  document.getElementById("s-dated").textContent =
+    `${Math.round(100 * fs.dated / Math.max(fs.flagged, 1))}%`;
+  document.getElementById("v2-note").innerHTML =
+    `<b>${fmt(fs.flagged)}</b> parcels carry an admitted seller-intent signal, <b>${fmt(fs.dated)}</b>
+     of them dated, <b>${fmt(fs.r3)}</b> with an event inside 3 years. The previous flag read
+     <b>847,410</b> — but 99.2% of that was EMPTY LAND, because its only parcel-keyed input was
+     footprint absence, which is a land state and not intent to sell. Vacant land still renders
+     and is still the BESS sizing basis; it simply stopped counting as intent.
+     <b>${fmt(fs.excl_resid)}</b> residential-class and <b>${fmt(fs.excl_lowsev)}</b> below-severity
+     signal rows are held with the reason recorded, not deleted.`;
+  document.getElementById("t-v2class").insertAdjacentHTML("beforeend",
+    [["commercial / industrial", fs.ci], ["other non-residential", fs.other_nonres],
+     ["agriculture", fs.ag], ["vacant land (BESS)", fs.land]]
+    .map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`).join(""));
+
+  const d5 = V2.d5_split;
+  document.getElementById("d5-note").innerHTML =
+    `A parcel with <b>no building</b> and an <b>abandoned building</b> are not the same claim.
+     D5 held <b>${fmt(d5.abandoned_buildings.n + d5.vacant_land.n)}</b> rows, of which
+     <b>${fmt(d5.vacant_land.n)}</b> (${Math.round(100*d5.vacant_land.n/(d5.abandoned_buildings.n+d5.vacant_land.n))}%)
+     were footprint absence — a land state we already carry as <code>occ_group='no_structure'</code>,
+     not intent to sell. Only <b>${fmt(d5.abandoned_buildings.n)}</b> rows across
+     ${d5.abandoned_buildings.srcs} sources are the real signal. Splitting them is the single
+     largest correction in this application: it is why the seller-intent flag fell from 847,410 to
+     ${fmt(fs.flagged)}. <b>Vacant land did not leave the app</b> — it still renders and is still
+     the BESS sizing basis. It simply stopped being counted as intent.`;
+  document.getElementById("t-d5").insertAdjacentHTML("beforeend", d5.by_source.map(s =>
+    `<tr><td>${s.source_id}</td><td>${fmt(s.n)}</td><td>${fmt(s.keyed)}</td></tr>`).join("") +
+    `<tr><td><b>vacant land — NOT a signal</b></td><td>${fmt(d5.vacant_land.n)}</td>
+     <td class="hint">kept for BESS siting</td></tr>`);
+
+  document.getElementById("t-cov").insertAdjacentHTML("beforeend", V2.coverage.map(c => {
+    const rng = (c.first_event || c.last_event) ? `${c.first_event || "?"} → ${c.last_event || "?"}`
+      : (c.parcels_admitted ? "no dates held" : "—");
+    return `<tr><td><code>${c.signal}</code></td><td class="hint">${fmt(c.corpus_rows) || "—"}</td>
+      <td>${fmt(c.parcels_reached)}</td><td><b>${fmt(c.parcels_admitted)}</b></td>
+      <td>${fmt(c.parcels_ci)}</td><td class="hint">${rng}</td>
+      <td class="hint">${fmt(c.excl_residential) || "—"}</td>
+      <td class="hint">${fmt(c.excl_low_severity) || "—"}</td></tr>`;
+  }).join(""));
+
+  const d2 = V2.d22_summary;
+  document.getElementById("d22-note").innerHTML =
+    `<b>${fmt(d2.facilities)}</b> Indiana facilities, <b>100%</b> carrying published coordinates.
+     <b>${fmt(d2.distress)}</b> show a distress marker — ${fmt(d2.sig_violation)} in significant
+     violation, of which ${fmt(d2.hpv)} are also Clean-Air-Act high-priority violators
+     (the two overlap completely, so they are not added together) — and <b>${fmt(d2.inactive)}</b> have CEASED
+     OPERATING, which for a siter is an opportunity rather than a liability: a shut regulated plant
+     already has power and water run to it. Being present in ECHO is <i>not</i> distress, so the
+     other ${fmt(d2.facilities - d2.distress - d2.inactive)} are context, not leads.
+     Total penalties on record: <b>$${d2.penalties_bn}B</b>.`;
+  document.getElementById("t-d22").insertAdjacentHTML("beforeend", V2.d22_county.map(c =>
+    `<tr><td>${c.county_norm || "—"}</td><td>${fmt(c.facilities)}</td>
+     <td><b>${fmt(c.distress_facilities)}</b></td><td>${fmt(c.significant_violations)}</td>
+     <td>${fmt(c.high_priority_violators)}</td><td>${fmt(c.inactive_facilities)}</td>
+     <td class="hint">${c.total_penalties ? "$" + fmt(c.total_penalties) : "—"}</td></tr>`).join(""));
+
+  document.getElementById("own-note").textContent = V2.owner_note;
+  document.getElementById("t-owncounty").insertAdjacentHTML("beforeend", V2.owner_county.map(c =>
+    `<tr><td>${c.county_fips}</td><td>${fmt(c.dissolutions)}</td><td>${fmt(c.ucc_lapses)}</td>
+     <td>${fmt(c.warn_notices)}</td><td>${fmt(c.events_3y)}</td></tr>`).join(""));
+  document.getElementById("t-own").insertAdjacentHTML("beforeend", V2.owner_signals.map(r =>
+    `<tr><td class="hint">${String(r.signal).replace(/_/g, " ")}</td>
+     <td>${String(r.party || "").slice(0, 34)}</td>
+     <td>${r.event_date || '<span class="cannot">no date</span>'}</td>
+     <td>${r.city || '<span class="cannot">—</span>'}</td></tr>`).join(""));
+
   const so = await fetchGz("data/signoff.json.gz");
   document.getElementById("t-adm").insertAdjacentHTML("beforeend", so.admission.map(a =>
     `<tr><td>${a.signal}</td><td><b>${fmt(a.admitted)}</b></td><td>${fmt(a.source_rows)}</td>
