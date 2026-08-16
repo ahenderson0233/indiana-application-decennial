@@ -41,6 +41,8 @@ PAGE = 2000
 client = bigquery.Client(project="energy-platfrom")
 PULLED = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+ONLY = sys.argv[1] if len(sys.argv) > 1 else None   # re-run one layer without re-pulling 347k rows
+
 LAYERS = [
     {"key": "crosswalk", "path": "sde_Parcel/sde_Parcel/MapServer/5",
      "table": "in_marion_parcel_crosswalk", "geom": False,
@@ -72,14 +74,20 @@ def get(url, tries=5):
 
 
 for L in LAYERS:
+    if ONLY and L["key"] != ONLY:
+        continue
     base = f"{ROOT}/{L['path']}"
     expected = get(f"{base}/query?where=1%3D1&returnCountOnly=true&f=json").get("count")
     print(f"\n=== {L['table']} — publisher reports {expected:,} rows ===", flush=True)
 
     rows, offset = [], 0
     while True:
+        # f=geojson, NOT f=json, for geometry layers. `f=json` returns Esri geometry
+        # (`{"rings": [...]}`), which ST_GEOGFROMGEOJSON cannot read — it parsed 0 of 7,120 on
+        # the first attempt. GeoJSON is what BigQuery actually consumes.
         q = {"where": "1=1", "outFields": "*", "returnGeometry": "true" if L["geom"] else "false",
-             "resultOffset": offset, "resultRecordCount": PAGE, "f": "json"}
+             "resultOffset": offset, "resultRecordCount": PAGE,
+             "f": "geojson" if L["geom"] else "json"}
         if L["geom"]:
             q["outSR"] = "4326"
         d = get(f"{base}/query?{urllib.parse.urlencode(q)}")
@@ -87,7 +95,8 @@ for L in LAYERS:
         if not feats:
             break
         for ft in feats:
-            rec = {k: (None if v == "" else v) for k, v in (ft.get("attributes") or {}).items()}
+            src_attrs = ft.get("properties") if L["geom"] else ft.get("attributes")
+            rec = {k: (None if v == "" else v) for k, v in (src_attrs or {}).items()}
             if L["geom"]:
                 rec["geometry_json"] = json.dumps(ft.get("geometry")) if ft.get("geometry") else None
             rec["_pulled_at"] = PULLED

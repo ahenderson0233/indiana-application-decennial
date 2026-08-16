@@ -29,6 +29,16 @@
     <div class="prov">indiana_app.in_si_d5_abandoned_buildings + in_si_d5_vacant_land_NOT_A_SIGNAL ·
       built by scripts/build_si_vacancy_split.py</div></div>
 
+  <div class="card"><h2>Marion placement, checked by two instruments</h2>
+    <div class="hint" id="mar-note"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="scroll" style="max-height:200px"><table id="t-marchk"><tr><th>verdict</th><th>rows</th></tr></table></div></div>
+      <div class="card"><div class="scroll" style="max-height:200px"><table id="t-mardis"><tr><th>address</th><th>crosswalk says</th><th>geometry says</th></tr></table></div>
+        <div class="prov">disagreements are shown, not resolved by preference</div></div>
+    </div>
+    <div class="prov">indiana_app.in_si_marion_route_check · built by scripts/verify_marion_routes.py ·
+      sources: in_marion_parcel_crosswalk + in_si_indy_abandoned_vacant_spatial</div></div>
+
   <div class="card"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
     <div class="hint" style="margin-bottom:6px"><b>held</b> is rows in the corpus and says nothing about
       usability · <b>reached</b> is parcels the signal can be joined to · <b>admitted</b> passes both
@@ -167,6 +177,26 @@
     `<tr><td>${s.source_id}</td><td>${fmt(s.n)}</td><td>${fmt(s.keyed)}</td></tr>`).join("") +
     `<tr><td><b>vacant land — NOT a signal</b></td><td>${fmt(d5.vacant_land.n)}</td>
      <td class="hint">kept for BESS siting</td></tr>`);
+
+  const mk = V2.marion_check, mAgree = (mk.find(x => x.verdict === "AGREE") || {}).n || 0;
+  const mBoth = mAgree + ((mk.find(x => x.verdict === "DISAGREE") || {}).n || 0);
+  document.getElementById("mar-note").innerHTML =
+    `Every Marion signal we hold is keyed to a <b>7-digit local parcel id</b>, while the parcel
+     layer is keyed to the 18-digit state number — so an address bridge placed only
+     <b>125 of 7,120</b> (1.8%). Marion's own parcel service publishes <b>both keys</b>
+     (347,049 parcels), which places <b>100%</b>. Because a single key mapping is a single
+     instrument, it is checked against a second that shares no mechanism with it: the building's
+     own polygon, spatially contained by a parcel. Of <b>${fmt(mBoth)}</b> placed by both,
+     <b>${(100 * mAgree / Math.max(mBoth, 1)).toFixed(2)}%</b> agree. The
+     ${fmt(mBoth - mAgree)} that disagree are all <i>adjacent</i> parcels — a footprint sitting
+     across a boundary — and are listed rather than silently resolved.`;
+  document.getElementById("t-marchk").insertAdjacentHTML("beforeend", mk.map(v =>
+    `<tr><td>${v.verdict}</td><td>${fmt(v.n)}</td></tr>`).join(""));
+  document.getElementById("t-mardis").insertAdjacentHTML("beforeend",
+    V2.marion_disagreements.map(d =>
+      `<tr><td>${String(d.address || "").slice(0, 26)}</td>
+       <td class="hint"><code>${d.crosswalk_key}</code></td>
+       <td class="hint"><code>${d.spatial_key}</code></td></tr>`).join(""));
 
   document.getElementById("t-cov").insertAdjacentHTML("beforeend", V2.coverage.map(c => {
     const rng = (c.first_event || c.last_event) ? `${c.first_event || "?"} → ${c.last_event || "?"}`

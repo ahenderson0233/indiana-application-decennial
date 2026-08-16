@@ -106,6 +106,18 @@ out["d5_split"] = {
       f"FROM `{DS}.in_si_d5_abandoned_buildings` GROUP BY 1 ORDER BY n DESC"),
 }
 
+# Marion placement, checked by TWO instruments that share no mechanism: the publisher's own
+# local->state key mapping, and ST_CONTAINS of the building's own polygon. Agreement is
+# corroboration; the disagreements are shown rather than resolved by preference.
+out["marion_check"] = rows(f"""
+  SELECT verdict, COUNT(*) n FROM `{DS}.in_si_marion_route_check` GROUP BY 1 ORDER BY n DESC""")
+out["marion_disagreements"] = rows(f"""
+  SELECT parcel_local_id, address, city, crosswalk_key, spatial_key
+  FROM `{DS}.in_si_marion_route_check` WHERE verdict='DISAGREE' ORDER BY address""")
+out["marion_geom_rows"] = rows(
+    f"SELECT COUNT(*) n, COUNTIF(geometry_json IS NOT NULL) with_geom "
+    f"FROM `{DS}.in_si_indy_abandoned_vacant_spatial`")[0]
+
 p = os.path.join(REPO, "data", "si_v2.json.gz")
 with gzip.open(p, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(out, f, separators=(",", ":"), default=str)
