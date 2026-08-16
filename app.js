@@ -325,9 +325,24 @@ function acreageOf(p, uc) {
   const parcel = Number(p.parcel_acres) || 0;
   const exactParcel = p.exact_parcel_acres == null ? null : Number(p.exact_parcel_acres);
   if (mode === "dc") {
-    // whole parcel: the structure is not an obstacle, it is demolition scope
-    if (exactParcel != null && parcel > 0 && exactParcel < parcel * 0.5)
-      return { acres: parcel, basis: "recorded parcel area (exact geometry disagrees)", disputed: true, mode };
+    // whole parcel: the structure is not an obstacle, it is demolition scope.
+    //
+    // B3 RULE (operator, 2026-08-16): where recorded and exact acreage disagree beyond the
+    // threshold, TAKE THE SMALLER and label it disputed. Never silently take the larger — the
+    // larger is the number that makes a site look viable, so preferring it is the one error that
+    // costs a site visit. 136 parcels read exact > 200% of recorded and 136 read exact < 50%;
+    // 50 of those are >=25 acres and non-residential, i.e. large enough to change a decision.
+    // The extremes are geometry defects, not assessor error: 471404900001500004 is recorded at
+    // 308.5 ac against 5.3 ac of exact geometry.
+    if (exactParcel != null && parcel > 0 &&
+        (exactParcel < parcel * 0.5 || exactParcel > parcel * 2.0)) {
+      const smaller = Math.min(parcel, exactParcel);
+      return { acres: smaller,
+               basis: `${smaller === exactParcel ? "exact geometry" : "recorded parcel area"} — ` +
+                      `the smaller of two disagreeing measures (recorded ${parcel.toFixed(1)} ac ` +
+                      `vs exact ${exactParcel.toFixed(1)} ac)`,
+               disputed: true, mode };
+    }
     if (exactParcel != null) return { acres: exactParcel, basis: "whole parcel, exact geometry", disputed: false, mode };
     return { acres: parcel, basis: "whole parcel, recorded acreage", disputed: false, mode };
   }
