@@ -26,7 +26,16 @@ GAMEPLAN is the PLAN and the backlog. Everything below is measured, not recalled
 Three agents and one job were live. They survive a context refresh; check their outputs before
 re-launching anything.
 
-1. **D22 ECHO pull** — `scrapers/lane_f/pull_d22_environmental.py`, background job. Walks 92
+1. **D22 ECHO acquisition — HANDED TO AN AGENT (still running at checkpoint).** The background
+   job below stalled on 429s, so an agent took it over with all four routes and both known
+   defects. **Before touching D22: check `indiana_app` for `in_si_d22_echo_facilities` (and
+   `in_si_d22_idem_enforcement`), and read the `## D22 ACQUISITION RESULT` section the agent
+   appends to `scrapers/lane_f/MISSING_SIGNALS_FINDINGS.md`.** It was told to try, in order:
+   ECHO's bulk CSV directory → `get_download` with `output=CSV` → a slower county walk with
+   SHORTFALL DETECTION → stop and report. It was also asked to grab IDEM's enforcement DB
+   (`oe.idem.in.gov/idem_oe_order`) as a separate table. Its brief carries the all-columns rule
+   and the instruction to narrow ROWS, never columns.
+   *Original job, for context:* `scrapers/lane_f/pull_d22_environmental.py`, background job. Walks 92
    counties (statewide is refused: *"Rows Returned would be 127266. Queryset Limit would be
    exceeded"*). **Now hitting HTTP 429 — ECHO is RATE-LIMITING us at 1.1 s/request.** Two things
    to fix before trusting a run: raise the pause (try 3–5 s) and add SHORTFALL detection — Adams
