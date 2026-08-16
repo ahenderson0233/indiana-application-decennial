@@ -5,6 +5,30 @@
 > **Phases A, B, C and E are materially complete. C4/C5 and three §13 PARTIALs remain.**
 > This block is the whole session. The block below it is the earlier checkpoint from the same day.
 
+> **📋 `docs/NEXT_SESSION_PROMPT.md` is the paste-ready opening message for the next session.**
+> It carries the reading order, every rule, phase-by-phase state, the rulings already made, and
+> what is in flight. Start there.
+
+## ⛔ THE BIGQUERY WRITE BOUNDARY — verified, and the rule agents most often break
+
+`energy-platfrom.energy` is **READ-ONLY**; it belongs to another session. The **one** permitted
+write is **APPEND-only rows to `energy.registry_sources`**. Everything we build goes to
+`energy-platfrom.indiana_app`, and every table gets a `_registry` row **in the same run that
+writes it** (an unregistered table breaks the other session's checkpoint invariant 3).
+
+**Verified 2026-08-16 — this project is compliant.** Measured, not assumed:
+- `indiana_app` holds **253** objects; **zero** new tables were created in `energy` by this project.
+- Our only `energy` writes are **86 append-only `registry_sources` rows**, tagged
+  `indiana-app-session-*`, `indiana-app-ordinances-agent`, `lane_d8_d22`,
+  `lane_f_b4_colo_resolution` — all within the permitted exception.
+- The `energy` tables modified today (`state_snapshot`, `methods`, `decisions`, `start_here`,
+  `mat_si_*`, `iso_*`, `si_signals_*`) belong to the PLATFORM session, not to us.
+- `energy.amlegal_dc_ordinances` (2,494 rows) predates this project — created 2026-07-06. It is
+  **platform-side and may be directly useful to the ordinance work: read it, never write it.**
+
+**Agents do not inherit this rule.** Every agent brief this session restated it explicitly, and
+every agent complied. Keep doing that — a brief that omits the boundary is how it gets broken.
+
 ## ⚠ FIRST ACTIONS FOR THE NEXT SESSION, IN ORDER
 
 1. **Verify the site payload matches the warehouse.** Run `scripts/audit_honesty.py`. It failed
