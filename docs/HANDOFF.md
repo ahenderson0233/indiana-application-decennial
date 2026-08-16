@@ -480,8 +480,12 @@ result is a claim about the instrument first.**
 
 | # | document | what it holds |
 |---|---|---|
+| 0 | **`docs/PATH_TO_COMPLETE.md`** | **⭐ START HERE.** Every remaining task, why it is not done, what closes it, and the three commands to run first. The finish line and the distance to it |
 | 1 | `docs/HANDOFF.md` | this file — the RECORD of what happened and why |
-| 2 | `docs/GAMEPLAN.md` | the PLAN: all phases + the 26-item backlog in priority order |
+| 2 | `docs/GAMEPLAN.md` | the PLAN: all phases + the backlog in priority order |
+| 2a | `docs/NATIONAL_HANDOVER.md` | **GENERATED** — the national baseline: contracts, grammar, and the twelve errors with the rule each teaches |
+| 2b | `docs/ACCEPTANCE_RUN.json` · `docs/HONESTY_AUDIT.json` | **GENERATED** — §13 acceptance state and the 12 honesty checks, with the 52-number trace |
+| 2c | `scripts/audit_docs.py` | audits the DOCS themselves: which are generated (self-correcting), which are hand-written, and which assert a figure the estate now contradicts |
 | 3 | `docs/CODE_CATALOG.md` | **GENERATED** — every script, every endpoint with its type, and the literal command that re-runs it. Regenerate with `scripts/build_code_catalog.py`; never hand-edit |
 | 4 | `docs/GAP_REGISTER.md` | every known gap, classified: what is genuinely unwired vs waived vs reached via a derivative |
 | 5 | `docs/PLOTTABILITY.md` | every table graded A–E for whether it can be drawn, with series tables excluded by ruling |
