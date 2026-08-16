@@ -73,9 +73,34 @@ joined AS (
   LEFT JOIN dcm ON ROUND(d.lat, 6) = dcm.lat6 AND ROUND(d.lon, 6) = dcm.lon6),
 stacks AS (
   SELECT ROUND(lat, 6) lat6, ROUND(lon, 6) lon6, COUNT(*) AS pins_here
-  FROM union_all GROUP BY 1, 2)
-SELECT j.src, j.name, j.operator, j.lat, j.lon,
-       j.unnamed_cannot_dedupe, j.dedupe_note,
+  FROM union_all GROUP BY 1, 2),
+-- F6 CORRECTION. B4 resolved eight Indianapolis colos against the operators' own statements and
+-- recorded, per facility, the parcel each one actually sits on. Comparing our held pin with that
+-- resolution: five agree to within 26 m and land on the SAME parcel, so their offsets are
+-- cosmetic. ONE DOES NOT.
+--
+--   Databank Indianapolis IND2 — our pin was 96.8 m out and fell on parcel 491111183001014101,
+--   which is in the 701/731/733 group on the SOUTH side of Henry Street. IND2 is 650 West Henry
+--   Street, on the NORTH side, parcel 491111138006000101 — the parcel B4 recorded and the one
+--   PeeringDB's published point lands on. The pin was on the wrong side of the road and therefore
+--   attributed to the wrong parcel.
+--
+-- So a resolved point OVERRIDES the held pin where B4 established one. This is not a nudge for
+-- neatness: a data-centre pinned to the wrong parcel corrupts every spatial join that facility
+-- takes part in. Only rows B4 actually investigated are touched; everything else is unchanged.
+corrections AS (
+  SELECT REGEXP_REPLACE(UPPER(REGEXP_EXTRACT(already_pinned_as, r'^([^(]*)')), r'[^A-Z0-9]', '') AS key_norm,
+         CAST(latitude AS FLOAT64) AS fix_lat, CAST(longitude AS FLOAT64) AS fix_lon,
+         coord_source AS fix_source
+  FROM `{DS}.in_dc_colo_resolved`
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND already_pinned_as IS NOT NULL
+)
+SELECT j.src, j.name, j.operator,
+       IFNULL(c.fix_lat, j.lat) AS lat, IFNULL(c.fix_lon, j.lon) AS lon,
+       j.unnamed_cannot_dedupe,
+       IF(c.key_norm IS NULL, j.dedupe_note,
+          CONCAT(IFNULL(j.dedupe_note, ''),
+                 ' | coordinate corrected to the resolved point (B4): ', c.fix_source)) AS dedupe_note,
        CASE
          WHEN j.src = 'datacentermap' AND j.dcm_precision = 'city' THEN 'city'
          WHEN j.src = 'datacentermap' AND j.dcm_precision = 'site' THEN 'site'
@@ -85,6 +110,8 @@ SELECT j.src, j.name, j.operator, j.lat, j.lon,
        j.dcm_method AS precision_method,
        s.pins_here AS pins_at_this_point
 FROM joined j
+LEFT JOIN corrections c
+  ON c.key_norm = REGEXP_REPLACE(UPPER(j.name), r'[^A-Z0-9]', '')
 JOIN stacks s ON ROUND(j.lat, 6) = s.lat6 AND ROUND(j.lon, 6) = s.lon6
 """
 dry = client.query(SQL, job_config=bigquery.QueryJobConfig(dry_run=True))
