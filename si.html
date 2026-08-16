@@ -152,6 +152,21 @@
       <tr><th>source</th><th>signal</th><th>rows</th><th>one row is</th><th>publisher event range</th><th>we pulled</th></tr></table></div>
     <div class="prov" id="p-src"></div></div>
 
+  <div class="card"><h2>IDEM enforcement — dated at last <span class="hint">(A6)</span></h2>
+    <div class="hint cannot" id="idem-note" style="margin-bottom:8px"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="idem-n">…</div><div class="hint">actions now carrying an event date</div></div>
+      <div class="card"><div class="bigstat" id="idem-day">…</div><div class="hint">with an exact printed day</div></div>
+      <div class="card"><div class="bigstat cannot" id="idem-old">…</div><div class="hint">older than 10 years — not a lead</div></div>
+    </div>
+    <div class="scroll"><table id="t-idem"><tr><th>age of the action</th><th>actions</th><th>exact day known</th></tr></table></div>
+    <div class="prov"><code>in_si_d22_idem_dated</code> (22,565), built by
+      <code>scrapers/lane_f/load_idem_dates.py</code> from
+      <code>oe.idem.in.gov/idem_oe_order</code> month windows + per-case document pages.
+      <b>Read <code>date_precision</code>:</b> a <code>month</code> row sits on the 1st of the month
+      as a placeholder and the day is <b>not known</b>. IDEM is owner-keyed and still cannot reach a
+      parcel — dating makes it filterable context, not parcel-grain evidence.</div></div>
+
   <div class="card"><h2>D9 absentee ownership &amp; D18 owner contact — <span class="hint">Marion County</span></h2>
     <div class="hint cannot" id="d9-note" style="margin-bottom:8px"></div>
     <div class="gridcards" style="margin:8px 0">
@@ -422,6 +437,18 @@
   document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
     .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
     .map(p => `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}</td><td>${fmt(p.n_rows)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join(""));
+
+  /* ---------- A6: IDEM, dated ---------- */
+  const idm = V2.idem_summary || {}, idr = V2.idem_recency || [];
+  document.getElementById("idem-note").textContent = V2.idem_note || "";
+  document.getElementById("idem-n").textContent = fmt(idm.rows_);
+  document.getElementById("idem-day").textContent = fmt(idm.day_precision);
+  document.getElementById("idem-old").textContent =
+    fmt((idr.find(b => b.band === "older than 10 years") || {}).n);
+  document.getElementById("t-idem").insertAdjacentHTML("beforeend", idr.map(b =>
+    `<tr><td class="${b.band === "older than 10 years" ? "cannot" : ""}">${b.band}</td>
+     <td>${fmt(b.n)}</td>
+     <td>${b.exact_day ? fmt(b.exact_day) : `<span class="cannot">0 — month precision only</span>`}</td></tr>`).join(""));
 
   /* ---------- D9 absentee + D18 owner contact, Marion ---------- */
   const d9s = V2.d9_summary || {};

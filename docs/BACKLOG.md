@@ -32,9 +32,9 @@ out with a reason.** Opened 2026-08-16.
 | A1 | Fold county DC-action table into P5 | ✅ **DONE** — `in_dc_actions_county_v2` (107) + coverage (92) landed, wired to Community | done |
 | A2 | **Alias table for the DC cross-check** | **CONFIRMED OPEN** — zero alias tables exist; `in_cloudscene_crosscheck` has 2 rows naming a renamed operator | small |
 | A3 | **Upload parity test** | **CONFIRMED OPEN**, and worse than recorded: `app.js` has `parseCsv` but **no `FileReader`, no file input, no `accept=`**. §13(2) claims "the door exists" on a regex that matched `parseCsv`. Verify the door exists before testing parity | small |
-| A4 | **C4 saved workspaces** | **CONFIRMED OPEN** — zero `localStorage`/`sessionStorage` in `app.js` | small, front-end |
-| A5 | **D12 Indianapolis placement** | **PARTIALLY DONE** — 747,211 held · **10,370 reached** · 228 admitted. `in_si_indy_code_placed` (46,411) and `in_marion_address_crosswalk` (465,050) landed today | medium |
-| A6 | **IDEM event dates** | **CONFIRMED OPEN** — 11 columns, no date column; `document_published` is `Y`/`N`. Routes: year embedded in `case_number` (2,164 of 22,565) or scrape the **20,728 rows carrying a `document_url`** | medium |
+| A4 | C4 saved workspaces | ✅ **DONE** `9569d12` — 40 controls enumerated dynamically + map view; round-trip verified in-browser | done |
+| A5 | D12 Indianapolis placement | ✅ **DONE** — **admitted 228 → 2,109 parcels, reached 10,370 → 23,140.** The "matches nothing" diagnosis predated the Marion address crosswalk: **85.9% of distinct addresses match `FULL_ADDRESS` exactly.** Widened 2 case types → 7, gated on INTENT per the operator | done |
+| A6 | **IDEM event dates** | **agent in flight** — found a bulk route (380 month-window POSTs, not 20,728 page fetches). **All 22,565 rows now at month precision**; enriching exact dates. `scrapers/lane_f/idem_dates.json`, NOT yet loaded | **load next** |
 
 ## PHASE COMPLETION — what stands between here and A–E at 100%
 
@@ -98,9 +98,9 @@ NOT-ACHIEVABLE-AS-SPECIFIED with the reason**, rather than quietly restated as p
 | F2 | Fetch the official site for the 18 negative counties where it was never reached | same |
 | F3 | Re-check Howard + City of Elkhart — actions were scheduled for **2026-08-17** | group 2 verification |
 | F4 | Re-check Marion — MDC final action **2026-08-19** | group 3 verification |
-| F5 | Reconcile `in_dc_actions_nw_first_pass` (17 rows) against the verification results | two NW sweeps disagree; do NOT union them |
-| F6 | Reconcile the ~90 m DataBank IND2 pin offset (baxtel vs PeeringDB) | `COLO_ADDRESS_FINDINGS.md` |
-| F7 | `docs/CLOUDSCENE_GAP.md` "Lifeline West Henry → Lifeline Fort Wayne" match is wrong | same matcher defect as A2 |
+| F5 | Reconcile the two NW sweeps | ✅ **DONE** — `in_dc_actions_nw_reconciled`. **Both sweeps were wrong on Jasper PC-22-25**: the Plan Commission issued an unfavourable *recommendation* 2025-12-15 (advisory, not a denial) and the Commissioners **approved** it 2026-02-02 with nine commitments. "denied" was never true; "petition-pending" was true for seven weeks |
+| F6 | ~90 m DataBank IND2 pin offset (baxtel vs PeeringDB) | **still open** — low value, one pin, both points are site-precision |
+| F7 | `CLOUDSCENE_GAP.md` bad matches | ✅ **DONE, and worse than reported** — the matcher used operator tokens and PLACE NAMES alone. **8 fabricated matches**: three different Indianapolis Lifeline buildings all matched to *Fort Wayne*; three Global Access Point sites collapsed onto one via the acronym GAP; **"Indigital Fort Wayne" matched to "Google Fort Wayne Building 5"** — different companies, same city; "The Union 525" matched on the word *union*. A wrong match understates the gap and drops a site from follow-up. All flagged inline with a correction block |
 | F8 | `si.html` MapLibre `ctx-osm-line` guard | **NOT A BUG** — verified clean on a fresh tab; a separate session was started on it in error |
 
 ## OPERATOR RULINGS — 2026-08-16, binding
@@ -118,6 +118,21 @@ needs a fraction of the land 5 MW does. Capability columns (`fits_min_bess_5mw`,
 already filter on what the land can hold, which is the question that actually matters.
 
 **R2. Vacant land stays** — 896,947 no-structure parcels, unchanged. (Restates the standing rule.)
+
+**R3. STRUCTURAL DISTRESS MUST PLAUSIBLY PRODUCE INTENT. A minor incident does not.**
+Operator, 2026-08-16. Applied to the 910,483-row Indianapolis code corpus as a two-tier gate
+rather than a case-type list:
+- **Tier 1, admitted on a single occurrence** — Unsafe Buildings, Vacant Board Order, Demolition.
+  Each already means the building is unusable.
+- **Tier 2, admitted only where chronic or unresolved** — Building violations, Repair orders,
+  Environmental. Measured: **16,325 addresses have exactly one structural case; 2,176 have ten or
+  more.** One citation is an incident; ten is an owner who has stopped maintaining the property.
+- **Excluded outright regardless of type:** `Closed, No Violation` (60,449) and `Void` (13,987) —
+  an inspector finding nothing is not distress, and counting it would be the "0 high-priority
+  violators" error inverted.
+- Also excluded, counted not dropped: High Weeds & Grass **363,844**, Trash 103,792, Zoning
+  225,359, Vehicle 46,969. Admitting the corpus wholesale would have inflated D12 by ~750,000
+  rows of lawn care — the South Bend error a third time.
 
 ## RULES EARNED THIS SESSION
 

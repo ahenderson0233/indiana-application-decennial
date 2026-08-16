@@ -16,11 +16,11 @@ happened. All four are shown per signal:
 
 | | |
 |---|---:|
-| parcels flagged (v2) | **23,140** |
-| …carrying an event date | 13,373 (58%) |
-| …with an event inside 3 years | 4,263 |
-| …with an event inside 5 years | 7,298 |
-| C/I · other non-res · agriculture · vacant land | 4,766 · 711 · 327 · 17,336 |
+| parcels flagged (v2) | **24,275** |
+| …carrying an event date | 14,549 (60%) |
+| …with an event inside 3 years | 4,390 |
+| …with an event inside 5 years | 7,730 |
+| C/I · other non-res · agriculture · vacant land | 5,153 · 781 · 330 · 18,011 |
 | **counties with ≥1 flagged parcel** | **92 of 92** |
 | **the flag before this build** | 847,410, of which 840,819 (99.2%) was empty land |
 
@@ -41,16 +41,16 @@ error).
 | `D4_tax_delinquency` | pre-sale delinquency lists — *HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below* | — | 14,433 | **9,459** | **44**/45 | 267 | 2021-10-22 → 2025-09-12 | 4,974 / 0 |
 | `D2_foreclosure` | mortgage foreclosures | 62451 | 35,512 | **3,571** | **91**/92 | 560 | 2006-02-23 → 2026-08-14 | 31,941 / 0 |
 | `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 8,675 | **3,322** | **68**/91 | 291 | 2020-08-01 → 2026-08-01 | 5,353 / 0 |
+| `D12_code_violation` | municipal code enforcement | 747211 | 23,140 | **2,109** | ⚠ **2**/2 | 782 | 2010-03-30 → 2024-02-27 | 16,290 / 4,741 |
 | `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 3,338 | **1,937** | **76**/86 | 454 | 2003-11-19 → 2026-08-05 | 1,401 / 0 |
 | `D16_structure_fire` | NFIRS structure fires — *severity-gated upstream: 76,779 raw -> 469 SI-grade* | 28581 | 12,544 | **1,680** | **91**/92 | 1,101 | 2020-01-05 → 2024-12-28 | 10,864 / 0 |
 | `D5_unsafe_building` | Indy 'Unsafe Buildings' cases — *derived from the held code corpus* | — | 11,901 | **1,320** | ⚠ **1**/1 | 632 | 2014-09-11 → 2024-02-23 | 10,581 / 0 |
-| `D22_environmental_violation` | EPA ECHO compliance violations | — | 1,152 | **931** | **91**/92 | 420 | 1984-04-11 → 2026-08-03 | 221 / 0 |
+| `D22_environmental_violation` | EPA ECHO compliance violations | — | 2,350 | **1,086** | **91**/92 | 478 | 1984-04-11 → 2026-08-03 | 1,264 / 0 |
 | `D14_sba_chargeoff` | SBA loan charge-offs | 3774 | 1,773 | **762** | **71**/86 | 696 | 1993-12-28 → 2026-05-20 | 1,011 / 0 |
 | `D5_vacant_board_order` | Indy 'Vacant Board Order' cases — *derived from the held code corpus* | — | 8,598 | **658** | ⚠ **1**/1 | 291 | 2014-09-10 → 2024-02-27 | 7,940 / 0 |
 | `D5_abandoned_building` | abandoned/vacant STRUCTURE registries | — | 7,147 | **645** | ⚠ **2**/2 | 212 | 2013-02-01 → 2022-02-22 | 6,502 / 0 |
-| `D21_demolition_order` | demolition orders and permits | — | 3,607 | **377** | ⚠ **2**/2 | 159 | 2011-05-16 → 2026-07-30 | 1,740 / 1,490 |
+| `D21_demolition_order` | demolition orders and permits | — | 5,207 | **596** | ⚠ **3**/3 | 236 | 2011-05-16 → 2026-07-30 | 3,121 / 1,490 |
 | `D7_brownfield` | brownfield sites | 1378 | 536 | **311** | **69**/79 | 245 | no dates held | 225 / 0 |
-| `D12_code_violation` | municipal code enforcement | 747211 | 10,370 | **228** | ⚠ **1**/1 | 27 | 2017-04-19 → 2020-06-29 | 5,401 / 4,741 |
 | `D20_loan_maturity` | CMBS loan maturity | 419 | 207 | **129** | **35**/52 | 116 | no dates held | 78 / 0 |
 | `D22_facility_inactive` | EPA ECHO ceased-operation facilities — *a shut plant with power and water is an opportunity, not a liability* | — | 184 | **113** | **63**/83 | 20 | 1996-06-20 → 2025-10-16 | 71 / 0 |
 | `D24_plant_delisting` | FSIS plant delistings | 13 | 10 | **6** | ⚠ **4**/8 | 6 | 2023-09-13 → 2026-03-11 | 4 / 0 |
@@ -79,11 +79,12 @@ Three key namespaces had to be reconciled; a naive join across them reads zero.
 | bridge | admitted rows | admitted parcels |
 |---|---:|---:|
 | ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded] | 12,810 | 12,269 |
+| STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER (widened, intent-gate | 2,255 | 2,012 |
 | mat_si_address_location.build_id = in_sites.build_id, CONFIRMED by ST_CONTAINS(in_sites. | 1,995 | 1,945 |
 | ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded] | 2,014 | 1,919 |
 | IBTR stateParcelNumber (publisher key, not the corpus IN: copy),IN: prefix stripped | 1,696 | 1,696 |
 | StatePIN punctuation stripped | 1,749 | 1,687 |
-| STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER | 1,978 | 1,484 |
+| STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER,STREET_ADDRESS -> sde | 1,959 | 1,474 |
 | ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded] | 1,044 | 1,003 |
 | PARCEL_I -> STATEPARCELNUMBER (Marion sde_Parcel layer 5) | 623 | 623 |
 | mat_si_address_location.build_id = in_sites.build_id (spatial route disagreed or absent) | 617 | 570 |
@@ -93,11 +94,12 @@ Three key namespaces had to be reconciled; a naive join across them reads zero.
 | STATE_ID punctuation stripped | 109 | 109 |
 | ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 30 | 30 |
 | State_ID_LU punctuation stripped | 22 | 22 |
+| STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER | 19 | 17 |
 | StatePIN punctuation stripped,mat_si_address_location.build_id = in_sites.build_id, CONF | 17 | 17 |
 | ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 5 | 5 |
 | ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 4 | 4 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],St | 3 | 3 |
 | ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 3 | 3 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],St | 3 | 3 |
 
 ## What is NOT held at all
 
@@ -123,11 +125,11 @@ absence of distress.
 
 | signal | counties | why |
 |---|---|---|
+| `D12_code_violation` | **2 of 92** | South Bend only. Indy's 747,122-row corpus matches ZERO — its addresses carry no city suffix, a loader defect. Geocoding Indianapolis is the fix |
 | `D5_unsafe_building` | **1 of 92** | derived from the Indy corpus, so limited by the same address bridge |
 | `D5_vacant_board_order` | **1 of 92** | derived from the Indy corpus, so limited by the same address bridge |
 | `D5_abandoned_building` | **2 of 92** | Indy + South Bend only, and Indy defers to address (125 of 7,120) because Marion publishes no state parcel key |
-| `D21_demolition_order` | **2 of 92** | Vanderburgh + St. Joseph — the only two jurisdictions publishing demolition data as data |
-| `D12_code_violation` | **1 of 92** | South Bend only. Indy's 747,122-row corpus matches ZERO — its addresses carry no city suffix, a loader defect. Geocoding Indianapolis is the fix |
+| `D21_demolition_order` | **3 of 92** | Vanderburgh + St. Joseph — the only two jurisdictions publishing demolition data as data |
 | `D24_plant_delisting` | **4 of 92** | tiny source (13 rows held) |
 | `A2_gov_surplus` | **4 of 92** | tiny source (20 rows held) |
 | `D19_warn` | **2 of 92** | owner-name keyed — a company HQ address is not its site |

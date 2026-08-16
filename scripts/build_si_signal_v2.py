@@ -268,7 +268,22 @@ h_ibtr AS (
          'publisher table (new in v2)' blk, TRUE AS severe
   FROM `{DS}.in_si_ibtr_placed`
 ),
+-- A5: the Indianapolis code corpus, widened from 2 case types to 7 and gated on INTENT rather
+-- than on incident. 910,483 rows of which 40% is High Weeds & Grass; admitted are the
+-- condemnation-track types on a single occurrence, plus building/repair/environmental ONLY where
+-- the address is chronically cited (>=3 structural cases) or the case was never resolved.
+-- Operator ruling: "structural distress needs to actually result in intent, so minor incidents
+-- don't do us any good." Placed via Indy's OWN FULL_ADDRESS -> STATEPARCELNUMBER authority.
+h_indy_wide AS (
+  SELECT parcel_key pk, signal, event_date obs, 'publisher event date (epoch ms)' basis,
+         'indy_address_authority' keying,
+         'STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER (widened, intent-gated)' bridge,
+         CONCAT('indy_code:', IFNULL(admit_basis, '?')) source_id,
+         'publisher table (A5 widening)' blk, TRUE AS severe
+  FROM `{DS}.in_si_indy_code_widened`
+),
 allsig AS (
+  SELECT * FROM h_indy_wide UNION ALL
   SELECT * FROM h_sri UNION ALL SELECT * FROM h_ibtr UNION ALL
   SELECT * FROM a_corpus UNION ALL SELECT * FROM b_bridged
   UNION ALL SELECT * FROM c_sb_vacant UNION ALL SELECT * FROM c_sb_code

@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 262 of 262 registered objects reach a surface
+## 265 of 265 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -58,6 +58,7 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_county_v2` | direct | `community.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_nw_reconciled` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_coverage` | direct | `scripts/export_ordinances.py` |
@@ -208,6 +209,7 @@ headline can be audited rather than taken on trust:
 | `in_si_d22_county_rollup` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_d22_echo_facilities` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
 | `in_si_d22_echo_indiana` | direct | `app.js`, `si.html` |
+| `in_si_d22_idem_dated` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_d22_idem_enforcement` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
 | `in_si_d22_parcel_join` | direct | `scripts/audit_honesty.py` |
 | `in_si_d25_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
@@ -226,6 +228,7 @@ headline can be audited rather than taken on trust:
 | `in_si_indy_abandoned_vacant` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_abandoned_vacant_spatial` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_indy_code_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
+| `in_si_indy_code_widened` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_lane_d_enrichment` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |

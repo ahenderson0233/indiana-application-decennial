@@ -127,6 +127,37 @@ out["marion_geom_rows"] = rows(
     f"SELECT COUNT(*) n, COUNTIF(geometry_json IS NOT NULL) with_geom "
     f"FROM `{DS}.in_si_indy_abandoned_vacant_spatial`")[0]
 
+# A6: IDEM enforcement, finally dated. Undated this corpus was unusable — a 1997 NOV is not a
+# lead and there was no way to tell it from a 2026 one. Two independent routes: month-window
+# slicing of the publisher's own search (all 22,565) and printed signature dates from the case
+# documents. date_precision is carried, because a window month is not a day.
+out["idem_recency"] = rows(f"""
+  SELECT CASE
+    WHEN SAFE.PARSE_DATE('%Y-%m-%d', event_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 YEAR)
+      THEN 'last 3 years'
+    WHEN SAFE.PARSE_DATE('%Y-%m-%d', event_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL 10 YEAR)
+      THEN '3-10 years'
+    ELSE 'older than 10 years' END AS band,
+    COUNT(*) n, COUNTIF(date_precision='day') exact_day
+  FROM `{DS}.in_si_d22_idem_dated` GROUP BY 1 ORDER BY 1""")
+out["idem_summary"] = rows(f"""
+  SELECT COUNT(*) rows_, COUNTIF(date_precision='day') day_precision,
+         COUNTIF(date_precision='month') month_precision,
+         COUNTIF(month_agrees_with_document='True') agree,
+         COUNTIF(month_agrees_with_document='False') differ,
+         MIN(event_date) first_event, MAX(event_date) last_event
+  FROM `{DS}.in_si_d22_idem_dated`""")[0]
+out["idem_note"] = (
+    "All 22,565 IDEM enforcement actions now carry an event date, from TWO routes that check each "
+    "other: month-window slicing of IDEM's own search form dates every row to MONTH precision, and "
+    "the per-case documents give the printed signature date to DAY precision. Where both exist they "
+    "agree on the month 97.5% of the time; the disagreements are kept and flagged, not reconciled. "
+    "READ date_precision: a 'month' row sits on the 1st as a PLACEHOLDER and the day is not known. "
+    "The finding this unlocked: 69% of the corpus is over ten years old. Undated it looked like "
+    "22,565 leads; dated, the actionable slice is far smaller — which is the point. "
+    "IDEM remains OWNER-KEYED and still cannot reach a parcel; dating makes it filterable context, "
+    "not parcel-grain evidence.")
+
 # D9 absentee + D18 owner contact, Marion only. Both signals were recorded NOT HELD statewide and
 # both were wrong about Marion: the parcel crosswalk pulled for key-bridging carries the whole
 # owner block. Absentee is graduated, because a landlord one suburb away and a fund in another
