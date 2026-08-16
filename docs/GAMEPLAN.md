@@ -163,12 +163,13 @@ Phase A is COMPLETE. This is everything left to finish the tool. Ranked within e
 | 3 | abandoned-property registries beyond Indy/South Bend | B | **agent running** | — |
 | 4 | wire the D5 split into `in_sites` (screener currently selects empty land) | B | ready | — |
 | 5 | B5 verify or retire `vw_county_dc_posture` 92/92 counter | B | ready | — |
-| 6 | B1/D9/D18 — DLGF Gateway bulk owner data (one pull, three unblocks) | B/D | ready | — |
+| 6 | **B1/D9/D18/D11/D27 — DLGF Gateway bulk owner data. ⭐ NOW THE HIGHEST-VALUE ITEM LEFT: one pull unblocks FIVE signals, not three.** `mat_parcel_attrs.parcel_owner` is NULL on all 3,553,381 Indiana parcels (re-measured 2026-08-16), and that single gap is what keeps D11 (983 dissolutions) and D27 (156 UCC lapses) at owner grain | B/D | ready | — |
 | 7 | file the IRS ALS FOIA for D13 | D | **drafted, awaiting operator** | operator |
 | 8 | B3 acreage disagreements: 41 shrunk (footprints>0) + 107 inflated >200% | B | needs a rule | operator |
 | 9 | B4 the 7 unresolved Indianapolis colo facilities | B | needs address source | — |
-| 10 | wire the 11 already-pulled-but-unwired Lane D columns | A-tail | ready, cheapest coverage left | — |
-| 11 | fold staged D11/D21/D27 into `in_si_signals` | A-tail | ready | — |
+| 10 | wire the 11 already-pulled-but-unwired Lane D columns | A-tail | ready, **cheapest coverage left** | — |
+| 11 | fold staged D11/D21/D27 | A-tail | ✅ **DONE 2026-08-16.** D21 folded to parcel grain (377 admitted). **D11 + D27 CANNOT reach a parcel** — the address bridge matches 6 of 983 and 0 of 156, and these are business-registry addresses where a street match would often flag a registered agent's office. Wired at OWNER grain (`in_si_owner_signals`, 2,174 rows, 66/29 counties). **They join item 6, not item 10** | item 6 |
+| 11a | **every registered object reaches a surface — 226 of 226**, measured by `scripts/audit_wiring_census.py` (`docs/WIRING_CENSUS.md`). The denominator MOVES on every build, so re-run it rather than quoting a past figure | A-tail | ✅ **DONE 2026-08-16** | — |
 | 12 | recover `geometry_geojson` for brownfields (polygon, not location) | B | ready, it is a join | — |
 | 13 | D4 tax delinquency (SRI pre-sale lists) | D | seasonal — July | calendar |
 | 14 | A1 listings via an IEDC data request | D | **needs operator email** | operator |
