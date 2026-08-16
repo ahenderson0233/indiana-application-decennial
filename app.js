@@ -435,11 +435,17 @@ async function ensureContextLayers() {
   return state.ctxLoading;
 }
 function ctxTip(p) {
-  if (p.layer === "ghgrp") return `GHGRP emitter: ${p.name || "?"}`;
+  if (p.layer === "ghgrp") return `GHGRP emitter: ${p.name || "?"}` +
+    (p.co2e_latest ? ` · ${fmt(Math.round(p.co2e_latest))} t CO2e (${p.co2e_year})` : "");
   if (p.layer === "frpp") return `Federal property: ${p.agency || "?"}`;
   return p.layer;
 }
 const CTX_PROV = {
+  ghgrp_note: ["vw_ghgrp_emissions_located",
+    "Reported CO2e now rides on the pin. The layer previously showed only a location — the "
+    "emissions sat in in_ghgrp_emissions with no geography, and the two were joined on facility_id "
+    "(9,310/9,310). 211 of the 263 pins carry a latest-year figure; the rest report no emissions "
+    "in the most recent year held and show nothing rather than a zero."],
   ghgrp: ["in_ghgrp_facilities", "EPA greenhouse-gas reporters: 263 Indiana facilities. Neighbours already holding air permits. in_ghgrp_emitter_facilities is a subset (all 246 of its ids are among these) and supplies the reporting year."],
   frpp: ["in_gov_surplus_frpp", "Federal Real Property Profile — federally-held property, a live acquisition lead rather than mere context."],
 };

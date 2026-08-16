@@ -15,6 +15,16 @@
     <div class="card"><div class="bigstat" id="s-built">…</div><div class="hint">last build (UTC)</div></div>
   </div>
   <div class="card"><h2>Honesty ledger</h2><div class="hint" id="ledger"></div></div>
+  <div class="card"><h2>Location joins — giving site tables a location without re-scraping</h2>
+    <div class="hint" style="margin-bottom:6px">Tables that hold sites but no geography are usually
+      keyed to something we already hold with coordinates. Each view below is that join, and each
+      carries its <b>measured yield</b> — a join that matches a small share is a finding, not a fix,
+      so the number is shown rather than assumed. <b>No coordinate is ever invented:</b> where a
+      join yields only an address or a place name, that is what the view carries.</div>
+    <div class="scroll"><table id="t-joins"><tr><th>view</th><th>from</th><th>joined on</th><th>rows located</th></tr></table></div>
+    <div class="prov">views registered in <code>indiana_app._registry</code> · built by
+      <code>scripts/build_location_joins.py</code></div></div>
+
   <div class="card"><h2>Waived tables — held, deliberately not rendered</h2>
     <div class="hint" style="margin-bottom:6px">A table we hold but do not show needs a reason on
       the record, not silence. Each row states the measurement behind the waiver.</div>
@@ -56,6 +66,16 @@
   }
   document.getElementById("f-q").oninput = render;
   render();
+
+  const J = await fetchGz("data/joins.json.gz");
+  document.getElementById("t-joins").insertAdjacentHTML("beforeend", J.joins.map(v => {
+    const pct = (String(v.notes).match(/=\s*([\d.]+)%/) || [])[1];
+    const low = pct && Number(pct) < 90;
+    return `<tr><td><code>${v.table_name}</code></td>
+      <td class="hint">${String(v.source).replace("indiana_app.", "")}</td>
+      <td class="hint">${String(v.method).split("(")[0].slice(0, 58)}</td>
+      <td>${fmt(v.n_rows)}${pct ? ` <span class="${low ? "cannot" : "hint"}">(${pct}%)</span>` : ""}</td></tr>`;
+  }).join(""));
 
   const CTX = await fetchGz("data/context.json.gz");
   document.getElementById("t-waive").insertAdjacentHTML("beforeend", CTX.waivers.map(w =>
