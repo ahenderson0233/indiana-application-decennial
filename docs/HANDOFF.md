@@ -94,6 +94,36 @@ result is a claim about the instrument first.**
 | "brownfields cannot be plotted" | they carry Latitude/Longitude; what is missing is the POLYGON |
 | "SI is 47.8% dated" | inflated by 945,896 undated non-signal rows; truth 99.7% |
 
+## Every document, and what it is for
+
+**Read in this order.** 1–3 orient you; 4–9 are the measured evidence behind the current state;
+10–12 are acquisition; the rest is the older record.
+
+| # | document | what it holds |
+|---|---|---|
+| 1 | `docs/HANDOFF.md` | this file — the RECORD of what happened and why |
+| 2 | `docs/GAMEPLAN.md` | the PLAN: all phases + the 26-item backlog in priority order |
+| 3 | `docs/CODE_CATALOG.md` | **GENERATED** — every script, every endpoint with its type, and the literal command that re-runs it. Regenerate with `scripts/build_code_catalog.py`; never hand-edit |
+| 4 | `docs/GAP_REGISTER.md` | every known gap, classified: what is genuinely unwired vs waived vs reached via a derivative |
+| 5 | `docs/PLOTTABILITY.md` | every table graded A–E for whether it can be drawn, with series tables excluded by ruling |
+| 6 | `docs/SIGNAL_ENDPOINTS.md` | endpoints + loaders read mechanically from the registry, and the audit of our own thin rows |
+| 7 | `docs/SIGNOFF_PACKET.md` | the 8 operator judgments, all APPROVED and wired |
+| 8 | `docs/AUDIT_WORKLIST.md` | per-table verdicts from the estate audit — the audit is COMPLETE, never re-run it |
+| 9 | `docs/CLOUDSCENE_GAP.md` | the DC completeness cross-check, per facility |
+| 10 | `docs/FOIA_IRS_ALS_REQUEST.md` | ready-to-send D13 request, verified routes, what arrives |
+| 11 | `scrapers/lane_f/D10_D13_TAX_LIEN_FINDINGS.md` | tax-lien routes: D13 viable free, D10 a $600/yr decision |
+| 12 | `scrapers/lane_f/MISSING_SIGNALS_FINDINGS.md` | the other 6 missing signals, ranked D22→D9→D4→A1→D23→D15 |
+| 13 | `scrapers/lane_f/ABANDONED_PROPERTY_FINDINGS.md` | **agent may still be writing this** |
+| 14 | `docs/SI_DATE_KEYING.md` | **agent may still be writing this** |
+| 15 | `scrapers/lane_[a-e]/LANE_*_FINDINGS.md` | per-lane acquisition results and walls |
+| 16 | `docs/BQ_INDIANA_CENSUS.md`, `docs/AUDIT_CLASSES_REPORT.md`, `docs/DATA.md`, `docs/ARCHITECTURE.md` | the earlier estate work |
+| 17 | `docs/SAMPLES_INDIANA.md`, `docs/SAMPLES_ALL_PART2.md` | 1–3 raw rows per estate table — **grep per table, never load whole (2.3 MB)** |
+
+Platform docs (another session owns them, read-only): `energy-platform/CLAUDE.md`,
+`REBUILD_PLANNING/METHODS.md`, `2_TECHNICAL_BUILD_SPEC.md` §11 + §13, `ANALYSIS_METHODOLOGY.md`
+(required before computing any siting/rate NUMBER), `FABLE5_PREAMBLE.md` (paste above any ad-hoc
+scrape request — both Lane F agents used it).
+
 ## Where to resume
 
 `docs/GAMEPLAN.md` Phase B. The immediate queue is in its backlog table. First actions:
