@@ -47,6 +47,12 @@ D85 GUARD: parcels_in/080500000047000018 is an inverted whole-Earth polygon (196
 that silently matches everything. Excluded by key here, in every block.
 
 Writes, and registers in the same run:
+D22 is folded in here rather than shipped as its own layer, so the application has ONE seller-
+intent flag instead of two rival partial ones (operator ruling on union-and-dedupe). It needs
+`scripts/build_d22_wiring.py` to have run first — that script owns the ECHO clip and the spatial
+join; this one only reads `in_si_d22_parcel_join`.
+
+Writes, and registers in the same run:
   in_si_parcel_signals_v2   one row per (parcel, signal) — the evidence grain, with admit_status
   in_si_sites_flags_v2      one row per parcel — the flag the app reads
   in_si_signal_coverage     one row per signal — held, keyed how, dated how far back, reach
@@ -195,6 +201,30 @@ f_indy_unsafe AS (
     ON b.address_norm = UPPER(TRIM(e.STREET_ADDRESS)) || ' ' || UPPER(TRIM(e.CITY))
   WHERE e.CASE_TYPE LIKE '%Unsafe Buildings%' OR e.CASE_TYPE LIKE '%Vacant Board Order%'
 ),
+-- ---- G. D22 environmental (EPA ECHO bulk export), already spatially joined to parcels --------
+-- Two DIFFERENT signals, deliberately kept apart: a facility in violation is owner distress; a
+-- facility that has CEASED OPERATING is a site opportunity with power and water already run to
+-- it. Being merely present in ECHO is neither, so 50,334 no-marker facilities are not admitted.
+g_d22_violation AS (
+  SELECT parcel_key pk, 'D22_environmental_violation' signal,
+         COALESCE(last_formal_action, last_penalty_date) obs,
+         IF(COALESCE(last_formal_action, last_penalty_date) IS NOT NULL,
+            'publisher event date', 'publisher carries no action date') basis,
+         'spatial_facility_point' keying,
+         'ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded]' bridge,
+         CONCAT('echo:', distress_class) source_id, 'publisher table (new in v2)' blk, TRUE severe
+  FROM `{DS}.in_si_d22_parcel_join` WHERE is_distress
+),
+g_d22_inactive AS (
+  SELECT parcel_key pk, 'D22_facility_inactive' signal,
+         last_inspection_date obs,
+         IF(last_inspection_date IS NOT NULL, 'last inspection (proxy for cessation)',
+            'publisher carries no cessation date') basis,
+         'spatial_facility_point' keying,
+         'ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded]' bridge,
+         'echo:facility_inactive' source_id, 'publisher table (new in v2)' blk, TRUE severe
+  FROM `{DS}.in_si_d22_parcel_join` WHERE is_inactive_facility
+),
 allsig AS (
   SELECT * FROM a_corpus UNION ALL SELECT * FROM b_bridged
   UNION ALL SELECT * FROM c_sb_vacant UNION ALL SELECT * FROM c_sb_code
@@ -202,6 +232,7 @@ allsig AS (
   UNION ALL SELECT * FROM d_ev_tax  UNION ALL SELECT * FROM d_ev_fore
   UNION ALL SELECT * FROM d_ev_demo
   UNION ALL SELECT * FROM e_indy_abandoned UNION ALL SELECT * FROM f_indy_unsafe
+  UNION ALL SELECT * FROM g_d22_violation UNION ALL SELECT * FROM g_d22_inactive
 )
 SELECT
   s.parcel_source, s.parcel_key, a.signal, s.occ_group,
