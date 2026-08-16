@@ -34,6 +34,7 @@ $env:PYTHONIOENCODING="utf-8"
 | `scripts/build_generation_union.py` | A6 (final merges) — generation, and the two subjects that turned out NOT to be duplicated. | — |
 | `scripts/build_headroom_300.py` | Fold the bounded 300MW harvest into the bus layer: per-POI headroom at a 300MW-class | — |
 | `scripts/build_indiana_clips.py` | Build (or rebuild) the Indiana clips in energy-platfrom.indiana_app. | — |
+| `scripts/build_indy_address_placement.py` | Place the Indianapolis code-enforcement corpus using Indy's OWN address authority. | — |
 | `scripts/build_location_joins.py` | Join-path enrichments: give every site-describing table a location, WITHOUT re-scraping. | — |
 | `scripts/build_nfirs_structure_fires.py` | A4 — NFIRS structure fires, wired (not waived), with two defects fixed on the way in. | — |
 | `scripts/build_p36_wiring.py` | P3-P6 wiring: parcel owner/zoning attrs (measured join), seismic, EIA-861 utilities, URDB tariffs. | — |
@@ -85,7 +86,7 @@ $env:PYTHONIOENCODING="utf-8"
 | `scripts/wire_d11_d27.py` | D11 + D27 (+ D19) — wire the OWNER-GRAIN signals at the grain they actually support. | — |
 | `scripts/wire_last_three.py` | Wire the last three registered objects that reached no surface. | — |
 
-_67 scripts._
+_68 scripts._
 
 ## Acquisition scripts (`scrapers/`)
 
@@ -214,13 +215,16 @@ _67 scripts._
 | `scrapers/lane_e/step0_inventory.py` | Lane E step 0: verify held-vs-new for gas pipeline CAPACITY data. | — |
 | `scrapers/lane_e/step0b_operators.py` | Lane E step 0b: verify gas_eia_state_capacity contents (held EIA capacity) and | — |
 | `scrapers/lane_f/pull_d22_environmental.py` | D22 environmental violations — ALL COLUMNS, Indiana. ECHO bulk CSV + IDEM enforcement DB. | `https://echo.epa.gov/files/echodownloads/echo_exporter.zip`<br>`https://echo.epa.gov/tools/data-downloads`<br>`https://echodata.epa.gov/echo/echo_rest_services.get_facilities`<br>_…1 more_ |
+| `scrapers/lane_f/pull_evansville_landbank.py` | Evansville Land Bank Corp (IC 36-7-38) — the one genuinely new abandoned-property source the | `https://services1.arcgis.com/iZyBOluseC8ffQc2/arcgis/rest/services` |
 | `scrapers/lane_f/pull_marion_crosswalk.py` | Marion County parcel crosswalk + the SPATIAL abandoned/vacant layer — ALL COLUMNS. | `https://gis.indy.gov/server/rest/services` |
+| `scrapers/lane_f/pull_ordinances_dc.py` | Indiana LOCAL data-centre zoning/ordinance text -- v2. ALL FIELDS, ALL VOCABULARIES. | `https://api.municode.com`<br>`https://codelibrary.amlegal.com`<br>`https://ecode360.com/search`<br>_…3 more_ |
+| `scrapers/lane_f/pull_ordinances_dc_amlegal.py` | STAGE 2 of pull_ordinances_dc.py -- American Legal Publishing, the 230-client Indiana gap. | `https://codelibrary.amlegal.com` |
 
-_124 scripts._
+_127 scripts._
 
 ## Tables & views this workstream builds
 
-229 objects registered in `indiana_app._registry`. `source` names the input,
+233 objects registered in `indiana_app._registry`. `source` names the input,
 `method` names the transformation — both are what a future session needs to rebuild.
 
 | object | rows | built from | method |
@@ -310,6 +314,7 @@ _124 scripts._
 | `in_land_faa_sua` | 19 | energy.land_faa_sua | census-keyed clip (state:state) |
 | `in_land_military_bases` | 13 | energy.land_military_bases | adaptive clip (spatial:geometry_geojson) |
 | `in_lbnl_interconnection_costs` | 116 | energy.lbnl_interconnection_costs | census-keyed clip (state:state) |
+| `in_marion_address_crosswalk` | 465050 | https://gis.indy.gov/server/rest/services/sde_Addres | Marion address -> state parcel number crosswalk (Indy's own address authority) |
 | `in_marion_parcel_crosswalk` | 347049 | https://gis.indy.gov/server/rest/services/sde_Parcel | Marion parcel local-id <-> state parcel number crosswalk. ArcGIS REST paged qu |
 | `in_miso_poi` | 0 | energy.miso_poi_monitored_facilities (points in IN p | one-time clip 2026-08-14 |
 | `in_miso_poi_300mw` | 40007 | giqueue.misoenergy.org POI/api/poi_mf?pMaxValue=300 | bounded re-harvest, Indiana POIs only |
@@ -343,6 +348,7 @@ _124 scripts._
 | `in_openstates_energy_bills` | 21 | energy.openstates_energy_bills | census-keyed clip (state:state) |
 | `in_openstates_energy_bills_v2` | 66 | energy.openstates_energy_bills_v2 | census-keyed clip (state:state) |
 | `in_operating_generators` | 11795 | energy.operating_generators | stateid=IN |
+| `in_ordinances_amlegal_coverage_v2` | 230 | https://codelibrary.amlegal.com/api/client-version/ | Per-jurisdiction outcome of the amlegal heading scan, incl. the publisher's ow |
 | `in_ordinances_dc` | 4 | https://api.municode.com/search (public JSON API of  | exact-phrase search "data center"/"data centers", contentTypeId=CODES, all 45  |
 | `in_osm_power_lines` | 10906 | energy.osm_power_lines | census-keyed clip (state:state_scraped) |
 | `in_osm_power_substations` | 2873 | energy.osm_power_substations | census-keyed clip (state:state_scraped) |
@@ -388,16 +394,18 @@ _124 scripts._
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | 945896 | indiana_app.in_si_signals WHERE source_id='si_d5_vac | footprint-absence rows isolated OUT of the signal corpus |
 | `in_si_evansville_demolition_permits` | 4190 | https://maps.evansvillegis.com/arcgis_server/rest/se | arcgis_rest POST objectIds-chunked WHERE UPPER(USER_Project_Activity) LIKE '%W |
 | `in_si_evansville_foreclosures` | 5758 | https://maps.evansvillegis.com/arcgis_server/rest/se | arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c) |
+| `in_si_evansville_landbank` | 1660 | https://services1.arcgis.com/iZyBOluseC8ffQc2/arcgis | Evansville Land Bank Corp inventory, ALL columns, layer DISCOVERED from the Fe |
 | `in_si_evansville_taxsale` | 3202 | https://maps.evansvillegis.com/arcgis_server/rest/se | arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c) |
 | `in_si_evansville_taxsale_transfers` | 941 | https://maps.evansvillegis.com/arcgis_server/rest/se | arcgis_rest objectIds-chunked, all layers, outFields=* (lane_c) |
 | `in_si_indy_abandoned_vacant` | 7120 | https://gis.indy.gov/server/rest/services/OpenData/O | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_indy_abandoned_vacant_spatial` | 7120 | https://gis.indy.gov/server/rest/services/MapIndy/Ma | Indy abandoned & vacant, WITH polygon geometry. ArcGIS REST paged query, outFi |
+| `in_si_indy_code_placed` | 46411 | indiana_app.in_si_refresh_indy_code_enforcement + in | Unsafe Buildings + Vacant Board Order cases placed on parcels through Indy's O |
 | `in_si_indy_surplus_parcels` | 595 | https://gis.indy.gov/server/rest/services/SurplusPro | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_indy_taxsale_parcels` | 62368 | https://gis.indy.gov/server/rest/services/TaxSaleVie | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_marion_route_check` | 7120 | indiana_app.in_marion_parcel_crosswalk + in_si_indy_ | Two-instrument check on Marion placement: the published local->state key mappi |
 | `in_si_owner_signals` | 2174 | indiana_app.in_si_d11_admitted + in_si_d27_admitted  | OWNER-GRAIN seller-intent signals, unioned and dated. They are NOT parcel-keye |
 | `in_si_owner_signals_county` | 67 | indiana_app.in_si_owner_signals | per-county counts of dissolutions, UCC lapses and WARN notices, with 3y/5y rec |
-| `in_si_parcel_signals_v2` | 79321 | indiana_app.in_si_signals + in_si_signals_parcel_dat | every parcel-reachable SI signal after normalising THREE key namespaces (IN: p |
+| `in_si_parcel_signals_v2` | 99109 | indiana_app.in_si_signals + in_si_signals_parcel_dat | every parcel-reachable SI signal after normalising THREE key namespaces (IN: p |
 | `in_si_refresh_brownfield_epa_in` | 1483 | EPA RE-Powering Mapper Sites 2022 ArcGIS FeatureServ | arcgis outFields=* WHERE State='IN' resultOffset paging to exhaustion |
 | `in_si_refresh_ibtr_appeals` | 10152 | www.in.gov IBTR DevExtreme determinations API | POST loadOptions, paged skip/take, publisher currently returns whole corpus pe |
 | `in_si_refresh_indy_code_enforcement` | 910483 | gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indian | arcgis outFields=* resultOffset paging to exhaustion |
@@ -407,7 +415,7 @@ _124 scripts._
 | `in_si_signal_coverage` | 23 | indiana_app.in_si_signals + in_si_parcel_signals_v2 | per-signal coverage: corpus rows, keying, publisher date range, parcels reache |
 | `in_si_signals` | 1818158 | energy.si_signals | one-time clip 2026-08-14 |
 | `in_si_signals_parcel_dated` | 46790 | energy-platfrom.indiana_app.in_si_signals + energy-p | address-keyed signal rows joined through in_si_address_parcel_bridge, aggregat |
-| `in_si_sites_flags_v2` | 76077 | indiana_app.in_si_parcel_signals_v2 | per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gat |
+| `in_si_sites_flags_v2` | 85362 | indiana_app.in_si_parcel_signals_v2 | per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gat |
 | `in_si_southbend_chronic_problem` | 7 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_southbend_code_enforcement` | 20414 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_southbend_continuous_enforcement` | 241 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |

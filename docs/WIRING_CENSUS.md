@@ -11,10 +11,13 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 229 of 229 registered objects reach a surface
+## 232 of 233 registered objects reach a surface
 
-**Every registered object reaches at least one surface.**
+### Not reaching a surface
 
+| object | rows | built by |
+|---|---:|---|
+| `in_ordinances_amlegal_coverage_v2` | 230 | `—` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -114,6 +117,7 @@ headline can be audited rather than taken on trust:
 | `in_land_faa_sua` | direct | `app.js` |
 | `in_land_military_bases` | direct | `app.js` |
 | `in_lbnl_interconnection_costs` | direct | `app.js` |
+| `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_placed` via `scripts/build_indy_address_placement.py`` |
 | `in_marion_parcel_crosswalk` | direct | `si.html` |
 | `in_miso_poi` | direct | `app.js` |
 | `in_miso_poi_300mw` | direct | `app.js`, `scripts/build_headroom_300.py` |
@@ -147,6 +151,7 @@ headline can be audited rather than taken on trust:
 | `in_openstates_energy_bills` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_openstates_energy_bills_v2` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_operating_generators` | direct | `app.js` |
+| `in_ordinances_amlegal_coverage_v2` | **none** | — |
 | `in_ordinances_dc` | direct | `app.js`, `scripts/export_grid_sentiment.py` |
 | `in_osm_power_lines` | direct | `scripts/export_context_layers.py` |
 | `in_osm_power_substations` | direct | `scripts/export_context_layers.py` |
@@ -175,7 +180,7 @@ headline can be audited rather than taken on trust:
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
 | `in_seismic` | direct | `app.js` |
-| `in_si_address_parcel_bridge` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
+| `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |
 | `in_si_candidates` | direct | `app.js`, `si.html` |
 | `in_si_d11_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
 | `in_si_d11_entity_dissolution` | direct | `app.js` |
@@ -192,10 +197,12 @@ headline can be audited rather than taken on trust:
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_evansville_demolition_permits` | direct | `scripts/build_d21_candidates.py`, `scripts/fix_indiana_clip_pjm.py` |
 | `in_si_evansville_foreclosures` | direct | `scripts/export_si_sources.py` |
+| `in_si_evansville_landbank` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_evansville_taxsale` | direct | `scripts/export_si_sources.py` |
 | `in_si_evansville_taxsale_transfers` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_abandoned_vacant` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_abandoned_vacant_spatial` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_indy_code_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_marion_route_check` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |

@@ -118,6 +118,28 @@ out["marion_geom_rows"] = rows(
     f"SELECT COUNT(*) n, COUNTIF(geometry_json IS NOT NULL) with_geom "
     f"FROM `{DS}.in_si_indy_abandoned_vacant_spatial`")[0]
 
+# Evansville Land Bank — NINE snapshots of one inventory, which is what makes disposals visible:
+# a parcel present in 2021 and absent by 2026 was sold. Availability semantics, not distress.
+PIN = "COALESCE(STATE_PIN, StatePIN, State_PIN_2)"
+out["landbank_snapshots"] = rows(f"""
+  SELECT _snapshot_date snapshot, COUNT(*) n, COUNT(DISTINCT {PIN}) parcels
+  FROM `{DS}.in_si_evansville_landbank` GROUP BY 1 ORDER BY 1""")
+out["landbank_summary"] = rows(f"""
+  WITH mx AS (SELECT MAX(_snapshot_date) d FROM `{DS}.in_si_evansville_landbank`),
+  cur AS (SELECT DISTINCT {PIN} p FROM `{DS}.in_si_evansville_landbank`, mx
+          WHERE _snapshot_date = mx.d),
+  allp AS (SELECT DISTINCT {PIN} p FROM `{DS}.in_si_evansville_landbank`),
+  placed AS (
+    SELECT COUNTIF(s.parcel_key IS NOT NULL) placed,
+           COUNTIF(s.occ_group='no_structure') vacant_lots,
+           COUNTIF(s.occ_group IN ('ci','other_nonres','agriculture')) nonres_structure,
+           COUNTIF(s.occ_group='residential') residential, COUNT(*) pins
+    FROM allp LEFT JOIN `{DS}.in_sites` s
+      ON s.parcel_key = REGEXP_REPLACE(allp.p, r'[^0-9]',''))
+  SELECT (SELECT COUNT(*) FROM allp) ever, (SELECT COUNT(*) FROM cur) still_held,
+         (SELECT COUNT(*) FROM allp WHERE p NOT IN (SELECT p FROM cur)) disposed,
+         (SELECT d FROM mx) latest_snapshot, p.* FROM placed p""")[0]
+
 p = os.path.join(REPO, "data", "si_v2.json.gz")
 with gzip.open(p, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(out, f, separators=(",", ":"), default=str)

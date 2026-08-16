@@ -29,6 +29,13 @@
     <div class="prov">indiana_app.in_si_d5_abandoned_buildings + in_si_d5_vacant_land_NOT_A_SIGNAL ·
       built by scripts/build_si_vacancy_split.py</div></div>
 
+  <div class="card"><h2>Evansville Land Bank — nine snapshots, and what leaving the list means</h2>
+    <div class="hint" id="lb-note"></div>
+    <div class="scroll" style="max-height:240px;margin-top:8px"><table id="t-lb"><tr><th>snapshot</th><th>rows</th><th>parcels</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_evansville_landbank · pulled by
+      scrapers/lane_f/pull_evansville_landbank.py · <b>availability, not distress</b> — admitted as
+      A2_gov_surplus, never as an abandoned building</div></div>
+
   <div class="card"><h2>Marion placement, checked by two instruments</h2>
     <div class="hint" id="mar-note"></div>
     <div class="gridcards" style="margin:8px 0">
@@ -177,6 +184,19 @@
     `<tr><td>${s.source_id}</td><td>${fmt(s.n)}</td><td>${fmt(s.keyed)}</td></tr>`).join("") +
     `<tr><td><b>vacant land — NOT a signal</b></td><td>${fmt(d5.vacant_land.n)}</td>
      <td class="hint">kept for BESS siting</td></tr>`);
+
+  const lb = V2.landbank_summary;
+  document.getElementById("lb-note").innerHTML =
+    `The publisher keeps <b>nine</b> point-in-time inventories, not one — so the history is the
+     signal. <b>${fmt(lb.ever)}</b> parcels have been in the land bank; <b>${fmt(lb.still_held)}</b>
+     were still held at ${lb.latest_snapshot}, and <b>${fmt(lb.disposed)}</b> have LEFT it, which
+     means they were disposed of. That last number does not exist if you keep only the newest copy.
+     <b>${fmt(lb.placed)}</b> of ${fmt(lb.pins)} reach a parcel (${Math.round(100*lb.placed/Math.max(lb.pins,1))}%):
+     ${fmt(lb.vacant_lots)} vacant lots · <b>${fmt(lb.nonres_structure)}</b> with a non-residential
+     structure · ${fmt(lb.residential)} residential. The city called it "mostly vacant lots"; that
+     is measured here rather than taken on trust.`;
+  document.getElementById("t-lb").insertAdjacentHTML("beforeend", V2.landbank_snapshots.map(s =>
+    `<tr><td>${s.snapshot}</td><td>${fmt(s.n)}</td><td>${fmt(s.parcels)}</td></tr>`).join(""));
 
   const mk = V2.marion_check, mAgree = (mk.find(x => x.verdict === "AGREE") || {}).n || 0;
   const mBoth = mAgree + ((mk.find(x => x.verdict === "DISAGREE") || {}).n || 0);
