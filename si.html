@@ -152,6 +152,27 @@
       <tr><th>source</th><th>signal</th><th>rows</th><th>one row is</th><th>publisher event range</th><th>we pulled</th></tr></table></div>
     <div class="prov" id="p-src"></div></div>
 
+  <div class="card"><h2>D9 absentee ownership &amp; D18 owner contact — <span class="hint">Marion County</span></h2>
+    <div class="hint cannot" id="d9-note" style="margin-bottom:8px"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="d9-oos">…</div><div class="hint">out-of-state owners</div></div>
+      <div class="card"><div class="bigstat" id="d9-oosnr">…</div><div class="hint">…and non-residential — the addressable set</div></div>
+      <div class="card"><div class="bigstat" id="d9-named">…</div><div class="hint">distinct owners named (D18)</div></div>
+    </div>
+    <div class="hint" style="margin:6px 0"><b>Absentee is graduated, not binary.</b> A landlord one
+      suburb away and a fund in another country are not the same lead, so the distance between the
+      owner's mailing address and the property is carried rather than collapsed into a flag.
+      <b>`local_owner_occupied` means the mailing address IS the property</b> — the weakest possible
+      approach signal, kept for contrast.</div>
+    <div class="scroll"><table id="t-d9"><tr><th>class</th><th>parcels</th><th>non-residential</th><th>C/I</th><th>fits 5 MW BESS</th><th>fits 25 MW DC</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b>Portfolios — one owner, many acres, one
+      conversation.</b> Out-of-state owners of non-residential Marion land, largest holdings first.</div>
+    <div class="scroll" style="max-height:340px"><table id="t-d9p"><tr><th>owner</th><th>mails from</th><th>parcels</th><th>acres</th><th>C/I</th><th>best DC MW</th></tr></table></div>
+    <div class="prov"><code>in_si_d9_absentee_marion</code>, built by
+      <code>scripts/build_d9_absentee_marion.py</code> from <code>in_marion_parcel_crosswalk</code> ×
+      <code>in_sites</code>. The owner block was already in the crosswalk we pulled to bridge
+      Marion's parcel keys — no acquisition was needed for either signal. D85 excluded from the join.</div></div>
+
   <div class="card"><h2>Freshness &amp; remediation (Lane D)</h2>
     <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
     (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
@@ -401,6 +422,24 @@
   document.getElementById("t-acq").insertAdjacentHTML("beforeend", s.provenance
     .filter(p => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
     .map(p => `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}</td><td>${fmt(p.n_rows)}</td><td>${String(p.built_at).slice(0, 10)}</td></tr>`).join(""));
+
+  /* ---------- D9 absentee + D18 owner contact, Marion ---------- */
+  const d9s = V2.d9_summary || {};
+  document.getElementById("d9-note").textContent = V2.d9_note || "";
+  document.getElementById("d9-oos").textContent = fmt(d9s.out_of_state);
+  document.getElementById("d9-oosnr").textContent = fmt(d9s.out_of_state_nonres);
+  document.getElementById("d9-named").textContent = fmt(d9s.distinct_owners);
+  document.getElementById("t-d9").insertAdjacentHTML("beforeend", (V2.d9_classes || []).map(r =>
+    `<tr><td>${String(r.absentee_class).replace(/_/g, " ")}</td><td>${fmt(r.parcels)}</td>
+     <td><b>${fmt(r.non_resid)}</b></td><td>${fmt(r.ci)}</td>
+     <td>${r.fits_bess ? fmt(r.fits_bess) : `<span class="cannot">0</span>`}</td>
+     <td>${r.fits_dc ? fmt(r.fits_dc) : `<span class="cannot">0</span>`}</td></tr>`).join(""));
+  document.getElementById("t-d9p").insertAdjacentHTML("beforeend", (V2.d9_portfolios || []).map(r =>
+    `<tr><td>${String(r.owner_name || "").slice(0, 46)}</td>
+     <td>${r.owner_city ? String(r.owner_city).slice(0, 18) + ", " : ""}${r.owner_state || "—"}</td>
+     <td>${fmt(r.parcels)}</td><td><b>${fmt(r.acres)}</b></td>
+     <td>${r.ci_parcels ? fmt(r.ci_parcels) : "—"}</td>
+     <td>${r.best_dc_mw ? fmt(r.best_dc_mw) : `<span class="cannot">—</span>`}</td></tr>`).join(""));
 })();
 </script>
 </body></html>

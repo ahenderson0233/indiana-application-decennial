@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 257 of 257 registered objects reach a surface
+## 258 of 258 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -212,6 +212,7 @@ headline can be audited rather than taken on trust:
 | `in_si_d27_ucc_lapse_v2` | direct | `app.js` |
 | `in_si_d5_abandoned_buildings` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_d9_absentee_marion` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_evansville_demolition_permits` | direct | `scripts/build_d21_candidates.py`, `scripts/fix_indiana_clip_pjm.py` |
 | `in_si_evansville_foreclosures` | direct | `scripts/export_si_sources.py` |
 | `in_si_evansville_landbank` | direct | `si.html`, `scripts/acceptance_run.py` |
@@ -246,7 +247,7 @@ headline can be audited rather than taken on trust:
 | `in_si_sri_placed` | direct | `scripts/audit_honesty.py` |
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_site_gates` | direct | `app.js`, `scripts/acceptance_run.py` |
-| `in_sites` | direct | `app.js`, `scripts/build_d21_candidates.py` |
+| `in_sites` | direct | `app.js`, `si.html` |
 | `in_sites_county` | direct | `app.js`, `scripts/build_p36_wiring.py` |
 | `in_solar_potential` | direct | `app.js` |
 | `in_solar_pv_facilities` | direct | `app.js`, `scripts/export_facilities.py` |

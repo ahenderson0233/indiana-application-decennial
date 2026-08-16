@@ -118,6 +118,41 @@ out["marion_geom_rows"] = rows(
     f"SELECT COUNT(*) n, COUNTIF(geometry_json IS NOT NULL) with_geom "
     f"FROM `{DS}.in_si_indy_abandoned_vacant_spatial`")[0]
 
+# D9 absentee + D18 owner contact, Marion only. Both signals were recorded NOT HELD statewide and
+# both were wrong about Marion: the parcel crosswalk pulled for key-bridging carries the whole
+# owner block. Absentee is graduated, because a landlord one suburb away and a fund in another
+# country are not the same lead. NOT admitted into has_si_signal — absentee is approachability,
+# not distress, and admission is the operator's call.
+out["d9_classes"] = rows(f"""
+  SELECT absentee_class, COUNT(*) parcels, COUNTIF(is_non_residential) non_resid,
+         COUNTIF(occ_group='ci') ci,
+         COUNTIF(is_non_residential AND IFNULL(mw_bess_10_per_acre,0) >= 5) fits_bess,
+         COUNTIF(is_non_residential AND IFNULL(mw_datacenter_4_per_acre,0) >= 25) fits_dc
+  FROM `{DS}.in_si_d9_absentee_marion` GROUP BY 1 ORDER BY parcels DESC""")
+out["d9_summary"] = rows(f"""
+  SELECT COUNT(*) parcels, COUNTIF(owner_name IS NOT NULL) named,
+         COUNT(DISTINCT owner_name) distinct_owners,
+         COUNTIF(is_absentee_out_of_state) out_of_state,
+         COUNTIF(is_absentee_out_of_state AND is_non_residential) out_of_state_nonres
+  FROM `{DS}.in_si_d9_absentee_marion`""")[0]
+# the portfolio view: one owner holding many non-residential acres is a single conversation
+out["d9_portfolios"] = rows(f"""
+  SELECT owner_name, owner_state, owner_city, COUNT(*) parcels,
+         ROUND(SUM(IFNULL(exact_parcel_acres, parcel_acres)), 1) acres,
+         COUNTIF(occ_group='ci') ci_parcels,
+         ROUND(MAX(IFNULL(mw_datacenter_4_per_acre, 0)), 1) best_dc_mw
+  FROM `{DS}.in_si_d9_absentee_marion`
+  WHERE is_absentee_out_of_state AND is_non_residential AND owner_name IS NOT NULL
+  GROUP BY 1,2,3 HAVING acres > 5 ORDER BY acres DESC LIMIT 60""")
+out["d9_note"] = (
+    "MARION ONLY — 1 of 92 counties, so this is a PUBLISHING footprint, not statewide coverage. "
+    "Its absence elsewhere is our gap, not the absence of absentee owners, and a statewide "
+    "ranking must not weight it as though it were evenly available. Statewide D9 still needs the "
+    "DLGF Gateway owner pull. "
+    "These parcels are NOT flagged as seller-intent: absentee ownership is APPROACHABILITY, not "
+    "distress, and the standing ruling admits only distress that would plausibly move an owner "
+    "to sell. Whether to admit it is an open question for the operator.")
+
 # Evansville Land Bank — NINE snapshots of one inventory, which is what makes disposals visible:
 # a parcel present in 2021 and absent by 2026 was sold. Availability semantics, not distress.
 PIN = "COALESCE(STATE_PIN, StatePIN, State_PIN_2)"
