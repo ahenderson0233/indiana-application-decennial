@@ -18,13 +18,48 @@ The IRS states, verbatim, on
 > *"Starting January 1, 2023, we'll no longer charge for FOIA requests seeking IRS Automated Lien
 > System database listings."*
 
-## Submit via
+## Submit via — VERIFIED 2026-08-15
 
-**IRS FOIA Public Access Portal** — `https://www.irs.gov/privacy-disclosure/foia-guidelines`
-(the portal route is fastest; the same text works as a mailed letter to the IRS FOIA office).
+An earlier draft of this file gave `irs.gov/privacy-disclosure/foia-guidelines`, which **404s**.
+The routes below were read off the IRS's own FOIA guidelines page rather than guessed.
 
-You will need to supply your own identity and contact details, which is why this is drafted for
-you to submit rather than submitted on your behalf.
+**Online (fastest):** the IRS **FOIA Public Access Portal**
+`https://foiapublicaccessportal.for.irs.gov/`
+
+**By fax** (business taxpayer records): **877-891-6035**
+
+**By post** (business taxpayer records):
+> Internal Revenue Service
+> GLDS Support Services
+> Stop 93A
+> Post Office Box 621506
+> Atlanta, GA 30362
+
+### What the IRS requires a request to contain
+
+Quoted from their guidelines — the drafted text below already satisfies 1, 4 and 7; you supply
+2, 3, 5 and 6:
+
+1. *"State that the request is being made under the Freedom of Information Act"*
+2. A **hand-written signature** (required when seeking business records protected by statute)
+3. Identity verification — *"driver's license or a sworn or notarized statement"*
+4. *"Identify or describe the records that are being sought as specifically as possible"*
+5. *"The name and address of the requester"*
+6. A commitment to pay applicable fees
+7. Requester category — **commercial** applies here
+
+Because 2 and 3 require your signature and identification, this is drafted for you to submit
+rather than submitted on your behalf.
+
+### What arrives
+
+Confirmed on the IRS's ALS page: *"A standard listing of business liens extracted quarterly from
+the IRS Automated Lien System database is available in pipe-delimited text format on compact disc
+(CD)."* Fields are **Lien ID Number, TP ID Number, TP Name and Address, Lien Status**.
+
+**Their own accuracy caveat, which must ride with the data into the app:** *"The data, therefore,
+may be incomplete and, in some instances, inaccurate"* — the IRS recommends confirming against the
+local filing jurisdiction for official purposes. So D13 is a LEAD generator, never a title claim.
 
 ---
 
@@ -41,9 +76,9 @@ you to submit rather than submitted on your behalf.
 > I request the records in **electronic form** (the standard pipe-delimited text extract), delivered
 > by the customary medium for this listing.
 >
-> For each lien record, I request the standard ALS listing fields, including but not limited to:
-> serial/lien identification number, taxpayer name, taxpayer address, filing office, date of filing,
-> and lien status.
+> For each lien record, I request the standard ALS listing fields — **Lien ID Number, TP ID Number,
+> TP Name and Address, and Lien Status** — together with any additional fields carried in the
+> standard extract.
 >
 > **Scope note.** I am requesting only the **business** taxpayer listing. I am not requesting
 > records of individual taxpayers.
@@ -53,11 +88,17 @@ you to submit rather than submitted on your behalf.
 > understand no fee applies. If any fee is nonetheless assessed, please contact me before incurring
 > it.
 >
+> **Requester category.** Commercial.
+>
 > **Purpose.** The records will be used for commercial real-estate market research — identifying
 > commercial properties that may become available for sale — as part of an internal energy
 > development site-selection platform.
 >
 > Thank you for your assistance.
+>
+> [your name]
+> [your address]
+> [hand-written signature — required for business taxpayer records]
 
 ## — copy to here
 
