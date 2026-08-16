@@ -31,7 +31,11 @@ TAX = {
  "D1_tax_sale": ("county tax sales (SRI statewide + Evansville)", ""),
  "D2_foreclosure": ("mortgage foreclosures", ""),
  "D3_seized_auction": ("seized-asset auctions", "2 rows held, aggregate grain only"),
- "D4_tax_delinquency": ("pre-sale delinquency lists", "NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct"),
+ "D4_tax_delinquency": ("pre-sale delinquency lists",
+    "HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active "
+    "1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and "
+    "dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, "
+    "not a scrape — see the note in DELINQUENT_STATUSES below"),
  "D5_abandoned_building": ("abandoned/vacant STRUCTURE registries", ""),
  "D5_unsafe_building": ("Indy 'Unsafe Buildings' cases", "derived from the held code corpus"),
  "D5_vacant_board_order": ("Indy 'Vacant Board Order' cases", "derived from the held code corpus"),
@@ -153,12 +157,45 @@ o += ["", "## How each signal reaches a parcel — the bridges, and what each yi
 for b in bridges:
     o.append(f"| {str(b['b'])[:88]} | {b['n']:,} | {b['p']:,} |")
 
+# ---- PROVE the "NOT HELD" claims before printing them ---------------------------------------
+# This document is GENERATED, but its acquisition notes were hand-typed and never checked. That
+# combination is worse than a hand-written doc, because it LOOKS measured. It shipped
+# "D4_tax_delinquency — NOT HELD — seasonal, schedule Jul–Oct" while 17,617 delinquent rows sat in
+# in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed, with 16,325 upcoming auctions.
+# A whole acquisition was recommended for data already in the warehouse.
+#
+# So every NOT-HELD claim now carries a PROBE. A claim with no probe is printed as UNVERIFIED
+# rather than as fact — "we checked and it is absent" and "nobody ever looked" are different
+# statements and must not render identically.
+NOT_HELD_PROBES = {
+    "D4_tax_delinquency": (
+        "SELECT COUNT(*) n FROM `{DS}.in_si_refresh_sri_taxsale_in` "
+        "WHERE saleStatusDescription IN ('DELINQUENT','Sale Active')"),
+    "D9_absentee": (
+        "SELECT COUNTIF(parcel_owner IS NOT NULL AND parcel_owner != '') n "
+        "FROM `energy-platfrom.energy.mat_parcel_attrs` WHERE parcel_source = 'parcels_in'"),
+    "D18_owner_contact": (
+        "SELECT COUNTIF(parcel_owner IS NOT NULL AND parcel_owner != '') n "
+        "FROM `energy-platfrom.energy.mat_parcel_attrs` WHERE parcel_source = 'parcels_in'"),
+}
+
 o += ["", "## What is NOT held at all", "",
-      "Listed so an absent signal is never mistaken for a covered one.", "",
-      "| signal | state |", "|---|---|"]
+      "Listed so an absent signal is never mistaken for a covered one. **Each NOT-HELD claim now "
+      "carries a probe measured at build time** — this table once asserted D4 was absent while "
+      "17,617 delinquent rows sat in the warehouse.", "",
+      "| signal | state | probe |", "|---|---|---|"]
 for sig, (what, note) in sorted(TAX.items()):
     if sig not in cov and note:
-        o.append(f"| `{sig}` | {note} |")
+        probe = NOT_HELD_PROBES.get(sig)
+        if probe:
+            found = list(client.query(probe.format(DS=DS)))[0].n
+            verdict = (f"measured **{found:,} rows** — the NOT-HELD claim is FALSE, fix it"
+                       if found else "probed at build time: **0 rows**, genuinely absent")
+            if found and "NOT HELD" in note.upper():
+                print(f"  !! {sig}: note says NOT HELD but the probe found {found:,} rows")
+        else:
+            verdict = "⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement"
+        o.append(f"| `{sig}` | {note} | {verdict} |")
 
 o += ["", "## ⚠ The signals that are a metro footprint, not statewide coverage", "",
       "Marked ⚠ above. These reach so few counties that a statewide search should not weight them",

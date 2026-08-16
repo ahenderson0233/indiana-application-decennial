@@ -1,0 +1,243 @@
+{
+ "audited_at": "2026-08-16T19:08:37.477147+00:00",
+ "signals": [
+  {
+   "signal": "A1_market_listing",
+   "class": "BLOCKED_STRUCTURAL",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "properties.zoomprospector.com robots.txt: 'User-agent: * / Disallow: /' \u2014 Google/Bing only. The data is state-published and free, but automated collection is refused to everyone else. Route is an IEDC data request, not a scraper."
+  },
+  {
+   "signal": "D10_tax_warrant",
+   "class": "BLOCKED_STRUCTURAL",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "INCite $600/yr or Doxpop $38/mo. A procurement decision, not an engineering one."
+  },
+  {
+   "signal": "D11_entity_dissolution",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 983,
+   "why": "983 admitted rows exist and are wired at OWNER grain in in_si_owner_signals. They cannot reach a parcel: the address bridge matches 6 of 983, and these are business-registry addresses where a street match often finds a registered agent's office. Needs owner data."
+  },
+  {
+   "signal": "D13_federal_tax_lien",
+   "class": "AWAITING_OPERATOR",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "IRS ALS FOIA drafted in docs/FOIA_IRS_ALS_REQUEST.md; needs the operator's fax."
+  },
+  {
+   "signal": "D15_mechanics_lien",
+   "class": "BLOCKED_STRUCTURAL",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "92 county recorders, every one behind Doxpop / Fidlar Tapestry ($8.75/search) / Laredo ($30-300/month PER COUNTY). Zero open-data presence across four independent indices. A cheque, not a scraper \u2014 confirmed twice, nationally and for Indiana."
+  },
+  {
+   "signal": "D17_commercial_eviction",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "370 rows; operator sign-off 4 ruled these county-grain CONTEXT only."
+  },
+  {
+   "signal": "D18_owner_contact",
+   "class": "OPEN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 0,
+   "why": "mat_parcel_attrs.parcel_owner is NULL on all 3,553,381 Indiana parcels (69M non-null NATIONALLY \u2014 the coverage is other states). Closed by the DLGF Gateway pull."
+  },
+  {
+   "signal": "D22_environmental_idem",
+   "class": "OPEN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 22565,
+   "why": "22,565 IDEM enforcement actions held with NO event date \u2014 document_published carries exactly two values, N and Y, and is the only date-like column. Undated they cannot be recency-filtered or joined. Dates live on the per-case document pages; recovering them is a re-scrape of a source that is open and ungated."
+  },
+  {
+   "signal": "D23_surplus_disposal",
+   "class": "HELD_NOT_SPLIT",
+   "admitted_parcels": 0,
+   "measured_rows_held": 3522,
+   "why": "Federal and school surplus already clipped; the Indiana-specific increment (IDOA state land RFBs) is a low-frequency watch-list, not a corpus."
+  },
+  {
+   "signal": "D25_rail_abandonment",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 127,
+   "why": "215 STB filings at line/aggregate grain; 127 admitted as events. A rail line is not a parcel."
+  },
+  {
+   "signal": "D27_ucc_lapse",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 156,
+   "why": "156 admitted rows, wired at OWNER grain. Address bridge matches 0 of 156. Same blocker as D11."
+  },
+  {
+   "signal": "D3_seized_auction",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "2 rows held, aggregate grain."
+  },
+  {
+   "signal": "D4_tax_delinquency",
+   "class": "HELD_NOT_SPLIT",
+   "admitted_parcels": 0,
+   "measured_rows_held": 17617,
+   "why": "17,617 rows inside in_si_refresh_sri_taxsale_in (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757), 76 counties, 92% parcel-keyed, 16,325 auctions still upcoming. Admitted today under D1_tax_sale. A SPLIT, like the D5 split."
+  },
+  {
+   "signal": "D5_vacancy",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "947,592 rows \u2014 but the operator ruled footprint absence is NOT a signal. Kept as has_vacancy_signal and as the BESS sizing basis. Deliberately excluded, not missing."
+  },
+  {
+   "signal": "D6_bankruptcy",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "393 rows at aggregate/owner grain. A bankruptcy names a debtor, not a parcel."
+  },
+  {
+   "signal": "D8_exit_intent",
+   "class": "HELD_WRONG_GRAIN",
+   "admitted_parcels": 0,
+   "measured_rows_held": null,
+   "why": "142 rows, aggregate grain, newest event 2008."
+  },
+  {
+   "signal": "D9_absentee",
+   "class": "OPEN",
+   "admitted_parcels": 0,
+   "measured_rows_held": 0,
+   "why": "Same single blocker as D18: no owner mailing address anywhere in the estate. One DLGF pull unblocks D9, D18, D11, D27 and IDEM together."
+  },
+  {
+   "signal": "D1_tax_sale",
+   "class": "ADMITTED",
+   "admitted_parcels": 11954,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D2_foreclosure",
+   "class": "ADMITTED",
+   "admitted_parcels": 3571,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D26_assessment_appeal",
+   "class": "ADMITTED",
+   "admitted_parcels": 1937,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D16_structure_fire",
+   "class": "ADMITTED",
+   "admitted_parcels": 1680,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D5_unsafe_building",
+   "class": "ADMITTED",
+   "admitted_parcels": 1320,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D22_environmental_violation",
+   "class": "ADMITTED",
+   "admitted_parcels": 931,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D14_sba_chargeoff",
+   "class": "ADMITTED",
+   "admitted_parcels": 762,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D5_vacant_board_order",
+   "class": "ADMITTED",
+   "admitted_parcels": 658,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D5_abandoned_building",
+   "class": "ADMITTED",
+   "admitted_parcels": 645,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D21_demolition_order",
+   "class": "ADMITTED",
+   "admitted_parcels": 377,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D7_brownfield",
+   "class": "ADMITTED",
+   "admitted_parcels": 311,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D12_code_violation",
+   "class": "ADMITTED",
+   "admitted_parcels": 228,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D20_loan_maturity",
+   "class": "ADMITTED",
+   "admitted_parcels": 129,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D22_facility_inactive",
+   "class": "ADMITTED",
+   "admitted_parcels": 113,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D24_plant_delisting",
+   "class": "ADMITTED",
+   "admitted_parcels": 6,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "A2_gov_surplus",
+   "class": "ADMITTED",
+   "admitted_parcels": 5,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D19_warn",
+   "class": "ADMITTED",
+   "admitted_parcels": 2,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  }
+ ]
+}

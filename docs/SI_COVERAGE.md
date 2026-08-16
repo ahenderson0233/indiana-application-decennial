@@ -66,7 +66,7 @@ error).
 | `D25_rail_abandonment` | STB rail abandonments — *aggregate grain only* | 215 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D27_ucc_lapse` | UCC filing lapses — *156 admitted rows STAGED, not yet folded in* | — | 0 | **0** | — | 0 | — | — |
 | `D3_seized_auction` | seized-asset auctions — *2 rows held, aggregate grain only* | 2 | 0 | **0** | — | 0 | — | 0 / 0 |
-| `D4_tax_delinquency` | pre-sale delinquency lists — *NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct* | — | 0 | **0** | — | 0 | — | — |
+| `D4_tax_delinquency` | pre-sale delinquency lists — *HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below* | — | 0 | **0** | — | 0 | — | — |
 | `D5_vacancy` | footprint absence — *NOT A SIGNAL — operator ruling; kept as has_vacancy_signal and the BESS sizing basis* | 947592 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D6_bankruptcy` | business bankruptcies — *held at aggregate/owner grain — cannot reach a parcel* | 393 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D8_exit_intent` | stated exit intent — *aggregate grain only* | 142 | 0 | **0** | — | 0 | — | 0 / 0 |
@@ -101,20 +101,20 @@ Three key namespaces had to be reconciled; a naive join across them reads zero.
 
 ## What is NOT held at all
 
-Listed so an absent signal is never mistaken for a covered one.
+Listed so an absent signal is never mistaken for a covered one. **Each NOT-HELD claim now carries a probe measured at build time** — this table once asserted D4 was absent while 17,617 delinquent rows sat in the warehouse.
 
-| signal | state |
-|---|---|
-| `A1_market_listing` | BLOCKED — zoomprospector robots.txt disallows all; route is an IEDC data request |
-| `D10_tax_warrant` | BLOCKED — $600/yr INCite or $38/mo Doxpop; procurement decision |
-| `D11_entity_dissolution` | 983 admitted rows STAGED, not yet folded in |
-| `D13_federal_tax_lien` | FOIA drafted and awaiting the operator's fax |
-| `D15_mechanics_lien` | BLOCKED — 92 recorders, all paywalled. A cheque, not a scraper |
-| `D18_owner_contact` | NOT HELD — mat_parcel_attrs is 100% NULL upstream |
-| `D23_surplus_disposal` | low value — watch-list (IDOA RFBs) |
-| `D27_ucc_lapse` | 156 admitted rows STAGED, not yet folded in |
-| `D4_tax_delinquency` | NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct |
-| `D9_absentee` | NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks) |
+| signal | state | probe |
+|---|---|---|
+| `A1_market_listing` | BLOCKED — zoomprospector robots.txt disallows all; route is an IEDC data request | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D10_tax_warrant` | BLOCKED — $600/yr INCite or $38/mo Doxpop; procurement decision | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D11_entity_dissolution` | 983 admitted rows STAGED, not yet folded in | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D13_federal_tax_lien` | FOIA drafted and awaiting the operator's fax | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D15_mechanics_lien` | BLOCKED — 92 recorders, all paywalled. A cheque, not a scraper | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D18_owner_contact` | NOT HELD — mat_parcel_attrs is 100% NULL upstream | probed at build time: **0 rows**, genuinely absent |
+| `D23_surplus_disposal` | low value — watch-list (IDOA RFBs) | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D27_ucc_lapse` | 156 admitted rows STAGED, not yet folded in | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
+| `D4_tax_delinquency` | HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below | measured **17,617 rows** — the NOT-HELD claim is FALSE, fix it |
+| `D9_absentee` | NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks) | probed at build time: **0 rows**, genuinely absent |
 
 ## ⚠ The signals that are a metro footprint, not statewide coverage
 
