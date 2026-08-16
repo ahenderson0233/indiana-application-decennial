@@ -26,3 +26,7 @@ scrapers/**/*.xlsx
 scrapers/**/*.js
 scrapers/**/*.json
 scrapers/**/*.xml
+
+# scraper backups and rotated artifacts (the .json rule above misses these)
+scrapers/**/*.bak
+scrapers/**/*.orig
