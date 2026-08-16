@@ -2,6 +2,16 @@
 
 # ══ CHECKPOINT 2026-08-15 (late session) — READ THIS BLOCK FIRST ══
 
+> **SESSION CLOSED CLEAN at this commit.** Working tree clean, everything pushed to `main`.
+> Nothing was left half-written. The ONLY outstanding work is the **D22 ECHO agent**, which was
+> still running when the session ended — it writes directly to `indiana_app` and appends a
+> `## D22 ACQUISITION RESULT` section to `scrapers/lane_f/MISSING_SIGNALS_FINDINGS.md`, so its
+> output will simply be there. Check for it before re-running anything D22-related; every ECHO
+> fact it needs is recorded in item 1 below.
+>
+> **First action for the next session:** widen `has_si_signal` beyond `D5_vacancy` (see the B2
+> section). It is the highest-value fix in the application and requires no acquisition.
+
 **Read `docs/GAMEPLAN.md` immediately after this file.** HANDOFF is the RECORD of what happened;
 GAMEPLAN is the PLAN and the backlog. Everything below is measured, not recalled.
 
