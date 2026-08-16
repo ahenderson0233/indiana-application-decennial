@@ -10,13 +10,16 @@
 > **Waiting on a clock, not on work** — F3 (Howard, City of Elkhart: council votes **2026-08-17**)
 > and F4 (Marion: MDC final action on Proposal No. 238, **2026-08-19**). Neither is doable early.
 >
-> **Two agents were still running at close.** Both write their own files; nothing is lost if they
-> finished after the session ended, but **neither result is loaded**:
-> - `scrapers/lane_f/county_codified_ordinances.json` — codified zoning for the 55 counties never
->   searched. **Check whether this file exists first**; if it does, it needs a loader.
-> - `scrapers/lane_f/idem_dates.json` — was at 3,925 exact dates and climbing when the session
->   ended. `scrapers/lane_f/load_idem_dates.py` is **idempotent — just re-run it** to pick up
->   whatever the agent finished.
+> **Both agents finished and BOTH ARE LOADED.**
+> - **55-county codified sweep** → `in_ordinances_county_codified` (55) + `_provisions` (16) +
+>   `_walls` (8). **92 of 92 counties now attempted.** Three name a data centre — Hancock
+>   (Ordinance 2026-6E, Data Center Overlay District), Martin (**no zoning code at all**; home-rule
+>   permitting + 12-month moratorium), Rush (UDO names *Data Center Tier 1/2* with **every district
+>   cell blank** = permitted nowhere). All 35 negatives passed a control check; 17 counties ran no
+>   search at all (BLOCKED/NOT_REACHABLE) and are **not** silent.
+> - **IDEM dates** → `in_si_d22_idem_dated`, 22,565 rows, **3,925 exact printed dates**, 97.9%
+>   agreement between the two routes. `load_idem_dates.py` is **idempotent** — if the agent is
+>   ever resumed and extracts more, just re-run it.
 >
 > **Cannot close as specified, and are not defects:** §13(5) needs an AI docket summary and this
 > app has no LLM feature; §13(8) needs a component-level Indiana tariff that exists nowhere in the
