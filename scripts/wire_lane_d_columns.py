@@ -28,6 +28,15 @@ The other nine are enrichment that changes what a reader can judge:
 
 D85 GUARD on the spatial join. NO CENTROIDS: SRI's coordinates are the publisher's own point.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 from google.cloud import bigquery
 
@@ -50,7 +59,26 @@ print("building in_si_sri_placed …", flush=True)
 run(f"""
 CREATE OR REPLACE TABLE `{DS}.in_si_sri_placed` AS
 SELECT s.parcel_key, s.occ_group,
-  CASE WHEN t.saleTypeDescription = 'Foreclosure' THEN 'D2_foreclosure'
+  -- THREE signals, not two. saleTypeDescription alone splits Foreclosure from Tax Sale, but it
+  -- cannot see the difference between a sale that HAS HAPPENED and a parcel merely CERTIFIED
+  -- delinquent and advertised. That difference is D1 vs D4, and it lives in a second column,
+  -- saleStatusDescription, whose 'DELINQUENT' value is the pre-sale state:
+  --
+  --   DELINQUENT        15,860  saleType 'Tax Sale'    <- D4: certified, sale NOT yet held
+  --   Sold To Plaintiff 26,860  saleType 'Foreclosure'
+  --   Cancelled         25,829  saleType 'Foreclosure'
+  --   Sold To 3rd Party  8,314  saleType 'Foreclosure'
+  --   COUNTY             4,927  Certificate/Deed Sale
+  --   Sale Active        1,757  saleType 'Foreclosure'  <- a foreclosure IN PROGRESS, so D2
+  --
+  -- SI_COVERAGE recorded D4 as "NOT HELD -- seasonal, schedule Jul-Oct" for a whole session and
+  -- a fresh SRI acquisition was queued, while these rows sat in the warehouse. Read the value
+  -- vocabulary of a status column before trusting any count taken over it.
+  --
+  -- Only DELINQUENT becomes D4. 'Sale Active' is an active FORECLOSURE, not a tax delinquency,
+  -- and folding it in would overstate D4 by 1,757 and understate D2 by the same.
+  CASE WHEN t.saleStatusDescription = 'DELINQUENT'    THEN 'D4_tax_delinquency'
+       WHEN t.saleTypeDescription   = 'Foreclosure'   THEN 'D2_foreclosure'
        ELSE 'D1_tax_sale' END                              AS signal,
   t.saleTypeDescription sale_type, t.saleStatusDescription sale_status,
   t.auctionStyle auction_style, t.county, t.city,

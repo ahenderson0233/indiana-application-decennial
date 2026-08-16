@@ -38,8 +38,9 @@ error).
 
 | signal | what it is | held | reached | admitted | counties (adm/reach) | C/I | event range | excluded: resid / low-sev |
 |---|---|---:|---:|---:|:---:|---:|---|---|
-| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 19,773 | **11,954** | **77**/91 | 445 | 2020-08-01 → 2026-08-01 | 7,819 / 0 |
+| `D4_tax_delinquency` | pre-sale delinquency lists — *HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below* | — | 14,433 | **9,459** | **44**/45 | 267 | 2021-10-22 → 2025-09-12 | 4,974 / 0 |
 | `D2_foreclosure` | mortgage foreclosures | 62451 | 35,512 | **3,571** | **91**/92 | 560 | 2006-02-23 → 2026-08-14 | 31,941 / 0 |
+| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 8,675 | **3,322** | **68**/91 | 291 | 2020-08-01 → 2026-08-01 | 5,353 / 0 |
 | `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 3,338 | **1,937** | **76**/86 | 454 | 2003-11-19 → 2026-08-05 | 1,401 / 0 |
 | `D16_structure_fire` | NFIRS structure fires — *severity-gated upstream: 76,779 raw -> 469 SI-grade* | 28581 | 12,544 | **1,680** | **91**/92 | 1,101 | 2020-01-05 → 2024-12-28 | 10,864 / 0 |
 | `D5_unsafe_building` | Indy 'Unsafe Buildings' cases — *derived from the held code corpus* | — | 11,901 | **1,320** | ⚠ **1**/1 | 632 | 2014-09-11 → 2024-02-23 | 10,581 / 0 |
@@ -66,7 +67,6 @@ error).
 | `D25_rail_abandonment` | STB rail abandonments — *aggregate grain only* | 215 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D27_ucc_lapse` | UCC filing lapses — *156 admitted rows STAGED, not yet folded in* | — | 0 | **0** | — | 0 | — | — |
 | `D3_seized_auction` | seized-asset auctions — *2 rows held, aggregate grain only* | 2 | 0 | **0** | — | 0 | — | 0 / 0 |
-| `D4_tax_delinquency` | pre-sale delinquency lists — *HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below* | — | 0 | **0** | — | 0 | — | — |
 | `D5_vacancy` | footprint absence — *NOT A SIGNAL — operator ruling; kept as has_vacancy_signal and the BESS sizing basis* | 947592 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D6_bankruptcy` | business bankruptcies — *held at aggregate/owner grain — cannot reach a parcel* | 393 | 0 | **0** | — | 0 | — | 0 / 0 |
 | `D8_exit_intent` | stated exit intent — *aggregate grain only* | 142 | 0 | **0** | — | 0 | — | 0 / 0 |
@@ -78,26 +78,26 @@ Three key namespaces had to be reconciled; a naive join across them reads zero.
 
 | bridge | admitted rows | admitted parcels |
 |---|---:|---:|
-| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded] | 11,983 | 11,972 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded] | 2,001 | 1,909 |
-| mat_si_address_location.build_id = in_sites.build_id, CONFIRMED by ST_CONTAINS(in_sites. | 1,914 | 1,868 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded] | 12,810 | 12,269 |
+| mat_si_address_location.build_id = in_sites.build_id, CONFIRMED by ST_CONTAINS(in_sites. | 1,995 | 1,945 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded] | 2,014 | 1,919 |
 | IBTR stateParcelNumber (publisher key, not the corpus IN: copy),IN: prefix stripped | 1,696 | 1,696 |
-| StatePIN punctuation stripped | 1,572 | 1,518 |
+| StatePIN punctuation stripped | 1,749 | 1,687 |
 | STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER | 1,978 | 1,484 |
 | ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded] | 1,044 | 1,003 |
 | PARCEL_I -> STATEPARCELNUMBER (Marion sde_Parcel layer 5) | 623 | 623 |
-| mat_si_address_location.build_id = in_sites.build_id (spatial route disagreed or absent) | 614 | 567 |
+| mat_si_address_location.build_id = in_sites.build_id (spatial route disagreed or absent) | 617 | 570 |
 | USER_Parcel_ID punctuation stripped | 268 | 268 |
 | IBTR stateParcelNumber (publisher key, not the corpus IN: copy) | 241 | 241 |
 | State_ID__ punctuation stripped | 228 | 228 |
-| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 181 | 181 |
-| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 111 | 111 |
 | STATE_ID punctuation stripped | 109 | 109 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 30 | 30 |
 | State_ID_LU punctuation stripped | 22 | 22 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 18 | 18 |
-| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 17 | 17 |
-| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 6 | 6 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 3 | 3 |
+| StatePIN punctuation stripped,mat_si_address_location.build_id = in_sites.build_id, CONF | 17 | 17 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 5 | 5 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 4 | 4 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],St | 3 | 3 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 3 | 3 |
 
 ## What is NOT held at all
 
@@ -113,7 +113,6 @@ Listed so an absent signal is never mistaken for a covered one. **Each NOT-HELD 
 | `D18_owner_contact` | NOT HELD — mat_parcel_attrs is 100% NULL upstream | probed at build time: **0 rows**, genuinely absent |
 | `D23_surplus_disposal` | low value — watch-list (IDOA RFBs) | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
 | `D27_ucc_lapse` | 156 admitted rows STAGED, not yet folded in | ⚠ **UNVERIFIED** — no probe defined; this is an assertion, not a measurement |
-| `D4_tax_delinquency` | HELD but NOT SPLIT OUT — 17,617 rows (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757) sit inside in_si_refresh_sri_taxsale_in across 76 counties, 92% parcel-keyed and dated with 16,325 UPCOMING auctions. Currently admitted under D1_tax_sale. Needs a SPLIT, not a scrape — see the note in DELINQUENT_STATUSES below | measured **17,617 rows** — the NOT-HELD claim is FALSE, fix it |
 | `D9_absentee` | NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks) | probed at build time: **0 rows**, genuinely absent |
 
 ## ⚠ The signals that are a metro footprint, not statewide coverage

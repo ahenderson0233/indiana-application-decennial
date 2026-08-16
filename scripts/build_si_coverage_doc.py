@@ -14,6 +14,15 @@ in the first place, so all four are shown per signal:
 The signal taxonomy (D1..D27, A1, A2) is listed IN FULL, including the ones we hold nothing for —
 an absent signal that is simply missing from a report reads as coverage.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 from google.cloud import bigquery
 

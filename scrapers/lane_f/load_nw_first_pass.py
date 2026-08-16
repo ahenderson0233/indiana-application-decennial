@@ -27,6 +27,15 @@ Writes ONLY to `energy-platfrom.indiana_app`. `energy-platfrom.energy` is READ-O
 permitted write there is the append to `registry_sources`, which this does not need since the
 sweep's source is already registered.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 import json
 import pathlib

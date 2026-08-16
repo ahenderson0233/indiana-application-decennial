@@ -24,6 +24,15 @@ Writes, and registers in the same run:
   in_rtep_bus_join      upgrade -> substation/bus, with method, confidence and endpoint role
   in_rtep_bus_summary   per-bus roll-up: what is planned here, and what it is driven by
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 from google.cloud import bigquery
 

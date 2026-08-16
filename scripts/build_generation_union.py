@@ -21,6 +21,15 @@ NOT DUPLICATED, measured rather than assumed:
     the same 1,220 notices (1,104 shared company|city|date keys); the copy carrying
     notice_pdf_urls is the keeper. Recorded there.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 from google.cloud import bigquery
 
 DS = "energy-platfrom.indiana_app"

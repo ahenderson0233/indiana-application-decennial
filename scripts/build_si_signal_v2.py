@@ -57,6 +57,15 @@ Writes, and registers in the same run:
   in_si_sites_flags_v2      one row per parcel — the flag the app reads
   in_si_signal_coverage     one row per signal — held, keyed how, dated how far back, reach
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 from google.cloud import bigquery
 

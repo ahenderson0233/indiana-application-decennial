@@ -18,6 +18,15 @@ This builds ONE unioned view with a `src` badge per row and a stated dedupe rule
 transmission and substation merges did, rather than dropping a table. Nothing is deleted: a
 dropped table teaches nothing and the next census rediscovers the name as a gap.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import datetime
 from google.cloud import bigquery
 

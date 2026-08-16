@@ -10,6 +10,15 @@ Three sources, all mechanical:
   · `energy.registry_sources` — endpoint URL, endpoint_kind and the literal re-scrape command,
     for rows this workstream appended
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import os, re, ast, datetime
 from google.cloud import bigquery
 

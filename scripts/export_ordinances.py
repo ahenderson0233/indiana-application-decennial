@@ -17,6 +17,15 @@ is county MORATORIA published on county websites — Boone (LEAP district, effec
 and Miami (2026-05-04) — neither of which is codified anywhere. A codified-only panel renders
 Boone as SILENT when it is the most restrictive posture in the state, so the page says so.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import json, gzip, os, datetime
 from google.cloud import bigquery
 

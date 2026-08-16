@@ -9,6 +9,15 @@
 
 Read-only against BigQuery. Idempotent. Run after scripts/build_signoff_wiring.py.
 """
+# stdout must survive its own output: this console is cp1252 and characters like U+2248/U+2192/U+2717 raise
+# UnicodeEncodeError from print() itself. The honesty audit once crashed on its own
+# FAILURE path for exactly this reason. Degrade the glyph, never the run.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 import json, gzip, os, datetime, decimal
 from google.cloud import bigquery
 
