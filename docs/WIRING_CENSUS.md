@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 259 of 259 registered objects reach a surface
+## 262 of 262 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -59,6 +59,9 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
+| `in_dc_actions_resweep` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_resweep_coverage` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_resweep_walls` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_verify_walls` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
 | `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |
 | `in_dc_docket_tracker` | direct | `app.js` |

@@ -1475,24 +1475,31 @@ $("upload").addEventListener("change", async (e) => {
     const cty = countyOf(lon, lat);
     if (!cty) { row_._status = "outside Indiana"; outside++; return row_; }
     const c = state.ctx.by_fips[cty.fips] || {};
-    let best = null;
-    for (const s of binNear(state.subBins, lon, lat)) {
-      const d = havM(lat, lon, s.lat, s.lon); if (!best || d < best.d) best = { d, s };
-    }
-    let bp = null;
-    for (const q of state.poiList) {
-      const d = havM(lat, lon, q.lat, q.lon); if (!bp || d < bp.d) bp = { d, q };
-    }
+    // PARITY (spec §13(2)): an uploaded site must be scored EXACTLY as a held parcel is, so it
+    // goes through the SAME function held parcels do rather than a parallel copy of the maths.
+    // The copy that used to live here computed the same substation distance but wrote it to
+    // `_sub_mi`, while the scorer reads `_dsub_mi` — so scoreP2 hit its
+    // `if (p._dsub_mi == null && p._dline_mi == null) return null` guard and EVERY UPLOADED ROW
+    // WENT UNSCORED. It also never computed transmission-line distance at all. Two code paths
+    // for one calculation will always drift; one function cannot.
+    const ft = { type: "Feature", properties: row_,
+                 geometry: { type: "Point", coordinates: [lon, lat] } };
+    enrichDistances([ft]);          // mutates row_ in place: _dsub_*, _dline_*, _dpoi_*
     Object.assign(row_, {
       _status: "placed", _county: cty.county_name,
-      _sub_mi: best ? +(best.d / MI).toFixed(2) : null, _sub_name: best?.s.name, _sub_kv: best?.s.kv,
-      _poi_mi: bp ? +(bp.d / MI).toFixed(1) : null, _poi_median_mw: bp?.q.median,
+      // legacy aliases kept so the enriched-CSV export keeps its old headers
+      _sub_mi: row_._dsub_mi ?? null, _sub_name: row_._dsub_name ?? null,
+      _sub_kv: row_._dsub_kv ?? null,
+      _poi_mi: row_._dpoi_mi ?? null, _poi_median_mw: row_._dpoi_median ?? null,
       _county_opposition: c.posture?.opposition_intensity ?? null,
       _county_restriction: c.posture?.has_local_restriction ?? null,
       _county_seismic: c.seismic?.sdc ?? null,
       _county_fiber_locs: c.fibre?.fiber_locations ?? null,
       _county_queue_mw: c.queue?.active_mw ?? null,
     });
+    // and now it can actually be scored, by the same scorer the map uses
+    const sc = (typeof scoreP2 === "function") ? scoreP2(row_) : null;
+    if (sc) { row_._p2_score = sc.score ?? sc; row_._p2_why = (sc.why || []).join("; "); }
     placed++;
     feats.push({ type: "Feature", properties: { ...row_, layer: "uploaded" },
       geometry: { type: "Point", coordinates: [lon, lat] } });

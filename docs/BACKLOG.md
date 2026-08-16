@@ -16,9 +16,14 @@ out with a reason.** Opened 2026-08-16.
 
 | # | task | why | state |
 |---|---|---|---|
-| N1 | **Load the 4 verification results** into `in_dc_actions_county_v2` | 50 rows verified at official sources; **two are out-of-state false positives now live in the app**, and Marion is shown as adopted when it is still pending | **URGENT — data is wrong on screen** |
-| N2 | Re-export ordinances + re-run honesty audit after N1 | standing rule: any build touching a surfaced table re-exports, then re-audits | blocked by N1 |
-| N3 | **D9 absentee for Marion** — 7,087 admissible parcels | owner mailing address already held at 99.9% on 347,049 parcels; zero acquisition | ready |
+| N1 | Load the 4 verification results | 50 verified; Brown/Clay out-of-state corrections; Marion downgraded to pending | ✅ **DONE** `8a5ee58` |
+| N2 | Re-export + re-audit after N1 | standing ritual | ✅ **DONE** |
+| N3 | D9 absentee + D18 for Marion | 340,765 parcels · 28,763 out-of-state · 7,194 non-residential · 272,606 named owners | ✅ **DONE** `2e76cab` |
+| N4 | S1 D4 split out of D1 | 15,106 rows · 45 counties · 100% dated · 18 signals now reach a parcel | ✅ **DONE** `ff24c9e` |
+| N5 | A2 operator alias table | found the TELCO regex was filing pinned Lumen colos as telephone exchanges | ✅ **DONE** `e7246d2` |
+| N6 | **A3 upload parity** | the door DOES exist (`index.html:125`, my earlier doubt was wrong). Real defect found: uploads wrote `_sub_mi` while the scorer reads `_dsub_mi`, so **every uploaded row went unscored**, and line distance was never computed. Fixed by routing uploads through the same `enrichDistances` the map uses | **fix in, needs the round-trip test** |
+| N7 | **Load the re-sweep** — 18 counties, 3 flipped to ACTION_FOUND | Henry (~1 GW Surge PUD) and Tipton (moratorium, CO-ZO-13-26) VERIFIED; Sullivan (~$65B Potentia/Heartland, no county zoning) REPORTED | ✅ **DONE** |
+| N8 | Fold the re-sweep into the Community page + coverage | 3 counties currently render as "nothing found" when they are not | **next** |
 
 ## THE LAST SESSION'S OPEN LIST — `PATH_TO_COMPLETE.md` §2a, audited 2026-08-16
 
@@ -97,6 +102,22 @@ NOT-ACHIEVABLE-AS-SPECIFIED with the reason**, rather than quietly restated as p
 | F6 | Reconcile the ~90 m DataBank IND2 pin offset (baxtel vs PeeringDB) | `COLO_ADDRESS_FINDINGS.md` |
 | F7 | `docs/CLOUDSCENE_GAP.md` "Lifeline West Henry → Lifeline Fort Wayne" match is wrong | same matcher defect as A2 |
 | F8 | `si.html` MapLibre `ctx-osm-line` guard | **NOT A BUG** — verified clean on a fresh tab; a separate session was started on it in error |
+
+## OPERATOR RULINGS — 2026-08-16, binding
+
+**R1. KEEP EVERY PARCEL. Do not filter the rendered payload by occupancy class.**
+The proposal was to drop parcels carrying a residential structure, on the grounds that a house
+cannot host a hyperscale DC or a 5 MW BESS. Measured before acting, that cut would have removed
+**165,003 parcels of which 160,669 fit a 25 MW datacentre** — because `occ_group` describes the
+STRUCTURE, not the land, and 97.5% of them are **farmsteads**: 5–20 ac (87,541), 20–100 ac
+(63,310), 100+ ac (9,953, largest **6,374 acres**), averaging 3–5 structures. A farmhouse on 200
+acres classes residential and is exactly the site a developer wants.
+Only 4,199 were genuine small lots — **0.35% of the 1.2M payload**, no meaningful performance win.
+**Operator ruling: keep them all, because a 250 kW or 500 kW BESS may be installed later** and
+needs a fraction of the land 5 MW does. Capability columns (`fits_min_bess_5mw`, `fits_dc_25mw`)
+already filter on what the land can hold, which is the question that actually matters.
+
+**R2. Vacant land stays** — 896,947 no-structure parcels, unchanged. (Restates the standing rule.)
 
 ## RULES EARNED THIS SESSION
 
