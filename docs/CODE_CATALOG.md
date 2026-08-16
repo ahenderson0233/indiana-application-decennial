@@ -27,6 +27,7 @@ $env:PYTHONIOENCODING="utf-8"
 | `scripts/build_code_catalog.py` | Generate docs/CODE_CATALOG.md — every script, endpoint and loader we have written. | — |
 | `scripts/build_county_gates.py` | County-grain gate aggregates so P4/P3b render honestly before the tile pipeline: | — |
 | `scripts/build_d21_candidates.py` | D21 demolition CANDIDATE signal (operator-approved for this app, distinct from the | — |
+| `scripts/build_d22_wiring.py` | D22 environmental — clip, grade for severity, and join to parcels. | `https://echo.epa.gov/files/echodownloads/echo_exporter.zip`<br>`https://oe.idem.in.gov/idem_oe_order` |
 | `scripts/build_gas_facilities.py` | Clip held gas facilities + EIA state-to-state capacity to Indiana; extend gas.geojson.gz. | — |
 | `scripts/build_gas_market.py` | Gas pipelines (held HIFLD geometry) clipped to Indiana + market (CEMS) export. | — |
 | `scripts/build_generation_union.py` | A6 (final merges) — generation, and the two subjects that turned out NOT to be duplicated. | — |
@@ -37,6 +38,7 @@ $env:PYTHONIOENCODING="utf-8"
 | `scripts/build_p36_wiring.py` | P3-P6 wiring: parcel owner/zoning attrs (measured join), seismic, EIA-861 utilities, URDB tariffs. | — |
 | `scripts/build_pjm_withdrawal.py` | Per-bus PJM WITHDRAWAL headroom (the DC-direction single number): | — |
 | `scripts/build_si_date_keying.py` | Give the parcel layer a REAL si_last_event_date, by bridging the address-keyed signal rows. | — |
+| `scripts/build_si_signal_v2.py` | SI signal v2 — the widened, NON-RESIDENTIAL, severity-gated, date-filterable seller-intent flag. | — |
 | `scripts/build_si_vacancy_split.py` | Split D5 vacancy into the two DIFFERENT things it has been conflating. | — |
 | `scripts/build_signoff_packet_v2.py` | Sign-off packet v2 — REPLACES docs/SIGNOFF_PACKET.md. | — |
 | `scripts/build_signoff_wiring.py` | Wire the eight operator sign-offs (approved 2026-08-15, per docs/SIGNOFF_PACKET.md v2). | — |
@@ -77,7 +79,7 @@ $env:PYTHONIOENCODING="utf-8"
 | `scripts/sample_everything_else.py` | Complete-estate sampling: columns + 1-2 raw sample rows for EVERY populated table not | — |
 | `scripts/sample_indiana_tables.py` | Small-sample every Indiana-positive table (operator directive: a name is not the data — | — |
 
-_59 scripts._
+_61 scripts._
 
 ## Acquisition scripts (`scrapers/`)
 
@@ -205,13 +207,13 @@ _59 scripts._
 | `scrapers/lane_e/pull_ebb_capacity.py` | Lane E: pull OPERATIONALLY AVAILABLE CAPACITY postings from the public EBBs of | `https://dtmidstream.trellisenergy.com/ptms/home/infopost/MGT`<br>`https://dtmidstream.trellisenergy.com/ptms/public/infopost/`<br>`https://dtmidstream.trellisenergy.com/ptms/public/infopost/getInfoPost`<br>_…7 more_ |
 | `scrapers/lane_e/step0_inventory.py` | Lane E step 0: verify held-vs-new for gas pipeline CAPACITY data. | — |
 | `scrapers/lane_e/step0b_operators.py` | Lane E step 0b: verify gas_eia_state_capacity contents (held EIA capacity) and | — |
-| `scrapers/lane_f/pull_d22_environmental.py` | D22 environmental violations — ALL COLUMNS, Indiana. | `https://echodata.epa.gov/echo/echo_rest_services.get_facilities`<br>`https://echodata.epa.gov/echo/echo_rest_services.get_qid` |
+| `scrapers/lane_f/pull_d22_environmental.py` | D22 environmental violations — ALL COLUMNS, Indiana. ECHO bulk CSV + IDEM enforcement DB. | `https://echo.epa.gov/files/echodownloads/echo_exporter.zip`<br>`https://echo.epa.gov/tools/data-downloads`<br>`https://echodata.epa.gov/echo/echo_rest_services.get_facilities`<br>_…1 more_ |
 
 _123 scripts._
 
 ## Tables & views this workstream builds
 
-216 objects registered in `indiana_app._registry`. `source` names the input,
+224 objects registered in `indiana_app._registry`. `source` names the input,
 `method` names the transformation — both are what a future session needs to rebuild.
 
 | object | rows | built from | method |
@@ -365,6 +367,11 @@ _123 scripts._
 | `in_si_candidates` | 3841 | in_si_evansville_demolition_permits x in_sites | normalized parcel-id join |
 | `in_si_d11_admitted` | 983 | indiana_app.in_si_d11_entity_dissolution | operator sign-off 2026-08-15: admit terminal status families only |
 | `in_si_d11_entity_dissolution` | 2129 | energy.si_d11_entity_dissolution | widened-predicate clip (state, addr_state) |
+| `in_si_d22_county_rollup` | 112 | indiana_app.in_si_d22_echo_indiana | per-county facility, distress, significant-violation, inactive and penalty tot |
+| `in_si_d22_echo_facilities` | 58021 | https://echo.epa.gov/files/echodownloads/echo_export | EPA ECHO bulk export echo_exporter.zip -> ECHO_EXPORTER.csv, filtered to India |
+| `in_si_d22_echo_indiana` | 58003 | indiana_app.in_si_d22_echo_facilities (https://echo. | Indiana clip (FAC_STATE='IN'; 16 out-of-state + 2 null rows dropped) of the EC |
+| `in_si_d22_idem_enforcement` | 22565 | https://oe.idem.in.gov/idem_oe_order | IDEM Monthly Actions and Orders, single POST county=All media=All type=All 199 |
+| `in_si_d22_parcel_join` | 34116 | indiana_app.in_si_d22_echo_indiana + in_sites | ST_CONTAINS(parcel_geog, publisher's own facility point) - no centroid anywher |
 | `in_si_d25_admitted` | 127 | indiana_app.in_si_d25_stb_abandonment_state | operator sign-off 2026-08-15: admit abandonment EVENTS, not the paperwork abou |
 | `in_si_d25_stb_abandonment_state` | 874 | energy.si_d25_stb_abandonment_state | widened-predicate clip (state_parse_rule, state, state_count_in_docket) |
 | `in_si_d27_admitted` | 156 | indiana_app.in_si_d27_ucc_lapse_v2 | operator sign-off 2026-08-15: admit all rows as D27 candidates |
@@ -378,14 +385,17 @@ _123 scripts._
 | `in_si_indy_abandoned_vacant` | 7120 | https://gis.indy.gov/server/rest/services/OpenData/O | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_indy_surplus_parcels` | 595 | https://gis.indy.gov/server/rest/services/SurplusPro | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_indy_taxsale_parcels` | 62368 | https://gis.indy.gov/server/rest/services/TaxSaleVie | arcgis_rest_paged outFields=* (lane_c) |
+| `in_si_parcel_signals_v2` | 72342 | indiana_app.in_si_signals + in_si_signals_parcel_dat | every parcel-reachable SI signal after normalising THREE key namespaces (IN: p |
 | `in_si_refresh_brownfield_epa_in` | 1483 | EPA RE-Powering Mapper Sites 2022 ArcGIS FeatureServ | arcgis outFields=* WHERE State='IN' resultOffset paging to exhaustion |
 | `in_si_refresh_ibtr_appeals` | 10152 | www.in.gov IBTR DevExtreme determinations API | POST loadOptions, paged skip/take, publisher currently returns whole corpus pe |
 | `in_si_refresh_indy_code_enforcement` | 910483 | gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indian | arcgis outFields=* resultOffset paging to exhaustion |
 | `in_si_refresh_iocs_eviction` | 6519 | www.in.gov/courts/iocs (Indiana Office of Court Serv | direct file download (requests), all sheets/columns parsed with pandas |
 | `in_si_refresh_sri_taxsale_in` | 83547 | sriservicesusermgmtprod.azurewebsites.net (SRI Servi | POST carddetail per IN county, recordCount=50000, state='IN' param scoped by t |
 | `in_si_refresh_warn_notices` | 1220 | www.in.gov/dwd/warn-notices/current-warn-notices/ (I | HTML table scrape (bs4), single page, robots.txt allowed |
+| `in_si_signal_coverage` | 23 | indiana_app.in_si_signals + in_si_parcel_signals_v2 | per-signal coverage: corpus rows, keying, publisher date range, parcels reache |
 | `in_si_signals` | 1818158 | energy.si_signals | one-time clip 2026-08-14 |
 | `in_si_signals_parcel_dated` | 46790 | energy-platfrom.indiana_app.in_si_signals + energy-p | address-keyed signal rows joined through in_si_address_parcel_bridge, aggregat |
+| `in_si_sites_flags_v2` | 69121 | indiana_app.in_si_parcel_signals_v2 | per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gat |
 | `in_si_southbend_chronic_problem` | 7 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_southbend_code_enforcement` | 20414 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |
 | `in_si_southbend_continuous_enforcement` | 241 | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis | arcgis_rest_paged outFields=* (lane_c) |
@@ -447,12 +457,14 @@ the `endpoint_kind` and re-run command that were missing on all 31 original rows
 | American Legal ordinance library | done | `rest_json` | `https://codelibrary.amlegal.com/api/search/` | `python scrapers/lane_b/05_ordinances.py` |
 | Bing News RSS | done | `—` | `bing.com/news RSS` | `—` |
 | Bing news RSS (Indiana DC coverage) | done | `rss` | `https://www.bing.com/news/search?format=RSS&q=` | `python scrapers/lane_b/09_news.py` |
+| D22 EPA ECHO — Indiana facilities (BULK EXPO | done | `bulk zip -> CSV (ECHO_EXPORTER.csv)` | `https://echo.epa.gov/files/echodownloads/echo_exporter.zip` | `scrapers/lane_f/pull_d22_environmental.py — REST county walk (ec` |
+| D22 IDEM enforcement — Actions and Orders | done | `HTML form POST (county=All, media=All, type=All, page=F)` | `https://oe.idem.in.gov/idem_oe_order` | `scrapers/lane_f/pull_d22_environmental.py — single POST for 1995` |
 | EPA brownfields (Indiana slice) | done | `rest_json` | `https://www.epa.gov/frs` | `python scrapers/lane_d/07_brownfield_epa_in_refresh.py` |
-| Evansville/Vanderburgh portal | done | `socrata_arcgis` | `https://data.evansvillegov.org/` | `python scrapers/lane_b/03_city_portals.py` |
 | Evansville/Vanderburgh portal | done | `—` | `Evansville open data` | `—` |
+| Evansville/Vanderburgh portal | done | `socrata_arcgis` | `https://data.evansvillegov.org/` | `python scrapers/lane_b/03_city_portals.py` |
 | Fort Wayne / South Bend open data (DCAT feed | done | `dcat_json` | `https://data-cityoffortwayne.opendata.arcgis.com/api/feed/dcat` | `python scrapers/lane_b/03_city_portals.py` |
-| I&M/AEP hosting capacity map (PROD_MI_HC_GRI | done | `arcgis_rest` | `https://services.arcgis.com/ (AGOL FeatureServer PROD_MI_HC_GR` | `python scrapers/lane_a/check_aep_states.py   # quarterly probe: ` |
 | I&M/AEP hosting capacity map (PROD_MI_HC_GRI | done | `—` | `AGOL FeatureServer PROD_MI_HC_GRID` | `—` |
+| I&M/AEP hosting capacity map (PROD_MI_HC_GRI | done | `arcgis_rest` | `https://services.arcgis.com/ (AGOL FeatureServer PROD_MI_HC_GR` | `python scrapers/lane_a/check_aep_states.py   # quarterly probe: ` |
 | IBTR appeals | done | `rest_json` | `https://www.in.gov/ibtr/` | `python scrapers/lane_d/03_ibtr_appeals_refresh.py` |
 | IOCS court statistics workbook | done | `file_xlsx` | `https://www.in.gov/courts/iocs/files/rpts-ijs-2025-pending-inc` | `python scrapers/lane_d/05_iocs_eviction_refresh.py` |
 | IURC EDS docket system - anonymous companion | done | `—` | `IURC advanced-search companion API (search, lists, per-case do` | `—` |
@@ -464,30 +476,30 @@ the `endpoint_kind` and re-run command that were missing on all 31 original rows
 | Indianapolis/Marion open data (Socrata + Arc | done | `socrata_arcgis` | `https://data.indy.gov/api/search/v1/collections/all/items` | `python scrapers/lane_d/02_indy_code_enforcement_refresh.py` |
 | Indy code enforcement (ArcGIS OpenData_NonSp | done | `arcgis_rest` | `https://gis.indy.gov/server/rest/services/OpenData/OpenData_No` | `python scrapers/lane_d/02_indy_code_enforcement_refresh.py` |
 | Indy/Marion open data (data.indy.gov + city  | done | `—` | `Socrata + ArcGIS REST` | `—` |
-| MISO giqueue POI transfer analysis - bounded | done | `rest_json` | `https://giqueue.misoenergy.org/POI/api/poi_mf?poiName=<POI>&pM` | `python scrapers/lane_a/pull_miso_poi_300mw.py` |
 | MISO giqueue POI transfer analysis - bounded | done | `—` | `https://giqueue.misoenergy.org/POI/api/poi_mf?poiName=<n>&pMax` | `—` |
-| MISO giqueue POI viewer - identity API | done | `rest_json` | `https://giqueue.misoenergy.org/POI/api/pois` | `python scrapers/lane_a/build_in_miso_poi_identity.py` |
+| MISO giqueue POI transfer analysis - bounded | done | `rest_json` | `https://giqueue.misoenergy.org/POI/api/poi_mf?poiName=<POI>&pM` | `python scrapers/lane_a/pull_miso_poi_300mw.py` |
 | MISO giqueue POI viewer - identity API | done | `—` | `https://giqueue.misoenergy.org/POI/api/pois` | `—` |
-| Midwestern Gas Transmission EBB (DTM Trellis | done | `http_csv` | `https://dtmidstream.trellisenergy.com/ptms/public/infopost/get` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
+| MISO giqueue POI viewer - identity API | done | `rest_json` | `https://giqueue.misoenergy.org/POI/api/pois` | `python scrapers/lane_a/build_in_miso_poi_identity.py` |
 | Midwestern Gas Transmission EBB (DTM Trellis | done | `—` | `Trellis public .do CSV` | `—` |
+| Midwestern Gas Transmission EBB (DTM Trellis | done | `http_csv` | `https://dtmidstream.trellisenergy.com/ptms/public/infopost/get` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | Municode library - Indiana clients | done | `—` | `library.municode.com public search` | `—` |
 | Municode ordinance search | done | `rest_json` | `https://api.municode.com/search` | `python scrapers/lane_b/05_ordinances.py` |
-| NGPL EBB (KM DART) | done | `aspx_export` | `https://pipeline2.kindermorgan.com/Capacity/OpAvailPoint.aspx?` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | NGPL EBB (KM DART) | done | `—` | `DART EXCEL export replicated` | `—` |
-| PJM RTEP Project Status & Cost Allocation | done | `html_form_post` | `https://www.pjm.com/planning/m/project-construction` | `python scrapers/lane_a/pull_pjm_rtep_upgrades.py && python scrap` |
+| NGPL EBB (KM DART) | done | `aspx_export` | `https://pipeline2.kindermorgan.com/Capacity/OpAvailPoint.aspx?` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | PJM RTEP Project Status & Cost Allocation | done | `—` | `https://www.pjm.com/planning/m/project-construction (POST fami` | `—` |
-| PJM public GIS (gis.pjm.com) - queue points | done | `arcgis_rest` | `https://gis.pjm.com/arcgis/rest/services` | `python scrapers/lane_a/pull_pjm_gis_queues.py` |
+| PJM RTEP Project Status & Cost Allocation | done | `html_form_post` | `https://www.pjm.com/planning/m/project-construction` | `python scrapers/lane_a/pull_pjm_rtep_upgrades.py && python scrap` |
 | PJM public GIS (gis.pjm.com) - queue points | done | `—` | `https://gis.pjm.com (ArcGIS REST, previously uncataloged)` | `—` |
-| Panhandle Eastern EBB (ET Messenger) | done | `http_csv` | `https://pipelines.energytransfer.com/ipost/PEPL/capacity/opera` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
+| PJM public GIS (gis.pjm.com) - queue points | done | `arcgis_rest` | `https://gis.pjm.com/arcgis/rest/services` | `python scrapers/lane_a/pull_pjm_gis_queues.py` |
 | Panhandle Eastern EBB (ET Messenger) | done | `—` | `Messenger native CSV (gasDay param)` | `—` |
+| Panhandle Eastern EBB (ET Messenger) | done | `http_csv` | `https://pipelines.energytransfer.com/ipost/PEPL/capacity/opera` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | Rockies Express (REX) EBB | done | `aspx_export` | `https://pipeline.tallgrassenergylp.com/Pages/Point.aspx?pipeli` | `python scrapers/lane_e/pull_ebb_capacity.py` |
 | SRI tax sale (zeusauction public lists) | done | `rest_json` | `https://www.sriservices.com/` | `python scrapers/lane_d/06_sri_taxsale_in_refresh.py` |
 | SRI tax-sale platform (Indiana) | done | `—` | `sriservices/zeusauction public lists` | `—` |
 | South Bend open data (DCAT) | done | `—` | `South Bend DCAT catalog` | `—` |
-| Texas Gas Transmission EBB (Boardwalk GasQue | done | `http_csv` | `https://infopost.bwpipelines.com/` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | Texas Gas Transmission EBB (Boardwalk GasQue | done | `—` | `GasQuest anonymous API` | `—` |
-| Trunkline EBB (ET Messenger) | done | `http_csv` | `https://pipelines.energytransfer.com/ipost/TRUNKLINE/capacity/` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
+| Texas Gas Transmission EBB (Boardwalk GasQue | done | `http_csv` | `https://infopost.bwpipelines.com/` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | Trunkline EBB (ET Messenger) | done | `—` | `Messenger native CSV` | `—` |
+| Trunkline EBB (ET Messenger) | done | `http_csv` | `https://pipelines.energytransfer.com/ipost/TRUNKLINE/capacity/` | `python scrapers/lane_e/pull_ebb_capacity.py && python scrapers/l` |
 | Vector Pipeline EBB (gasnom.com) | done | `—` | `gasnom.com vendor EBB HTML` | `—` |
 | American Legal codelibrary | blocked | `—` | `https://codelibrary.amlegal.com` | `—` |
 | Data Center Watch quarterlies | blocked | `—` | `datacenterwatch /report` | `—` |
@@ -496,14 +508,14 @@ the `endpoint_kind` and re-run command that were missing on all 31 original rows
 | GDELT | blocked | `—` | `gdelt API` | `—` |
 | GDELT article API | blocked | `rest_json` | `https://api.gdeltproject.org/api/v2/doc/doc` | `BLOCKED - rate-limit wall recorded` |
 | Google News RSS | blocked | `—` | `https://news.google.com/rss/search` | `—` |
-| MISO CartoVista POI heatmap | blocked | `rest_json` | `https://cloud.cartovista.com/miso/ferc` | `BLOCKED - 403 ProtectedData on Layer/geojson, DataRows, dataQuer` |
 | MISO CartoVista POI heatmap | blocked | `—` | `https://cloud.cartovista.com/miso/ferc` | `—` |
+| MISO CartoVista POI heatmap | blocked | `rest_json` | `https://cloud.cartovista.com/miso/ferc` | `BLOCKED - 403 ProtectedData on Layer/geojson, DataRows, dataQuer` |
 | Rockies Express EBB (Tallgrass) | blocked | `—` | `https://pipeline.tallgrassenergylp.com` | `—` |
-| Texas Eastern EBB (Enbridge infopost) | blocked | `html` | `https://infopost.enbridge.com/` | `BLOCKED - wall recorded, do not retry without new terms` |
 | Texas Eastern EBB (Enbridge infopost) | blocked | `—` | `https://infopost.enbridge.com` | `—` |
+| Texas Eastern EBB (Enbridge infopost) | blocked | `html` | `https://infopost.enbridge.com/` | `BLOCKED - wall recorded, do not retry without new terms` |
 | mycase.in.gov (court records) | blocked | `—` | `https://public.courts.in.gov / mycase.in.gov` | `—` |
 
-_60 endpoint rows; 13 BLOCKED with their wall recorded._
+_62 endpoint rows; 13 BLOCKED with their wall recorded._
 
 ## BLOCKED sources — do not retry without new terms
 
@@ -516,11 +528,11 @@ _60 endpoint rows; 13 BLOCKED with their wall recorded._
 | GDELT |  |
 | GDELT article API | BLOCKED - rate-limit wall recorded |
 | Google News RSS |  |
-| MISO CartoVista POI heatmap | BLOCKED - 403 ProtectedData on Layer/geojson, DataRows, dataQueryExecute |
 | MISO CartoVista POI heatmap |  |
+| MISO CartoVista POI heatmap | BLOCKED - 403 ProtectedData on Layer/geojson, DataRows, dataQueryExecute |
 | Rockies Express EBB (Tallgrass) |  |
-| Texas Eastern EBB (Enbridge infopost) | BLOCKED - wall recorded, do not retry without new terms |
 | Texas Eastern EBB (Enbridge infopost) |  |
+| Texas Eastern EBB (Enbridge infopost) | BLOCKED - wall recorded, do not retry without new terms |
 | mycase.in.gov (court records) |  |
 
 Plus, from Lane F discovery (`scrapers/lane_f/`):

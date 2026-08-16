@@ -288,3 +288,94 @@ existing utility service), so this is a low-cost watch-list, not a corpus.
 two days of work for two full statewide signals. D4 is a calendar entry for July. A1 is one
 email to IEDC. D23 is a bookmark. D15 is a cheque, not a scraper, and shouldn't be written
 this phase.
+
+---
+
+## D22 ACQUISITION RESULT — DONE 2026-08-16. The route changed, and the route change matters.
+
+**Status: VIABLE → ACQUIRED.** `in_si_d22_echo_facilities` (58,021) and
+`in_si_d22_idem_enforcement` (22,565) are loaded and registered.
+
+### The REST county walk was arithmetically impossible, not merely slow
+
+The console shows a long run of failed counties. That is the finding, not a malfunction. ECHO
+states its quota in the refusal body verbatim:
+
+> requests exceeding 300 per hour or 1,500 per day are throttled; bulk data downloads are offered
+> instead
+
+The prior loader set `responseset=5` — five rows per request. Adams alone (928 rows) is 186
+requests; the 92-county walk is roughly **25,000 requests against a 1,500/day ceiling**. GAMEPLAN
+route 1 ("slow the walk to 3–5 s") could never have finished at any pause length, so it was
+correctly abandoned rather than tuned. **Route 2, the bulk export, was taken:**
+
+```
+https://echo.epa.gov/files/echodownloads/echo_exporter.zip  ->  ECHO_EXPORTER.csv
+```
+
+One request, no paging — so the Adams 825-of-928 silent-short-page defect is structurally gone
+rather than merely detected.
+
+### Three facts that will mislead a future session if it uses the handoff's REST assumptions
+
+| the handoff says (REST) | the bulk file actually does |
+|---|---|
+| 59 columns from `get_qid` | **133 source columns** — a strict superset, adding TRI releases/transfers, GHG CO2, EJ demographics (`FAC_PERCENT_MINORITY`, `FAC_POP_DEN`), impaired-water flag, 13-quarter per-programme compliance history |
+| camelCase `FacSNCFlg`, `FacLat` | **SCREAMING_SNAKE** `FAC_SNC_FLG`, `FAC_LAT`. Checking the REST names against this table reports **all nine signal columns MISSING when every one is present** — the same exact-name trap that produced "79 tables not locatable" |
+| Adams = 928 | Adams = **282**. Not a short page: REST counts *programme records*, the bulk file counts *facilities*. Different denominators, recorded rather than reconciled |
+
+Likewise the statewide refusal ("Rows Returned would be 127266") against 58,021 bulk rows: two
+different universes — ECHO Exporter is the compliance-tracked regulated universe, one row per FRS
+`REGISTRY_ID`; the REST facility search resolves a broader FRS interest universe.
+
+### Cross-checks against Lane F's independent measurements — the pull is sound
+
+| | measured here | Lane F | |
+|---|---:|---:|---|
+| total penalties | $1.86B | $1.86B | exact |
+| active facilities | 25,225 | 25,330 | 99.6% |
+| significant violators | 372 | 372 | exact |
+| carrying lat/lon | 58,003 of 58,003 | — | 100% |
+
+### Severity — being *in* ECHO is not seller intent
+
+58,003 Indiana facilities are simply regulated. Two vocabulary traps had to be read rather than
+guessed before anything was admitted:
+
+- **`FAC_SNC_FLG` is `'N'` on all 58,003 rows** — the bulk export does not populate it. The
+  significant-non-compliance signal lives in `FAC_COMPLIANCE_STATUS='Significant Violation'`
+  (372), which is exactly how it reconciles with Lane F.
+- **`LIKE '%VIOLATION%'` on that column reads 24,976** — because it matches *"No Violation
+  Identified"*. The real violation count is **1,432**. Never pattern-match across a negation.
+- `FAC_ACTIVE_FLAG` is `'Y'` or NULL, never `'N'`; ceased operation is
+  `FAC_COMPLIANCE_STATUS='Inactive'` (5,780).
+
+`distress_class`: no_distress_marker 50,334 · facility_inactive 5,780 · violation 1,060 ·
+penalised 457 · significant_violation 372.
+
+### Admitted as TWO signals, because they mean opposite things to a developer
+
+| signal | parcels admitted (non-residential) | C/I | range |
+|---|---:|---:|---|
+| `D22_environmental_violation` | 931 | 420 | 1984-04-11 → 2026-08-03 |
+| `D22_facility_inactive` | 113 | 20 | 1996-06-20 → 2025-10-16 |
+
+A shut regulated plant with power and water already run to it is a **site opportunity**, not a
+liability, so it is filterable separately.
+
+Spatial join uses the publisher's own facility point — no centroid. D85 excluded by key, and the
+fan-out is **1.008 rows per facility** (it would be ~2.0 if the whole-Earth parcel were still in).
+**33,833 of 58,003 facilities (58.3%) land on a parcel**, 21,030 distinct parcels; the remainder
+sit on rights-of-way, water, or parcels absent from the layer.
+
+### The one real gap, not papered over
+
+**IDEM carries NO EVENT DATE.** `document_published` is a Y/N publication flag, despite the pull
+being scoped 1995-01-01 → current. So 22,565 enforcement actions — NOVs (10,951), Agreed Orders
+(10,747), Commissioner's Orders (542) — are held as an **undated, owner-name-keyed** source. They
+cannot join to a parcel and are not in the parcel flag. Recovering the dates means re-scraping the
+per-case document pages, which is a follow-up, not a blocker.
+
+**Loader:** `scrapers/lane_f/pull_d22_environmental.py` (`--probe` / `--refresh` / `--only`).
+**Wiring:** `scripts/build_d22_wiring.py` → `in_si_d22_echo_indiana`, `in_si_d22_parcel_join`,
+`in_si_d22_county_rollup`; folded into the single SI flag by `scripts/build_si_signal_v2.py`.

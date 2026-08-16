@@ -708,8 +708,18 @@ function scoreP1(p) {
   if (p.has_si_signal !== true)
     return { score: 0, basis: "no seller-intent signal fired on this parcel (measured, not missing)" };
   const breadth = clamp100(35 + 25 * Math.min(types, 2) + 5 * Math.min(n, 3));
-  return { score: breadth, basis: `${n} signal event${n === 1 ? "" : "s"} across ${types} signal type${types === 1 ? "" : "s"}` +
-    (p.si_last_event_date ? ` · latest ${p.si_last_event_date}` : " · no event date held, so recency is not scored") };
+  // Recency now scores, which it could not before. Under the v1 flag only 0.6% of flagged parcels
+  // carried an event date, so a recency term would have measured our coverage instead of the
+  // signal; under v2 it is 92%. A parcel with NO date still gets no recency term rather than a
+  // penalty — a missing date is not an old date.
+  const r3 = Number(p.si_events_3y) || 0, r5 = Number(p.si_events_5y) || 0;
+  const bonus = r3 > 0 ? 15 : (r5 > 0 ? 8 : 0);
+  const why = r3 > 0 ? `${r3} inside 3 years` : (r5 > 0 ? `${r5} inside 5 years` : null);
+  return { score: clamp100(breadth + bonus),
+    basis: `${n} signal event${n === 1 ? "" : "s"} across ${types} signal type${types === 1 ? "" : "s"}` +
+      (why ? ` · ${why}` : "") +
+      (p.si_last_event_date ? ` · latest ${p.si_last_event_date}`
+                            : " · no event date held, so recency is not scored (not penalised)") };
 }
 function scoreP2(p) {
   if (p._dsub_mi == null && p._dline_mi == null) return null;   // distances not computed for this parcel
@@ -917,8 +927,22 @@ function openParcelEvidence(p, fips) {
     <h3>Seller intent (P1)</h3><table>
       ${row("carries SI signal", p.has_si_signal === true ? "yes" : (p.has_si_signal === false ? "no" : null))}
       ${row("signal types / events", p.si_signal_types != null ? `${p.si_signal_types} / ${p.si_signal_events}` : null)}
-      ${row("signals", p.si_signals)}${row("last event", p.si_last_event_date)}</table>
-    <div class="prov">${prov("in_si_signals")}</div>
+      ${row("signals", p.si_signals)}
+      ${row("first event", p.si_first_event_date)}${row("last event", p.si_last_event_date)}
+      ${row("events in last 3 / 5 / 10 yrs", p.si_events_3y != null
+          ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
+      ${row("how it reached this parcel", p.si_keying)}
+      ${row("where the date came from", p.si_date_basis)}
+      ${row("held but not counted here", (Number(p.si_excl_resid) || 0) + (Number(p.si_excl_lowsev) || 0) > 0
+          ? [p.si_excl_resid ? `${p.si_excl_resid} residential-class` : null,
+             p.si_excl_lowsev ? `${p.si_excl_lowsev} below the severity bar` : null]
+            .filter(Boolean).join(" · ") : null)}</table>
+    <div class="prov">${prov("in_si_sites_flags_v2")} · admitted at the NON-RESIDENTIAL level only
+      — a ~300 MW datacentre and a ~5 MW BESS both need land a house does not have — and only where
+      severity would plausibly move an owner to sell, so a weed citation and a residential teardown
+      do not qualify. Vacant land still renders for BESS siting; footprint absence simply stopped
+      counting as intent. Where a date basis reads "layer name", the publisher wrote the event date
+      into the dataset title rather than a column, so it is month- or year-precision.</div>
     <h3>Environmental gates (P4)</h3><table>
       ${row("SFHA flood", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — flag" : "clear (measured)"))}
       ${row("wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES — flag" : "clear (measured)"))}

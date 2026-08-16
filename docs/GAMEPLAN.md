@@ -152,10 +152,12 @@ Phase A is COMPLETE. This is everything left to finish the tool. Ranked within e
 
 | # | item | phase | state | blocked by |
 |---|---|---|---|---|
-| 1 | fix D22 ECHO rate-limit (429s) + shortfall detection, finish the pull | B | **job running** | — |
-| 2 | SI date-keying: address → parcel | B | 🟡 **BRIDGE DONE, OBJECTIVE NOT MET** — see below | — |
-| 2a | **WIDEN `has_si_signal` beyond D5_vacancy** — 44,806 parcels carry a real dated distress signal the app cannot see. **Highest-value fix in the application.** | B | ready | — |
-| 2b | exclude `parcels_in/080500000047000018` (D85 whole-Earth polygon) from every spatial join | B | ready, one-line guard | — |
+| 1 | D22 ECHO | B | ✅ **DONE 2026-08-16** — the REST county walk was arithmetically impossible (300/hr, 1,500/day quota vs ~25,000 requests at `responseset=5`), so **route 2, the bulk export**, was taken. 58,003 Indiana facilities, 100% located, 931+113 parcels admitted. See `MISSING_SIGNALS_FINDINGS.md` § D22 ACQUISITION RESULT | — |
+| 1a | **recover IDEM's event dates** — 22,565 enforcement actions held with NO date (`document_published` is a Y/N flag); dates live on the per-case document pages | B/D | ready | — |
+| 2 | SI date-keying: address → parcel | B | ✅ bridge done; objective met by 2a | — |
+| 2a | **WIDEN `has_si_signal` beyond D5_vacancy** | B | ✅ **DONE 2026-08-16 — 847,410 → 9,383** non-residential, severity-gated, 92% dated. The blocker was THREE KEY NAMESPACES, not the flag definition | — |
+| 2b | exclude `parcels_in/080500000047000018` (D85 whole-Earth polygon) from every spatial join | B | ✅ **DONE** in `build_si_signal_v2.py` and `build_d22_wiring.py`; fan-out measured at 1.008 to prove it. **Still to apply to any NEW spatial join** | — |
+| 2e | **wire the last 3 unwired objects** — estate-census panel + "empty by defect" panel on Data | A-tail | ✅ **DONE 2026-08-16 — 199 of 199** | — |
 | 2c | fix the `si_d12_indy_marion_code_enforcement` loader — its addresses lack a city suffix, so 747,122 rows match nothing | B | ready | — |
 | 2d | geocode Indianapolis — the bridge holds only 2,713 resolved Indy addresses; this is the real ceiling | B/D | ready | — |
 | 3 | abandoned-property registries beyond Indy/South Bend | B | **agent running** | — |

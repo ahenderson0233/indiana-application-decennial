@@ -30,6 +30,36 @@
       the record, not silence. Each row states the measurement behind the waiver.</div>
     <div class="scroll"><table id="t-waive"><tr><th>table</th><th>rows</th><th>why it is not rendered</th></tr></table></div>
     <div class="prov">waivers are recorded by the export scripts that measured them, not asserted here</div></div>
+  <div class="card"><h2>Estate census — what of the national warehouse actually has Indiana rows</h2>
+    <div class="hint" id="ec-summary"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="ec-tested">…</div><div class="hint">warehouse tables tested</div></div>
+      <div class="card"><div class="bigstat" id="ec-prod">…</div><div class="hint">carry Indiana rows</div></div>
+      <div class="card"><div class="bigstat" id="ec-dead">…</div><div class="hint">carry none — the useful half</div></div>
+    </div>
+    <div class="hint" style="margin-bottom:6px"><b>How each table was tested</b> — a name is not the
+      data, so every table was measured on a discovered key column rather than assumed. Note that
+      <code>owner_state</code> and <code>mail_state</code> are OWNER addresses, not site locations:
+      a table keyed that way says where the owner gets post, not where the asset is.</div>
+    <div class="scroll" style="max-height:200px"><table id="t-eckey"><tr><th>key column</th><th>tables</th><th>productive</th><th>Indiana rows</th></tr></table></div>
+    <div class="hint" style="margin:10px 0 6px"><b>Largest Indiana-bearing tables</b></div>
+    <div class="scroll" style="max-height:260px"><table id="t-ectop"><tr><th>warehouse table</th><th>method</th><th>key</th><th>Indiana rows</th><th>of national</th><th>% IN</th></tr></table></div>
+    <div class="hint" style="margin:10px 0 6px"><b>Tested and empty</b> — listed so no future session
+      re-tests them. These are national tables with no Indiana rows at all, not tables we failed to load.</div>
+    <div class="scroll" style="max-height:220px"><table id="t-ecempty"><tr><th>warehouse table</th><th>method</th><th>key</th><th>national rows</th></tr></table></div>
+    <div class="prov">source: <code>indiana_app._indiana_census</code> · exported by
+      <code>scripts/wire_last_three.py</code></div></div>
+
+  <div class="card"><h2>Empty by defect — kept as the record of a caught bug</h2>
+    <div class="hint" style="margin-bottom:6px">These tables hold zero rows because a clip filtered
+      on the wrong column, not because Indiana has no such data. They are <b>kept rather than
+      dropped</b>: a dropped table teaches nothing, and the next census would rediscover the name as
+      a gap. Row counts below are read <b>live</b> at build time — if a rebuild ever fixes the clip,
+      this panel corrects itself rather than continuing to claim zero.</div>
+    <div class="scroll"><table id="t-ecempty2"><tr><th>table</th><th>rows now</th><th>what it should hold</th><th>the defect</th><th>superseded by</th></tr></table></div>
+    <div class="prov">verified against <code>indiana_app</code> on every build ·
+      <code>scripts/wire_last_three.py</code></div></div>
+
   <div class="card"><h2>Gas distribution operators (PHMSA annual reports)</h2>
     <div class="scroll" style="max-height:260px"><table id="t-gasop"><tr><th>operator</th><th>latest report</th><th>reports held</th><th>plastic miles</th><th>coated steel miles</th></tr></table></div>
     <div class="prov">source: <code>in_gas_phmsa_distribution</code> · distribution-system operators
@@ -83,6 +113,36 @@
   document.getElementById("t-gasop").insertAdjacentHTML("beforeend", CTX.gas_operators.map(g =>
     `<tr><td>${String(g.operator_name).slice(0, 40)}</td><td>${g.latest_year ?? "—"}</td>
      <td>${g.reports}</td><td>${g.plastic_miles ?? "—"}</td><td>${g.steel_coated_miles ?? "—"}</td></tr>`).join(""));
+
+  // The last three registered objects that reached no surface. `_indiana_census` is a real
+  // finding (465 of 773 warehouse tables have no Indiana rows at all); the two zero-row FCC
+  // tables are the record of the `_st_pct` regex bug and read their LIVE count, not a literal 0.
+  const EC = await fetchGz("data/estate_census.json.gz");
+  const ecs = EC.census_summary;
+  document.getElementById("ec-tested").textContent = fmt(ecs.tables_tested);
+  document.getElementById("ec-prod").textContent = fmt(ecs.with_indiana_rows);
+  document.getElementById("ec-dead").textContent = fmt(ecs.no_indiana_rows);
+  document.getElementById("ec-summary").innerHTML =
+    `Every table in the national warehouse was tested for Indiana rows on a <b>discovered</b> key
+     column. <b>${fmt(ecs.indiana_rows_found)}</b> Indiana rows were found across
+     <b>${fmt(ecs.national_rows_scanned)}</b> scanned. Measured
+     ${String(ecs.measured_at).slice(0, 10)} — this is the instrument behind the coverage claims
+     on every other page, and it is shown rather than summarised.`;
+  document.getElementById("t-eckey").insertAdjacentHTML("beforeend", EC.census_by_key.map(k =>
+    `<tr><td><code>${k.key_column ?? "—"}</code></td><td>${fmt(k.tables)}</td>
+     <td>${fmt(k.productive)}</td><td>${fmt(k.indiana_rows)}</td></tr>`).join(""));
+  document.getElementById("t-ectop").insertAdjacentHTML("beforeend", EC.census_top.map(t =>
+    `<tr><td><code>${t.table_id}</code></td><td class="hint">${t.method}</td>
+     <td class="hint">${t.key_column ?? "—"}</td><td>${fmt(t.in_rows)}</td>
+     <td class="hint">${fmt(t.total_rows)}</td><td>${t.pct_indiana ?? "—"}%</td></tr>`).join(""));
+  document.getElementById("t-ecempty").insertAdjacentHTML("beforeend", EC.census_empty.map(t =>
+    `<tr><td><code>${t.table_id}</code></td><td class="hint">${t.method}</td>
+     <td class="hint">${t.key_column ?? "—"}</td><td>${fmt(t.total_rows)}</td></tr>`).join(""));
+  document.getElementById("t-ecempty2").insertAdjacentHTML("beforeend", EC.empty_by_defect.map(e =>
+    `<tr><td><code>${e.table}</code></td>
+     <td class="${e.still_empty ? "cannot" : ""}">${fmt(e.rows_now)}</td>
+     <td class="hint">${e.holds}</td><td class="hint">${e.defect}</td>
+     <td><code>${e.superseded_by}</code> <span class="hint">(${fmt(e.superseding_rows_now)})</span></td></tr>`).join(""));
 
   // Cloudscene completeness cross-check: match its names against the data centres we hold PINNED.
   const so = await fetchGz("data/signoff.json.gz");

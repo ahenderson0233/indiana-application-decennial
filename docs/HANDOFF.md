@@ -1,16 +1,80 @@
 # HANDOFF — Indiana Siting Intelligence
 
-# ══ CHECKPOINT 2026-08-15 (late session) — READ THIS BLOCK FIRST ══
+# ══ CHECKPOINT 2026-08-16 — READ THIS BLOCK FIRST ══
 
-> **SESSION CLOSED CLEAN at this commit.** Working tree clean, everything pushed to `main`.
-> Nothing was left half-written. The ONLY outstanding work is the **D22 ECHO agent**, which was
-> still running when the session ended — it writes directly to `indiana_app` and appends a
-> `## D22 ACQUISITION RESULT` section to `scrapers/lane_f/MISSING_SIGNALS_FINDINGS.md`, so its
-> output will simply be there. Check for it before re-running anything D22-related; every ECHO
-> fact it needs is recorded in item 1 below.
->
-> **First action for the next session:** widen `has_si_signal` beyond `D5_vacancy` (see the B2
-> section). It is the highest-value fix in the application and requires no acquisition.
+> **The B2 headline item is DONE, and D22 is acquired and wired.** `has_si_signal` was
+> 847,410 parcels of which 99.2% was empty land; it is now **9,383 non-residential,
+> severity-gated parcels, 92% of them dated**. Phase A closed at 196 of 199 tables reaching a
+> surface; the last three now have real panels, so it is **199 of 199**.
+
+## What changed on 2026-08-16
+
+**1. `has_si_signal` was never a flag-definition problem — it was THREE KEY NAMESPACES.**
+A naive join between the signal corpus and the parcel layer reads **0 of 945,896**:
+
+| | key it carries | example |
+|---|---|---|
+| `in_sites` | bare 18-digit state number | `011222300004000006` |
+| `in_si_signals` | **`IN:`-prefixed** | `IN:640324226011000021` |
+| Indy abandoned/vacant | **7-digit Marion local id** | `5019155` |
+| South Bend / Evansville | **punctuated** state number | `71-03-34-406-009.000-026` |
+
+Stripping `IN:` reproduces `in_sites.has_vacancy_signal` at **exactly 845,373**, which is how we
+know the bridge is right rather than merely plausible. **Marion has no state key in any held
+table** — `in_si_indy_taxsale_parcels.PARCELNUMBER` turned out to be the same 7-digit local id,
+not a crosswalk — so Indy **defers to address**: 125 of 7,120. That is the honest ceiling and it
+is reported on screen, not hidden.
+
+**2. The first build of the widened flag admitted 14,293 parcels and was WRONG.** Two blocks were
+the D5 mistake in a new costume, caught by reading the value vocabulary before trusting the count:
+- **South Bend "code enforcement" is 95% Litter (9,382), Grass and Weeds (7,710), Vegetation
+  (2,293).** Only Sub-standard Housing and Secure Property are structural: **10,370 → 228**.
+- **Evansville "demolition permits" is 3,771 residential teardowns vs 419 commercial** — and a
+  demolished house leaves `occ_group='no_structure'`, so it slips **past** the non-residential
+  test on parcel class alone: **3,385 → 268**.
+
+**3. D22 is ACQUIRED — and the route changed, which matters more than the rows.** The failed
+counties in the console are the finding, not a malfunction: ECHO states its quota in the refusal
+body (300/hour, 1,500/day) and the old loader's `responseset=5` made the 92-county walk ~25,000
+requests. It could never finish at any pause length. GAMEPLAN **route 2, the bulk export**, was
+taken: `https://echo.epa.gov/files/echodownloads/echo_exporter.zip`. See the D22 section below —
+it carries facts that will mislead anyone using the handoff's old REST assumptions.
+
+**4. The last three unwired objects now have real panels** on Data: an estate-census panel from
+`_indiana_census` (773 warehouse tables tested, **465 carry no Indiana rows at all** — that is the
+useful half), and an "empty by defect" panel for the two zero-row FCC tables that reads their
+**live** row count, so a future fix corrects the panel instead of leaving it lying.
+
+## The numbers, measured
+
+| | |
+|---|---:|
+| **parcels flagged `has_si_signal`** | **9,383** (was 847,410, 99.2% empty land) |
+| …carrying an event date | 8,450 (**92%**, was 0.6%) |
+| …with an event inside 3 / 5 years | 2,203 / 3,661 |
+| C/I · other non-res · agriculture · vacant land | 3,793 · 575 · 293 · 4,722 |
+| evidence rows kept, not dropped | 56,225 residential + 6,231 low-severity, each with a reason |
+| ECHO facilities, Indiana | 58,003 — **100% carry lat/lon** |
+| ECHO facilities landing on a parcel | 33,833 (58.3%), 21,030 distinct parcels, fan-out **1.008** |
+| site payload | 92 counties, 1,202,662 features |
+
+**Read `docs/SI_COVERAGE.md`** — GENERATED, per-signal, all 33 signals in the taxonomy including
+the ones we hold nothing for. Coverage is four different numbers (held / reached / admitted /
+dated) and conflating them is how the D5 mistake happened.
+
+## What to do next
+
+1. **Fold the staged D11 (983) and D27 (156) into `in_si_parcel_signals_v2`** — they are admitted
+   and sitting in `in_si_d11_admitted` / `in_si_d27_admitted`, unwired.
+2. **Wire the 11 already-pulled-but-unwired Lane D columns** — cheapest coverage left.
+3. **B5** verify or retire the `vw_county_dc_posture` 92/92 counter.
+4. **B1/D9/D18 DLGF Gateway owner pull** — one acquisition, three unblocks.
+5. Then **Phase C1**, the management-facing dossier.
+
+**Recover IDEM's dates.** `in_si_d22_idem_enforcement` holds 22,565 enforcement actions — 10,951
+NOVs, 10,747 Agreed Orders — with **no event date**; `document_published` is a Y/N publication
+flag. The dates live on the per-case document pages. Undated and owner-keyed, so it cannot reach a
+parcel today.
 
 **Read `docs/GAMEPLAN.md` immediately after this file.** HANDOFF is the RECORD of what happened;
 GAMEPLAN is the PLAN and the backlog. Everything below is measured, not recalled.
