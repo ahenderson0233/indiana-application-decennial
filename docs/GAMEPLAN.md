@@ -200,7 +200,46 @@ Phase A is COMPLETE. This is everything left to finish the tool. Ranked within e
 | 25 | E3 national-baseline handover pack | E | not started | everything |
 | 26 | E4 acceptance run against spec §13 | E | not started | everything |
 
-**Operator decisions outstanding:** items 7, 8, 14, 16, 17, 22, 24.
+**Operator decisions outstanding:** items 7, 14, 16, 17, 22, 24, **33**, **34**. (8 acreage-rule
+and 30-capability are RULED — see below.)
+
+### ⚖ 33. American Legal Publishing — a licence would unlock 17 counties
+
+**BLOCKED, and confirmed on stronger grounds than the first attempt found.** The publisher's own
+Terms of Use (ICC Terms, revised 2023-05-04, §4) prohibit *"use of data mining, robots, or similar
+data gathering and extraction tools"* and direct licensing enquiries to `license@iccsafe.org`.
+§1 names American Legal Publishing as a covered entity.
+
+**The conflict that needs your ruling:** `codelibrary.amlegal.com`'s **robots.txt GRANTS `*`** with
+`Content-Signal: search=yes, ai-train=no, use=reference` — which reads as permitting exactly this
+use. The ToU forbids it. The agent took the **restrictive intersection** and stopped, which is the
+right default, and flagged rather than deciding silently. Same shape as the Municode `ClaudeBot`
+question you ruled on.
+
+**What it costs:** 230 Indiana clients, 33 of them county governments, 5× Municode's Indiana
+footprint. Critically, **17 of the 55 never-assessed counties have an amlegal county code as their
+ONLY codified source** — Cass, Dearborn, Floyd, Hancock, Howard, Jennings, Knox, Lawrence, Owen,
+Perry, Pulaski, Putnam, Spencer, Switzerland, Warrick, Wayne, White. One licence conversation
+unlocks all 17 plus full text for Greene and Hendricks.
+
+**The route is a licence request, not a technical workaround.** Do not re-run automated pulls
+against that host without either the licence or an explicit ruling that the robots grant controls.
+
+### ⚖ 34. The robots-vs-terms conflict, as a standing policy
+
+Two publishers now grant access in robots.txt and restrict it in their terms. A one-off answer per
+site will not scale — the county sweep hit **30+ hosts** that disallow `ClaudeBot` by name while
+serving the public freely in a browser. A standing rule is worth having: does a machine-readable
+`Allow` govern, or does prose in a terms page? Until ruled, the restrictive reading applies and
+every wall is recorded verbatim.
+
+### ✅ RULED 2026-08-16
+
+- **B3 acreage (item 8):** where recorded and exact disagree beyond threshold, take the SMALLER
+  and label it disputed. Implemented and verified.
+- **Sub-acre capability (item 30):** the 69% of flagged parcels that cannot host 5 MW are an
+  expected and useful filter, not a defect. Capability is measured and carried beside the flag.
+- **Municode `ClaudeBot`:** the generic `Allow: /` governs; the 153-row corpus stands.
 
 ### D22 is REQUIRED (operator) — the routes, if REST keeps throttling
 
