@@ -19,6 +19,34 @@
   <div class="card"><h2>County posture (from held receipts)</h2>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
+  <div class="card"><h2>County data-centre actions — the layer no code library carries</h2>
+    <div class="hint" id="cda-lead"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="cda-restrict">…</div><div class="hint">VERIFIED restrictive postures — moratorium, ban, or adopted uncodified ordinance</div></div>
+      <div class="card"><div class="bigstat" id="cda-verified">…</div><div class="hint">actions verified at the government's own source</div></div>
+      <div class="card"><div class="bigstat" id="cda-cov">…</div><div class="hint">counties swept (of 92)</div></div>
+    </div>
+    <div class="hint" style="margin-bottom:6px"><b>Verified at the government's own site.</b>
+      These are facts, quoted from the county's own page or ordinance PDF. An expiry is shown when
+      the publisher states one; a blank expiry means the instrument carries no end date, not that
+      it has lapsed.</div>
+    <div class="scroll" style="max-height:340px"><table id="t-cda"><tr><th>county</th><th>action</th><th>instrument</th><th>effective</th><th>expires</th><th>source</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b class="cannot">A WORKLIST, NOT A POSTURE.</b>
+      The rows below are carried by news or aggregators only and were not confirmed at an official
+      source. They are shown so nothing is lost, and they must not be read as a county's position.</div>
+    <div class="scroll" style="max-height:200px"><table id="t-cdalead"><tr><th>county</th><th>action</th><th>instrument</th><th>reported</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b>Coverage — every one of the 92 counties, and how it was searched.</b>
+      <span class="cannot">SEARCHED_NONE_FOUND at the web-search layer is weaker than a full-text
+      codified search</span>: it means no action surfaced, not that the county is silent.</div>
+    <div class="scroll" style="max-height:200px"><table id="t-cdacov"><tr><th>county</th><th>status</th><th>county site</th><th>queries</th><th>notes</th></tr></table></div>
+    <div class="prov"><code>in_dc_actions_county_v2</code> (107 actions) ·
+      <code>in_dc_actions_coverage_v2</code> (92 counties, one row each) ·
+      loader <code>scrapers/lane_f/pull_dc_actions_county.py</code>, findings
+      <code>scrapers/lane_f/COUNTY_DC_ACTION_FINDINGS.md</code>.
+      Distinct from <code>in_dc_actions</code> (79 rows, the DataCenterWatch project tracker) and
+      from the codified <code>in_ordinances_dc_v2</code> below — three different instruments, never
+      merged. Publisher's own dates throughout; the pull timestamp is a separate column.</div></div>
+
   <div class="card"><h2>Local data-centre ordinances — what is codified, and what is not</h2>
     <div class="hint" id="ord-caveat"></div>
     <div class="gridcards" style="margin:8px 0">
@@ -147,6 +175,50 @@
   document.getElementById("t-ordfam").insertAdjacentHTML("beforeend", (O.family || []).map(t =>
     `<tr><td><code>${t.table_name}</code></td><td>${fmt(t.n_rows)}</td>
      <td class="hint">${String(t.built_at).slice(0, 10)}</td></tr>`).join(""));
+
+  /* ---------- the UNCODIFIED county-action layer ----------
+     Split by evidence_grade into two tables that never mix. A REPORTED_NEEDS_VERIFICATION row
+     rendered beside a verified one would turn a news mention into a county's legal position —
+     which is the single thing ORDINANCE_FINDINGS.md says must never happen. */
+  const esc = (x) => String(x ?? "").replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
+  const CA = O.county_actions || [], CAC = O.county_action_coverage || [];
+  const VER = CA.filter(a => a.evidence_grade === "VERIFIED_AT_OFFICIAL_SOURCE");
+  const LEAD = CA.filter(a => a.evidence_grade !== "VERIFIED_AT_OFFICIAL_SOURCE");
+  const RESTRICT = new Set(["moratorium", "ban-prohibition", "adopted-uncodified-ordinance"]);
+  document.getElementById("cda-restrict").textContent = fmt(VER.filter(a => RESTRICT.has(a.action_type)).length);
+  document.getElementById("cda-verified").textContent = fmt(VER.length);
+  document.getElementById("cda-cov").textContent = fmt(CAC.length);
+  document.getElementById("cda-lead").textContent = O.caveat || "";
+
+  // an expiry is either a DATE the publisher stated, or a CONDITION they stated in words.
+  // Neither is invented, and "no end date stated" is rendered as itself, never as "expired".
+  const expiryOf = (a) => a.effective_to ? String(a.effective_to).slice(0, 10)
+    : (a.expiry_condition_verbatim ? `<span class="hint">${esc(a.expiry_condition_verbatim).slice(0, 60)}</span>`
+      : `<span class="cannot">no end date stated</span>`);
+
+  document.getElementById("t-cda").insertAdjacentHTML("beforeend", VER.map(a =>
+    `<tr><td><b>${esc(a.county)}</b><div class="hint">${esc(a.jurisdiction)}</div></td>
+     <td>${esc(a.action_type)}</td>
+     <td>${esc(a.instrument).slice(0, 110)}
+       <div class="hint">${esc(a.posture_source_words).slice(0, 150)}</div></td>
+     <td>${a.effective_from ? String(a.effective_from).slice(0, 10) : `<span class="cannot">—</span>`}</td>
+     <td>${expiryOf(a)}</td>
+     <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">official</a>` : `<span class="cannot">—</span>`}
+       ${a.ordinance_pdf_url ? ` · <a href="${esc(a.ordinance_pdf_url)}" target="_blank" rel="noopener">PDF</a>` : ""}</td></tr>`).join(""));
+
+  document.getElementById("t-cdalead").insertAdjacentHTML("beforeend", LEAD.map(a =>
+    `<tr><td>${esc(a.county)}<div class="hint">${esc(a.jurisdiction)}</div></td>
+     <td class="cannot">${esc(a.action_type)}</td>
+     <td>${esc(a.instrument).slice(0, 120)}</td>
+     <td>${a.observed_date ? String(a.observed_date).slice(0, 10) : `<span class="cannot">no date</span>`}
+       ${a.url ? ` · <a href="${esc(a.url)}" target="_blank" rel="noopener">src</a>` : ""}</td></tr>`).join(""));
+
+  document.getElementById("t-cdacov").insertAdjacentHTML("beforeend", CAC.map(c =>
+    `<tr><td>${esc(c.county)}</td>
+     <td class="${c.status === "ACTION_FOUND" ? "" : "cannot"}">${esc(c.status)}</td>
+     <td class="hint">${c.county_site_host ? esc(c.county_site_host) : "not identified"}</td>
+     <td>${fmt(c.queries_run)}</td>
+     <td class="hint">${esc(c.notes).slice(0, 170)}</td></tr>`).join(""));
 
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;

@@ -69,6 +69,19 @@ assert not dupes, f"duplicate coverage rows: {dupes}"
 missing = ALL92 - set(cov_counties)
 extra = set(cov_counties) - ALL92
 assert not extra, f"coverage rows for non-counties: {extra}"
+# A PARTIAL MERGE MUST NOT LOAD SILENTLY. This gate is here because it was absent once and cost
+# 13 counties: the consolidation ran at 13:24 while batch A was still sweeping, batch A landed at
+# 13:37, and the file carried 79 of 92 with the shortfall printed to a console nobody re-read.
+# The whole northwest quadrant -- Lake, LaPorte, Porter, Tippecanoe -- would have shipped as
+# "not assessed" while Lake County Ordinance 2590 (data centres PROHIBITED in all business
+# districts, verified at the county's own signature page) sat unread in a JSON file.
+# An uncovered county rendered as silence is the exact inversion ORDINANCE_FINDINGS.md warns
+# about, so this refuses to load rather than reporting the shortfall and continuing.
+assert not missing, (
+    f"REFUSING TO LOAD: coverage is {len(cov_counties)} of 92 counties; "
+    f"{len(missing)} missing: {sorted(missing)}. A batch is absent from the consolidated file. "
+    f"Merge it (see merge_batch_a_into_consolidated.py) before loading -- do NOT load a partial "
+    f"sweep, because not-assessed renders as not-regulated.")
 for a in actions:
     assert a["county"] in ALL92, f"action row for unknown county: {a['county']}"
 # control gate: the two known positives must be present and VERIFIED, or the method is broken

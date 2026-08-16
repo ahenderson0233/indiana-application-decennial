@@ -71,6 +71,37 @@ if has("in_ordinances_dc_v2"):
       WHERE REGEXP_CONTAINS(LOWER(IFNULL(snippet,'')), r'data cent(er|re)')
       ORDER BY county, jurisdiction""")
 
+# ---- THE UNCODIFIED LAYER: county-website actions, all 92 counties ------------------------
+# This is the layer the codified corpus structurally cannot see, and it is the one that decides
+# siting. It is kept SEPARATE from the codified tables and split by evidence_grade at export
+# time rather than in the page, so a lead cannot reach a posture surface by accident.
+if has("in_dc_actions_county_v2"):
+    out["county_actions"] = rows(f"""
+      SELECT county, jurisdiction, action_type, instrument, posture_source_words,
+             observed_date, date_note, effective_from, effective_to,
+             expiry_condition_verbatim, verbatim_snippet, url, ordinance_pdf_url,
+             doc_type, evidence_grade, why_codified_misses_it
+      FROM `{DS}.in_dc_actions_county_v2`
+      ORDER BY
+        CASE evidence_grade WHEN 'VERIFIED_AT_OFFICIAL_SOURCE' THEN 0 ELSE 1 END,
+        CASE action_type WHEN 'ban-prohibition' THEN 0 WHEN 'moratorium' THEN 1
+             WHEN 'adopted-uncodified-ordinance' THEN 2 WHEN 'expired-moratorium' THEN 3
+             WHEN 'petition-pending' THEN 4 WHEN 'proposed' THEN 5 WHEN 'denied' THEN 6
+             WHEN 'withdrawn' THEN 7 ELSE 8 END,
+        county""")
+    out["county_action_summary"] = rows(f"""
+      SELECT action_type,
+             COUNTIF(evidence_grade='VERIFIED_AT_OFFICIAL_SOURCE') verified,
+             COUNTIF(evidence_grade='REPORTED_NEEDS_VERIFICATION') lead_only,
+             COUNT(*) total
+      FROM `{DS}.in_dc_actions_county_v2` GROUP BY 1 ORDER BY total DESC""")
+
+if has("in_dc_actions_coverage_v2"):
+    out["county_action_coverage"] = rows(f"""
+      SELECT county, status, county_site_host, queries_run, official_site_fetched,
+             search_instrument, notes
+      FROM `{DS}.in_dc_actions_coverage_v2` ORDER BY status, county""")
+
 # coverage: which counties were actually assessed, versus never searched
 for t, key in (("in_ordinances_dc_coverage_v2", "coverage"),
                ("in_ordinances_amlegal_coverage_v2", "amlegal_coverage"),
@@ -80,14 +111,27 @@ for t, key in (("in_ordinances_dc_coverage_v2", "coverage"),
         cols = [s.name for s in client.get_table(f"{DS}.{t}").schema]
         out[key] = rows(f"SELECT {', '.join(cols[:14])} FROM `{DS}.{t}` LIMIT 400")
 
+# The caveat is COMPUTED, not typed. An earlier version hard-coded "Boone and Miami" and was
+# already wrong the moment the 92-county sweep landed 13 more verified counties.
+_ca = out.get("county_actions", [])
+_verified = [a for a in _ca if a["evidence_grade"] == "VERIFIED_AT_OFFICIAL_SOURCE"]
+_restrictive = [a for a in _verified if a["action_type"] in
+                ("moratorium", "ban-prohibition", "adopted-uncodified-ordinance")]
+_cov = out.get("county_action_coverage", [])
 out["caveat"] = (
     "The row count is not the finding. Of 153 candidate rows only 7 name a data centre, and "
-    "triage of the remaining 146 admits 19 sections across 9 jurisdictions. Indiana's genuine "
-    "CODIFIED data-centre corpus is a handful of sections in two counties. More importantly, the "
-    "decision-relevant regulation is not codified at all: county commissioner MORATORIA — Boone "
-    "(LEAP district, effective 2026-06-16) and Miami (2026-05-04) — appear on county websites and "
-    "in no code library. A codified-only reading renders Boone as SILENT when it is the most "
-    "restrictive posture in the state.")
+    "triage of the remaining 146 admits 19 sections across 9 jurisdictions — Indiana's genuine "
+    "CODIFIED data-centre corpus is a handful of sections in two counties. "
+    f"The decision-relevant regulation is not codified at all. A sweep of all {len(_cov) or 92} "
+    f"county websites found {len(_ca)} land-use actions, of which {len(_verified)} are verified at "
+    f"the government's own source and {len(_restrictive)} of those are restrictive (moratorium, "
+    "ban, or adopted-but-uncodified ordinance). None of it appears in any code library. A "
+    "codified-only reading renders Boone — the LEAP district, under a one-year moratorium — as "
+    "SILENT, and misses Lake County Ordinance 2590, which prohibits data centres in every "
+    "business zoning district. "
+    f"The remaining {len(_ca) - len(_verified)} rows are REPORTED_NEEDS_VERIFICATION: a worklist "
+    "carried by news or aggregators only. They are shown separately and must never be read as "
+    "posture.")
 
 path = os.path.join(REPO, "data", "ordinances.json.gz")
 with gzip.open(path, "wt", encoding="utf-8", compresslevel=6) as f:
@@ -101,3 +145,9 @@ if "triage_summary" in out:
     for v in out["triage_summary"]:
         print(f"  {v['verdict']:16s} {v['sections']:>4} sections · {v['candidate_rows']:>4} rows")
 print(f"  named a data centre: {len(out.get('named', []))}")
+if "county_actions" in out:
+    print(f"  county-website actions: {len(out['county_actions'])} "
+          f"({len(_verified)} VERIFIED, {len(_ca) - len(_verified)} leads) "
+          f"across {len(_cov)} counties assessed")
+    for s in out["county_action_summary"]:
+        print(f"    {s['action_type']:30s} verified={s['verified']:>3} lead={s['lead_only']:>3}")

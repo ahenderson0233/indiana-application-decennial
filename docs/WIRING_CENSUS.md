@@ -11,10 +11,17 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 242 of 242 registered objects reach a surface
+## 249 of 254 registered objects reach a surface
 
-**Every registered object reaches at least one surface.**
+### Not reaching a surface
 
+| object | rows | built by |
+|---|---:|---|
+| `in_dc_colo_resolved` | 8 | `—` |
+| `in_rate_eligibility` | 1 | `scripts/build_rate_engine.py` |
+| `in_rate_wholesale_floor` | 2 | `scripts/build_rate_engine.py` |
+| `in_refresh_cadence` | 268 | `scripts/build_refresh_cadence.py` |
+| `in_rtep_bus_join` | 1229 | `scripts/build_rtep_bus_join.py` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -29,7 +36,7 @@ headline can be audited rather than taken on trust:
 
 | object | route | via |
 |---|:---:|---|
-| `_indiana_census` | direct | `data.html`, `scripts/build_wirenext_batch1.py` |
+| `_indiana_census` | direct | `data.html`, `scripts/acceptance_run.py` |
 | `in_acs_county` | direct | `app.js` |
 | `in_acs_tract_vacancy` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
@@ -52,9 +59,12 @@ headline can be audited rather than taken on trust:
 | `in_data_centers_cloudscene` | direct | `app.js` |
 | `in_data_centers_datacentermap` | direct | `app.js` |
 | `in_data_centers_deduped` | direct | `scripts/export_context_layers.py`, `scripts/export_signoff_payloads.py` |
-| `in_data_centers_located` | direct | `app.js`, `scripts/export_context_layers.py` |
+| `in_data_centers_located` | direct | `app.js`, `scripts/audit_honesty.py` |
 | `in_data_centers_peeringdb` | direct | `app.js`, `scripts/investigate_cloudscene_gap.py` |
 | `in_dc_actions` | direct | `app.js`, `community.html` |
+| `in_dc_actions_county_v2` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_coverage_v2` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_colo_resolved` | **none** | — |
 | `in_dc_docket_tracker` | direct | `app.js` |
 | `in_dc_eei_tariffs` | direct | `app.js` |
 | `in_drought_by_state` | direct | `app.js` |
@@ -149,11 +159,13 @@ headline can be audited rather than taken on trust:
 | `in_openstates_energy_bills_v2` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_operating_generators` | direct | `app.js` |
 | `in_ordinances_amlegal_coverage_v2` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_amlegal_v3` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
+| `in_ordinances_amlegal_v3_probes` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
 | `in_ordinances_dc` | direct | `app.js`, `scripts/export_grid_sentiment.py` |
 | `in_ordinances_dc_county_sites_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc_coverage_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc_v2` | direct | `scripts/export_ordinances.py` |
-| `in_ordinances_dc_v2_triage` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_dc_v2_triage` | direct | `scripts/acceptance_run.py`, `scripts/export_ordinances.py` |
 | `in_ordinances_publisher_inventory_v2` | direct | `scripts/export_ordinances.py` |
 | `in_osm_power_lines` | direct | `scripts/export_context_layers.py` |
 | `in_osm_power_substations` | direct | `scripts/export_context_layers.py` |
@@ -176,8 +188,15 @@ headline can be audited rather than taken on trust:
 | `in_queue_miso` | direct | `app.js` |
 | `in_queue_miso_extras` | direct | `grid.html`, `scripts/export_signoff_payloads.py` |
 | `in_railroads` | direct | `app.js`, `scripts/export_phase2_close.py` |
+| `in_rate_component_gaps` | direct | `scripts/audit_honesty.py` |
+| `in_rate_eligibility` | **none** | — |
+| `in_rate_proxies` | direct | `scripts/acceptance_run.py`, `scripts/audit_honesty.py` |
+| `in_rate_wholesale_floor` | **none** | — |
+| `in_refresh_cadence` | **none** | — |
 | `in_roads_primary` | direct | `app.js`, `scripts/export_phase2_close.py` |
 | `in_roads_secondary` | direct | `app.js`, `scripts/export_phase2_close.py` |
+| `in_rtep_bus_join` | **none** | — |
+| `in_rtep_bus_summary` | direct | `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `app.js`, `grid.html` |
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
@@ -188,18 +207,18 @@ headline can be audited rather than taken on trust:
 | `in_si_d11_entity_dissolution` | direct | `app.js` |
 | `in_si_d22_county_rollup` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_d22_echo_facilities` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
-| `in_si_d22_echo_indiana` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_d22_echo_indiana` | direct | `app.js`, `si.html` |
 | `in_si_d22_idem_enforcement` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
-| `in_si_d22_parcel_join` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
+| `in_si_d22_parcel_join` | direct | `scripts/audit_honesty.py` |
 | `in_si_d25_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
 | `in_si_d25_stb_abandonment_state` | direct | `app.js` |
 | `in_si_d27_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
 | `in_si_d27_ucc_lapse_v2` | direct | `app.js` |
-| `in_si_d5_abandoned_buildings` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_d5_abandoned_buildings` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_evansville_demolition_permits` | direct | `scripts/build_d21_candidates.py`, `scripts/fix_indiana_clip_pjm.py` |
 | `in_si_evansville_foreclosures` | direct | `scripts/export_si_sources.py` |
-| `in_si_evansville_landbank` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_evansville_landbank` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_evansville_taxsale` | direct | `scripts/export_si_sources.py` |
 | `in_si_evansville_taxsale_transfers` | direct | `scripts/export_si_sources.py` |
 | `in_si_ibtr_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
@@ -209,17 +228,17 @@ headline can be audited rather than taken on trust:
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_lane_d_enrichment` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
-| `in_si_marion_route_check` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_marion_route_check` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals_county` | direct | `scripts/export_si_v2_surfaces.py` |
-| `in_si_parcel_signals_v2` | direct | `scripts/export_si_v2_surfaces.py` |
+| `in_si_parcel_signals_v2` | direct | `scripts/audit_honesty.py`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_refresh_brownfield_epa_in` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_ibtr_appeals` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_indy_code_enforcement` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_iocs_eviction` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_sri_taxsale_in` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
-| `in_si_signal_coverage` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
+| `in_si_signal_coverage` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_signals` | direct | `app.js`, `si.html` |
 | `in_si_signals_parcel_dated` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_sites_flags_v2` | direct | `app.js`, `si.html` |
@@ -228,9 +247,9 @@ headline can be audited rather than taken on trust:
 | `in_si_southbend_continuous_enforcement` | direct | `scripts/export_si_sources.py` |
 | `in_si_southbend_demolition_orders` | direct | `scripts/export_si_sources.py` |
 | `in_si_southbend_vacant_abandoned` | direct | `scripts/export_si_sources.py` |
-| `in_si_sri_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
+| `in_si_sri_placed` | direct | `scripts/audit_honesty.py` |
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
-| `in_site_gates` | direct | `app.js`, `scripts/export_sites_exact.py` |
+| `in_site_gates` | direct | `app.js`, `scripts/acceptance_run.py` |
 | `in_sites` | direct | `app.js`, `scripts/build_d21_candidates.py` |
 | `in_sites_county` | direct | `app.js`, `scripts/build_p36_wiring.py` |
 | `in_solar_potential` | direct | `app.js` |
