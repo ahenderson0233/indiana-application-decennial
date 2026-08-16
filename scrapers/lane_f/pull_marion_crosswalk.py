@@ -50,6 +50,14 @@ LAYERS = [
     {"key": "abandoned", "path": "MapIndy/MapIndyProperty/MapServer/11",
      "table": "in_si_indy_abandoned_vacant_spatial", "geom": True,
      "what": "Indy abandoned & vacant, WITH polygon geometry"},
+    # THE ADDRESS CROSSWALK. 465,050 Marion addresses, each carrying FULL_ADDRESS *and*
+    # STATEPARCELNUMBER — so an Indianapolis street address reaches a parcel DIRECTLY, with no
+    # geocoding step and no invented normalisation. This is what the 910k-row Indy code corpus
+    # needs: 54,995 Unsafe Buildings + Vacant Board Order rows across ~24,789 addresses currently
+    # reach 711 parcels through the generic address bridge.
+    {"key": "addresses", "path": "sde_Addressing/sde_Addressing/MapServer/0",
+     "table": "in_marion_address_crosswalk", "geom": False,
+     "what": "Marion address -> state parcel number crosswalk (Indy's own address authority)"},
 ]
 
 
