@@ -32,16 +32,31 @@ ECHO_ROWS = "https://echodata.epa.gov/echo/echo_rest_services.get_qid"
 PROBE = "--probe" in sys.argv
 client = bigquery.Client(project="energy-platfrom")
 
-def get(url, params, pause=1.1):
-    """One request, rate-limited, identifying itself. Returns parsed JSON or raises."""
+def get(url, params, pause=1.1, attempts=5):
+    """One request, rate-limited, identifying itself. Returns parsed JSON.
+
+    BOUNDED RETRY on 500/503/429 only, with exponential backoff — the same shape Lane D added to
+    `arcgis_pull_all` after an ArcGIS 503 killed a 910k-row pull mid-flight. ECHO threw a bare
+    HTTP 500 on the second county here; it is transient server load, not a wall, and a wall would
+    look different (401/403, or a body explaining the gate). Any other status still raises at once,
+    so a real refusal is never retried into looking like a success."""
     q = f"{url}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(q, headers={"User-Agent": UA, "Accept": "application/json"})
-    time.sleep(pause)
-    with urllib.request.urlopen(req, timeout=120) as r:
-        body = r.read().decode("utf-8", "replace")
-    if r.status != 200:
-        raise RuntimeError(f"HTTP {r.status} for {q[:120]}")
-    return json.loads(body)
+    last = None
+    for i in range(attempts):
+        time.sleep(pause if i == 0 else min(4 * 2 ** (i - 1), 32))
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            if e.code not in (500, 502, 503, 429):
+                raise                      # a genuine refusal - do not retry it away
+            last = f"HTTP {e.code}"
+            print(f"      transient {last}, retry {i+1}/{attempts}", flush=True)
+        except (urllib.error.URLError, TimeoutError) as e:
+            last = str(e)[:60]
+            print(f"      network {last}, retry {i+1}/{attempts}", flush=True)
+    raise RuntimeError(f"{attempts} attempts exhausted ({last}) for {q[:110]}")
 
 # ---- step 1: open the query. ECHO returns a QID that the download endpoint then pages. ----
 # A statewide request is REFUSED, and the refusal is informative rather than a shape change:
@@ -96,7 +111,12 @@ def pull_county(county):
 
 out, expected_total, failures = [], 0, []
 for i, county in enumerate(COUNTIES, 1):
-    got, expect, e = pull_county(county)
+    # One county failing must not kill the other 91. A partial pull that REPORTS what it missed
+    # is usable; a crash at county 2 of 92 is not, and neither is a silent skip.
+    try:
+        got, expect, e = pull_county(county)
+    except Exception as ex:
+        got, expect, e = [], 0, str(ex)[:120]
     expected_total += expect
     if e: failures.append((county, e))
     out.extend(got)

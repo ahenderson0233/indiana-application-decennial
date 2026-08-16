@@ -146,6 +146,63 @@ measured before/after count. The user should never have to toggle two layers to 
 
 ---
 
+## ══ BACKLOG — the full queue, in order, as of the 2026-08-15 checkpoint ══
+
+Phase A is COMPLETE. This is everything left to finish the tool. Ranked within each phase.
+
+| # | item | phase | state | blocked by |
+|---|---|---|---|---|
+| 1 | fix D22 ECHO rate-limit (429s) + shortfall detection, finish the pull | B | **job running** | — |
+| 2 | SI date-keying: address → parcel for 861,551 dated rows | B | **agent running** | — |
+| 3 | abandoned-property registries beyond Indy/South Bend | B | **agent running** | — |
+| 4 | wire the D5 split into `in_sites` (screener currently selects empty land) | B | ready | — |
+| 5 | B5 verify or retire `vw_county_dc_posture` 92/92 counter | B | ready | — |
+| 6 | B1/D9/D18 — DLGF Gateway bulk owner data (one pull, three unblocks) | B/D | ready | — |
+| 7 | file the IRS ALS FOIA for D13 | D | **drafted, awaiting operator** | operator |
+| 8 | B3 acreage disagreements: 41 shrunk (footprints>0) + 107 inflated >200% | B | needs a rule | operator |
+| 9 | B4 the 7 unresolved Indianapolis colo facilities | B | needs address source | — |
+| 10 | wire the 11 already-pulled-but-unwired Lane D columns | A-tail | ready, cheapest coverage left | — |
+| 11 | fold staged D11/D21/D27 into `in_si_signals` | A-tail | ready | — |
+| 12 | recover `geometry_geojson` for brownfields (polygon, not location) | B | ready, it is a join | — |
+| 13 | D4 tax delinquency (SRI pre-sale lists) | D | seasonal — July | calendar |
+| 14 | A1 listings via an IEDC data request | D | **needs operator email** | operator |
+| 15 | D23 surplus disposal (IDOA + land banks) | D | low value, watch-list | — |
+| 16 | D10 state tax warrants — $600/yr INCite or $38/mo Doxpop | D | **procurement decision** | operator |
+| 17 | D15 mechanics liens | D | **BLOCKED** — procurement, do not build | operator |
+| 18 | C1 dossier v2 — the management deliverable | C | not started | Phase B |
+| 19 | C2 itemised rate engine (four-proxy, 1.75× gate, CPS shape) | C | proxy only today | Phase B |
+| 20 | C3 RTEP → bus drill-down join | C | table exists, join does not | — |
+| 21 | C4 saved workspaces / shortlist v2 | C | not started | — |
+| 22 | C5 PMTiles all-parcel rendering | C | **BLOCKED** on WSL/Docker install | operator |
+| 23 | E1 honesty audit — 50 numbers traced to source + date | E | not started | Phases B/C |
+| 24 | E2 refresh cadence scheduling | E | **deferred by operator** | operator |
+| 25 | E3 national-baseline handover pack | E | not started | everything |
+| 26 | E4 acceptance run against spec §13 | E | not started | everything |
+
+**Operator decisions outstanding:** items 7, 8, 14, 16, 17, 22, 24.
+
+### D22 is REQUIRED (operator) — the routes, if REST keeps throttling
+
+ECHO's REST service refuses a statewide query (queryset limit, 127,266 rows) and rate-limits the
+county walk with HTTP 429. It is not gated — no key, no account, no terms wall — so this is a
+throughput problem, not a permission one, and there are four ways through. In preference order:
+
+1. **Slow the county walk.** Raise the pause to 3–5 s and keep the bounded retry. 92 counties at
+   ~3 s and a few pages each is roughly 20–40 minutes unattended. Cheapest, no new surface.
+2. **ECHO's BULK CSV download files.** Lane F recorded an open bulk CSV directory alongside the
+   REST service. A single state file avoids per-county paging entirely and is the sturdier
+   long-term refresh path. **Try this before tuning the REST walk further.**
+3. **`get_download` with `output=CSV`.** The same QID the REST call returns can be downloaded as
+   CSV — the endpoint explicitly refuses JSON but accepts CSV/GEOJSOND. One request per county
+   instead of N pages, so far fewer calls and far less 429 exposure.
+4. **IDEM's own enforcement database** (`oe.idem.in.gov/idem_oe_order`) — public, 1995-present,
+   all 92 counties, no registration. Not a substitute for ECHO's facility universe, but it is the
+   Indiana-specific enforcement record and is worth holding either way.
+
+None of these involves working around a gate; ECHO is open and simply slow.
+
+---
+
 ## PHASE B — data-integrity debts (parallel; several are blocked upstream)
 
 **B1 — `mat_parcel_attrs` is 100% NULL** on every attribute column across all 3,553,381 Indiana

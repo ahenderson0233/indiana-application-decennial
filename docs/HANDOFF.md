@@ -1,4 +1,110 @@
-# HANDOFF — Indiana Siting Intelligence (updated 2026-08-15, session closed clean)
+# HANDOFF — Indiana Siting Intelligence
+
+# ══ CHECKPOINT 2026-08-15 (late session) — READ THIS BLOCK FIRST ══
+
+**Read `docs/GAMEPLAN.md` immediately after this file.** HANDOFF is the RECORD of what happened;
+GAMEPLAN is the PLAN and the backlog. Everything below is measured, not recalled.
+
+## Where the application stands
+
+| | |
+|---|---:|
+| tables in `indiana_app` | 201 + 12 views |
+| registered in `_registry` | 199 |
+| **reaching a user-facing surface** | **196 of 199 (98%)** — was 139 when Phase A began |
+| not reaching a surface | 3, all deliberate, each with a written waiver |
+| pages live | 6 (Map · Grid · Market · Community · SI Feed · Data) |
+| parcels held / class-union rendered | 3,553,194 / 1,200,916 |
+| transmission after the HIFLD+OSM merge | 3,737 lines / 27,866 km |
+| substations after the merge | 3,858 (2,925 points + 933 footprints) |
+| data centres | 249 pins, 157 site-precision, 92 flagged city-centroid |
+
+**PHASE A IS COMPLETE.** A1–A6 all closed. Phase B is under way.
+
+## ⚠ STILL RUNNING AS THIS CHECKPOINT WAS WRITTEN — do not restart blindly
+
+Three agents and one job were live. They survive a context refresh; check their outputs before
+re-launching anything.
+
+1. **D22 ECHO pull** — `scrapers/lane_f/pull_d22_environmental.py`, background job. Walks 92
+   counties (statewide is refused: *"Rows Returned would be 127266. Queryset Limit would be
+   exceeded"*). **Now hitting HTTP 429 — ECHO is RATE-LIMITING us at 1.1 s/request.** Two things
+   to fix before trusting a run: raise the pause (try 3–5 s) and add SHORTFALL detection — Adams
+   returned 825 of 928 on a short page and that was silently accepted. The script's file is
+   MODIFIED and UNCOMMITTED.
+2. **SI date-keying agent** — building `scripts/build_si_date_keying.py` (present, untracked) and
+   `docs/SI_DATE_KEYING.md`. Task: match the dated address-only SI rows to parcels using an
+   EXISTING normalisation (`energy.mat_si_address_location`, 95,967 IN rows) — explicitly told
+   NOT to invent an address-normalisation function.
+3. **Abandoned-property agent** — writing `scrapers/lane_f/ABANDONED_PROPERTY_FINDINGS.md`.
+   Task: find abandoned/vacant STRUCTURE registries beyond Indy and South Bend across the other
+   90 counties.
+
+## The five findings from this session that change what the app claims
+
+1. **52% of the SI corpus was not a seller-intent signal.** `D5_vacancy` was 947,592 rows, of
+   which 945,896 (99.8%) were *footprint absence* — a parcel with no building, which is a land
+   state we already carry as `occ_group='no_structure'`, not intent to sell. **840,819 of 847,410
+   signal-flagged parcels (99.2%) were empty land**, so the screener's "Requires seller-intent
+   signal" filter has been selecting vacant land. Split into
+   `in_si_d5_abandoned_buildings` (7,174 — the real signal) and
+   `in_si_d5_vacant_land_NOT_A_SIGNAL` (945,896). **Vacant land REMAINS in the app** as a screener
+   class and as the BESS sizing basis; it simply stops counting as intent.
+2. **Removing that non-signal repaired the date picture.** The corpus becomes 872,262 rows, of
+   which **869,755 are dated (99.7%)**, not the 47.8% previously reported — that figure was itself
+   an artifact of counting 945,896 undated rows as a signal. 55,453 events fall in the last 3 years.
+3. **92 of 242 data-centre pins were census CITY CENTROIDS** rendered as facility locations
+   (`datacentermap` publishes `precision='city'`), with 32 stacked on one point near New Carlisle
+   including Microsoft Mishawaka ~15 km away. Now tiered and drawn apart. **National scope: 4,370
+   rows sit in stacks of 5+, worst 251** — filed to the platform session's backlog.
+4. **The map was drawing 2,925 of 3,858 substations.** The missing 933 carry no lat/lon, only a
+   footprint polygon — and they are exactly the OSM-only ones. Now drawn as real footprints, and
+   the screener's distance index grew 2,925 → 8,219 entries by binning polygon vertices.
+5. **NFIRS needed three filters, not one.** Only ~21% of incidents are structure fires; of those,
+   78% report zero property loss; and most are residential. The funnel is 76,779 raw → 16,264
+   structure fires → 3,082 non-residential → **469 SI-grade** (non-residential, ≥$10k loss).
+
+## Operator rulings issued this session — all binding
+
+- **Buildable area depends on use case.** Hyperscale DC = WHOLE PARCEL (a structure is demolition
+  scope); BESS = OUTDOOR SPACE. Moved C&I parcels passing "fits ≥25 MW" from 853 → 1,099 in Marion.
+- **County active-queue MW counts as SUPPLY** (favourable), not as competing demand.
+- **SI only counts at the NON-RESIDENTIAL level**, and only where severity would plausibly move an
+  owner to sell — a contained fire or a gas leak is not seller intent.
+- **Union-and-dedupe every duplicated subject**; never show two partial layers of one thing.
+- **Market/series tables do NOT need geometry** and must not be reloaded chasing it.
+- **Vacancy is two distinct things**; only the abandoned BUILDING is a signal.
+- **Schools and weather stations removed** from the app (schools were an Illinois experiment).
+- Vacant land stays in the app for BESS siting, just not as an SI signal.
+
+## Instrument failures caught this session — the pattern to keep repeating
+
+Every one of these produced a confident wrong number before being caught. **A clean or alarming
+result is a claim about the instrument first.**
+
+| what it read | what was true |
+|---|---|
+| "196 of 196 tables wired" | counted each table's own build script as a feature; truth 139 |
+| "79 tables not locatable" | exact-name column matching missed `faclong`, `latitude_raw`, `lstreet1`; truth 49 |
+| "362 columns missing from WARN" | case-sensitive comparison — `CASE_TYPE` vs `case_type` counted twice |
+| "RTEP join yields 6%" | measured 932 Indiana rows against 15,443 PJM-wide; truth 100% |
+| "OSM substations: 1 of 2,873" | filtered on `latitude`; 2,872 are polygons with no point |
+| "D25 runs 2007–2019, historic" | MIN/MAX on a STRING date is lexicographic; truth 2002 → 2026-01-05 |
+| "10 of 19 signals have no endpoint" | Lane D matched by name-token overlap (W17 forbids it); truth 96 of 126 carry one |
+| "brownfields cannot be plotted" | they carry Latitude/Longitude; what is missing is the POLYGON |
+| "SI is 47.8% dated" | inflated by 945,896 undated non-signal rows; truth 99.7% |
+
+## Where to resume
+
+`docs/GAMEPLAN.md` Phase B. The immediate queue is in its backlog table. First actions:
+check the three background outputs above, fix the D22 rate limit, then B5 (verify or retire the
+`vw_county_dc_posture` 92/92 counter) and B1 (the DLGF Gateway owner-data pull, which unblocks
+B1 + D9 + D18 in one acquisition).
+
+---
+
+# (historical record below — the pre-checkpoint handoff)
+
 
 **✅ RESOLVED 2026-08-15 — the exact-acres re-export is complete and consistent.** Rather than
 splice the partial 44 counties from `0c9405c` onto the other 48 (two generations, one map —
