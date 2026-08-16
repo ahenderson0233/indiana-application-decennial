@@ -16,11 +16,11 @@ happened. All four are shown per signal:
 
 | | |
 |---|---:|
-| parcels flagged (v2) | **11,117** |
-| …carrying an event date | 9,886 (89%) |
-| …with an event inside 3 years | 2,297 |
-| …with an event inside 5 years | 4,031 |
-| C/I · other non-res · agriculture · vacant land | 4,506 · 681 · 298 · 5,632 |
+| parcels flagged (v2) | **23,140** |
+| …carrying an event date | 13,373 (58%) |
+| …with an event inside 3 years | 4,263 |
+| …with an event inside 5 years | 7,298 |
+| C/I · other non-res · agriculture · vacant land | 4,766 · 711 · 327 · 17,336 |
 | **counties with ≥1 flagged parcel** | **92 of 92** |
 | **the flag before this build** | 847,410, of which 840,819 (99.2%) was empty land |
 
@@ -38,11 +38,11 @@ error).
 
 | signal | what it is | held | reached | admitted | counties (adm/reach) | C/I | event range | excluded: resid / low-sev |
 |---|---|---:|---:|---:|:---:|---:|---|---|
-| `D2_foreclosure` | mortgage foreclosures | 62451 | 31,677 | **2,296** | **91**/92 | 533 | 2006-02-23 → 2026-08-14 | 29,381 / 0 |
-| `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 2,985 | **1,696** | **68**/77 | 375 | 2004-08-17 → 2026-08-05 | 1,289 / 0 |
+| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 19,773 | **11,954** | **77**/91 | 445 | 2020-08-01 → 2026-08-01 | 7,819 / 0 |
+| `D2_foreclosure` | mortgage foreclosures | 62451 | 35,512 | **3,571** | **91**/92 | 560 | 2006-02-23 → 2026-08-14 | 31,941 / 0 |
+| `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 3,338 | **1,937** | **76**/86 | 454 | 2003-11-19 → 2026-08-05 | 1,401 / 0 |
 | `D16_structure_fire` | NFIRS structure fires — *severity-gated upstream: 76,779 raw -> 469 SI-grade* | 28581 | 12,544 | **1,680** | **91**/92 | 1,101 | 2020-01-05 → 2024-12-28 | 10,864 / 0 |
 | `D5_unsafe_building` | Indy 'Unsafe Buildings' cases — *derived from the held code corpus* | — | 11,901 | **1,320** | ⚠ **1**/1 | 632 | 2014-09-11 → 2024-02-23 | 10,581 / 0 |
-| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 6,410 | **1,246** | **62**/90 | 280 | 2020-08-01 → 2026-08-01 | 5,164 / 0 |
 | `D22_environmental_violation` | EPA ECHO compliance violations | — | 1,152 | **931** | **91**/92 | 420 | 1984-04-11 → 2026-08-03 | 221 / 0 |
 | `D14_sba_chargeoff` | SBA loan charge-offs | 3774 | 1,773 | **762** | **71**/86 | 696 | 1993-12-28 → 2026-05-20 | 1,011 / 0 |
 | `D5_vacant_board_order` | Indy 'Vacant Board Order' cases — *derived from the held code corpus* | — | 8,598 | **658** | ⚠ **1**/1 | 291 | 2014-09-10 → 2024-02-27 | 7,940 / 0 |
@@ -78,20 +78,26 @@ Three key namespaces had to be reconciled; a naive join across them reads zero.
 
 | bridge | admitted rows | admitted parcels |
 |---|---:|---:|
-| mat_si_address_location.build_id = in_sites.build_id, CONFIRMED by ST_CONTAINS(in_sites. | 2,025 | 1,970 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded] | 2,019 | 1,924 |
-| IN: prefix stripped | 1,696 | 1,696 |
-| StatePIN punctuation stripped | 1,753 | 1,691 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded] | 11,983 | 11,972 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded] | 2,001 | 1,909 |
+| mat_si_address_location.build_id = in_sites.build_id, CONFIRMED by ST_CONTAINS(in_sites. | 1,914 | 1,868 |
+| IBTR stateParcelNumber (publisher key, not the corpus IN: copy),IN: prefix stripped | 1,696 | 1,696 |
+| StatePIN punctuation stripped | 1,572 | 1,518 |
 | STREET_ADDRESS -> sde_Addressing FULL_ADDRESS -> STATEPARCELNUMBER | 1,978 | 1,484 |
 | ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded] | 1,044 | 1,003 |
 | PARCEL_I -> STATEPARCELNUMBER (Marion sde_Parcel layer 5) | 623 | 623 |
-| mat_si_address_location.build_id = in_sites.build_id (spatial route disagreed or absent) | 620 | 573 |
+| mat_si_address_location.build_id = in_sites.build_id (spatial route disagreed or absent) | 614 | 567 |
 | USER_Parcel_ID punctuation stripped | 268 | 268 |
+| IBTR stateParcelNumber (publisher key, not the corpus IN: copy) | 241 | 241 |
 | State_ID__ punctuation stripped | 228 | 228 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 181 | 181 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 111 | 111 |
 | STATE_ID punctuation stripped | 109 | 109 |
 | State_ID_LU punctuation stripped | 22 | 22 |
-| StatePIN punctuation stripped,mat_si_address_location.build_id = in_sites.build_id, CONF | 17 | 17 |
-| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],St | 3 | 3 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 18 | 18 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],StatePIN punctuation stri | 17 | 17 |
+| ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded],mat_si_address_location.b | 6 | 6 |
+| ST_CONTAINS(in_sites.parcel_geog, geocoded rooftop point) [D85 globe parcel excluded],ST | 3 | 3 |
 
 ## What is NOT held at all
 

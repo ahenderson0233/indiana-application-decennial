@@ -1,6 +1,90 @@
 # HANDOFF — Indiana Siting Intelligence
 
-# ══ CHECKPOINT 2026-08-16 — READ THIS BLOCK FIRST ══
+# ══ CHECKPOINT 2026-08-16 (SESSION CLOSE) — READ THIS BLOCK FIRST ══
+
+> **Phases A, B, C and E are materially complete. C4/C5 and three §13 PARTIALs remain.**
+> This block is the whole session. The block below it is the earlier checkpoint from the same day.
+
+## ⚠ FIRST ACTIONS FOR THE NEXT SESSION, IN ORDER
+
+1. **Verify the site payload matches the warehouse.** Run `scripts/audit_honesty.py`. It failed
+   once today for exactly this reason (payload 11,117 vs warehouse 23,140) because a rebuild
+   landed after the last export. A re-export was IN FLIGHT at session close — **confirm it
+   finished and that the audit is 12/12** before trusting any on-screen SI number.
+2. **Check what the background agents landed.** See "agents still running" below.
+3. Then `docs/GAMEPLAN.md` backlog.
+
+## What was built today
+
+| item | result |
+|---|---|
+| **B2** widen `has_si_signal` | 847,410 → **23,140**, non-residential + severity-gated |
+| **B3** acreage rule | take the SMALLER of two disagreeing measures, disputed-labelled |
+| **B4** colo addresses | **zero of 8 are missing buildings** — carrier-hotel confirmed |
+| **B5** county DC posture counter | RETIRED — the view never existed |
+| **D22** environmental | 58,003 ECHO facilities, 100% located; 931+113 parcels admitted |
+| **Marion crosswalk** | 1.8% → **100%**, corroborated at 99.87% by a second instrument |
+| **Indy address authority** | code corpus 711 → **14,378 parcels** |
+| **item 10** Lane D columns | two were PLACEMENT: SRI +24,948 parcels, IBTR +3,338 |
+| **item 28** WARN dedupe | 2,440 rows across two tables → 1,194 real notices |
+| **C1** dossier | P1–P6 verdict, generated end-to-end, printable |
+| **C2** rate engine | four proxies + the ≥1.75× floor — and an honest "we cannot quote this" |
+| **C3** RTEP→bus | 289 of 907 upgrades reach a facility, 79 facilities, 30 load-growth |
+| **E1** honesty audit | 12 adversarial checks; **caught a live stale-payload defect** |
+| **E2** refresh cadence | derived from publisher event dates, not declared |
+| **E3** handover pack | generated; leads with the errors, not the assets |
+| **E4** acceptance run | §13: **4 PASS, 3 PARTIAL, 0 FAIL, 2 N/A** |
+
+**SI flag now: 23,140 parcels — 7,183 can host ≥5 MW BESS, 3,015 can host ≥25 MW DC.**
+69% cannot host either; the operator ruled that an expected and useful filter, not a defect.
+
+## Lessons this session earned — every one from a wrong number caught
+
+1. **When a join reads zero, suspect the KEY FORMAT before the data.** 0 of 945,896 was an `IN:`
+   prefix. Stripping it reproduced an existing flag at *exactly* 845,373, which is how we knew the
+   bridge was right rather than plausible.
+2. **A dead end in the tables you HOLD is not a dead end in the publisher's catalogue.** "Marion
+   has no crosswalk" was true of our tables; the county publishes one with 347,049 rows.
+3. **Read the value vocabulary before trusting a count.** South Bend "code enforcement" is 95%
+   litter and weeds; Evansville "demolition permits" is 90% residential teardowns. Admitting them
+   would have been the D5 mistake in a new costume.
+4. **A perfect or symmetric number is a defect until proven otherwise.** 100% spatial match = the
+   D85 globe parcel. A symmetric 74/74 WARN split = city whitespace, not divergence.
+5. **Unpublished is NULL, never 0 — and check your own code against the rule you just quoted.**
+   The rate engine flagged 95 "violations" that were absent rates I had treated as zero.
+6. **Assert the window you GOT, not the one you asked for.** A 12-month LMP filter returned 39
+   days; a summer-only sample over-states a wholesale floor.
+7. **Never read a category off a mutually-exclusive ladder.** "0 high-priority violators" when 95
+   exist, because every HPV was also in significant violation.
+8. **Make the wiring census a script.** The denominator moved 226 → 242 → 252 in one day.
+9. **Codified silence is not permissiveness.** Jefferson County approved a 7.1M sq ft datacentre
+   by administrative interpretation under a code that never mentions data centres.
+
+## Agents still running at session close
+
+- **County DC-action sweep (parent).** Seven regional batches are written to the session
+  scratchpad as `batch_B/C/D/E/F/G.json` (+ batch A re-sweeping). The parent has merge, load and
+  findings staged and will write `in_dc_actions_county_v2` + `scrapers/lane_f/COUNTY_DC_ACTION_FINDINGS.md`.
+  **Two warnings were relayed to it and must be checked in its output:** a stale `batch_MINE.json`
+  in the same folder risks DOUBLE-COUNTING counties if the merge globs `batch_*.json`; and its
+  sub-agents could not reply to it because it identified itself by agent TYPE, not ID.
+- Findings already reported but NOT yet in BigQuery are listed per-batch in the notifications;
+  if the parent fails, those counts are recoverable from the JSON files.
+
+## Known gaps in the app right now
+
+- **P6 has no Indiana rate.** Three component rows exist and two are `not_held`. No component-level
+  Indiana tariff is in the estate, so C2 compares proxies and refuses to quote.
+- **Owner names are NULL on all 3,553,381 parcels** — blocks D9, D18, D11, D27 and IDEM.
+- **IDEM's 22,565 enforcement actions carry NO event date** (`document_published` is a Y/N flag).
+- **D12's 747,122 Indy rows still match zero** via the generic bridge; the address authority fixed
+  Unsafe Buildings / Vacant Board Order but not the whole corpus.
+- **68% of RTEP upgrades reach no facility** — reported as unmatched rather than forced.
+- **The ordinance corpus is 19 admitted sections in 9 jurisdictions**; the real regulation is
+  county moratoria, which the running agent is loading.
+- **C4 saved workspaces and C5 PMTiles are not built** (C5 blocked on a WSL/Docker install).
+
+# ══ (earlier checkpoint, same day) ══
 
 > **The B2 headline item is DONE, and D22 is acquired and wired.** `has_si_signal` was
 > 847,410 parcels of which 99.2% was empty land; it is now **9,383 non-residential,

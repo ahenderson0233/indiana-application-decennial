@@ -154,6 +154,32 @@ measured before/after count. The user should never have to toggle two layers to 
 
 ---
 
+## ══ STATE AT 2026-08-16 SESSION CLOSE ══
+
+**Phases A, B, C and E are materially complete.** What is genuinely left:
+
+| # | item | phase | why it is not done |
+|---|---|---|---|
+| **C4** | saved workspaces / shortlist v2 | C | not started — inherently front-end, operator deferred the front-end pass |
+| **C5** | PMTiles all-parcel rendering | C | ⛔ blocked on a WSL or Docker install for tippecanoe |
+| §13(2) | upload PARITY | E | door exists; parity needs ONE round-trip test with a real file |
+| §13(5) | AI docket summary | E | not built — this app has no LLM feature; the dossier half IS met |
+| §13(6) | three-register visual grammar | E | human review, deferred with the front-end |
+| §13(8) | P6 acceptance | E | cannot close — no component-level Indiana tariff exists |
+| D | **DLGF Gateway owner pull** | D | ⭐ still the single highest-value acquisition: one pull unblocks D9, D18, D11, D27 and IDEM |
+| D | IDEM event dates | D | 22,565 actions held undated; dates live on per-case document pages |
+| D | D12 Indy corpus | B/D | 747,122 rows still unplaced; needs Indianapolis geocoding beyond the address authority |
+| ⚖ | **amlegal licence** | — | operator ruling — unlocks 17 counties (see item 33) |
+| ⚖ | **robots-vs-terms policy** | — | operator ruling — 30+ hosts disallow ClaudeBot by name (item 34) |
+
+**Do not quote a wiring or coverage figure from this document.** Both denominators moved several
+times in one day (226 → 242 → 252 registered objects; 37 → 68 counties assessed). Re-run
+`scripts/audit_wiring_census.py` and `scripts/audit_honesty.py`.
+
+**Standing verification ritual, earned today:** after ANY build that changes `in_si_sites_flags_v2`,
+re-export the sites and re-run the honesty audit. The audit failed once today precisely because a
+rebuild landed after an export and the map shipped a stale number.
+
 ## ══ BACKLOG — the full queue, in order, as of the 2026-08-15 checkpoint ══
 
 Phase A is COMPLETE. This is everything left to finish the tool. Ranked within each phase.
