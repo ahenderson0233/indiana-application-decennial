@@ -58,6 +58,26 @@
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
+
+  <div class="card"><h2>The rate engine — what we can defend, and what we refuse to quote</h2>
+    <div class="hint" style="margin-bottom:8px">The URDB table above is <b>flattened</b> and is a
+      cross-check only. This is the itemised engine: a wholesale floor from ISO settlement data, the
+      tariff eligibility test, and an explicit list of the components no Indiana publisher has put
+      in the public record.</div>
+
+    <div class="hint" style="margin:6px 0"><b>Wholesale floor</b> — the hard lower bound.</div>
+    <div class="scroll"><table id="t-floor"><tr><th>ISO</th><th>market</th><th>window actually returned</th><th>intervals</th><th>avg ¢/kWh</th><th>median ¢/kWh</th><th>min credible retail ¢/kWh</th></tr></table></div>
+    <div class="hint cannot" id="h-floor" style="margin:6px 0"></div>
+
+    <div class="hint" style="margin:12px 0 6px"><b>Eligibility</b> — a MW threshold is a
+      <b>minimum to qualify</b>, never a cap on what a site may draw.</div>
+    <div class="scroll"><table id="t-elig"><tr><th>utility</th><th>tariff</th><th>requirement</th><th>threshold</th><th>300 MW verdict</th><th>basis</th></tr></table></div>
+
+    <div class="hint" style="margin:12px 0 6px"><b class="cannot">Components we do NOT hold.</b>
+      These render as <span class="cannot">not published</span> — never as zero. An absent rate
+      treated as 0 is what produced 95 false "below floor" violations on this engine's first run.</div>
+    <div class="scroll"><table id="t-gaps"><tr><th>utility</th><th>tariff</th><th>component</th><th>rate</th><th>state</th><th>source</th></tr></table></div>
+    <div class="prov" id="p-rate"></div></div>
 </div>
 <script src="common.js"></script>
 <script>
@@ -124,6 +144,38 @@
   document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
     `<tr><td>${String(r.utility).slice(0, 40)}</td><td>${(r.name || "").slice(0, 44)}</td><td>${r.sector || ""}</td><td>${r.has_demand_charge ? "yes" : "—"}</td><td>${r.energy_rate_max_usd_kwh ?? "—"}</td></tr>`).join(""));
   document.getElementById("p-tar").textContent = prov("in_urdb_rates") + " · name-matched floor; rate-engine math is the flagged milestone";
+
+  /* ---------- C2 the rate engine ----------
+     Every "not held" component renders as its own words, never as 0. An absent rate treated as
+     zero is exactly what put 95 spurious "below the wholesale floor" violations on screen the
+     first time this engine ran. */
+  const E = await fetchGz("data/engines.json.gz");
+  const na = `<span class="cannot">not published</span>`;
+  document.getElementById("t-floor").insertAdjacentHTML("beforeend", (E.wholesale_floor || []).map(r =>
+    `<tr><td><b>${r.iso}</b></td><td>${r.market || "—"}</td>
+     <td>${String(r.first_day).slice(0, 10)} → ${String(r.last_day).slice(0, 10)}</td>
+     <td>${fmt(r.intervals)}</td><td>${r.avg_lmp_cents_kwh ?? "—"}</td>
+     <td>${r.p50_cents_kwh ?? "—"}</td>
+     <td><b>${r.min_credible_retail_cents_kwh ?? "—"}</b></td></tr>`).join(""));
+  document.getElementById("h-floor").textContent = E.caveats.wholesale_floor;
+
+  document.getElementById("t-elig").insertAdjacentHTML("beforeend", (E.eligibility || []).map(r =>
+    `<tr><td>${r.utility || "—"}</td><td>${r.tariff_code || "—"} ${(r.tariff_name || "")}</td>
+     <td>${r.requirement || "—"}</td>
+     <td>${r.threshold_value != null ? `${r.threshold_value} ${r.unit || ""}` : na}</td>
+     <td><b>${r.verdict_300mw || "—"}</b></td>
+     <td class="hint">${r.basis || ""}</td></tr>`).join(""));
+
+  document.getElementById("t-gaps").insertAdjacentHTML("beforeend", (E.component_gaps || []).map(r =>
+    `<tr><td>${r.utility || "—"}</td><td>${r.tariff_code || "—"}</td>
+     <td>${r.component || r.component_type || "—"}</td>
+     <td>${r.rate_or_null != null ? `${r.rate_or_null} ${r.unit || ""}` : na}</td>
+     <td class="${r.value_status === "not_held" ? "cannot" : ""}">${r.value_status || "—"}</td>
+     <td>${r.source_url ? `<a href="${r.source_url}" target="_blank" rel="noopener">source</a>` : "—"}</td></tr>`).join(""));
+  document.getElementById("p-rate").innerHTML =
+    `<code>in_rate_wholesale_floor</code> · <code>in_rate_eligibility</code> ·
+     <code>in_rate_component_gaps</code> · <code>in_rate_proxies</code>, built by
+     <code>scripts/build_rate_engine.py</code>. ${E.caveats.eligibility} ${E.caveats.component_gaps}`;
 })();
 </script>
 </body></html>

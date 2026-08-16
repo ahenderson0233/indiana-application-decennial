@@ -71,6 +71,29 @@
       which IS cloudscene's state key (<code>&lt;state&gt;-regional</code> buckets run across the table;
       <code>state</code> is blank for 5,283 of 5,388 rows). <b>Cloudscene holds no coordinates</b>, so it can
       never be a map layer — its only job is to tell us what our 242 pinned data centres might be missing.</div></div>
+  <div class="card"><h2>…and the answer: every "missing" colo, resolved</h2>
+    <div class="hint" id="colo-lead" style="margin-bottom:8px"></div>
+    <div class="scroll" style="max-height:320px"><table id="t-colo"><tr><th>facility</th><th>operator</th><th>verdict</th><th>address</th><th>already pinned as</th><th>evidence</th></tr></table></div>
+    <div class="prov"><code>in_dc_colo_resolved</code>, built by
+      <code>scrapers/lane_f/resolve_colo_addresses.py</code>. Coordinates are the publisher's own
+      (PeeringDB / baxtel) — <b>never a centroid</b>, and rows with no building carry NULL
+      coordinates on purpose so nothing renders as a site that does not exist.
+      cloudscene itself was <b>not scraped</b>: its terms forbid automated access, so it is
+      recorded BLOCKED and the work was done from the operators' own sites instead.</div></div>
+
+  <div class="card"><h2>Refresh cadence — derived from each publisher's dates, not declared</h2>
+    <div class="hint" id="cad-lead" style="margin-bottom:8px"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="cad-n">…</div><div class="hint">subjects with a derivable cadence</div></div>
+      <div class="card"><div class="bigstat cannot" id="cad-stale">…</div><div class="hint">likely STALE against their own history</div></div>
+    </div>
+    <div class="scroll" style="max-height:170px"><table id="t-cadsum"><tr><th>suggested cadence</th><th>subjects</th><th>likely stale</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b>Per subject</b> — staleness first.</div>
+    <div class="scroll" style="max-height:340px"><table id="t-cad"><tr><th>subject</th><th>rows</th><th>last event</th><th>days since</th><th>suggested</th><th>basis</th></tr></table></div>
+    <div class="prov"><code>in_refresh_cadence</code>, built by
+      <code>scripts/build_refresh_cadence.py</code>. A subject with no publisher event date reads
+      <span class="cannot">cannot derive</span> rather than being given a default interval.</div></div>
+
   <div class="card"><h2>Provenance — all registered tables</h2>
     <input id="f-q" placeholder="filter…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px;margin-bottom:8px">
     <div class="scroll" style="max-height:640px"><table id="t-prov"><tr><th>table</th><th>rows</th><th>source</th><th>built</th></tr></table></div></div>
@@ -181,6 +204,34 @@
       `<br>Provenance lists the latest build per table (${fmt(s.provenance.length)}); the _registry ledger keeps
        every build as an audit trail, so its raw row count (${fmt(s.registry_rows_total)}) is higher. The figure
        above is tables held, not ledger rows.`;
+
+  /* ---------- B4 colo resolution + E2 refresh cadence ---------- */
+  const E = await fetchGz("data/engines.json.gz");
+  const dash = `<span class="cannot">—</span>`;
+  document.getElementById("colo-lead").textContent = E.caveats.colo;
+  document.getElementById("t-colo").insertAdjacentHTML("beforeend", (E.colo || []).map(c =>
+    `<tr><td><b>${c.facility_name || "—"}</b></td><td>${c.operator || "—"}</td>
+     <td class="${c.verdict === "RESOLVED" ? "" : "cannot"}">${c.verdict}</td>
+     <td>${c.street_address ? `${c.street_address}, ${c.city || ""}` : dash}
+       ${c.latitude != null ? "" : `<div class="hint">no coordinates — deliberately, there is no building</div>`}</td>
+     <td>${c.already_pinned_as || (c.same_building_as ? `<span class="hint">inside ${c.same_building_as}</span>` : dash)}</td>
+     <td>${c.source_url ? `<a href="${c.source_url}" target="_blank" rel="noopener">operator</a>` : dash}
+       <span class="hint">${c.confidence || ""}</span></td></tr>`).join(""));
+
+  const CAD = E.cadence || [], CS = E.cadence_summary || [];
+  document.getElementById("cad-lead").textContent = E.caveats.cadence;
+  document.getElementById("cad-n").textContent = fmt(CAD.length);
+  document.getElementById("cad-stale").textContent = fmt(CAD.filter(r => r.likely_stale).length);
+  document.getElementById("t-cadsum").insertAdjacentHTML("beforeend", CS.map(r =>
+    `<tr><td>${r.suggested_cadence || `<span class="cannot">cannot derive</span>`}</td>
+     <td>${fmt(r.subjects)}</td><td>${r.stale ? `<span class="cannot">${fmt(r.stale)}</span>` : "—"}</td></tr>`).join(""));
+  document.getElementById("t-cad").insertAdjacentHTML("beforeend", CAD.map(r =>
+    `<tr><td>${String(r.subject).slice(0, 46)}<div class="hint">${r.kind || ""}</div></td>
+     <td>${fmt(r.rows_)}</td>
+     <td>${r.last_event ? String(r.last_event).slice(0, 10) : dash}</td>
+     <td class="${r.likely_stale ? "cannot" : ""}">${r.days_since_last_event != null ? fmt(r.days_since_last_event) : "—"}</td>
+     <td>${r.suggested_cadence || `<span class="cannot">cannot derive</span>`}</td>
+     <td class="hint">${String(r.cadence_basis || "").slice(0, 70)}</td></tr>`).join(""));
 })();
 </script>
 </body></html>

@@ -21,7 +21,7 @@ THE PUBLIC-DATA-ONLY RULE is criterion 1's teeth here: `orennia_*`, `be_ustest_*
 and `hifld_bus_features_v3` must never render and never export. That is checked against what is
 actually on disk, not against intent.
 """
-import gzip, json, os, glob, re, datetime, random
+import gzip, json, os, glob, re, datetime, random, subprocess, sys
 from google.cloud import bigquery
 
 REPO = r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial"
@@ -61,10 +61,26 @@ crit(1, "public-data-only: excluded sources never render or export", "PASS" if n
      f"scanned {len(glob.glob(os.path.join(REPO,'data','**','*.gz'),recursive=True))} payloads + pages · "
      f"{len(leaks)} leaks" + (f": {leaks[:3]}" if leaks else ""))
 
-unwired = [t for t in reg if t not in ("_registry",)]
-crit(1, "matrix: every registered object reaches a surface", "PASS",
-     f"{len(reg)} registered; wiring census reports 100% (see docs/WIRING_CENSUS.md, "
-     f"re-run scripts/audit_wiring_census.py — the denominator moves)")
+# RUN the census; never quote its document. This criterion previously hardcoded "PASS" and cited
+# docs/WIRING_CENSUS.md — which said "242 of 242" while the live count was 247 of 252, because
+# C2, C3, E2 and B4 had each registered a new object without wiring it. An acceptance run that
+# reads a stale artifact is not an acceptance run; the whole reason the census is a script is that
+# THE DENOMINATOR MOVES ON EVERY BUILD.
+_census = subprocess.run([sys.executable, os.path.join(REPO, "scripts", "audit_wiring_census.py")],
+                         capture_output=True, text=True, cwd=REPO)
+_m = re.search(r"REACHING A SURFACE:\s*([\d,]+)\s+of\s+([\d,]+)", _census.stdout or "")
+if _m:
+    _reach, _total = (int(x.replace(",", "")) for x in _m.groups())
+    _orphans = re.findall(r"^\s{2}(\S+)\s+rows=", _census.stdout, re.M)
+    crit(1, "matrix: every registered object reaches a surface",
+         "PASS" if _reach == _total else "FAIL",
+         f"MEASURED this run: {_reach} of {_total} registered objects reach a surface"
+         + (f" · {len(_orphans)} unwired: {_orphans[:6]}" if _reach != _total else ""))
+else:
+    crit(1, "matrix: every registered object reaches a surface", "FAIL",
+         f"could not measure — audit_wiring_census.py returned {_census.returncode} and no "
+         f"parseable result. Treating an unmeasurable criterion as PASS is how this one went "
+         f"stale in the first place. stderr: {(_census.stderr or '')[:200]}")
 
 # ---- (2) upload parity -----------------------------------------------------------------------
 app = open(os.path.join(REPO, "app.js"), encoding="utf-8", errors="ignore").read()

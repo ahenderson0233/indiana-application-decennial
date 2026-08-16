@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-16T17:35:34.831666+00:00",
+ "run_at": "2026-08-16T18:45:58.922287+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 115 payloads + pages \u00b7 0 leaks"
+   "detail": "scanned 116 payloads + pages \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "PASS",
-   "detail": "252 registered; wiring census reports 100% (see docs/WIRING_CENSUS.md, re-run scripts/audit_wiring_census.py \u2014 the denominator moves)"
+   "detail": "MEASURED this run: 255 of 255 registered objects reach a surface"
   },
   {
    "criterion": 2,

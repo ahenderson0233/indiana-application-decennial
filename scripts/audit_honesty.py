@@ -124,6 +124,51 @@ check("flag is not dominated by empty land", land_share < 90,
 check("no residential parcel is flagged", v.resid == 0,
       f"{v.resid} residential parcels carry an admitted signal")
 
+print("\n=== 7. every committed LOADER actually landed its table ===")
+# THE FAILURE THIS CATCHES, in full, because it cost 13 counties and was invisible for a day:
+# `scrapers/lane_f/pull_dc_actions_county.py` was committed at 13:42 on 2026-08-16. The table it
+# writes, `in_dc_actions_county_v2`, did not exist. The session reported "everything committed and
+# pushed" and it was TRUE of the repo — but this project's .gitignore excludes `scrapers/**/*.json`
+# by design, so the sweep's 388 KB of acquired data could never enter a commit, and `git add` on
+# explicitly-named paths never warns about a file you did not name. A clean tree was read as
+# "the work is safe" when it only ever meant "everything git tracks".
+#
+# So: a committed loader whose table does not exist is an UNFINISHED ACQUISITION. For a scraper,
+# "committed" and "safe" are different properties, and only the warehouse proves the second one.
+registered = {r.table_name for r in client.query(
+    f"SELECT DISTINCT table_name FROM `{DS}._registry`")}
+
+WRITES = ("load_table_from_json", "WRITE_TRUNCATE", "CREATE OR REPLACE TABLE",
+          "load_table_from_dataframe")
+# a table name as it appears in a string literal: in_foo, vw_foo, or the _meta convention
+NAME = re.compile(r"""['"`]([a-z_][a-z0-9_]{3,})['"`]""")
+PREFIX = ("in_", "vw_", "_ind")
+
+unlanded, writers = [], 0
+for p in sorted(glob.glob(os.path.join(REPO, "scrapers", "**", "*.py"), recursive=True) +
+                glob.glob(os.path.join(REPO, "scripts", "*.py"))):
+    src = open(p, encoding="utf-8", errors="ignore").read()
+    if not any(w in src for w in WRITES):
+        continue                      # a probe or a reader, not a loader — nothing to land
+    named = {m for m in NAME.findall(src) if m.startswith(PREFIX)}
+    # `_load("in_x", ...)` style helpers put the name in a variable; catch the f-string form too
+    named |= {m for m in re.findall(r"\{DS\}\.([a-z_][a-z0-9_]{3,})", src)
+              if m.startswith(PREFIX)}
+    # A trailing underscore means this is an f-string PREFIX FRAGMENT (`f"in_si_{slug}"`), not a
+    # table. Lane C and Lane D's util modules build names that way, and counting them as claims
+    # made this check fail on two loaders that had in fact landed everything they wrote.
+    named = {m for m in named if not m.endswith("_")}
+    if not named:
+        continue                      # writes to a name we cannot resolve statically; not a claim
+    writers += 1
+    if not (named & registered):
+        unlanded.append((os.path.relpath(p, REPO).replace("\\", "/"), sorted(named)[:4]))
+
+check("every committed loader has a table in _registry", not unlanded,
+      f"{writers} loaders scanned · {len(unlanded)} name only tables that DO NOT EXIST"
+      + ("".join(f"\n         !! {f} -> {n}" for f, n in unlanded) if unlanded else
+         " — no unfinished acquisition is sitting in the repo pretending to be done"))
+
 out = {
     "audited_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "checks_run": checks, "failures": len(findings), "findings": findings,
@@ -134,7 +179,10 @@ json.dump(out, open(path, "w", encoding="utf-8"), indent=1)
 print(f"\n{'='*72}")
 print(f"E1 HONESTY AUDIT: {checks} checks, {len(findings)} FAILURES")
 for f in findings:
-    print(f"  ✗ {f['check']}: {f['detail']}")
+    # ASCII deliberately. This line used a Unicode cross and the Windows console is cp1252, so
+    # the audit CRASHED on the one path that matters -- reporting its own failures. An audit that
+    # only survives when it passes is not an audit.
+    print(f"  FAIL: {f['check']}: {f['detail']}")
 if not findings:
     print("  every check passed — but a passing audit is only as good as its checks,")
     print("  and these are aimed at the four errors this project has actually made.")

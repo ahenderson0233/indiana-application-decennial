@@ -11,17 +11,10 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 249 of 254 registered objects reach a surface
+## 255 of 255 registered objects reach a surface
 
-### Not reaching a surface
+**Every registered object reaches at least one surface.**
 
-| object | rows | built by |
-|---|---:|---|
-| `in_dc_colo_resolved` | 8 | `—` |
-| `in_rate_eligibility` | 1 | `scripts/build_rate_engine.py` |
-| `in_rate_wholesale_floor` | 2 | `scripts/build_rate_engine.py` |
-| `in_refresh_cadence` | 268 | `scripts/build_refresh_cadence.py` |
-| `in_rtep_bus_join` | 1229 | `scripts/build_rtep_bus_join.py` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -62,9 +55,10 @@ headline can be audited rather than taken on trust:
 | `in_data_centers_located` | direct | `app.js`, `scripts/audit_honesty.py` |
 | `in_data_centers_peeringdb` | direct | `app.js`, `scripts/investigate_cloudscene_gap.py` |
 | `in_dc_actions` | direct | `app.js`, `community.html` |
-| `in_dc_actions_county_v2` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
-| `in_dc_actions_coverage_v2` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
-| `in_dc_colo_resolved` | **none** | — |
+| `in_dc_actions_county_v2` | direct | `community.html`, `scripts/audit_honesty.py` |
+| `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
+| `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |
 | `in_dc_docket_tracker` | direct | `app.js` |
 | `in_dc_eei_tariffs` | direct | `app.js` |
 | `in_drought_by_state` | direct | `app.js` |
@@ -164,7 +158,7 @@ headline can be audited rather than taken on trust:
 | `in_ordinances_dc` | direct | `app.js`, `scripts/export_grid_sentiment.py` |
 | `in_ordinances_dc_county_sites_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc_coverage_v2` | direct | `scripts/export_ordinances.py` |
-| `in_ordinances_dc_v2` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_dc_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_ordinances_dc_v2_triage` | direct | `scripts/acceptance_run.py`, `scripts/export_ordinances.py` |
 | `in_ordinances_publisher_inventory_v2` | direct | `scripts/export_ordinances.py` |
 | `in_osm_power_lines` | direct | `scripts/export_context_layers.py` |
@@ -188,15 +182,15 @@ headline can be audited rather than taken on trust:
 | `in_queue_miso` | direct | `app.js` |
 | `in_queue_miso_extras` | direct | `grid.html`, `scripts/export_signoff_payloads.py` |
 | `in_railroads` | direct | `app.js`, `scripts/export_phase2_close.py` |
-| `in_rate_component_gaps` | direct | `scripts/audit_honesty.py` |
-| `in_rate_eligibility` | **none** | — |
-| `in_rate_proxies` | direct | `scripts/acceptance_run.py`, `scripts/audit_honesty.py` |
-| `in_rate_wholesale_floor` | **none** | — |
-| `in_refresh_cadence` | **none** | — |
+| `in_rate_component_gaps` | direct | `market.html`, `scripts/audit_honesty.py` |
+| `in_rate_eligibility` | direct | `market.html`, `scripts/export_engine_outputs.py` |
+| `in_rate_proxies` | direct | `market.html`, `scripts/acceptance_run.py` |
+| `in_rate_wholesale_floor` | direct | `market.html`, `scripts/export_engine_outputs.py` |
+| `in_refresh_cadence` | direct | `data.html`, `scripts/export_engine_outputs.py` |
 | `in_roads_primary` | direct | `app.js`, `scripts/export_phase2_close.py` |
 | `in_roads_secondary` | direct | `app.js`, `scripts/export_phase2_close.py` |
-| `in_rtep_bus_join` | **none** | — |
-| `in_rtep_bus_summary` | direct | `scripts/acceptance_run.py` |
+| `in_rtep_bus_join` | direct | `grid.html`, `scripts/export_engine_outputs.py` |
+| `in_rtep_bus_summary` | direct | `grid.html`, `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `app.js`, `grid.html` |
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
@@ -257,7 +251,7 @@ headline can be audited rather than taken on trust:
 | `in_spc_severe_events` | direct | `app.js` |
 | `in_state_irp_catalog` | direct | `app.js` |
 | `in_storm_events` | direct | `community.html`, `scripts/export_context_layers.py` |
-| `in_substations` | direct | `app.js`, `scripts/export_context_layers.py` |
+| `in_substations` | direct | `app.js`, `grid.html` |
 | `in_territories` | direct | `app.js` |
 | `in_transmission_lines` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_transmission_union` | direct | `app.js`, `scripts/export_context_layers.py` |

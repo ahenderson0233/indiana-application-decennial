@@ -52,6 +52,23 @@
     <div class="scroll" style="max-height:420px"><table id="t-qm"><tr><th>project</th><th>county</th><th>POI</th><th>phase</th><th>ERIS MW</th><th>NRIS MW</th><th>type</th></tr></table></div>
     <div class="prov">indiana_app.in_queue_miso_extras · operator sign-off 2026-08-15: kept as a JOIN, never
       rendered as a second queue layer</div></div>
+
+  <div class="card"><h2>RTEP upgrades → the substation and bus they attach to</h2>
+    <div class="hint" style="margin-bottom:8px">PJM publishes the upgrades and their costs, but not
+      which bus each one lands on. This joins them through an <b>already-resolved substation name</b>
+      rather than a second name guess — <code>bus_label</code> is PSS/E format and matches nothing
+      directly, so guessing at it would have manufactured attachments.</div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="rb-fac">…</div><div class="hint">facilities carrying at least one upgrade</div></div>
+      <div class="card"><div class="bigstat" id="rb-load">…</div><div class="hint">of those, driven by LOAD GROWTH</div></div>
+      <div class="card"><div class="bigstat cannot" id="rb-un">…</div><div class="hint">join rows that reach no bus — reported, never forced</div></div>
+    </div>
+    <div class="hint" style="margin:6px 0"><b>By facility</b> — sorted by upgrade count.</div>
+    <div class="scroll" style="max-height:320px"><table id="t-rbsum"><tr><th>facility</th><th>county</th><th>kV</th><th>upgrades</th><th>baseline</th><th>supplemental</th><th>load growth</th><th>match</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b>Match quality, measured.</b> Every row carries how
+      it was matched and how confident that match is; nothing is presented as certain that is not.</div>
+    <div class="scroll" style="max-height:170px"><table id="t-rbq"><tr><th>confidence</th><th>join rows</th><th>distinct upgrades</th><th>reach a bus</th></tr></table></div>
+    <div class="prov" id="p-rb"></div></div>
 </div>
 <script src="common.js"></script>
 <script>
@@ -136,6 +153,38 @@
   }
   sel.onchange = renderQm;
   renderQm();
+
+  /* ---------- C3 RTEP -> bus ----------
+     The unmatched count is displayed as prominently as the matched one. 68% of upgrades reach no
+     facility, and an upgrade forced onto a plausible-looking bus would be a fabricated attachment
+     on a page people size projects from. */
+  const E = await fetchGz("data/engines.json.gz");
+  const S = E.rtep_bus_summary || [], Q = E.rtep_match_rates || [];
+  document.getElementById("rb-fac").textContent = fmt(S.length);
+  document.getElementById("rb-load").textContent =
+    fmt(S.filter(r => Number(r.load_growth_upgrades) > 0).length);
+  document.getElementById("rb-un").textContent =
+    fmt(Q.filter(r => !r.reach_a_bus).reduce((a, r) => a + Number(r.rows_ || 0), 0));
+
+  document.getElementById("t-rbsum").insertAdjacentHTML("beforeend", S.map(r =>
+    `<tr><td><b>${String(r.facility || "—").slice(0, 42)}</b>
+       <div class="hint">${String(r.drivers || "").slice(0, 60)}</div></td>
+     <td>${r.county || `<span class="cannot">—</span>`}</td>
+     <td>${r.kv ?? `<span class="cannot">—</span>`}</td>
+     <td><b>${fmt(r.upgrades)}</b></td>
+     <td>${fmt(r.baseline_upgrades)}</td><td>${fmt(r.supplemental_upgrades)}</td>
+     <td>${Number(r.load_growth_upgrades) > 0 ? `<b>${fmt(r.load_growth_upgrades)}</b>` : "—"}</td>
+     <td class="hint">${r.match_confidence || "—"}</td></tr>`).join(""));
+
+  document.getElementById("t-rbq").insertAdjacentHTML("beforeend", Q.map(r =>
+    `<tr><td class="${r.reach_a_bus ? "" : "cannot"}">${r.match_confidence || "unmatched"}</td>
+     <td>${fmt(r.rows_)}</td><td>${fmt(r.upgrades)}</td>
+     <td>${r.reach_a_bus ? fmt(r.reach_a_bus) : `<span class="cannot">0</span>`}</td></tr>`).join(""));
+
+  document.getElementById("p-rb").innerHTML =
+    `<code>in_rtep_bus_join</code> (1,229 rows) · <code>in_rtep_bus_summary</code> (79 facilities),
+     built by <code>scripts/build_rtep_bus_join.py</code> from
+     <code>in_pjm_rtep_upgrade_details</code> × <code>in_substations</code>. ${E.caveats.rtep_bus}`;
 })();
 </script>
 </body></html>
