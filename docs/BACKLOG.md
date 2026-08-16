@@ -1,5 +1,29 @@
 # BACKLOG — the running task ledger
 
+> ## ✅ STATE AT 2026-08-16 CLOSE — the §2a backlog is COMPLETE
+>
+> **Wiring 265/265 · Honesty 13/13 · Acceptance 5 PASS, 2 PARTIAL, 0 FAIL, 2 N/A ·
+> front-end audit 2 findings, 0 severe · payload 24,275 == warehouse 24,275**
+>
+> Every item the last session listed as open is closed. What follows is real, and short:
+>
+> **Waiting on a clock, not on work** — F3 (Howard, City of Elkhart: council votes **2026-08-17**)
+> and F4 (Marion: MDC final action on Proposal No. 238, **2026-08-19**). Neither is doable early.
+>
+> **Two agents were still running at close.** Both write their own files; nothing is lost if they
+> finished after the session ended, but **neither result is loaded**:
+> - `scrapers/lane_f/county_codified_ordinances.json` — codified zoning for the 55 counties never
+>   searched. **Check whether this file exists first**; if it does, it needs a loader.
+> - `scrapers/lane_f/idem_dates.json` — was at 3,925 exact dates and climbing when the session
+>   ended. `scrapers/lane_f/load_idem_dates.py` is **idempotent — just re-run it** to pick up
+>   whatever the agent finished.
+>
+> **Cannot close as specified, and are not defects:** §13(5) needs an AI docket summary and this
+> app has no LLM feature; §13(8) needs a component-level Indiana tariff that exists nowhere in the
+> estate. Record them as not-achievable-as-specified rather than converting them to passes.
+>
+> **Front-end pass is deferred to the next session by the operator.**
+
 **Maintained continuously. Nothing leaves this file except by being DONE or by being ruled
 out with a reason.** Opened 2026-08-16.
 
@@ -134,6 +158,22 @@ rather than a case-type list:
   225,359, Vehicle 46,969. Admitting the corpus wholesale would have inflated D12 by ~750,000
   rows of lawn care — the South Bend error a third time.
 
+## THE AUDIT SUITE — run these before trusting any number
+
+| script | asks | catches |
+|---|---|---|
+| `scripts/audit_honesty.py` | is what we ship true? | 13 adversarial checks incl. **payload vs warehouse**, D85 in any spatial join, a cannot-assess shipped as 0, and **every committed loader having a table** |
+| `scripts/audit_wiring_census.py` | does every registered object reach a surface? | the denominator MOVES on every build — never quote a past figure |
+| `scripts/audit_frontend.py` | do the pages work, **and are they current?** | missing element ids, dead UI, absent payload keys, redeclared consts, duplicate ids, and **a surface reading a superseded table** |
+| `scripts/acceptance_run.py` | §13, part by part | now **runs** the wiring census instead of quoting its document |
+| `scripts/audit_signal_reality.py` | what is actually left on the signals? | separates done / impossible / awaiting-operator from genuinely actionable |
+| `scripts/build_table_inventory.py` | what do we hold, and what does it CARRY? | 26 objects with owner data, 137 with a status vocabulary — where hidden signals live |
+
+**The "is it current" check earned its place the hard way.** The map showed 4 ordinances while the
+warehouse held 153 candidates, 19 admitted and 73 verified county actions. Nothing errored; the
+page rendered what it was told, and what it was told was two generations old. Every other check
+asked "does it work".
+
 ## RULES EARNED THIS SESSION
 
 1. **A completeness shortfall must be an `assert`, not a `print`.** The sweep loader reported "79 of 92" to a console nobody re-read and would have loaded anyway.
@@ -144,3 +184,24 @@ rather than a case-type list:
 6. **Check the state slice, not the national number.** `mat_parcel_attrs` has 69M owner names and **zero** for `parcel_source='parcels_in'`.
 7. **Never assume a date format.** A `%Y-%m-%d` parse over `MM/DD/YYYY` reported "0 upcoming auctions" when 16,325 were upcoming; the corrected parse then threw on `00/00/0000` and needed `SAFE.PARSE_DATE`.
 8. `r.keys` collides with `Row.keys()` — **third recorded occurrence**. Alias it `n_keys`.
+9. **An audit that cries wolf gets ignored.** `audit_frontend.py` opened with 56 findings and
+   roughly zero real ones. Four false-positive classes had to go before it was worth reading:
+   runtime-created ids, brace-depth vs indentation, template-literal ids (`` $(`w-${k}`) ``, which
+   reported the entire scoring UI as dead), and property scanning inside string literals. Same
+   failure as the wiring census counting build scripts as features.
+10. **"Does it work" and "is it current" are different questions.** A page can be perfectly
+    functional and two generations out of date, with no error anywhere.
+11. **A wall is an observation, not a property of a host.** Four robots-403 walls did not
+    reproduce on re-test. Re-check a BLOCKED record before treating it as final — including
+    amlegal, which currently gates 17 counties.
+12. **A disagreement between two instruments means at least one is wrong.** It is not a tie to
+    break by preference. Both NW sweeps reported Jasper PC-22-25 as verified; both were wrong.
+13. **Distance is not the test for a coordinate — the PARCEL is.** Five of six pin offsets were
+    cosmetic; the sixth put a data centre on the wrong side of the street and the wrong parcel.
+14. **Never guess a column name, including in a throwaway probe.** Cost four separate zero-result
+    queries this session: `ADDRESS_ID` for `FULL_ADDRESS`, `geog` for `lat`/`lon`, `facility_name`
+    then `already_pinned_as` (which carries coordinates in parentheses).
+15. **ASCII in console output.** cp1252 cannot encode `≈ → ✗ ↔ ⚠`, and three scripts died on
+    their own `print()` — including the honesty audit crashing on its FAILURE path. 44 scripts now
+    reconfigure stdout; keep new ones ASCII or add the shim.
+16. **Use a commit-message FILE.** Backticks and double quotes in `-m` get eaten by the shell.

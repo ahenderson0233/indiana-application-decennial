@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 265 of 265 registered objects reach a surface
+## 268 of 268 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -162,6 +162,9 @@ headline can be audited rather than taken on trust:
 | `in_ordinances_amlegal_coverage_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_amlegal_v3` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
 | `in_ordinances_amlegal_v3_probes` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
+| `in_ordinances_county_codified` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
+| `in_ordinances_county_codified_provisions` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
+| `in_ordinances_county_codified_walls` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
 | `in_ordinances_dc` | direct | `app.js`, `scripts/audit_frontend.py` |
 | `in_ordinances_dc_county_sites_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc_coverage_v2` | direct | `scripts/export_ordinances.py` |
