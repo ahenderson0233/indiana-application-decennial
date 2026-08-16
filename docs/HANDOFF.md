@@ -49,8 +49,40 @@ re-launching anything.
    and (b) includes COMMERCIAL structures; a 100%-residential registry is low value because a
    house cannot host a hyperscale DC. Record every BLOCKED source in `registry_sources` with its
    wall verbatim.
-   **The SI date-keying agent has already finished** — its result is in the B2 section below and
-   `docs/SI_DATE_KEYING.md`.
+   **BOTH AGENTS HAVE NOW FINISHED.** Date-keying result is in the B2 section below; the
+   abandoned-property result is here:
+
+### Abandoned-property discovery — RESULT (`scrapers/lane_f/ABANDONED_PROPERTY_FINDINGS.md`)
+
+**The two-city concentration is a PUBLISHING gap, not a search gap.** Of 15 cities checked, 13
+publish no registry, unsafe-building or demolition list as data at all — Muncie, Evansville and
+Hammond run registries on paper; Terre Haute, Anderson and Kokomo condemn via board minutes and
+newspaper notices. Statewide, nothing exists (IHCDA's BEP is dead, DLGF marks vacant *land* only,
+HUD/USPS vacancy is registration-gated tract aggregate).
+
+**⭐ THE BIGGEST WIN NEEDS NO SCRAPING — do this first.** The 910,483-row Indy code-enforcement
+corpus we already hold contains `CASE_TYPE` values **"Unsafe Buildings"** and **"Vacant Board
+Order"** — *with OPEN_DATE*. Deriving those subsets both **extends** the abandoned-building signal
+and **retro-fits the event dates the 7,120-row registry lacks**. Free, immediate, already in
+BigQuery.
+
+Other findings:
+- **Indy's registry is titled "Abandoned and Vacant HOUSES"** — residential, so low hyperscale
+  value on its own, and it has **no event-date field**. It has also been **delisted from
+  data.indy.gov**; the `gis.indy.gov` REST layer is the last public copy. Re-verified at exactly
+  7,120 rows — no fuller version exists.
+- **South Bend (47) is the only Indiana dataset with a true designation date** (`Added_to_V_A_on_`)
+  and is live-maintained (edited 2025-04).
+- **One genuinely new viable source: Evansville Land Bank, 123 parcels via a public FeatureServer.**
+- Muncie LB and Uplands Regional LB (the only one listing COMMERCIAL) are public but bot-blocked
+  SPAs → browser-lane candidates, not scriptable.
+- Fort Wayne walled (403s, Beacon ToS); Gary dead (both domains) with its inventory now on Regrid
+  — recorded as a ToS wall, not probed.
+- Realistic new-row ceiling from the open web: **~123 now, ~150–600 more via a browser session.**
+- Search trap recorded: `open-data-cfw` is Fort **Worth**, not Fort Wayne.
+
+**Acquisition order:** derive-from-held (Unsafe Buildings + Vacant Board Order) → Evansville Land
+Bank → South Bend refresh cadence → browser lane → APRA public-records requests.
 
 ## The five findings from this session that change what the app claims
 

@@ -153,7 +153,7 @@ Phase A is COMPLETE. This is everything left to finish the tool. Ranked within e
 | # | item | phase | state | blocked by |
 |---|---|---|---|---|
 | 1 | fix D22 ECHO rate-limit (429s) + shortfall detection, finish the pull | B | **job running** | — |
-| 2 | SI date-keying: address → parcel | B | ✅ **DONE** — bridge built, 20.5% yield | — |
+| 2 | SI date-keying: address → parcel | B | 🟡 **BRIDGE DONE, OBJECTIVE NOT MET** — see below | — |
 | 2a | **WIDEN `has_si_signal` beyond D5_vacancy** — 44,806 parcels carry a real dated distress signal the app cannot see. **Highest-value fix in the application.** | B | ready | — |
 | 2b | exclude `parcels_in/080500000047000018` (D85 whole-Earth polygon) from every spatial join | B | ready, one-line guard | — |
 | 2c | fix the `si_d12_indy_marion_code_enforcement` loader — its addresses lack a city suffix, so 747,122 rows match nothing | B | ready | — |

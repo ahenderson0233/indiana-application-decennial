@@ -441,12 +441,16 @@ function ctxTip(p) {
   return p.layer;
 }
 const CTX_PROV = {
-  ghgrp_note: ["vw_ghgrp_emissions_located",
-    "Reported CO2e now rides on the pin. The layer previously showed only a location — the "
-    "emissions sat in in_ghgrp_emissions with no geography, and the two were joined on facility_id "
-    "(9,310/9,310). 211 of the 263 pins carry a latest-year figure; the rest report no emissions "
-    "in the most recent year held and show nothing rather than a zero."],
-  ghgrp: ["in_ghgrp_facilities", "EPA greenhouse-gas reporters: 263 Indiana facilities. Neighbours already holding air permits. in_ghgrp_emitter_facilities is a subset (all 246 of its ids are among these) and supplies the reporting year."],
+  // NOTE: adjacent string literals do NOT concatenate in JavaScript (that is Python). Writing
+  // them that way here threw `SyntaxError: Unexpected string` and took the ENTIRE app down —
+  // the map never initialised. Use explicit + or one string.
+  ghgrp: ["vw_ghgrp_emissions_located",
+    "EPA greenhouse-gas reporters: 263 Indiana facilities — neighbours already holding air " +
+    "permits. Reported CO2e now rides on the pin: the emissions sat in in_ghgrp_emissions with " +
+    "no geography and were joined on facility_id (9,310/9,310). 211 of the 263 pins carry a " +
+    "latest-year figure; the rest report no emissions in the most recent year held and show " +
+    "nothing rather than a zero. in_ghgrp_emitter_facilities is a subset (all 246 of its ids " +
+    "are among these) and supplies the reporting year."],
   frpp: ["in_gov_surplus_frpp", "Federal Real Property Profile — federally-held property, a live acquisition lead rather than mere context."],
 };
 function ctxEvidence(p) {
