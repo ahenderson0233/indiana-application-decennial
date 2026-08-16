@@ -11,13 +11,10 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 232 of 233 registered objects reach a surface
+## 242 of 242 registered objects reach a surface
 
-### Not reaching a surface
+**Every registered object reaches at least one surface.**
 
-| object | rows | built by |
-|---|---:|---|
-| `in_ordinances_amlegal_coverage_v2` | 230 | `—` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -151,8 +148,13 @@ headline can be audited rather than taken on trust:
 | `in_openstates_energy_bills` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_openstates_energy_bills_v2` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_operating_generators` | direct | `app.js` |
-| `in_ordinances_amlegal_coverage_v2` | **none** | — |
+| `in_ordinances_amlegal_coverage_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc` | direct | `app.js`, `scripts/export_grid_sentiment.py` |
+| `in_ordinances_dc_county_sites_v2` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_dc_coverage_v2` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_dc_v2` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_dc_v2_triage` | direct | `scripts/export_ordinances.py` |
+| `in_ordinances_publisher_inventory_v2` | direct | `scripts/export_ordinances.py` |
 | `in_osm_power_lines` | direct | `scripts/export_context_layers.py` |
 | `in_osm_power_substations` | direct | `scripts/export_context_layers.py` |
 | `in_padus` | direct | `app.js`, `scripts/build_census_wires.py` |
@@ -200,11 +202,13 @@ headline can be audited rather than taken on trust:
 | `in_si_evansville_landbank` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_evansville_taxsale` | direct | `scripts/export_si_sources.py` |
 | `in_si_evansville_taxsale_transfers` | direct | `scripts/export_si_sources.py` |
+| `in_si_ibtr_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_indy_abandoned_vacant` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_abandoned_vacant_spatial` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_indy_code_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
+| `in_si_lane_d_enrichment` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_marion_route_check` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals_county` | direct | `scripts/export_si_v2_surfaces.py` |
@@ -224,6 +228,7 @@ headline can be audited rather than taken on trust:
 | `in_si_southbend_continuous_enforcement` | direct | `scripts/export_si_sources.py` |
 | `in_si_southbend_demolition_orders` | direct | `scripts/export_si_sources.py` |
 | `in_si_southbend_vacant_abandoned` | direct | `scripts/export_si_sources.py` |
+| `in_si_sri_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_site_gates` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_sites` | direct | `app.js`, `scripts/build_d21_candidates.py` |
@@ -265,3 +270,4 @@ headline can be audited rather than taken on trust:
 | `vw_pjm_rtep_upgrades_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_si_candidates_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_site_gates_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
+| `vw_warn_notices_union` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |

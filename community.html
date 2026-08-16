@@ -19,6 +19,25 @@
   <div class="card"><h2>County posture (from held receipts)</h2>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
+  <div class="card"><h2>Local data-centre ordinances — what is codified, and what is not</h2>
+    <div class="hint" id="ord-caveat"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="ord-named">…</div><div class="hint">code sections that actually NAME a data centre</div></div>
+      <div class="card"><div class="bigstat" id="ord-rel">…</div><div class="hint">sections that regulate one as a land use (after triage)</div></div>
+      <div class="card"><div class="bigstat" id="ord-cand">…</div><div class="hint">raw candidate rows the search returned</div></div>
+    </div>
+    <div class="hint" style="margin-bottom:6px"><b>Sections that regulate a data centre as a land
+      use.</b> A wireless telecommunications facility is a tower, not a data centre — 43 candidate
+      rows matched that phrase and none are admitted here.</div>
+    <div class="scroll" style="max-height:300px"><table id="t-ord"><tr><th>county</th><th>jurisdiction</th><th>section</th><th>verdict</th><th>why</th></tr></table></div>
+    <div class="hint" style="margin:10px 0 6px"><b>Triage of every candidate row</b></div>
+    <div class="scroll" style="max-height:160px"><table id="t-ordv"><tr><th>verdict</th><th>sections</th><th>candidate rows</th></tr></table></div>
+    <div class="hint" style="margin:10px 0 6px"><b>Tables behind this panel</b> — enumerated from
+      the registry, so acquisition runs still in flight appear here as they land.</div>
+    <div class="scroll" style="max-height:180px"><table id="t-ordfam"><tr><th>table</th><th>rows</th><th>built</th></tr></table></div>
+    <div class="prov">indiana_app.in_ordinances_* · triage by scripts/triage_ordinances_v2.py ·
+      exported by scripts/export_ordinances.py</div></div>
+
   <div class="card"><h2>Indiana legislature — energy &amp; data-centre bills <span class="hint">(the P7 preview)</span></h2>
     <div id="leg-stats" class="hint" style="margin-bottom:8px"></div>
     <div style="margin-bottom:8px">
@@ -108,6 +127,27 @@
      <td>${s.injuries != null ? fmt(s.injuries) : "—"}</td></tr>`).join(""));
 
   /* ---------- P7 legislative preview ---------- */
+  // Local ordinances. The row count is NOT the finding, so the panel leads with the triage
+  // verdict and keeps the raw candidate count behind it.
+  const O = await fetchGz("data/ordinances.json.gz");
+  const ts = O.triage_summary || [];
+  const rel = (ts.find(v => v.verdict === "RELEVANT") || {}).sections || 0;
+  const cand = ts.reduce((a, v) => a + Number(v.candidate_rows || 0), 0);
+  document.getElementById("ord-named").textContent = fmt((O.named || []).length);
+  document.getElementById("ord-rel").textContent = fmt(rel);
+  document.getElementById("ord-cand").textContent = fmt(cand);
+  document.getElementById("ord-caveat").textContent = O.caveat;
+  document.getElementById("t-ord").insertAdjacentHTML("beforeend", (O.relevant || []).map(r =>
+    `<tr><td>${r.county}</td><td>${r.jurisdiction}</td>
+     <td><a href="${r.url}" target="_blank" rel="noopener">${String(r.section_title).slice(0, 54)}</a></td>
+     <td class="${r.verdict === "RELEVANT" ? "" : "cannot"}">${r.verdict}</td>
+     <td class="hint">${r.reason}</td></tr>`).join(""));
+  document.getElementById("t-ordv").insertAdjacentHTML("beforeend", ts.map(v =>
+    `<tr><td>${v.verdict}</td><td>${fmt(v.sections)}</td><td>${fmt(v.candidate_rows)}</td></tr>`).join(""));
+  document.getElementById("t-ordfam").insertAdjacentHTML("beforeend", (O.family || []).map(t =>
+    `<tr><td><code>${t.table_name}</code></td><td>${fmt(t.n_rows)}</td>
+     <td class="hint">${String(t.built_at).slice(0, 10)}</td></tr>`).join(""));
+
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;
   document.getElementById("leg-stats").innerHTML =
