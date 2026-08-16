@@ -64,6 +64,25 @@ TAX = {
 }
 
 cov = {r["signal"]: r for r in rows(f"SELECT * FROM `{DS}.in_si_signal_coverage`")}
+
+# COUNTY SPREAD. The denominator is MEASURED, never assumed — Indiana has 92 counties, and a
+# 93rd is exactly how the FEMA roll-up broke (fipsCountyCode='000' is 'Statewide'). A signal
+# concentrated in one or two counties is a PUBLISHING footprint, not statewide coverage, and
+# ranking on it would select for wherever the data happens to come from (§2.21).
+N_COUNTIES = rows(f"SELECT COUNT(DISTINCT county_fips) n FROM `{DS}.in_sites_county`")[0]["n"]
+spread = {r["signal"]: r for r in rows(f"""
+WITH pc AS (
+  SELECT v.signal, v.parcel_key, v.si_admitted, sc.county_fips
+  FROM `{DS}.in_si_parcel_signals_v2` v
+  JOIN `{DS}.in_sites_county` sc USING (parcel_source, parcel_key))
+SELECT signal,
+  COUNT(DISTINCT IF(si_admitted, county_fips, NULL)) counties_admitted,
+  COUNT(DISTINCT county_fips) counties_reached
+FROM pc GROUP BY 1""")}
+flag_spread = rows(f"""
+SELECT COUNT(DISTINCT IF(f.has_si_signal, sc.county_fips, NULL)) co
+FROM `{DS}.in_si_sites_flags_v2` f JOIN `{DS}.in_sites_county` sc
+  USING (parcel_source, parcel_key)""")[0]["co"]
 flags = rows(f"""SELECT COUNTIF(has_si_signal) flagged,
   COUNTIF(has_si_signal AND si_last_event_date IS NOT NULL) dated,
   COUNTIF(has_si_signal AND si_events_3y>0) r3,
@@ -95,12 +114,20 @@ o = [f"# SI COVERAGE — per-signal, generated {datetime.date.today()}", "",
      f"| …with an event inside 5 years | {flags['r5']:,} |",
      f"| C/I · other non-res · agriculture · vacant land | {flags['ci']:,} · {flags['other']:,} · "
      f"{flags['ag']:,} · {flags['land']:,} |",
+     f"| **counties with ≥1 flagged parcel** | **{flag_spread} of {N_COUNTIES}** |",
      f"| **the flag before this build** | {old['n']:,}, of which {old['land']:,} "
      f"({100*old['land']/max(old['n'],1):.1f}%) was empty land |", "",
      "The old flag was a vacancy flag: its only parcel-keyed input was footprint absence.", "",
+     f"**Indiana has {N_COUNTIES} counties, and that denominator is measured here rather than",
+     "assumed** — a 93rd county is exactly how the FEMA roll-up broke (`fipsCountyCode='000'` is",
+     "'Statewide', not a county). **County spread is the single most important column below.** A",
+     "signal present in 1–2 counties is a PUBLISHING footprint, not statewide coverage; ranking",
+     "sites on it would select for wherever the data happens to come from rather than for the",
+     "best site (§2.21: a ranked list dominated by one subgroup means the ranking selects for the",
+     "error).", "",
      "## Per signal", "",
-     "| signal | what it is | held | reached | admitted | C/I | event range | excluded: resid / low-sev |",
-     "|---|---|---:|---:|---:|---:|---|---|"]
+     "| signal | what it is | held | reached | admitted | counties (adm/reach) | C/I | event range | excluded: resid / low-sev |",
+     "|---|---|---:|---:|---:|:---:|---:|---|---|"]
 
 for sig in sorted(TAX, key=lambda s: (-(cov.get(s, {}).get("parcels_admitted") or 0), s)):
     what, note = TAX[sig]
@@ -113,8 +140,12 @@ for sig in sorted(TAX, key=lambda s: (-(cov.get(s, {}).get("parcels_admitted") o
     rng = f"{fe} → {le}" if fe or le else ("—" if adm == 0 else "no dates held")
     excl = f"{c.get('excl_residential') or 0:,} / {c.get('excl_low_severity') or 0:,}" if c else "—"
     label = what + (f" — *{note}*" if note else "")
+    sp = spread.get(sig, {})
+    ca, cr = sp.get("counties_admitted") or 0, sp.get("counties_reached") or 0
+    # flag the metro-footprint signals explicitly rather than letting a small number pass quietly
+    co = f"**{ca}**/{cr}" if ca > 8 else (f"⚠ **{ca}**/{cr}" if adm > 0 else "—")
     o.append(f"| `{sig}` | {label} | {held if held is not None else '—'} | {reached:,} | "
-             f"**{adm:,}** | {ci:,} | {rng} | {excl} |")
+             f"**{adm:,}** | {co} | {ci:,} | {rng} | {excl} |")
 
 o += ["", "## How each signal reaches a parcel — the bridges, and what each yields", "",
       "Three key namespaces had to be reconciled; a naive join across them reads zero.", "",
@@ -128,6 +159,31 @@ o += ["", "## What is NOT held at all", "",
 for sig, (what, note) in sorted(TAX.items()):
     if sig not in cov and note:
         o.append(f"| `{sig}` | {note} |")
+
+o += ["", "## ⚠ The signals that are a metro footprint, not statewide coverage", "",
+      "Marked ⚠ above. These reach so few counties that a statewide search should not weight them",
+      "as if they were evenly available — their absence elsewhere is OUR coverage gap, not the",
+      "absence of distress.", "",
+      "| signal | counties | why |", "|---|---|---|"]
+WHY = {
+ "D12_code_violation": "South Bend only. Indy's 747,122-row corpus matches ZERO — its addresses "
+                       "carry no city suffix, a loader defect. Geocoding Indianapolis is the fix",
+ "D21_demolition_order": "Vanderburgh + St. Joseph — the only two jurisdictions publishing "
+                         "demolition data as data",
+ "D5_abandoned_building": "Indy + South Bend only, and Indy defers to address (125 of 7,120) "
+                          "because Marion publishes no state parcel key",
+ "D5_unsafe_building": "derived from the Indy corpus, so limited by the same address bridge",
+ "D5_vacant_board_order": "derived from the Indy corpus, so limited by the same address bridge",
+ "D19_warn": "owner-name keyed — a company HQ address is not its site",
+ "A2_gov_surplus": "tiny source (20 rows held)",
+ "D24_plant_delisting": "tiny source (13 rows held)",
+}
+for sig in sorted(TAX, key=lambda s: -(cov.get(s, {}).get("parcels_admitted") or 0)):
+    adm = cov.get(sig, {}).get("parcels_admitted") or 0
+    sp = spread.get(sig, {})
+    ca = sp.get("counties_admitted") or 0
+    if adm > 0 and ca <= 8:
+        o.append(f"| `{sig}` | **{ca} of {N_COUNTIES}** | {WHY.get(sig, 'limited publisher footprint')} |")
 
 o += ["", "## The two rulings encoded in `admitted`", "",
       "1. **Non-residential only.** A ~300 MW datacentre and a ~5 MW BESS both need land a house",

@@ -21,47 +21,56 @@ happened. All four are shown per signal:
 | …with an event inside 3 years | 2,203 |
 | …with an event inside 5 years | 3,661 |
 | C/I · other non-res · agriculture · vacant land | 3,793 · 575 · 293 · 4,722 |
+| **counties with ≥1 flagged parcel** | **92 of 92** |
 | **the flag before this build** | 847,410, of which 840,819 (99.2%) was empty land |
 
 The old flag was a vacancy flag: its only parcel-keyed input was footprint absence.
 
+**Indiana has 92 counties, and that denominator is measured here rather than
+assumed** — a 93rd county is exactly how the FEMA roll-up broke (`fipsCountyCode='000'` is
+'Statewide', not a county). **County spread is the single most important column below.** A
+signal present in 1–2 counties is a PUBLISHING footprint, not statewide coverage; ranking
+sites on it would select for wherever the data happens to come from rather than for the
+best site (§2.21: a ranked list dominated by one subgroup means the ranking selects for the
+error).
+
 ## Per signal
 
-| signal | what it is | held | reached | admitted | C/I | event range | excluded: resid / low-sev |
-|---|---|---:|---:|---:|---:|---|---|
-| `D2_foreclosure` | mortgage foreclosures | 62451 | 31,677 | **2,296** | 533 | 2006-02-23 → 2026-08-14 | 29,381 / 0 |
-| `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 2,985 | **1,696** | 375 | 2004-08-17 → 2026-08-05 | 1,289 / 0 |
-| `D16_structure_fire` | NFIRS structure fires — *severity-gated upstream: 76,779 raw -> 469 SI-grade* | 28581 | 12,544 | **1,680** | 1,101 | 2020-01-05 → 2024-12-28 | 10,864 / 0 |
-| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 6,410 | **1,246** | 280 | 2020-08-01 → 2026-08-01 | 5,164 / 0 |
-| `D22_environmental_violation` | EPA ECHO compliance violations | — | 1,152 | **931** | 420 | 1984-04-11 → 2026-08-03 | 221 / 0 |
-| `D14_sba_chargeoff` | SBA loan charge-offs | 3774 | 1,773 | **762** | 696 | 1993-12-28 → 2026-05-20 | 1,011 / 0 |
-| `D21_demolition_order` | demolition orders and permits | — | 3,607 | **377** | 159 | 2011-05-16 → 2026-07-30 | 1,740 / 1,490 |
-| `D7_brownfield` | brownfield sites | 1378 | 536 | **311** | 245 | no dates held | 225 / 0 |
-| `D12_code_violation` | municipal code enforcement | 747211 | 10,370 | **228** | 27 | 2017-04-19 → 2020-06-29 | 5,401 / 4,741 |
-| `D20_loan_maturity` | CMBS loan maturity | 419 | 207 | **129** | 116 | no dates held | 78 / 0 |
-| `D22_facility_inactive` | EPA ECHO ceased-operation facilities — *a shut plant with power and water is an opportunity, not a liability* | — | 184 | **113** | 20 | 1996-06-20 → 2025-10-16 | 71 / 0 |
-| `D5_unsafe_building` | Indy 'Unsafe Buildings' cases — *derived from the held code corpus* | — | 379 | **41** | 33 | 2014-10-20 → 2024-02-20 | 338 / 0 |
-| `D5_abandoned_building` | abandoned/vacant STRUCTURE registries | — | 168 | **34** | 18 | 2013-02-01 → 2022-02-22 | 134 / 0 |
-| `D5_vacant_board_order` | Indy 'Vacant Board Order' cases — *derived from the held code corpus* | — | 332 | **29** | 23 | 2014-09-12 → 2024-02-22 | 303 / 0 |
-| `D24_plant_delisting` | FSIS plant delistings | 13 | 10 | **6** | 6 | 2023-09-13 → 2026-03-11 | 4 / 0 |
-| `A2_gov_surplus` | government surplus property | 20 | 6 | **5** | 4 | 2022-09-30 → 2024-09-30 | 1 / 0 |
-| `D19_warn` | WARN layoff notices — *owner-name keyed; almost nothing reaches a parcel* | 1039 | 2 | **2** | 2 | 2022-07-29 → 2023-09-29 | 0 / 0 |
-| `A1_market_listing` | commercial listings — *BLOCKED — zoomprospector robots.txt disallows all; route is an IEDC data request* | — | 0 | **0** | 0 | — | — |
-| `D10_tax_warrant` | state tax warrants — *BLOCKED — $600/yr INCite or $38/mo Doxpop; procurement decision* | — | 0 | **0** | 0 | — | — |
-| `D11_entity_dissolution` | dissolved/revoked entities — *983 admitted rows STAGED, not yet folded in* | — | 0 | **0** | 0 | — | — |
-| `D13_federal_tax_lien` | IRS liens — *FOIA drafted and awaiting the operator's fax* | — | 0 | **0** | 0 | — | — |
-| `D15_mechanics_lien` | mechanics liens — *BLOCKED — 92 recorders, all paywalled. A cheque, not a scraper* | — | 0 | **0** | 0 | — | — |
-| `D17_commercial_eviction` | commercial evictions — *county-grain context only (operator sign-off 4)* | 370 | 0 | **0** | 0 | — | 0 / 0 |
-| `D18_owner_contact` | owner contact/approach data — *NOT HELD — mat_parcel_attrs is 100% NULL upstream* | — | 0 | **0** | 0 | — | — |
-| `D23_surplus_disposal` | government surplus disposal — *low value — watch-list (IDOA RFBs)* | — | 0 | **0** | 0 | — | — |
-| `D25_rail_abandonment` | STB rail abandonments — *aggregate grain only* | 215 | 0 | **0** | 0 | — | 0 / 0 |
-| `D27_ucc_lapse` | UCC filing lapses — *156 admitted rows STAGED, not yet folded in* | — | 0 | **0** | 0 | — | — |
-| `D3_seized_auction` | seized-asset auctions — *2 rows held, aggregate grain only* | 2 | 0 | **0** | 0 | — | 0 / 0 |
-| `D4_tax_delinquency` | pre-sale delinquency lists — *NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct* | — | 0 | **0** | 0 | — | — |
-| `D5_vacancy` | footprint absence — *NOT A SIGNAL — operator ruling; kept as has_vacancy_signal and the BESS sizing basis* | 947592 | 0 | **0** | 0 | — | 0 / 0 |
-| `D6_bankruptcy` | business bankruptcies — *held at aggregate/owner grain — cannot reach a parcel* | 393 | 0 | **0** | 0 | — | 0 / 0 |
-| `D8_exit_intent` | stated exit intent — *aggregate grain only* | 142 | 0 | **0** | 0 | — | 0 / 0 |
-| `D9_absentee` | absentee/out-of-state owners — *NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks)* | — | 0 | **0** | 0 | — | — |
+| signal | what it is | held | reached | admitted | counties (adm/reach) | C/I | event range | excluded: resid / low-sev |
+|---|---|---:|---:|---:|:---:|---:|---|---|
+| `D2_foreclosure` | mortgage foreclosures | 62451 | 31,677 | **2,296** | **91**/92 | 533 | 2006-02-23 → 2026-08-14 | 29,381 / 0 |
+| `D26_assessment_appeal` | IBTR assessment appeals | 6953 | 2,985 | **1,696** | **68**/77 | 375 | 2004-08-17 → 2026-08-05 | 1,289 / 0 |
+| `D16_structure_fire` | NFIRS structure fires — *severity-gated upstream: 76,779 raw -> 469 SI-grade* | 28581 | 12,544 | **1,680** | **91**/92 | 1,101 | 2020-01-05 → 2024-12-28 | 10,864 / 0 |
+| `D1_tax_sale` | county tax sales (SRI statewide + Evansville) | 17605 | 6,410 | **1,246** | **62**/90 | 280 | 2020-08-01 → 2026-08-01 | 5,164 / 0 |
+| `D22_environmental_violation` | EPA ECHO compliance violations | — | 1,152 | **931** | **91**/92 | 420 | 1984-04-11 → 2026-08-03 | 221 / 0 |
+| `D14_sba_chargeoff` | SBA loan charge-offs | 3774 | 1,773 | **762** | **71**/86 | 696 | 1993-12-28 → 2026-05-20 | 1,011 / 0 |
+| `D21_demolition_order` | demolition orders and permits | — | 3,607 | **377** | ⚠ **2**/2 | 159 | 2011-05-16 → 2026-07-30 | 1,740 / 1,490 |
+| `D7_brownfield` | brownfield sites | 1378 | 536 | **311** | **69**/79 | 245 | no dates held | 225 / 0 |
+| `D12_code_violation` | municipal code enforcement | 747211 | 10,370 | **228** | ⚠ **1**/1 | 27 | 2017-04-19 → 2020-06-29 | 5,401 / 4,741 |
+| `D20_loan_maturity` | CMBS loan maturity | 419 | 207 | **129** | **35**/52 | 116 | no dates held | 78 / 0 |
+| `D22_facility_inactive` | EPA ECHO ceased-operation facilities — *a shut plant with power and water is an opportunity, not a liability* | — | 184 | **113** | **63**/83 | 20 | 1996-06-20 → 2025-10-16 | 71 / 0 |
+| `D5_unsafe_building` | Indy 'Unsafe Buildings' cases — *derived from the held code corpus* | — | 379 | **41** | ⚠ **8**/15 | 33 | 2014-10-20 → 2024-02-20 | 338 / 0 |
+| `D5_abandoned_building` | abandoned/vacant STRUCTURE registries | — | 168 | **34** | ⚠ **5**/6 | 18 | 2013-02-01 → 2022-02-22 | 134 / 0 |
+| `D5_vacant_board_order` | Indy 'Vacant Board Order' cases — *derived from the held code corpus* | — | 332 | **29** | ⚠ **8**/13 | 23 | 2014-09-12 → 2024-02-22 | 303 / 0 |
+| `D24_plant_delisting` | FSIS plant delistings | 13 | 10 | **6** | ⚠ **4**/8 | 6 | 2023-09-13 → 2026-03-11 | 4 / 0 |
+| `A2_gov_surplus` | government surplus property | 20 | 6 | **5** | ⚠ **4**/5 | 4 | 2022-09-30 → 2024-09-30 | 1 / 0 |
+| `D19_warn` | WARN layoff notices — *owner-name keyed; almost nothing reaches a parcel* | 1039 | 2 | **2** | ⚠ **2**/2 | 2 | 2022-07-29 → 2023-09-29 | 0 / 0 |
+| `A1_market_listing` | commercial listings — *BLOCKED — zoomprospector robots.txt disallows all; route is an IEDC data request* | — | 0 | **0** | — | 0 | — | — |
+| `D10_tax_warrant` | state tax warrants — *BLOCKED — $600/yr INCite or $38/mo Doxpop; procurement decision* | — | 0 | **0** | — | 0 | — | — |
+| `D11_entity_dissolution` | dissolved/revoked entities — *983 admitted rows STAGED, not yet folded in* | — | 0 | **0** | — | 0 | — | — |
+| `D13_federal_tax_lien` | IRS liens — *FOIA drafted and awaiting the operator's fax* | — | 0 | **0** | — | 0 | — | — |
+| `D15_mechanics_lien` | mechanics liens — *BLOCKED — 92 recorders, all paywalled. A cheque, not a scraper* | — | 0 | **0** | — | 0 | — | — |
+| `D17_commercial_eviction` | commercial evictions — *county-grain context only (operator sign-off 4)* | 370 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D18_owner_contact` | owner contact/approach data — *NOT HELD — mat_parcel_attrs is 100% NULL upstream* | — | 0 | **0** | — | 0 | — | — |
+| `D23_surplus_disposal` | government surplus disposal — *low value — watch-list (IDOA RFBs)* | — | 0 | **0** | — | 0 | — | — |
+| `D25_rail_abandonment` | STB rail abandonments — *aggregate grain only* | 215 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D27_ucc_lapse` | UCC filing lapses — *156 admitted rows STAGED, not yet folded in* | — | 0 | **0** | — | 0 | — | — |
+| `D3_seized_auction` | seized-asset auctions — *2 rows held, aggregate grain only* | 2 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D4_tax_delinquency` | pre-sale delinquency lists — *NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct* | — | 0 | **0** | — | 0 | — | — |
+| `D5_vacancy` | footprint absence — *NOT A SIGNAL — operator ruling; kept as has_vacancy_signal and the BESS sizing basis* | 947592 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D6_bankruptcy` | business bankruptcies — *held at aggregate/owner grain — cannot reach a parcel* | 393 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D8_exit_intent` | stated exit intent — *aggregate grain only* | 142 | 0 | **0** | — | 0 | — | 0 / 0 |
+| `D9_absentee` | absentee/out-of-state owners — *NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks)* | — | 0 | **0** | — | 0 | — | — |
 
 ## How each signal reaches a parcel — the bridges, and what each yields
 
@@ -100,6 +109,23 @@ Listed so an absent signal is never mistaken for a covered one.
 | `D27_ucc_lapse` | 156 admitted rows STAGED, not yet folded in |
 | `D4_tax_delinquency` | NOT HELD — SRI robots permits it; seasonal, schedule Jul–Oct |
 | `D9_absentee` | NOT HELD — blocked on the DLGF Gateway owner pull (one acquisition, three unblocks) |
+
+## ⚠ The signals that are a metro footprint, not statewide coverage
+
+Marked ⚠ above. These reach so few counties that a statewide search should not weight them
+as if they were evenly available — their absence elsewhere is OUR coverage gap, not the
+absence of distress.
+
+| signal | counties | why |
+|---|---|---|
+| `D21_demolition_order` | **2 of 92** | Vanderburgh + St. Joseph — the only two jurisdictions publishing demolition data as data |
+| `D12_code_violation` | **1 of 92** | South Bend only. Indy's 747,122-row corpus matches ZERO — its addresses carry no city suffix, a loader defect. Geocoding Indianapolis is the fix |
+| `D5_unsafe_building` | **8 of 92** | derived from the Indy corpus, so limited by the same address bridge |
+| `D5_abandoned_building` | **5 of 92** | Indy + South Bend only, and Indy defers to address (125 of 7,120) because Marion publishes no state parcel key |
+| `D5_vacant_board_order` | **8 of 92** | derived from the Indy corpus, so limited by the same address bridge |
+| `D24_plant_delisting` | **4 of 92** | tiny source (13 rows held) |
+| `A2_gov_surplus` | **4 of 92** | tiny source (20 rows held) |
+| `D19_warn` | **2 of 92** | owner-name keyed — a company HQ address is not its site |
 
 ## The two rulings encoded in `admitted`
 
