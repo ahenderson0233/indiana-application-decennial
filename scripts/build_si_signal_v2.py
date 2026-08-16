@@ -236,7 +236,31 @@ g_d22_inactive AS (
          'echo:facility_inactive' source_id, 'publisher table (new in v2)' blk, TRUE severe
   FROM `{DS}.in_si_d22_parcel_join` WHERE is_inactive_facility
 ),
+-- ---- H. Lane D columns that were pulled and never wired (item 10) ---------------------------
+-- Two of the eleven are PLACEMENT, not enrichment: SRI publishes its own lat/lon on 29,955 of
+-- 83,547 rows, and IBTR publishes stateParcelNumber on its appeals. Both are the publisher's own
+-- key/point — no geocoder, no centroid, no estimate. saleTypeDescription splits the SRI corpus
+-- into D2 (Foreclosure) and D1 (Tax/Certificate/Deed Sale), which are different claims.
+-- Auction dates are largely in the FUTURE — scheduled sales — which the roll-up already keeps
+-- apart from past events rather than treating as an error.
+h_sri AS (
+  SELECT parcel_key pk, signal, auction_date obs, 'publisher event date' basis,
+         'publisher_point' keying,
+         'ST_CONTAINS(parcel_geog, SRI published lat/lon) [D85 excluded]' bridge,
+         CONCAT('sri_taxsale:', IFNULL(sale_type,'?')) source_id,
+         'publisher table (new in v2)' blk, TRUE AS severe
+  FROM `{DS}.in_si_sri_placed`
+),
+h_ibtr AS (
+  SELECT parcel_key pk, signal, date_received obs, 'publisher event date' basis,
+         'publisher_state_parcel_number' keying,
+         'IBTR stateParcelNumber (publisher key, not the corpus IN: copy)' bridge,
+         CONCAT('ibtr:', IFNULL(appeal_type,'?')) source_id,
+         'publisher table (new in v2)' blk, TRUE AS severe
+  FROM `{DS}.in_si_ibtr_placed`
+),
 allsig AS (
+  SELECT * FROM h_sri UNION ALL SELECT * FROM h_ibtr UNION ALL
   SELECT * FROM a_corpus UNION ALL SELECT * FROM b_bridged
   UNION ALL SELECT * FROM c_sb_vacant UNION ALL SELECT * FROM c_sb_code
   UNION ALL SELECT * FROM c_sb_cont
@@ -279,6 +303,7 @@ run(EVIDENCE, "in_si_parcel_signals_v2")
 print("building in_si_sites_flags_v2 …", flush=True)
 FLAGS = f"""
 CREATE OR REPLACE TABLE `{DS}.in_si_sites_flags_v2` AS
+WITH agg AS (
 SELECT
   parcel_source, parcel_key, ANY_VALUE(occ_group) occ_group,
   LOGICAL_OR(si_admitted)                          AS has_si_signal,
@@ -299,7 +324,20 @@ SELECT
   STRING_AGG(DISTINCT IF(si_admitted, date_basis, NULL))     AS si_date_basis,
   TIMESTAMP('{BUILT}')                             AS built_at
 FROM `{DS}.in_si_parcel_signals_v2`
-GROUP BY 1,2
+GROUP BY 1,2)
+-- CAN THE PARCEL HOST THE USE CASE AT ALL? A distinct question from "did an event occur", and the
+-- one the D5 fix did not answer. Measured after the Lane D placements landed: 17,318 of 23,140
+-- flagged parcels are UNDER ONE ACRE, and the median flagged vacant lot is 0.13 acres. A tax sale
+-- on a 0.11-acre lot is a genuine event — unlike D5's footprint absence, it has a date and an
+-- auction — but it can never host a ~300 MW datacentre or even a ~5 MW BESS.
+-- The flag stays a FACT about the parcel; capability is carried alongside it so the screener and
+-- the headline can gate on physical possibility without deleting the evidence. At the operator's
+-- stated 10 MW/acre BESS, 5 MW needs ~0.5 acres — the smallest use case in scope.
+SELECT a.*,
+  s.parcel_acres,
+  IFNULL(s.parcel_acres, 0) >= 0.5  AS fits_min_bess_5mw,
+  IFNULL(s.mw_datacenter_4_per_acre, 0) >= 25 AS fits_dc_25mw
+FROM agg a LEFT JOIN `{DS}.in_sites` s USING (parcel_source, parcel_key)
 """
 run(FLAGS, "in_si_sites_flags_v2")
 
