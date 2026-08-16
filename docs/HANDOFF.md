@@ -64,6 +64,41 @@ re-launching anything.
    78% report zero property loss; and most are residential. The funnel is 76,779 raw → 16,264
    structure fires → 3,082 non-residential → **469 SI-grade** (non-residential, ≥$10k loss).
 
+## B2 RESULT — the parcel layer is blind to 44,806 real dated distress signals
+
+The date-keying agent finished. `in_si_address_parcel_bridge` (51,309 addresses → 45,822 parcels)
+and `in_si_signals_parcel_dated` (46,790 rows, 63,329 events) are built and registered.
+
+**The headline is not the yield, it is what the yield exposed.** Only **1,016 of the 45,822
+newly-dated parcels are flagged `has_si_signal`** — meaning **44,806 parcels carry a real, dated
+distress signal that the application cannot currently see.** The cause is the D5 problem from the
+other direction: the parcel-keyed block is ONE signal (945,896 rows of `D5_vacancy`, which has zero
+dates), so `has_si_signal` has been functioning as a vacancy flag, and `si_last_event_date` could
+never have been populated from it. **Widening `has_si_signal` beyond D5 is now the single highest-
+value fix in the app** — bigger than any acquisition.
+
+Measured, and deliberately not dressed up:
+- bridge yield **20.5%** of distinct addresses (51,309 of 250,063), **7.4%** of rows, **31.4%** of
+  rows within 3 years. The ceiling is UPSTREAM GEOCODE COVERAGE, not the join: only 37.6% of the
+  signal addresses are present in `mat_si_address_location` at all, and only 20.7% are resolved.
+- before/after on the flagged population is small and honest: **2,985 → 3,886 dated (+901)**.
+- **`D12_code_violation` (747,122 rows) matched exactly ZERO.** Its addresses carry no city suffix
+  while the bridge and every other source do, so none are even present. That is a loader defect in
+  `si_d12_indy_marion_code_enforcement`. The agent correctly did NOT write a compensating regex —
+  and a generous diagnostic shows fixing it would recover only 1,593 addresses (1.0%), because the
+  bridge holds just 2,713 resolved Indianapolis addresses. **Geocoding Indianapolis is the real fix.**
+  Excluding D12, the address block matches 55.5%.
+
+**D85 CONFIRMED LIVE AND UNREPAIRED.** The spatial join matched 100% on its first run — which was
+the defect, not success. `parcels_in/080500000047000018` is an inverted whole-Earth polygon
+(196,936,707 sq mi, `structure_count` 3,377,472) that swallowed all 51,821 points. Excluded, the
+match is 50,865 (98.2%) and fan-out drops 2.0 → 1.015. **Any spatial join against `in_sites` must
+exclude that parcel until it is fixed upstream.**
+
+Also recorded: 14,304 rows carry LEGITIMATE future dates (scheduled tax sales, loan maturity to
+2036-03-01), so the build keeps `max_observed_date` and `max_past_observed_date` as separate
+columns rather than treating a future date as an error.
+
 ## Operator rulings issued this session — all binding
 
 - **Buildable area depends on use case.** Hyperscale DC = WHOLE PARCEL (a structure is demolition
