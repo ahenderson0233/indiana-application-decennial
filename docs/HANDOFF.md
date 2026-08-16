@@ -35,7 +35,31 @@ re-launching anything.
    SHORTFALL DETECTION → stop and report. It was also asked to grab IDEM's enforcement DB
    (`oe.idem.in.gov/idem_oe_order`) as a separate table. Its brief carries the all-columns rule
    and the instruction to narrow ROWS, never columns.
-   *Original job, for context:* `scrapers/lane_f/pull_d22_environmental.py`, background job. Walks 92
+   *Original job, for context:* `scrapers/lane_f/pull_d22_environmental.py`, background job.
+
+   **ECHO FACTS ALREADY ESTABLISHED — do not rediscover these:**
+   - Statewide is REFUSED: *"Rows Returned would be 127266. Queryset Limit would be exceeded -
+     please make search parameters more selective."* Hence the county walk (92 names from
+     `energy.county_boundaries` WHERE STATEFP='18').
+   - Row endpoint is **`echo_rest_services.get_qid`**, NOT `get_download`. `get_download` refuses
+     JSON with an **HTML** body — *"The Output type was JSON. Output Type must be CSV or
+     GEOJSOND"* — which surfaces as a bogus JSON decode error, not as the plain refusal it is.
+   - Open the query with `echo_rest_services.get_facilities?output=JSON&p_st=IN&p_co=<County>&
+     responseset=5` → returns `QueryID` + `QueryRows`, then page `get_qid` with `qid` + `pageno`.
+   - **Leave `qcolumns` UNSET** — that returns the full default column set. Setting it narrows
+     columns, which is the one thing that must never be narrowed.
+   - **59 columns returned**, including the signal-bearing ones a narrow pull would have thrown
+     away: `FacSNCFlg` (significant non-compliance), `CAAHpvFlag` (high-priority violator),
+     `FacPenaltyCount`, `FacComplianceStatus`, per-programme CAA/CWA/RCRA/SDWA status and
+     inspection counts, `FacLat`, `FacNAICSCodes`, `FacFIPSCode`, `TRIReleasesTransfers`.
+   - `get_facilities` also returns useful per-county SUMMARY counts on the open call itself:
+     `SVRows`, `CVRows`, `INSPRows`, `TotalPenalties`, `CAARows`, `CWARows`, `RCRRows`, `TRIRows`.
+   - **Known counts:** Adams = 928 facilities. Lane F measured 25,330 active Indiana facilities,
+     372 significant violators, $1.86B penalties.
+   - **Failure modes seen:** HTTP 500 then 502 (transient, retry works), then **HTTP 429 —
+     rate-limited at 1.1 s/request**, which exhausted a 5-attempt backoff. And a SILENT SHORT
+     PAGE: Adams returned 825 of 928 and it was accepted, so shortfall detection is required.
+   - No key, no account, no terms wall. ECHO is OPEN — every problem here is throughput. Walks 92
    counties (statewide is refused: *"Rows Returned would be 127266. Queryset Limit would be
    exceeded"*). **Now hitting HTTP 429 — ECHO is RATE-LIMITING us at 1.1 s/request.** Two things
    to fix before trusting a run: raise the pause (try 3–5 s) and add SHORTFALL detection — Adams
