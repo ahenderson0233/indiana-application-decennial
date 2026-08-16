@@ -59,7 +59,7 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_nw_reconciled` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
-| `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
+| `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/audit_frontend.py` |
 | `in_dc_actions_resweep` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_coverage` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_walls` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
@@ -162,11 +162,11 @@ headline can be audited rather than taken on trust:
 | `in_ordinances_amlegal_coverage_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_amlegal_v3` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
 | `in_ordinances_amlegal_v3_probes` | registry panel | `scripts/export_ordinances.py (family `in_ordinances_*`)` |
-| `in_ordinances_dc` | direct | `app.js`, `scripts/export_grid_sentiment.py` |
+| `in_ordinances_dc` | direct | `app.js`, `scripts/audit_frontend.py` |
 | `in_ordinances_dc_county_sites_v2` | direct | `scripts/export_ordinances.py` |
 | `in_ordinances_dc_coverage_v2` | direct | `scripts/export_ordinances.py` |
-| `in_ordinances_dc_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
-| `in_ordinances_dc_v2_triage` | direct | `scripts/acceptance_run.py`, `scripts/export_ordinances.py` |
+| `in_ordinances_dc_v2` | direct | `community.html`, `scripts/audit_frontend.py` |
+| `in_ordinances_dc_v2_triage` | direct | `scripts/acceptance_run.py`, `scripts/export_grid_sentiment.py` |
 | `in_ordinances_publisher_inventory_v2` | direct | `scripts/export_ordinances.py` |
 | `in_osm_power_lines` | direct | `scripts/export_context_layers.py` |
 | `in_osm_power_substations` | direct | `scripts/export_context_layers.py` |

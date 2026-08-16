@@ -108,9 +108,33 @@ for r in client.query(f"""
          CONCAT(IFNULL(action,''), IFNULL(CONCAT(' - ', company),'')),
          CAST(action_date AS STRING), source_url, CAST(already_held AS STRING)
   FROM `{DS}.in_dc_actions`
-  UNION ALL SELECT 'ordinance', county, CONCAT(jurisdiction, ': ', IFNULL(section_title,'')),
-         snippet, CAST(observed_date AS STRING), url, search_phrase
-  FROM `{DS}.in_ordinances_dc`"""):
+  -- THE RECEIPTS FEED WAS SHOWING FOUR ORDINANCES. It read `in_ordinances_dc`, the v1 table, which
+  -- holds 4 rows and one of those is a false positive (Michigan City matched on "Indiana Natural
+  -- Heritage Data Center", an IDNR database, not a land use). Meanwhile v2 holds 153 candidates,
+  -- triage admits 19 sections as genuinely regulating a data centre, and the 92-county sweep holds
+  -- 107 land-use actions of which 73 are verified at a government source. None of it reached this
+  -- feed, so the map's county receipts understated the corpus by an order of magnitude.
+  --
+  -- TRIAGE GATES THE CODIFIED SIDE. Shipping all 153 would be the opposite error: only 7 of them
+  -- contain "data cent(er|re)" at all and the rest matched adjacent vocabulary like
+  -- "telecommunications facility", which is a cell tower. Admit what triage admitted.
+  UNION ALL SELECT 'ordinance', t.county,
+         CONCAT(t.jurisdiction, ': ', IFNULL(t.section_title,'')),
+         CONCAT(t.verdict, ' - ', IFNULL(t.reason,'')),
+         CAST(ANY_VALUE(v.observed_date_source) AS STRING), t.url, ANY_VALUE(v.search_phrase)
+  FROM `{DS}.in_ordinances_dc_v2_triage` t
+  LEFT JOIN `{DS}.in_ordinances_dc_v2` v ON v.code_section_id = t.code_section_id
+  WHERE t.verdict IN ('RELEVANT','NEEDS_FULL_TEXT')
+  GROUP BY t.county, t.jurisdiction, t.section_title, t.verdict, t.reason, t.url
+
+  -- and the layer no code library carries: adopted moratoria, bans and uncodified ordinances,
+  -- gated on posture_renderable so an unverified news lead can never reach the map as a receipt
+  UNION ALL SELECT 'county_action', county,
+         CONCAT(jurisdiction, ': ', IFNULL(confirmed_action_type,'')),
+         IFNULL(verified_instrument, ''),
+         CAST(COALESCE(verified_effective_from, verified_observed_date) AS STRING),
+         official_url, confirmed_action_type
+  FROM `{DS}.in_dc_actions_resolved` WHERE posture_renderable"""):
     rec.append(dict(r))
 with gzip.open(os.path.join(REPO, "data", "receipts.json.gz"), "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(rec, f, separators=(",", ":"), default=jd)
