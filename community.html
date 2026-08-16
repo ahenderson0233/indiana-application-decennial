@@ -262,11 +262,39 @@
        <div class="hint">${esc(a.verification_note).slice(0, 140)}</div></td></tr>`).join(""));
 
   document.getElementById("t-cdacov").insertAdjacentHTML("beforeend", CAC.map(c =>
-    `<tr><td>${esc(c.county)}</td>
+    `<tr><td>${esc(c.county)}${c.re_swept ? ` <span class="hint">(re-swept)</span>` : ""}</td>
      <td class="${c.status === "ACTION_FOUND" ? "" : "cannot"}">${esc(c.status)}</td>
      <td class="hint">${c.county_site_host ? esc(c.county_site_host) : "not identified"}</td>
      <td>${fmt(c.queries_run)}</td>
      <td class="hint">${esc(c.notes).slice(0, 170)}</td></tr>`).join(""));
+
+  /* ---------- the three the first pass missed ----------
+     18 counties had been recorded SEARCHED_NONE_FOUND without their official site ever being
+     fetched — a search-engine look scored as a county-level negative. Three had real actions
+     behind that false negative, including a ~1 GW PUD and a campus already under construction. */
+  const RS = O.resweep_actions || [];
+  if (RS.length) {
+    const verified = RS.filter(a => a.evidence_grade === "VERIFIED_AT_OFFICIAL_SOURCE");
+    document.getElementById("t-cdaver").insertAdjacentHTML("beforeend", verified.map(a =>
+      `<tr><td><b>${esc(a.county)}</b><div class="hint">${esc(a.jurisdiction)}</div></td>
+       <td>${esc(a.action_type)}</td>
+       <td>${esc(a.instrument).slice(0, 120)}
+         ${a.verbatim_snippet ? `<div class="hint">“${esc(a.verbatim_snippet).slice(0, 130)}”</div>` : ""}
+         <div class="hint"><b>found only on re-sweep</b> — the first pass never fetched this county's own site</div></td>
+       <td>${a.observed_date ? String(a.observed_date).slice(0, 10) : `<span class="cannot">—</span>`}</td>
+       <td>${a.effective_to ? String(a.effective_to).slice(0, 10) : `<span class="cannot">no end date stated</span>`}</td>
+       <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">official</a>` : `<span class="cannot">—</span>`}</td></tr>`).join(""));
+    document.getElementById("t-cdalead").insertAdjacentHTML("beforeend",
+      RS.filter(a => a.evidence_grade !== "VERIFIED_AT_OFFICIAL_SOURCE").map(a =>
+      `<tr><td>${esc(a.county)}<div class="hint">${esc(a.jurisdiction)}</div></td>
+       <td class="cannot">${esc(a.action_type)}</td>
+       <td>${esc(a.instrument).slice(0, 110)}</td>
+       <td class="cannot">found on re-sweep, not confirmable
+         <div class="hint">${esc(a.date_note).slice(0, 140)}</div></td></tr>`).join(""));
+    // the headline must count these too
+    const rv = document.getElementById("cda-verified");
+    rv.textContent = fmt((Number(String(rv.textContent).replace(/,/g, "")) || 0) + verified.length);
+  }
 
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;

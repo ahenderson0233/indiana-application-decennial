@@ -59,8 +59,8 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
-| `in_dc_actions_resweep` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
-| `in_dc_actions_resweep_coverage` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_resweep` | direct | `scripts/export_ordinances.py` |
+| `in_dc_actions_resweep_coverage` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_walls` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_verify_walls` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
 | `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |

@@ -106,10 +106,37 @@ if has("in_dc_actions_county_v2"):
       FROM `{DS}.in_dc_actions_county_v2` GROUP BY 1 ORDER BY total DESC""")
 
 if has("in_dc_actions_coverage_v2"):
+    # THE RE-SWEEP OVERRIDES THE FIRST PASS where it ran. 18 counties had been recorded
+    # SEARCHED_NONE_FOUND without their official site ever being fetched — a search-engine look
+    # scored as a county-level negative. Three of them turned out to have real actions, so those
+    # three were rendering as "nothing found" on this page while a ~1 GW PUD (Henry), a
+    # recommended moratorium (Tipton) and a ~$65B campus under construction (Sullivan) sat behind
+    # the false negative. A weaker instrument must never overwrite a stronger one, so the join
+    # takes the re-sweep row wherever it exists.
+    resweep_join = ("LEFT JOIN `%s.in_dc_actions_resweep_coverage` r USING (county)" % DS
+                    if has("in_dc_actions_resweep_coverage") else "")
     out["county_action_coverage"] = rows(f"""
+      SELECT c.county,
+             IFNULL(r.status, c.status) status,
+             IFNULL(r.county_site_host, c.county_site_host) county_site_host,
+             IFNULL(r.queries_run, c.queries_run) queries_run,
+             IFNULL(r.official_site_fetched, c.official_site_fetched) official_site_fetched,
+             IFNULL(r.search_instrument, c.search_instrument) search_instrument,
+             IFNULL(r.notes, c.notes) notes,
+             r.county IS NOT NULL AS re_swept
+      FROM `{DS}.in_dc_actions_coverage_v2` c
+      {resweep_join}
+      ORDER BY status, county""") if resweep_join else rows(f"""
       SELECT county, status, county_site_host, queries_run, official_site_fetched,
-             search_instrument, notes
+             search_instrument, notes, FALSE AS re_swept
       FROM `{DS}.in_dc_actions_coverage_v2` ORDER BY status, county""")
+
+# the three actions the first pass missed entirely
+if has("in_dc_actions_resweep"):
+    out["resweep_actions"] = rows(f"""
+      SELECT county, jurisdiction, action_type, instrument, observed_date, effective_from,
+             effective_to, verbatim_snippet, url, evidence_grade, date_note
+      FROM `{DS}.in_dc_actions_resweep` ORDER BY evidence_grade, county""")
 
 # ---- OFFICIAL-SOURCE VERIFICATION of the leads ------------------------------------------------
 # `posture_renderable` is the gate, and it is computed in the warehouse rather than in the page.
