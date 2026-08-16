@@ -52,8 +52,8 @@ useful half), and an "empty by defect" panel for the two zero-row FCC tables tha
 
 | | |
 |---|---:|
-| **parcels flagged `has_si_signal`** | **9,383** (was 847,410, 99.2% empty land) |
-| …carrying an event date | 8,450 (**92%**, was 0.6%) |
+| **parcels flagged `has_si_signal`** | **9,990** (was 847,410, 99.2% empty land) |
+| …carrying an event date | 8,450 (**85%**, was 0.6%) — the share fell as Marion added 607 undated abandoned-building parcels; that is coverage gained, not freshness lost |
 | …with an event inside 3 / 5 years | 2,203 / 3,661 |
 | C/I · other non-res · agriculture · vacant land | 3,793 · 575 · 293 · 4,722 |
 | evidence rows kept, not dropped | 56,225 residential + 6,231 low-severity, each with a reason |
@@ -64,6 +64,51 @@ useful half), and an "empty by defect" panel for the two zero-row FCC tables tha
 **Read `docs/SI_COVERAGE.md`** — GENERATED, per-signal, all 33 signals in the taxonomy including
 the ones we hold nothing for. Coverage is four different numbers (held / reached / admitted /
 dated) and conflating them is how the D5 mistake happened.
+
+## The Marion unlock — "no crosswalk exists" was true of our tables, not of the world
+
+The previous session concluded Marion had no local→state parcel crosswalk, because
+`in_si_indy_taxsale_parcels.PARCELNUMBER` turned out to be the same 7-digit local id. That was a
+correct reading of that table and a wrong conclusion about the world. **Marion's own parcel
+service publishes both keys side by side:**
+
+```
+gis.indy.gov/server/rest/services/sde_Parcel/sde_Parcel/MapServer/5   'Parcel State Pin'
+  347,049 parcels · PARCEL_I (7-digit local) + STATEPARCELNUMBER (49-06-25-178-053.000-101)
+```
+
+98.2% of its state pins exist in `in_sites`. **D5_abandoned_building reach 168 → 7,147, admitted
+34 → 645** (212 C/I). The address bridge had managed 125 of 7,120 — 1.8%. Pulled by
+`scrapers/lane_f/pull_marion_crosswalk.py`, ALL 51 columns, shortfall-checked.
+
+Two lessons worth keeping:
+- **A dead end in the tables we hold is not a dead end in the publisher's catalogue.** The right
+  next move after "no crosswalk in our data" is to read the publisher's service directory.
+- **We pulled the Indy abandoned layer from `OpenData_NonSpatial`** — a service whose name says it
+  has no geometry. The same rows exist with polygons at `MapIndy/MapIndyProperty/MapServer/11`.
+  (That copy is now held too, but `f=json` returns Esri `rings`, so `ST_GEOGFROMGEOJSON` parsed
+  0 of 7,120 — re-pull with `f=geojson` if the geometry cross-check is ever wanted.)
+
+## B5 — retired, and the finding underneath is worse than the counter
+
+`vw_county_dc_posture` **does not exist** in `indiana_app` (404), so the suspected 92/92 counter was
+a phantom. But underneath it: **`in_ordinances_dc` holds 4 rows** and `in_commission_posture` holds
+1. County data-centre posture is **UNMEASURED**, not measured-and-suspect — no P4/P6 county-posture
+score can be built on four ordinances. Filed as backlog item 27.
+
+## The placement routes, measured 2026-08-16
+
+**198,754 of 250,063 distinct signal addresses are unplaced.** That is the largest remaining
+coverage gain in the application. Routes, in value order:
+
+| route | unlocks | state |
+|---|---|---|
+| Marion crosswalk | 7,132 abandoned rows | ✅ done, 100% |
+| Indy unit address points (`MapIndy/MapIndyProperty/0`, 157,018 with geometry) | the 747,122-row D12 corpus that matches zero today | ready |
+| Census Bureau batch geocoder (free, no key, public domain) | a large share of the 198,754 statewide | ready |
+| **owner name → parcel (DLGF Gateway)** | **five signals: D9, D18, D11, D27, D19** | blocked, top of queue |
+| name-match to located facilities | 130 exact hits of 2,023 parties against 58,003 ECHO points — evidence, must be labelled | cheap |
+| WARN notice PDFs (`col_8__href`) | the SITE address rather than the HQ address we key on | ready |
 
 ## What to do next
 

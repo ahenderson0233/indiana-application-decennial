@@ -179,14 +179,23 @@ d_ev_demo AS (   -- SEVERITY GATE: 3,771 residential teardowns vs 419 commercial
   FROM `{DS}.in_si_evansville_demolition_permits` WHERE statekey(USER_Parcel_ID) IS NOT NULL
 ),
 -- ---- E. Indy: NO state key exists in any held table, so DEFER TO ADDRESS ----------------------
+-- THE MARION CROSSWALK, which turns 1.8% into 100%. The earlier conclusion "Marion has no state
+-- key in any held table" was right about the tables we HELD and wrong about the world: Marion's
+-- own parcel service publishes both keys side by side.
+--   gis.indy.gov/.../sde_Parcel/sde_Parcel/MapServer/5  'Parcel State Pin'
+--   347,049 parcels · PARCEL_I (7-digit local) + STATEPARCELNUMBER (49-06-25-178-053.000-101)
+-- Pulled by scrapers/lane_f/pull_marion_crosswalk.py. 98.2% of its state pins exist in in_sites,
+-- and it places 7,132 of 7,132 abandoned rows against 125 via the address bridge.
 e_indy_abandoned AS (
-  SELECT b.parcel_key pk, 'D5_abandoned_building' signal, CAST(NULL AS DATE) obs,
-         'publisher carries no event date' basis, 'address_bridge' keying,
-         'ADDRESS+CITY -> mat_si_address_location' bridge, 'indy_abandoned_vacant' source_id,
-         'publisher table (new in v2)' blk, TRUE
+  SELECT x.st pk, 'D5_abandoned_building' signal, CAST(NULL AS DATE) obs,
+         'publisher carries no event date' basis, 'marion_parcel_crosswalk' keying,
+         'PARCEL_I -> STATEPARCELNUMBER (Marion sde_Parcel layer 5)' bridge,
+         'indy_abandoned_vacant' source_id, 'publisher table (new in v2)' blk, TRUE
   FROM `{DS}.in_si_indy_abandoned_vacant` a
-  JOIN `{DS}.in_si_address_parcel_bridge` b
-    ON b.address_norm = UPPER(TRIM(a.ADDRESS)) || ' ' || UPPER(TRIM(a.CITY))
+  JOIN (SELECT DISTINCT PARCEL_I loc, REGEXP_REPLACE(STATEPARCELNUMBER, r'[^0-9]','') st
+        FROM `{DS}.in_marion_parcel_crosswalk`
+        WHERE PARCEL_I IS NOT NULL AND STATEPARCELNUMBER IS NOT NULL) x
+    ON x.loc = a.PARCEL_I
 ),
 -- ---- F. the derive-from-held win: Unsafe Buildings + Vacant Board Order, WITH open dates ------
 f_indy_unsafe AS (

@@ -138,11 +138,19 @@ from OSM alone") so the merge is auditable, not magic.
 *Acceptance:* for each subject, ONE layer with a source badge, a stated dedupe rule, and a
 measured before/after count. The user should never have to toggle two layers to see one thing.
 
-> **PHASE A COMPLETE 2026-08-15: 139 → 196 of 199 reaching a surface (98%).** The 3 remaining are
-> deliberate and each carries a written waiver: `_indiana_census` (meta table behind the audit
-> docs) and the two zero-row FCC tables kept as the record of the `_st_pct` bug.
-> **A6 is partly done** — transmission and substations merged; generation, gas pipelines,
-> brownfields and the WARN pair remain (see the table above).
+> **PHASE A — wiring COMPLETE and now MEASURED: 226 of 226 registered objects reach a surface**
+> (`scripts/audit_wiring_census.py` → `docs/WIRING_CENSUS.md`). Do NOT quote that figure without
+> re-running it: the denominator moves on every build that registers something.
+>
+> **A6 CLOSED 2026-08-16 — verified subject by subject, not assumed:**
+> | subject | verdict |
+> |---|---|
+> | transmission | ✅ merged — `in_transmission_union`, OSM kept only where no HIFLD line within 100 m |
+> | substations | ✅ merged upstream — `in_substations` was already a HIFLD+OSM union |
+> | generation | ✅ merged — `in_generation_union` (283), FULL OUTER JOIN on plant code, EIA reduced to its latest row per plant first. **Was built and never shipped**; surfaced 2026-08-16 |
+> | gas pipelines | ✅ **NOT a duplicate.** `in_gas_pipelines` (215) is the only pipeline-geometry table; the 9 `in_gas_capacity_*` tables are capacity SERIES per pipeline — different grain, nothing to merge |
+> | brownfields | ✅ **NOT a duplicate.** Only one brownfield table is held in `indiana_app` (`in_si_refresh_brownfield_epa_in`, 1,483). The "3 programme tables" live in `energy.*` and were never clipped separately |
+> | WARN pair | ⚠️ **GENUINE duplicate, still unresolved.** `in_si_refresh_warn_notices` and `in_si_state_warn_notices` both hold 1,220 rows sharing **1,104 of 1,178** company\|city\|date keys. A3 recorded a decision to keep the one with `notice_pdf_urls` (the `_state_` copy) — but that was a decision, not an action: both tables are still present and both are still read. See item 28 |
 
 ---
 
@@ -162,7 +170,12 @@ Phase A is COMPLETE. This is everything left to finish the tool. Ranked within e
 | 2d | geocode Indianapolis — the bridge holds only 2,713 resolved Indy addresses; this is the real ceiling | B/D | ready | — |
 | 3 | abandoned-property registries beyond Indy/South Bend | B | **agent running** | — |
 | 4 | wire the D5 split into `in_sites` (screener currently selects empty land) | B | ready | — |
-| 5 | B5 verify or retire `vw_county_dc_posture` 92/92 counter | B | ready | — |
+| 5 | B5 `vw_county_dc_posture` 92/92 counter | B | ✅ **RETIRED 2026-08-16 — and the real finding is worse than the counter.** The view does not exist in `indiana_app` (404), so the 92/92 was a phantom. Underneath it: **`in_ordinances_dc` holds 4 rows** and `in_commission_posture` holds 1. County data-centre posture is **UNMEASURED**, not measured-and-suspect. A P4/P6 county-posture score cannot be built on 4 ordinances — see item 27 | — |
+| 27 | **county ordinance corpus — 4 rows for 92 counties.** Municode/American Legal search was run once and never scaled. Needed before any county-posture score is credible | B/D | ready | — |
+| 28 | **WARN pair still duplicated** — 1,104 of 1,178 shared keys across `in_si_refresh_warn_notices` and `in_si_state_warn_notices`. Pick one, waive the other with the measurement on the record | A-tail | ready, small | — |
+| 29 | **Marion crosswalk ✅ DONE 2026-08-16 — 1.8% → 100%.** `sde_Parcel/MapServer/5` publishes `PARCEL_I` + `STATEPARCELNUMBER` for 347,049 parcels; 98.2% of its state pins exist in `in_sites`. D5_abandoned_building reach **168 → 7,147**, admitted **34 → 645**. The prior "Marion has no state key" was true of the tables we held, not of the world | B | ✅ | — |
+| 30 | **place the remaining 198,754 unplaced signal addresses.** Routes measured 2026-08-16: Indy unit address points (`MapIndy/MapIndyProperty/0`, 157,018 with geometry) for the 747,122-row D12 corpus; Census Bureau batch geocoder (free, no key) statewide. This is the largest remaining coverage gain in the app | B/D | ready | — |
+| 31 | ArcGIS `f=json` returns **Esri `rings`, not GeoJSON** — `ST_GEOGFROMGEOJSON` parsed 0 of 7,120. Re-pull with `f=geojson` if a geometry cross-check on Marion is wanted (the key crosswalk already places 100%, so this is verification, not coverage) | B | optional | — |
 | 6 | **B1/D9/D18/D11/D27 — DLGF Gateway bulk owner data. ⭐ NOW THE HIGHEST-VALUE ITEM LEFT: one pull unblocks FIVE signals, not three.** `mat_parcel_attrs.parcel_owner` is NULL on all 3,553,381 Indiana parcels (re-measured 2026-08-16), and that single gap is what keeps D11 (983 dissolutions) and D27 (156 UCC lapses) at owner grain | B/D | ready | — |
 | 7 | file the IRS ALS FOIA for D13 | D | **drafted, awaiting operator** | operator |
 | 8 | B3 acreage disagreements: 41 shrunk (footprints>0) + 107 inflated >200% | B | needs a rule | operator |
