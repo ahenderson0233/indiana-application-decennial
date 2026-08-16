@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-16T18:45:58.922287+00:00",
+ "run_at": "2026-08-16T20:27:53.188462+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,7 +12,7 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "PASS",
-   "detail": "MEASURED this run: 255 of 255 registered objects reach a surface"
+   "detail": "MEASURED this run: 259 of 259 registered objects reach a surface"
   },
   {
    "criterion": 2,
@@ -62,210 +62,210 @@
    "label": "si_v2.flag_summary.flagged",
    "value": 23140,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.dated",
    "value": 13373,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r3",
    "value": 4263,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r5",
    "value": 7298,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ci",
    "value": 4766,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.other_nonres",
    "value": 711,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ag",
    "value": 327,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.land",
    "value": 17336,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_resid",
-   "value": 85800,
+   "value": 88308,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_lowsev",
    "value": 6231,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_bess",
    "value": 7183,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_dc",
    "value": 3015,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.capability.too_small",
    "value": 15957,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
    "label": "si_v2.capability.median_ac",
    "value": 0.16,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-16 16:26:03",
+   "built_at": "2026-08-16 20:04:36",
    "traced": true
   },
   {
-   "label": "coverage[D1_tax_sale].parcels_admitted",
-   "value": 11954,
+   "label": "coverage[D4_tax_delinquency].parcels_admitted",
+   "value": 9459,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D2_foreclosure].parcels_admitted",
    "value": 3571,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
+   "traced": true
+  },
+  {
+   "label": "coverage[D1_tax_sale].parcels_admitted",
+   "value": 3322,
+   "table": "in_si_signal_coverage",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D26_assessment_appeal].parcels_admitted",
    "value": 1937,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D16_structure_fire].parcels_admitted",
    "value": 1680,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D5_unsafe_building].parcels_admitted",
    "value": 1320,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D22_environmental_violation].parcels_admitted",
    "value": 931,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D14_sba_chargeoff].parcels_admitted",
    "value": 762,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D5_vacant_board_order].parcels_admitted",
    "value": 658,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D5_abandoned_building].parcels_admitted",
    "value": 645,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D21_demolition_order].parcels_admitted",
    "value": 377,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D7_brownfield].parcels_admitted",
    "value": 311,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D12_code_violation].parcels_admitted",
    "value": 228,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D20_loan_maturity].parcels_admitted",
    "value": 129,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D22_facility_inactive].parcels_admitted",
    "value": 113,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {
    "label": "coverage[D24_plant_delisting].parcels_admitted",
    "value": 6,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
-   "traced": true
-  },
-  {
-   "label": "coverage[A2_gov_surplus].parcels_admitted",
-   "value": 5,
-   "table": "in_si_signal_coverage",
-   "built_at": "2026-08-16 16:26:06",
+   "built_at": "2026-08-16 20:04:40",
    "traced": true
   },
   {

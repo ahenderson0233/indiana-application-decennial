@@ -43,8 +43,20 @@ out["d25"] = rows(f"""SELECT docket, docket_title, filing_type,
 out["d27"] = rows(f"""SELECT debtor_name, raw_filing_type, CAST(lapse_date AS STRING) lapse_date,
     CAST(filing_date AS STRING) filing_date, address_line, city, zip, keying, quality_mult
   FROM `{DS}.in_si_d27_admitted` ORDER BY lapse_date DESC""")
-out["cloudscene"] = rows(f"""SELECT name, city, market FROM `{DS}.in_cloudscene_crosscheck`
-  ORDER BY market, name""")
+out["cloudscene"] = rows(f"""SELECT cloudscene_slug, name, city, market
+  FROM `{DS}.in_cloudscene_crosscheck` ORDER BY market, name""")
+# B4's AUTHORITATIVE resolution, keyed by the same cloudscene_slug. A name matcher is a heuristic;
+# this is the answer, established from the operators' own sites. Where a slug appears here, the
+# page must use this verdict and not guess from strings.
+out["colo_resolved"] = rows(f"""SELECT cloudscene_slug, facility_name, operator, verdict,
+    already_pinned_as, same_building_as, street_address, city, confidence
+  FROM `{DS}.in_dc_colo_resolved`""")
+# Operator renames and acquisitions, so the cross-check stops reporting a gap that is really a
+# matcher defect. B4 proved ZERO of 8 flagged facilities were missing buildings; five were pinned
+# under a predecessor name (CenturyLink->Lumen, LightBound->DataBank, 365->Netrality) and a
+# stem-prefix matcher cannot see through a rename.
+out["dc_aliases"] = rows(f"""SELECT alias_from, alias_to, alias_kind, effective_year, evidence
+  FROM `{DS}.in_dc_operator_aliases` ORDER BY alias_from""")
 out["queue_miso"] = rows(f"""SELECT project_key, county, poiname, studyphase, studygroup,
     facilitytype, fueltype, dp1erismw, dp1nrismw, summernetmw, applicationstatus
   FROM `{DS}.in_queue_miso_extras` ORDER BY county, project_key""")

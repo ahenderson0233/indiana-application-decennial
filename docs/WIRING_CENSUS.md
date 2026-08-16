@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 258 of 258 registered objects reach a surface
+## 259 of 259 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -63,6 +63,7 @@ headline can be audited rather than taken on trust:
 | `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |
 | `in_dc_docket_tracker` | direct | `app.js` |
 | `in_dc_eei_tariffs` | direct | `app.js` |
+| `in_dc_operator_aliases` | direct | `scripts/export_signoff_payloads.py` |
 | `in_drought_by_state` | direct | `app.js` |
 | `in_echo_cwa_facilities` | direct | `app.js` |
 | `in_econ_gjf_megadeals` | direct | `app.js` |

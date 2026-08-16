@@ -173,16 +173,41 @@
   const stem = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const held = fac.features.filter((f) => f.properties.layer === "dc")
     .map((f) => stem(f.properties.name)).filter((x) => x.length > 3);
+  // APPLY OPERATOR ALIASES BEFORE MATCHING. `centurylinkindy1` and `lumenindianapolis1` share no
+  // prefix, so the raw stem matcher reported five facilities as missing when all five were pinned
+  // under a predecessor operator name. B4 checked all eight flagged facilities and found ZERO were
+  // missing buildings — the gap was in this matcher, not in the layer, and a false "5 missing data
+  // centres" on a competitive-landscape page is a number a reader would act on.
+  const ALIAS = so.dc_aliases || [];
+  const aliased = (nm) => {
+    let out = String(nm || "");
+    for (const a of ALIAS) {
+      const re = new RegExp(a.alias_from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+      if (re.test(out)) out = out.replace(re, a.alias_to);
+    }
+    return out;
+  };
+  // B4's authoritative resolution wins over any string heuristic, keyed on cloudscene_slug.
+  const RES = new Map((so.colo_resolved || []).map((x) => [x.cloudscene_slug, x]));
   const rowsCs = so.cloudscene.map((r) => {
-    const s = stem(r.name);
-    const hit = s.length > 3 && held.some((h) => h.startsWith(s) || s.startsWith(h));
-    return { ...r, hit };
+    // try the published name AND its alias-resolved form; a match on either is a match
+    const cands = [...new Set([stem(r.name), stem(aliased(r.name))])].filter((x) => x.length > 3);
+    let hit = cands.some((s) => held.some((h) => h.startsWith(s) || s.startsWith(h)));
+    const viaAlias = hit && !(stem(r.name).length > 3 &&
+      held.some((h) => h.startsWith(stem(r.name)) || stem(r.name).startsWith(h)));
+    const res = RES.get(r.cloudscene_slug);
+    if (res) hit = res.verdict === "RESOLVED" || res.verdict === "SAME_BUILDING_AS";
+    return { ...r, hit, viaAlias, res };
   });
   // READ THE NAMES BEFORE REPORTING A GAP. 229 of the 260 are carrier central offices — 223 of
   // them Frontier — not data centres. Reporting "254 unmatched" as a shortfall would claim we are
   // missing 254 data centres when most were never data centres to begin with. Split the two.
+  // A CARRIER'S NAME IS NOT A VERDICT. This regex once swallowed Lumen Indianapolis 1 — a
+  // 20,000 sq ft colocation facility at 1902 S East St that IS pinned in our own layer — because
+  // "centurylink" appears in the telco list. Carriers run both central offices and real colos.
+  // So the resolved table overrides the name test wherever B4 actually investigated the site.
   const TELCO = /^(frontier|at&t|centurylink|lumen|windstream|comcast|charter|spectrum|verizon|smithville|mediacom|nex-tech|tds|citizens)/i;
-  for (const r of rowsCs) r.telco = TELCO.test(r.name || "");
+  for (const r of rowsCs) r.telco = r.res ? false : TELCO.test(r.name || "");
   const colo = rowsCs.filter((r) => !r.telco), telco = rowsCs.filter((r) => r.telco);
   const matched = colo.filter((r) => r.hit).length;
   document.getElementById("cs-summary").innerHTML =
@@ -196,8 +221,14 @@
   document.getElementById("t-cs").insertAdjacentHTML("beforeend", rowsCs
     .sort((a, b) => Number(a.telco) - Number(b.telco) || Number(a.hit) - Number(b.hit))
     .map((r) => `<tr><td>${String(r.name).slice(0, 46)}</td><td>${r.city || "—"}</td><td class="hint">${r.market}</td>
-      <td>${r.telco ? `<span class="hint">carrier central office — not a data centre</span>`
-                    : r.hit ? "yes — already pinned"
+      <td>${r.res ? `<b>${r.res.verdict === "RESOLVED" ? "yes — already pinned" :
+                          r.res.verdict === "SAME_BUILDING_AS" ? "inside a building we hold" :
+                          "no building exists"}</b>
+              <div class="hint">investigated: ${String(r.res.already_pinned_as || r.res.same_building_as || r.res.facility_name || "")}
+              ${r.res.confidence ? " · " + r.res.confidence : ""}</div>`
+                  : r.telco ? `<span class="hint">carrier central office — not a data centre</span>`
+                    : r.hit ? (r.viaAlias ? `yes — already pinned <span class="hint">(matched through an operator rename)</span>`
+                                          : "yes — already pinned")
                             : `<span class="cannot">no name match in our 242</span>`}</td></tr>`).join(""));
   if (s.registry_note)
     document.getElementById("ledger").innerHTML +=
