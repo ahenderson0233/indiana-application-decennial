@@ -110,6 +110,67 @@ coverage gain in the application. Routes, in value order:
 | name-match to located facilities | 130 exact hits of 2,023 parties against 58,003 ECHO points — evidence, must be labelled | cheap |
 | WARN notice PDFs (`col_8__href`) | the SITE address rather than the HQ address we key on | ready |
 
+## PHASE C — C1 and C2 are built (2026-08-16)
+
+**C1 — the dossier.** A P1–P6 verdict document, not a data dump. Built from the SAME functions the
+screener uses (`acreageOf()`, `scoreSite()`, `prov()`), so it cannot disagree with the map that
+produced it. It leads with CAPABILITY rather than the signal, because a motivated seller on a
+0.1-acre lot is not a site. Cannot-assess prints as itself and is left OUT of the denominator.
+Acceptance met end-to-end on parcel `490434121004000600` (Marion, 1,062 ac, other_nonres,
+D2_foreclosure): 8 sections, 8 provenance lines, composite 47 over 5 of 6 parts.
+*Defect caught by testing rather than shipping:* county context is NESTED —
+`{posture, queue, iocs, fcc}` — and reading it flat produced TEN spurious "cannot assess" rows.
+That is a dossier lying about OUR coverage rather than about the county. Six remain and all are
+genuine.
+
+**C2 — the itemised rate engine.** Built to `ANALYSIS_METHODOLOGY.md` §4, re-read first.
+It ships the four proxies side by side, the **≥1.75× plausibility gate** against MISO/PJM
+day-ahead, eligibility verdicts, and a per-component held/not-held register.
+
+**It deliberately does NOT ship a quote, and that is the finding.** Indiana has THREE component
+rows in the estate and TWO are `value_status='not_held'` (the I&M rider stack and its customer
+charge). The only component-level tariff data we hold is five PEER tariffs — ComEd, Oncor, Georgia
+Power, Dominion ×2 — and **none is Indiana**. §4.1 says a blended ¢/kWh with no components is not
+an auditable answer.
+
+**Eligibility resolved (§4.2 — MW floors are MINIMUMS, not ceilings):** I&M's threshold is
+**70 MW at one site** (IURC Cause 46097, effective 2025-02-19). A 300 MW site **QUALIFIES**; it
+does not "exceed" it.
+
+*Two defects caught by running it:*
+- The gate reported 95 rates below the floor. Most read `0.0¢/kWh` — **not a rate below the floor,
+  an ABSENT rate treated as zero**, which breaks §4.6, the rule the script's own docstring quotes.
+  `NULLIF` applied; 95 → 88.
+- A 12-month LMP window returned **39 days of MISO** and 197 of PJM — the feed has a gap between
+  2025-08 and 2026-07. Five summer weeks is a HIGH-PRICE sample, so **the floor is over-stated and
+  the gate is CONSERVATIVE, not calibrated.** The script prints that warning itself.
+
+## The county-ordinance finding that changes P5
+
+**Codified search cannot answer the county-posture question.** A seven-region sweep of county
+websites found data-centre action almost everywhere the code libraries show silence:
+
+- **Permanent bans:** Marshall (2026-04-20, replacing a moratorium), Cass
+- **Moratoria** verified in official sources: Starke (Ord. 2025-37), White (2025-10-20-02),
+  Grant (Ord. 4-2026, **24 months**), Rush (minutes), Shelby, Martin (2026-22/23),
+  Franklin (2025-22, extended to **2027-02-24**), plus Fulton, Madison, Dearborn, Warrick,
+  Pulaski, Fayette, Putnam, Clay, Porter Township, Merrillville, Jeffersonville, New Albany
+- **Indianapolis:** council passed a moratorium **23-1 on 2026-08-10 through 2027-12-31**,
+  exempting three already-approved projects (Sabey, Metrobloks, DC BLOX)
+- **Adopted but uncodified ordinances:** Lake (Ord. 2590 — 55 dBA, 200 ft, EIA >100k sq ft),
+  LaPorte, Hancock, Parke, Tippecanoe
+
+**⚠ The single sharpest case: Jefferson County.** A 7.1M sq ft / 549-acre data centre at the former
+Jefferson Proving Ground was approved by **administrative interpretation** — the zoning
+administrator classified it as generic heavy industrial because the ordinance *does not define or
+list "data center" at all* — and the BZA upheld it on appeal. **A plain-text search of that code
+finds nothing.** Codified silence is not permissiveness and it is not absence; here it was an
+approval pathway.
+
+**⚠ Directly material to the operator:** Fulton County's 12-month moratorium (2-1, effective
+2026-03-02) is recorded as triggered by a **500 MW / 300-acre Decennial Group campus proposal**
+near Akron.
+
 ## What to do next
 
 1. **Fold the staged D11 (983) and D27 (156) into `in_si_parcel_signals_v2`** — they are admitted
