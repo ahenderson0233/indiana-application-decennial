@@ -31,10 +31,23 @@
       the publisher states one; a blank expiry means the instrument carries no end date, not that
       it has lapsed.</div>
     <div class="scroll" style="max-height:340px"><table id="t-cda"><tr><th>county</th><th>action</th><th>instrument</th><th>effective</th><th>expires</th><th>source</th></tr></table></div>
-    <div class="hint" style="margin:12px 0 6px"><b class="cannot">A WORKLIST, NOT A POSTURE.</b>
-      The rows below are carried by news or aggregators only and were not confirmed at an official
-      source. They are shown so nothing is lost, and they must not be read as a county's position.</div>
-    <div class="scroll" style="max-height:200px"><table id="t-cdalead"><tr><th>county</th><th>action</th><th>instrument</th><th>reported</th></tr></table></div>
+    <div class="hint" style="margin:12px 0 6px"><b>Verified against the government's own record</b>
+      in a second pass — these were news leads until an official source confirmed them.</div>
+    <div class="scroll" style="max-height:320px"><table id="t-cdaver"><tr><th>county</th><th>action</th><th>instrument</th><th>effective</th><th>expires</th><th>source</th></tr></table></div>
+
+    <div class="card" id="cda-corrections" style="margin:14px 0;border-color:#b91c1c">
+      <h3 style="margin:0 0 6px">⚠ Corrections — leads that were NOT Indiana</h3>
+      <div class="hint" style="margin-bottom:6px">These were live in this application as Indiana
+        county postures. Official-source checks found the underlying events belong to
+        <b>other states entirely</b>. They are shown rather than silently deleted, because a row
+        that quietly disappears teaches nobody why it was wrong.</div>
+      <div class="scroll"><table id="t-cdafix"><tr><th>county</th><th>what was claimed</th><th>what it actually is</th></tr></table></div></div>
+
+    <div class="hint" style="margin:12px 0 6px"><b class="cannot">CHECKED AND NOT CONFIRMED — a
+      worklist, not a posture.</b> An official source was sought for each of these and not found,
+      or the host refused access. <b>That is different from never having looked</b>, and different
+      again from the county being silent — neither may be read as permission.</div>
+    <div class="scroll" style="max-height:220px"><table id="t-cdalead"><tr><th>county</th><th>action</th><th>instrument</th><th>outcome</th></tr></table></div>
     <div class="hint" style="margin:12px 0 6px"><b>Coverage — every one of the 92 counties, and how it was searched.</b>
       <span class="cannot">SEARCHED_NONE_FOUND at the web-search layer is weaker than a full-text
       codified search</span>: it means no action surfaced, not that the county is silent.</div>
@@ -183,7 +196,8 @@
   const esc = (x) => String(x ?? "").replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
   const CA = O.county_actions || [], CAC = O.county_action_coverage || [];
   const VER = CA.filter(a => a.evidence_grade === "VERIFIED_AT_OFFICIAL_SOURCE");
-  const LEAD = CA.filter(a => a.evidence_grade !== "VERIFIED_AT_OFFICIAL_SOURCE");
+  // the raw lead set is no longer rendered from here -- every one of the 84 has now been through
+  // official-source verification, so the page shows the RESOLVED outcome instead (see below)
   const RESTRICT = new Set(["moratorium", "ban-prohibition", "adopted-uncodified-ordinance"]);
   document.getElementById("cda-restrict").textContent = fmt(VER.filter(a => RESTRICT.has(a.action_type)).length);
   document.getElementById("cda-verified").textContent = fmt(VER.length);
@@ -206,12 +220,46 @@
      <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">official</a>` : `<span class="cannot">—</span>`}
        ${a.ordinance_pdf_url ? ` · <a href="${esc(a.ordinance_pdf_url)}" target="_blank" rel="noopener">PDF</a>` : ""}</td></tr>`).join(""));
 
-  document.getElementById("t-cdalead").insertAdjacentHTML("beforeend", LEAD.map(a =>
+  /* ---------- the official-source verification pass ----------
+     posture_renderable is computed in the warehouse, not here, so the page cannot accidentally
+     promote a lead. VER holds only rows where a government source was fetched and quoted. */
+  // NOT `VER` -- that name is already taken at the top of this block by the sweep's own verified
+  // set, and a second `const VER` in the same scope is a redeclaration SyntaxError that would
+  // abort the entire page script.
+  const VER2 = O.verified_postures || [], FIX = O.corrections || [], UNRES = O.unresolved_leads || [];
+
+  // the headline now counts BOTH passes: the sweep's own verified rows plus these
+  const RESTRICT2 = new Set(["moratorium", "ban-prohibition", "adopted-uncodified-ordinance"]);
+  document.getElementById("cda-verified").textContent = fmt(VER.length + VER2.length);
+  document.getElementById("cda-restrict").textContent = fmt(
+    VER.filter(a => RESTRICT.has(a.action_type)).length +
+    VER2.filter(a => RESTRICT2.has(a.confirmed_action_type)).length);
+
+  document.getElementById("t-cdaver").insertAdjacentHTML("beforeend", VER2.map(a =>
+    `<tr><td><b>${esc(a.county)}</b><div class="hint">${esc(a.jurisdiction)}</div></td>
+     <td>${esc(a.confirmed_action_type)}</td>
+     <td>${esc(a.verified_instrument).slice(0, 120)}
+       ${a.verbatim_snippet ? `<div class="hint">“${esc(a.verbatim_snippet).slice(0, 130)}”</div>` : ""}
+       ${a.date_note ? `<div class="hint">${esc(a.date_note).slice(0, 110)}</div>` : ""}</td>
+     <td>${a.verified_effective_from ? String(a.verified_effective_from).slice(0, 10)
+         : (a.verified_observed_date ? String(a.verified_observed_date).slice(0, 10) : `<span class="cannot">—</span>`)}</td>
+     <td>${a.verified_effective_to ? String(a.verified_effective_to).slice(0, 10)
+         : (a.expiry_condition_verbatim ? `<span class="hint">${esc(a.expiry_condition_verbatim).slice(0, 50)}</span>`
+            : `<span class="cannot">no end date stated</span>`)}</td>
+     <td>${a.official_url ? `<a href="${esc(a.official_url)}" target="_blank" rel="noopener">official</a>` : `<span class="cannot">—</span>`}</td></tr>`).join(""));
+
+  document.getElementById("t-cdafix").insertAdjacentHTML("beforeend", FIX.map(a =>
+    `<tr><td><b>${esc(a.county)} County</b></td>
+     <td>${esc(a.lead_action_type)} — ${esc(a.lead_instrument).slice(0, 100)}</td>
+     <td><b>${esc(a.date_note)}</b><div class="hint">${esc(a.verification_note).slice(0, 240)}</div></td></tr>`).join(""));
+  if (!FIX.length) document.getElementById("cda-corrections").classList.add("hidden");
+
+  document.getElementById("t-cdalead").insertAdjacentHTML("beforeend", UNRES.map(a =>
     `<tr><td>${esc(a.county)}<div class="hint">${esc(a.jurisdiction)}</div></td>
-     <td class="cannot">${esc(a.action_type)}</td>
-     <td>${esc(a.instrument).slice(0, 120)}</td>
-     <td>${a.observed_date ? String(a.observed_date).slice(0, 10) : `<span class="cannot">no date</span>`}
-       ${a.url ? ` · <a href="${esc(a.url)}" target="_blank" rel="noopener">src</a>` : ""}</td></tr>`).join(""));
+     <td class="cannot">${esc(a.lead_action_type)}</td>
+     <td>${esc(a.lead_instrument).slice(0, 110)}</td>
+     <td class="cannot">${esc(a.final_evidence_grade).replace(/_/g, " ").toLowerCase()}
+       <div class="hint">${esc(a.verification_note).slice(0, 140)}</div></td></tr>`).join(""));
 
   document.getElementById("t-cdacov").insertAdjacentHTML("beforeend", CAC.map(c =>
     `<tr><td>${esc(c.county)}</td>

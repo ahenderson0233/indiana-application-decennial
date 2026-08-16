@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 255 of 255 registered objects reach a surface
+## 257 of 257 registered objects reach a surface
 
 **Every registered object reaches at least one surface.**
 
@@ -55,9 +55,11 @@ headline can be audited rather than taken on trust:
 | `in_data_centers_located` | direct | `app.js`, `scripts/audit_honesty.py` |
 | `in_data_centers_peeringdb` | direct | `app.js`, `scripts/investigate_cloudscene_gap.py` |
 | `in_dc_actions` | direct | `app.js`, `community.html` |
-| `in_dc_actions_county_v2` | direct | `community.html`, `scripts/audit_honesty.py` |
+| `in_dc_actions_county_v2` | direct | `community.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
+| `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
+| `in_dc_actions_verify_walls` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
 | `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |
 | `in_dc_docket_tracker` | direct | `app.js` |
 | `in_dc_eei_tariffs` | direct | `app.js` |
@@ -222,7 +224,7 @@ headline can be audited rather than taken on trust:
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_lane_d_enrichment` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
-| `in_si_marion_route_check` | direct | `si.html`, `scripts/acceptance_run.py` |
+| `in_si_marion_route_check` | direct | `si.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals_county` | direct | `scripts/export_si_v2_surfaces.py` |
 | `in_si_parcel_signals_v2` | direct | `scripts/audit_honesty.py`, `scripts/export_si_v2_surfaces.py` |

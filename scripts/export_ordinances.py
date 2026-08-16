@@ -102,6 +102,46 @@ if has("in_dc_actions_coverage_v2"):
              search_instrument, notes
       FROM `{DS}.in_dc_actions_coverage_v2` ORDER BY status, county""")
 
+# ---- OFFICIAL-SOURCE VERIFICATION of the leads ------------------------------------------------
+# `posture_renderable` is the gate, and it is computed in the warehouse rather than in the page.
+# Two of these rows are MISATTRIBUTED OUT-OF-STATE leads that were live in the app as Indiana
+# postures: Brown County's action belongs to Brown County WISCONSIN, Clay County's to Clay County
+# FLORIDA. They are shipped as an explicit CORRECTION rather than silently dropped, because a row
+# that quietly disappears teaches nobody why it was wrong.
+if has("in_dc_actions_resolved"):
+    out["verified_postures"] = rows(f"""
+      SELECT county, jurisdiction, confirmed_action_type, verified_instrument,
+             verified_observed_date, verified_effective_from, verified_effective_to,
+             expiry_condition_verbatim, verbatim_snippet, official_url, date_note,
+             verification_note, match_method
+      FROM `{DS}.in_dc_actions_resolved`
+      WHERE posture_renderable
+      ORDER BY
+        CASE confirmed_action_type WHEN 'ban-prohibition' THEN 0 WHEN 'moratorium' THEN 1
+             WHEN 'adopted-uncodified-ordinance' THEN 2 WHEN 'expired-moratorium' THEN 3
+             ELSE 4 END, county""")
+
+    out["unresolved_leads"] = rows(f"""
+      SELECT county, jurisdiction, lead_action_type, lead_instrument, verdict,
+             final_evidence_grade, verification_note, official_url
+      FROM `{DS}.in_dc_actions_resolved`
+      WHERE NOT posture_renderable AND verdict != 'CONTRADICTED'
+      ORDER BY county""")
+
+    out["corrections"] = rows(f"""
+      SELECT county, jurisdiction, lead_action_type, lead_instrument,
+             date_note, verification_note, official_url
+      FROM `{DS}.in_dc_actions_resolved`
+      WHERE verdict = 'CONTRADICTED' ORDER BY county""")
+
+    out["verification_summary"] = rows(f"""
+      SELECT final_evidence_grade, COUNT(*) n, COUNTIF(posture_renderable) renderable
+      FROM `{DS}.in_dc_actions_resolved` GROUP BY 1 ORDER BY n DESC""")
+
+if has("in_dc_actions_verify_walls"):
+    out["verify_walls"] = rows(f"""
+      SELECT host, wall_verbatim FROM `{DS}.in_dc_actions_verify_walls` ORDER BY host""")
+
 # coverage: which counties were actually assessed, versus never searched
 for t, key in (("in_ordinances_dc_coverage_v2", "coverage"),
                ("in_ordinances_amlegal_coverage_v2", "amlegal_coverage"),
@@ -151,3 +191,11 @@ if "county_actions" in out:
           f"across {len(_cov)} counties assessed")
     for s in out["county_action_summary"]:
         print(f"    {s['action_type']:30s} verified={s['verified']:>3} lead={s['lead_only']:>3}")
+if "verified_postures" in out:
+    vp, ul, cx = out["verified_postures"], out["unresolved_leads"], out["corrections"]
+    print(f"  official-source verification: {len(vp)} postures now RENDERABLE · "
+          f"{len(ul)} still unresolved · {len(cx)} CORRECTIONS")
+    for c in cx:
+        print(f"    CORRECTION {c['county']}: {str(c['date_note'])[:82]}")
+    print(f"  total verified county postures = {len(_verified)} (sweep) + {len(vp)} (verified) "
+          f"= {len(_verified) + len(vp)}")
