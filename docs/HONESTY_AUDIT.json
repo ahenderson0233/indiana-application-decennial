@@ -1,11 +1,6 @@
 {
- "audited_at": "2026-08-16T17:29:52.321379+00:00",
+ "audited_at": "2026-08-16T17:46:02.704643+00:00",
  "checks_run": 12,
- "failures": 1,
- "findings": [
-  {
-   "check": "SI flag: payload vs warehouse",
-   "detail": "92 county files carry 11,117 flagged parcels; BigQuery says 23,140  <-- ONE OF THESE IS LYING TO A USER"
-  }
- ]
+ "failures": 0,
+ "findings": []
 }
