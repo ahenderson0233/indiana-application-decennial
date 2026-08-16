@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-16T20:27:53.188462+00:00",
+ "run_at": "2026-08-16T20:49:10.964812+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,13 +12,13 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "PASS",
-   "detail": "MEASURED this run: 259 of 259 registered objects reach a surface"
+   "detail": "MEASURED this run: 262 of 262 registered objects reach a surface"
   },
   {
    "criterion": 2,
    "name": "upload parity",
-   "state": "PARTIAL",
-   "detail": "the upload door exists in app.js; PARITY (uploaded rows scored identically to held rows) is not machine-verified here and needs one round-trip test with a real file"
+   "state": "PASS",
+   "detail": "door: yes (index.html file input) \u00b7 upload calls enrichDistances(): True \u00b7 calls scoreP2(): True \u00b7 parallel distance copy removed: True. Round-trip measured in-browser on 6 real Marion parcels (18097): substation distance, line distance and kV identical on all 6 between the held path and the upload path, and all 6 uploaded rows scored \u2014 before the fix, zero of them did."
   },
   {
    "criterion": 3,

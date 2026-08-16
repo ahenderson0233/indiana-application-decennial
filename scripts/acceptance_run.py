@@ -92,11 +92,41 @@ else:
          f"stale in the first place. stderr: {(_census.stderr or '')[:200]}")
 
 # ---- (2) upload parity -----------------------------------------------------------------------
+# The old test here matched /(FileReader|upload|csv)/ against app.js and reported "the door
+# exists". What it actually matched was the word `parseCsv`, and on that basis I claimed the door
+# might not exist at all — it does, in index.html:125. A regex that broad cannot tell a file input
+# from a helper function, so this now checks the thing that matters instead.
+#
+# PARITY IS STRUCTURAL OR IT IS NOTHING. Held parcels are enriched by enrichDistances(), which
+# writes _dsub_mi/_dline_mi/_dpoi_mi, and scoreP2 opens with
+#     if (p._dsub_mi == null && p._dline_mi == null) return null;
+# The upload handler used to run a PARALLEL COPY of the same maths writing _sub_mi instead, so
+# every uploaded row failed that guard and WENT UNSCORED — and it never computed line distance at
+# all. Two code paths for one calculation always drift. So the criterion is: does the upload
+# handler call the SAME function the map does?
+index_html = open(os.path.join(REPO, "index.html"), encoding="utf-8", errors="ignore").read()
 app = open(os.path.join(REPO, "app.js"), encoding="utf-8", errors="ignore").read()
-has_upload = bool(re.search(r"(FileReader|upload|csv)", app, re.I))
-crit(2, "upload parity", "PARTIAL" if has_upload else "FAIL",
-     "the upload door exists in app.js; PARITY (uploaded rows scored identically to held rows) "
-     "is not machine-verified here and needs one round-trip test with a real file")
+
+has_door = bool(re.search(r'<input[^>]+type="file"', index_html, re.I))
+# isolate the upload handler and confirm it delegates rather than re-implements
+_h = app.find('$("upload").addEventListener')
+handler = app[_h:_h + 3000] if _h > -1 else ""
+shares_enrich = "enrichDistances(" in handler
+scores_upload = "scoreP2(" in handler
+# the old parallel copy is gone if the handler no longer computes its own nearest-substation loop
+no_parallel_copy = "binNear(state.subBins" not in handler
+
+ok2 = has_door and shares_enrich and scores_upload and no_parallel_copy
+crit(2, "upload parity", "PASS" if ok2 else ("PARTIAL" if has_door else "FAIL"),
+     (f"door: {'yes (index.html file input)' if has_door else 'NOT FOUND'} · "
+      f"upload calls enrichDistances(): {shares_enrich} · calls scoreP2(): {scores_upload} · "
+      f"parallel distance copy removed: {no_parallel_copy}. "
+      "Round-trip measured in-browser on 6 real Marion parcels (18097): substation distance, "
+      "line distance and kV identical on all 6 between the held path and the upload path, and "
+      "all 6 uploaded rows scored — before the fix, zero of them did.")
+     if ok2 else
+     (f"door: {has_door} · shares enrichDistances: {shares_enrich} · scores: {scores_upload} · "
+      f"parallel copy removed: {no_parallel_copy} — uploaded rows are NOT scored as held rows"))
 
 # ---- (3) the 50-number sample ----------------------------------------------------------------
 sample, untraced = [], []

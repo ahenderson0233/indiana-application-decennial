@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-15T22:54:52+00:00",
+ "built_at_utc": "2026-08-16T20:26:28+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -231,6 +231,54 @@
    "notes": "datacenterwatch.org quarterly pages (/q22025, /q3-q4-2025, /q1-2026) render content client-side from /api/* which robots.txt DISALLOWS -> quarterly content BLOCKED for compliant crawling (0 'Indiana' strings in served HTML). Original /report page is server-rendered: parsed; its 2nd IN entry (Burns Harbor) split-format missed by parser but already held in energy.dc_opposition_tracker."
   },
   {
+   "table_name": "in_dc_actions_county_v2",
+   "source": "Indiana county/municipal government websites via web-search index + robots-checked official fetches",
+   "method": "92-county sweep for UNCODIFIED data-centre land-use actions: moratoria (with expiry), bans, adopted-but-uncodified ordinances, proposals, denials, withdrawals, permissive approvals. >=2 search queries per county; official .gov/.us pages fetched only after reading robots.txt; publisher's own dates; verbatim snippets; evidence-graded.",
+   "n_rows": 107,
+   "built_at": "2026-08-16 18:13:30.319766+00",
+   "notes": "READ evidence_grade BEFORE USING ANY ROW: only VERIFIED_AT_OFFICIAL_SOURCE rows are facts from the government's own site; REPORTED_NEEDS_VERIFICATION rows are a worklist and must never be rendered as posture. expiry: effective_to when date-based, expiry_condition_verbatim when condition-based. Controls Boone+Miami rediscovered and verified this run. Complements (does not modify) in_ordinances_dc_v2; distinct from in_dc_actions (news/DCWatch project tracker)."
+  },
+  {
+   "table_name": "in_dc_actions_coverage_v2",
+   "source": "web-search-engine layer over all 92 Indiana county websites",
+   "method": "One row per county, all 92. status: ACTION_FOUND / SEARCHED_NONE_FOUND / NOT_SEARCHABLE / BLOCKED / NOT_REACHED. SEARCHED_NONE_FOUND required >=2 live county-relevant queries.",
+   "n_rows": 92,
+   "built_at": "2026-08-16 18:13:33.744963+00",
+   "notes": "SEARCHED_NONE_FOUND at the web-search layer is weaker than a full-text codified search: it means no data-centre action surfaced in the search index or county site, not that the code is silent. NOT_REACHED/BLOCKED must never be scored as permissive."
+  },
+  {
+   "table_name": "in_dc_actions_nw_first_pass",
+   "source": "NW Indiana county websites, first sweep pass \u2014 recovered from the agent transcript",
+   "method": "SECOND INSTRUMENT, not a merge. Northwest Indiana was swept twice; the re-sweep is what reached in_dc_actions_county_v2 (source_batch='A'). This first pass returned its results in its final message and was never collected by the parent; recovered by scrapers/lane_f/salvage_agent_results.py from the subagent transcript.",
+   "n_rows": 17,
+   "built_at": "2026-08-16 18:28:02.636451+00",
+   "notes": "DO NOT UNION THIS WITH in_dc_actions_county_v2 \u2014 it is a comparison instrument. The two passes CONTRADICT on Jasper Cause #PC-22-25 (NIPSCO Ag->I-2, Kankakee Twp): this pass says 'denied', the loaded re-sweep says 'petition-pending', BOTH graded VERIFIED_AT_OFFICIAL_SOURCE. Neither pass dominates: 17 actions/11 verified here vs 20/9 in the re-sweep; this pass verified more in Jasper, Lake and Starke, the re-sweep more in Tippecanoe and found Fountain at all. Resolve against fresh official-source verification, never by picking between the two agents. See scrapers/lane_f/COUNTY_DC_ACTION_FINDINGS.md \u00a76."
+  },
+  {
+   "table_name": "in_dc_actions_resolved",
+   "source": "Indiana county/municipal government websites \u2014 official-source verification of the sweep's REPORTED_NEEDS_VERIFICATION leads (4 agents, 46 counties)",
+   "method": "Each lead re-checked against the government's OWN site, minutes, agenda or ordinance PDF. robots.txt read per host before any fetch; crawl-delays honoured (up to 300s); honest UA. Verdicts: VERIFIED_AT_OFFICIAL_SOURCE / NOT_FOUND_AT_OFFICIAL_SOURCE / CONTRADICTED / BLOCKED.",
+   "n_rows": 86,
+   "built_at": "2026-08-16 19:36:58.078281+00",
+   "notes": "READ posture_renderable BEFORE RENDERING ANYTHING. It is TRUE only where a government source was actually fetched and quoted. CONTRADICTED rows are MISATTRIBUTED OUT-OF-STATE leads \u2014 Brown County's action belongs to Brown County WISCONSIN and Clay County's to Clay County FLORIDA; both were live in the app as Indiana postures. NOT_FOUND means checked-and-absent, which is NOT the same as never-checked and must not be scored as permissive. match_method records how each verification was tied to its lead: (county, action_type) is NOT unique \u2014 9 keys carry multiple rows on both sides."
+  },
+  {
+   "table_name": "in_dc_actions_verify_walls",
+   "source": "robots.txt and HTTP refusals encountered during official-source verification",
+   "method": "Every wall quoted verbatim; no wall worked around, no challenge solved, no UA spoofed.",
+   "n_rows": 13,
+   "built_at": "2026-08-16 19:37:06.034246+00",
+   "notes": "Evidence for the outstanding robots-vs-terms ruling: several hosts disallow ClaudeBot, Claude-Web and anthropic-ai BY NAME while serving the public freely in a browser."
+  },
+  {
+   "table_name": "in_dc_colo_resolved",
+   "source": "operator sites (live + Wayback) + PeeringDB public API + operator press releases + baxtel pages + Marion GIS crosswalks already held; Cloudscene NOT scraped (ToS forbids)",
+   "method": "B4 manual multi-source address resolution, verbatim evidence per row; robots.txt checked before every fetch; honest UA; >=1.2s spacing; walled sources recorded and skipped (datacenters.com robots 403, datacenterdynamics ClaudeBot-disallowed, datacentermap 429). NO centroids: coordinates only from PeeringDB/baxtel-published points; NULL where no building exists. See scrapers/lane_f/COLO_ADDRESS_FINDINGS.md",
+   "n_rows": 8,
+   "built_at": "2026-08-16 17:24:59.076601+00",
+   "notes": "verdicts: 4 RESOLVED (all four already pinned under other names - CenturyLink->Lumen rename x2, DataBank x2 name-form), 1 RESOLVED-in-Carmel (Expedient, already pinned), 2 SAME_BUILDING_AS (365 DC = suite in Netrality 701 W Henry; CenturyLink Indy 3 = numbering ghost), 1 NOT_FOUND (AxiaTP resells partner facilities - no building). ZERO genuinely missing buildings; gb_scanned covers session exploration queries."
+  },
+  {
    "table_name": "in_dc_docket_tracker",
    "source": "energy.dc_docket_tracker",
    "method": "census-keyed clip (state:state)",
@@ -245,6 +293,14 @@
    "n_rows": 5,
    "built_at": "2026-08-15 05:57:24.756252+00",
    "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
+  },
+  {
+   "table_name": "in_dc_operator_aliases",
+   "source": "operator press releases and their own sites (databank.com, 365datacenters.com via Wayback, globenewswire, prnewswire) - the same evidence B4 used",
+   "method": "Curated rename/acquisition ledger, not a scrape. cloudscene's terms forbid automated access and it is recorded BLOCKED, so operator identity was established from the operators' own published statements.",
+   "n_rows": 8,
+   "built_at": "2026-08-16 20:21:46.173826+00",
+   "notes": "Fixes the cross-check matcher, NOT the data-centre layer. B4 proved ZERO of 8 flagged facilities were missing buildings; 5 were pinned under a predecessor operator name and the stem-prefix matcher could not see it. USE ON OPERATOR NAME ONLY, NEVER TO MERGE FACILITIES: Lifeline ran several buildings, and CLOUDSCENE_GAP.md already matched 'Lifeline West Henry' to 'Lifeline Fort Wayne' - same operator, different cities, different buildings."
   },
   {
    "table_name": "in_drought_by_state",
@@ -591,6 +647,14 @@
    "notes": null
   },
   {
+   "table_name": "in_generation_union",
+   "source": "indiana_app.in_eia_plants + in_power_plants",
+   "method": "FULL OUTER JOIN on plant code; EIA reduced to its latest row per plant first (2,675 rows are plant-YEARS, 281 plants)",
+   "n_rows": 283,
+   "built_at": "2026-08-15 23:08:16.401860+00",
+   "notes": "PLANT grain only. in_wind_turbines (1,652 turbines / 33 projects) and in_operating_generators (11,795 generators) are DIFFERENT GRAINS and are deliberately NOT merged - folding them in would double-count a wind farm ~50x rather than dedupe it. 205 of 208 HIFLD plant codes were already in EIA, which is the duplication this fixes."
+  },
+  {
    "table_name": "in_ghgrp_emissions",
    "source": "energy.ghgrp_emissions x in_ghgrp_facilities",
    "method": "facility-id join",
@@ -693,6 +757,22 @@
    "n_rows": 116,
    "built_at": "2026-08-15 06:06:44.069730+00",
    "notes": "WIRE-NEXT batch 3 (audit batch 3)"
+  },
+  {
+   "table_name": "in_marion_address_crosswalk",
+   "source": "https://gis.indy.gov/server/rest/services/sde_Addressing/sde_Addressing/MapServer/0",
+   "method": "Marion address -> state parcel number crosswalk (Indy's own address authority). ArcGIS REST paged query, outFields=* (ALL columns), attributes only, shortfall-checked against returnCountOnly=465050. Public endpoint, no key.",
+   "n_rows": 465050,
+   "built_at": "2026-08-16 15:52:14.895896+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_marion_parcel_crosswalk",
+   "source": "https://gis.indy.gov/server/rest/services/sde_Parcel/sde_Parcel/MapServer/5",
+   "method": "Marion parcel local-id <-> state parcel number crosswalk. ArcGIS REST paged query, outFields=* (ALL columns), attributes only, shortfall-checked against returnCountOnly=347049. Public endpoint, no key. Columns renamed for BigQuery legality (no column dropped): SHAPE.STArea()->SHAPE_STArea__; SHAPE.STLength()->SHAPE_STLength__",
+   "n_rows": 347049,
+   "built_at": "2026-08-16 04:37:32.880989+00",
+   "notes": null
   },
   {
    "table_name": "in_miso_poi",
@@ -843,7 +923,7 @@
    "source": "indiana_app.in_nfirs_basicincident_2020/2021 x in_nfirs_incidentaddress_* x in_nfirs_fireincident_*",
    "method": "INC_TYPE 111-123 (building/structure fires) only, STATE='IN' enforced on every input",
    "n_rows": 16264,
-   "built_at": "2026-08-15 22:51:07.860688+00",
+   "built_at": "2026-08-15 23:09:09.759084+00",
    "notes": "D16 candidate at ADDRESS grain - not yet keyed to parcels, and not claimed to be. Two defects fixed on the way in: (1) only ~21% of NFIRS incidents are structure fires, so admitting the raw tables would have inflated D16 about fivefold; (2) in_nfirs_fireincident_2024 is NOT Indiana-clipped - 407 of 1,255 rows (32%) are from 43 other states - so STATE='IN' is enforced explicitly rather than trusting the in_* name. Keying quality is carried per row: ~91% have number+street."
   },
   {
@@ -951,12 +1031,76 @@
    "notes": "EIA-860M live generators"
   },
   {
+   "table_name": "in_ordinances_amlegal_coverage_v2",
+   "source": "https://codelibrary.amlegal.com/api/client-version/",
+   "method": "Per-jurisdiction outcome of the amlegal heading scan, incl. the publisher's own currency_info for each of the Indiana clients reached. Statuses: NAMED_PROVISION_FOUND / TOC_SCANNED_NO_NAMED_CHAPTER / BLOCKED / NOT_ATTEMPTED_RUN_ABORTED.",
+   "n_rows": 230,
+   "built_at": "2026-08-16 16:12:30.685586+00",
+   "notes": "HEADING-LEVEL EVIDENCE ONLY. amlegal full-text search is Cloudflare-walled and unscopable, so this scans title/chapter NAMES. A null here means no NAMED chapter -- it is NOT evidence that the jurisdiction is silent on data centres. Do not merge with in_ordinances_dc_v2 (full-text) without carrying evidence_level."
+  },
+  {
+   "table_name": "in_ordinances_amlegal_v3",
+   "source": "https://codelibrary.amlegal.com + https://www.iccsafe.org/about/terms-of-use/",
+   "method": "v3 permitted-route assessment of American Legal Publishing's 230 Indiana clients. robots.txt and terms of use read FIRST and quoted verbatim; individual-document SSR route and /regions/in index tested with 11 logged requests at honest UA; NO content crawled. Verdict: BLOCKED_BY_TERMS_AND_CHALLENGE -- ICC ToU sec. 4 excludes robots/data-mining tools (AMLP is a named covered entity) and the Cloudflare managed challenge fires intermittently on HTML and API paths (3 sessions, 28h). Search endpoint untouched this run (walled + unscopable per v2).",
+   "n_rows": 230,
+   "built_at": "2026-08-16 16:57:27.121268+00",
+   "notes": "ACCESS ASSESSMENT ONLY -- carries NO ordinance content and NO posture claims. dc_content_status=NOT_ASSESSED_ACCESS_BLOCKED for all 230 rows must never be rendered as silence/permissive. prior_run_currency_info is the publisher's own sentence where the v2 run captured it (9 counties); _pulled_at is separate. The permitted route is the publisher's own licensing channel (license@iccsafe.org). Do not modify in_ordinances_dc / _v2 / _v2_triage."
+  },
+  {
+   "table_name": "in_ordinances_amlegal_v3_probes",
+   "source": "https://codelibrary.amlegal.com, https://www.amlegal.com, https://www.iccsafe.org/about/terms-of-use/",
+   "method": "The 11-request evidence log behind the v3 BLOCKED verdict: robots.txt x2, sitemap test, ToU discovery + ICC ToU, SPA-bundle endpoint inventory, one overview SSR page, one /api/client-version/ re-test, one section SSR page, /regions/in index. 2.5-3s spacing, UA 'decennial-indiana-siting/1.0'. 2 of 7 code-library requests drew the managed challenge; challenges recorded, never retried into, never solved.",
+   "n_rows": 11,
+   "built_at": "2026-08-16 16:57:33.889543+00",
+   "notes": "Instrument-calibration evidence. verbatim_excerpt carries the walls and grants word for word (robots Content-Signal grant; ICC ToU sec. 1 scope + sec. 4 robots exclusion; the challenge interstitial). Timestamps are request times (_pulled_at separate)."
+  },
+  {
    "table_name": "in_ordinances_dc",
    "source": "https://api.municode.com/search (public JSON API of library.municode.com)",
    "method": "exact-phrase search \"data center\"/\"data centers\", contentTypeId=CODES, all 45 IN clients, paged 25/page, 1.1s/request",
    "n_rows": 4,
    "built_at": "2026-08-14 22:53:50+00",
    "notes": "3 jurisdictions with hits of 45 IN Municode clients. AmLegal (codelibrary.amlegal.com) BLOCKED today: Cloudflare JS challenge 403 on HTML+/api/search/ despite robots Allow; held energy.amlegal_dc_ordinances IN rows (183) are loose data/center mentions, not phrase hits. county from census 2020 place_by_county. Pulled 2026-08-14 22:51:35 UTC."
+  },
+  {
+   "table_name": "in_ordinances_dc_county_sites_v2",
+   "source": "Indiana county government websites",
+   "method": "Data-centre moratoria/bans adopted by county commissioners and published on county .gov sites -- NOT present in any codified-code corpus. Boone and Miami fetched from the county's own site (robots allow-all) and carry the publisher's verbatim wording and its own adoption date; the rest are leads.",
+   "n_rows": 6,
+   "built_at": "2026-08-16 16:18:17.473048+00",
+   "notes": "READ evidence_grade BEFORE USING ANY ROW. Only VERIFIED_AT_OFFICIAL_SOURCE rows are facts; REPORTED_NEEDS_VERIFICATION rows are a worklist and must never be rendered as a posture. This table is the counter-example to a codified-only corpus: a moratorium is the strongest siting signal there is and none of these appear in in_ordinances_dc_v2."
+  },
+  {
+   "table_name": "in_ordinances_dc_coverage_v2",
+   "source": "https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/",
+   "method": "Per-jurisdiction search outcome for the Municode sweep. Distinguishes FOUND / SEARCHED_NONE_FOUND / NOT_REACHABLE_NO_SEARCHABLE_CODE. The last is the calibration result: the client exists but hosts no searchable code, so a zero there is an instrument limit, NOT a permissive local posture.",
+   "n_rows": 45,
+   "built_at": "2026-08-16 16:19:07.853923+00",
+   "notes": "v1 table in_ordinances_dc (4 rows) deliberately left untouched for comparison. Zeros are only meaningful where coverage.status='SEARCHED_NONE_FOUND'; 'NOT_REACHABLE_NO_SEARCHABLE_CODE' must never be read as a permissive posture."
+  },
+  {
+   "table_name": "in_ordinances_dc_v2",
+   "source": "https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/",
+   "method": "Indiana local data-centre ordinance provisions. Municode /search per clientId (38 of 45 Indiana clients host a searchable CODES product), 19 vocabularies (18 quoted exact + 1 unquoted loose to measure the recall gap), full pagination with shortfall detection against the publisher's own NumberOfHits. ALL hit fields kept + raw_hit JSON. Publisher's own currency date from Jobs/latest BannerText/PublishDate; _pulled_at separate. Posture carried as the publisher's own words in posture_terms_found, unscored. Public endpoint, no key, no login.",
+   "n_rows": 153,
+   "built_at": "2026-08-16 16:19:02.207031+00",
+   "notes": "v1 table in_ordinances_dc (4 rows) deliberately left untouched for comparison. Zeros are only meaningful where coverage.status='SEARCHED_NONE_FOUND'; 'NOT_REACHABLE_NO_SEARCHABLE_CODE' must never be read as a permissive posture."
+  },
+  {
+   "table_name": "in_ordinances_dc_v2_triage",
+   "source": "energy-platfrom.indiana_app.in_ordinances_dc_v2 (not modified)",
+   "method": "Manual triage of the 146 candidate rows that do NOT contain 'data cent(er|re)'. Unit of judgment is the distinct SECTION (115), so one section cannot receive two contradictory verdicts; n_candidate_rows reconciles 115 sections to 146 rows. Test: (1) is it a land-use instrument at all - finance/purchasing/personnel/records chapters are not; (2) does it name a use a data centre falls under; (3) a WIRELESS telecommunications facility is a tower, NOT a data centre; (4) NEEDS_FULL_TEXT only for use tables and zoning definitions sections whose 240-char snippet resolved to a false positive - absence in the snippet is not absence in the section.",
+   "n_rows": 115,
+   "built_at": "2026-08-16 16:31:53.911924+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_ordinances_publisher_inventory_v2",
+   "source": "https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/",
+   "method": "Publisher-level inventory and access walls for Indiana ordinance sources. Carries American Legal Publishing's 230 listed Indiana clients (public clients-search endpoint) each marked LISTED_SEARCH_BLOCKED, plus the verbatim wall for amlegal auth, Code Publishing (Cloudflare on robots.txt) and eCode360 (robots Disallow: /search). No wall was worked around.",
+   "n_rows": 3,
+   "built_at": "2026-08-16 16:19:14.039448+00",
+   "notes": "v1 table in_ordinances_dc (4 rows) deliberately left untouched for comparison. Zeros are only meaningful where coverage.status='SEARCHED_NONE_FOUND'; 'NOT_REACHABLE_NO_SEARCHABLE_CODE' must never be read as a permissive posture."
   },
   {
    "table_name": "in_osm_power_lines",
@@ -1127,6 +1271,46 @@
    "notes": "WIRE-NEXT batch 6 (eyeball queue)"
   },
   {
+   "table_name": "in_rate_component_gaps",
+   "source": "energy-platfrom.indiana_app.in_utility_tariff_riders",
+   "method": "per-component held/not-held register. \u00a74.6: an unpublished value is NULL, never 0.",
+   "n_rows": 2,
+   "built_at": "2026-08-16 17:10:27.484933+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_rate_eligibility",
+   "source": "energy-platfrom.indiana_app.in_utility_tariff_riders WHERE component_type='eligibility'",
+   "method": "MW floors are ELIGIBILITY MINIMUMS, not ceilings (\u00a74.2). I&M's threshold is 70 MW at one site (IURC Cause 46097, effective 2025-02-19), so a 300 MW site QUALIFIES.",
+   "n_rows": 1,
+   "built_at": "2026-08-16 17:10:15.410858+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_rate_proxies",
+   "source": "energy-platfrom.indiana_app.in_urdb_rates + in_eia861_sales + in_rate_wholesale_floor + energy-platfrom.energy.dc_e3_largeload_tariffs",
+   "method": "the FOUR proxies \u00a74.3 requires, side by side, never the industrial average alone. P1 comes from the FLATTENED urdb (no fixed charge, no riders, no seasonality) and is a cross-check only; P2 is a blended average and not a tariff; P3 is energy-only wholesale; P4 is the only component-level data held and NONE of it is Indiana.",
+   "n_rows": 132,
+   "built_at": "2026-08-16 17:10:12.346285+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_rate_wholesale_floor",
+   "source": "energy-platfrom.energy.iso_lmp (MISO + PJM day-ahead, trailing 12 months)",
+   "method": "the HARD FLOOR from METHODOLOGY \u00a74: a bundled retail rate below ISO wholesale is impossible, and must clear it by >=1.75x. Anything between 1.0x and 1.75x is a modelling error.",
+   "n_rows": 2,
+   "built_at": "2026-08-16 17:10:08.754636+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_refresh_cadence",
+   "source": "energy-platfrom.indiana_app.in_si_signals + energy-platfrom.indiana_app._registry",
+   "method": "E2: refresh cadence DERIVED from each publisher's own latest event date, not hand-typed \u2014 a typed schedule drifts the moment a source changes habits. A source with no event date returns cadence_basis='cannot derive' rather than a default interval, because guessing one manufactures confidence. Schedules nothing: the venue (Task Scheduler vs cloud cron) is still an open operator decision, and this is the table a scheduler would read.",
+   "n_rows": 268,
+   "built_at": "2026-08-16 17:31:36.460042+00",
+   "notes": null
+  },
+  {
    "table_name": "in_roads_primary",
    "source": "energy.roads_primary",
    "method": "adaptive clip (spatial:geom)",
@@ -1141,6 +1325,22 @@
    "n_rows": 861,
    "built_at": "2026-08-15 06:29:47.545224+00",
    "notes": "WIRE-NEXT batch 6 (eyeball queue)"
+  },
+  {
+   "table_name": "in_rtep_bus_join",
+   "source": "energy-platfrom.indiana_app.in_pjm_rtep_upgrade_details + in_substations + in_pjm_bus_locations_candidate",
+   "method": "C3: RTEP upgrades joined to substations and PJM buses by NORMALISED NAME \u2014 the only key RTEP publishes. Line locations ('A - B') are split into two endpoint rows because an upgrade matters at both ends. Trailing circuit designators are stripped. NO fuzzy matching and NO nearest-substation fallback: a wrong bus attached to an upgrade reads as a fact about a site. Every row carries match_method and match_confidence; a single-layer name match is labelled 'verify before relying' and a two-layer match 'corroborated'.",
+   "n_rows": 1229,
+   "built_at": "2026-08-16 17:27:11.139104+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_rtep_bus_summary",
+   "source": "energy-platfrom.indiana_app.in_rtep_bus_join",
+   "method": "per-facility roll-up: how many upgrades attach here, how many are Baseline vs Supplemental, and how many carry a LOAD GROWTH driver \u2014 the last being the signal a siter actually wants.",
+   "n_rows": 79,
+   "built_at": "2026-08-16 17:27:14.454828+00",
+   "notes": null
   },
   {
    "table_name": "in_rto_expansion",
@@ -1175,6 +1375,14 @@
    "notes": ""
   },
   {
+   "table_name": "in_si_address_parcel_bridge",
+   "source": "energy-platfrom.energy.mat_si_address_location + energy-platfrom.indiana_app.in_sites",
+   "method": "address_norm (EXISTING upstream normaliser, not re-derived) -> build_id -> in_sites.build_id; fallback ST_CONTAINS(in_sites.parcel_geog, rooftop point). D85 globe parcel excluded.",
+   "n_rows": 51309,
+   "built_at": "2026-08-16 01:36:48.136410+00",
+   "notes": "ADDRESS->PARCEL BRIDGE. NO normalisation written here: exact equality and UPPER(TRIM) equality both yield 94,010 addresses (delta 0), proving in_si_signals.address_norm and mat_si_address_location.address_norm come from the same normaliser. CEILING IS UPSTREAM GEOCODE COVERAGE, NOT THE JOIN: of 250,063 distinct signal addresses only 94,010 (37.6%) exist in mat_si_address_location and only 51,821 (20.7%) are resolved there. Tiers: 1 both routes agree (high), 2 build_id only (medium_high), 3 spatial only (medium). Two routes agree on 83.6% of the 41,483 addresses where both fire. D85: parcels_in/080500000047000018 is an inverted whole-Earth polygon (196,936,707 sq mi) that made the raw spatial join match 100%; it is excluded here and is STILL UNREPAIRED upstream."
+  },
+  {
    "table_name": "in_si_candidates",
    "source": "in_si_evansville_demolition_permits x in_sites",
    "method": "normalized parcel-id join",
@@ -1197,6 +1405,46 @@
    "n_rows": 2129,
    "built_at": "2026-08-15 06:24:16.564251+00",
    "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
+  },
+  {
+   "table_name": "in_si_d22_county_rollup",
+   "source": "indiana_app.in_si_d22_echo_indiana",
+   "method": "per-county facility, distress, significant-violation, inactive and penalty totals. county_norm strips the ' COUNTY' suffix and case-folds 230 publisher spellings.",
+   "n_rows": 112,
+   "built_at": "2026-08-16 03:30:01.116988+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_d22_echo_facilities",
+   "source": "https://echo.epa.gov/files/echodownloads/echo_exporter.zip",
+   "method": "EPA ECHO bulk export echo_exporter.zip -> ECHO_EXPORTER.csv, filtered to Indiana on FAC_STATE='IN' OR FIPS-18, ALL 133 source columns kept",
+   "n_rows": 58021,
+   "built_at": "2026-08-16 02:09:33.060079+00",
+   "notes": "D22 environmental violations/compliance, facility level. 133 source columns + 4 provenance = 137. Route: ECHO's REST service refuses a statewide query and throttles at a PUBLISHED 300/hr, 1,500/day quota, and its own 429 body points to this bulk file; the prior county-walk route needed ~25,000 requests at responseset=5 and was arithmetically impossible. Bulk is also a strict superset of REST's 59 columns (adds TRI, GHG, EJ demographics, 13-qtr compliance histories). COUNT NOTE: REST claims 127,266 for a statewide search vs 58,021 here - different universes, not a shortfall: ECHO Exporter is the compliance-tracked regulated universe (one row per FRS REGISTRY_ID), REST facility search resolves a broader FRS interest universe. No paging, so no short-page risk. All columns STRING - use SAFE_CAST for FAC_LAT/FAC_LONG. Source file Last-Modified Wed, 12 Aug 2026 02:17:00 GMT; _pulled_at is our fetch time and is never presented as data freshness. Public, no registration or key."
+  },
+  {
+   "table_name": "in_si_d22_echo_indiana",
+   "source": "indiana_app.in_si_d22_echo_facilities (https://echo.epa.gov/files/echodownloads/echo_exporter.zip)",
+   "method": "Indiana clip (FAC_STATE='IN'; 16 out-of-state + 2 null rows dropped) of the ECHO BULK EXPORT - NOT the REST county walk, which was defeated by HTTP 429. All 133 source columns kept, lat/lon cast, plus distress_class graded from FAC_COMPLIANCE_STATUS / CAA_HPV_FLAG / FAC_PENALTY_COUNT. FAC_SNC_FLG is 'N' on every row in the bulk file - the SNC signal is FAC_COMPLIANCE_STATUS='Significant Violation' (372, matching Lane F exactly).",
+   "n_rows": 58003,
+   "built_at": "2026-08-16 03:29:46.039253+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_d22_idem_enforcement",
+   "source": "https://oe.idem.in.gov/idem_oe_order",
+   "method": "IDEM Monthly Actions and Orders, single POST county=All media=All type=All 1995-01-01..current-year-12-31, page=F (All Records), all result columns kept",
+   "n_rows": 22565,
+   "built_at": "2026-08-16 02:09:53.034095+00",
+   "notes": "D22 Indiana-specific enforcement record, one row per enforcement action/order (NOV, Agreed Order, Commissioner's Order, Emergency Order + amendments), 1995-present. Parsed 22,565 = IDEM's own reported total exactly. 20,728 rows carry a published document URL; document_published flags the rest, which IDEM states will appear in the next monthly cycle - that flag is a real signal, not padding. Media taxonomy in the data is RICHER than the search form exposes (form offers 4: AIR/WATER/HAZARD/SOLID; data carries 9, incl DRINKWATER, WASTEWATER, UST, CONFINED, Q-Wetlands). Complements ECHO: ECHO is the facility universe, IDEM is the state enforcement docket. Public form, no registration; robots.txt has no Disallow directives. Event dates are the publisher's; _pulled_at is our fetch time."
+  },
+  {
+   "table_name": "in_si_d22_parcel_join",
+   "source": "indiana_app.in_si_d22_echo_indiana + in_sites",
+   "method": "ST_CONTAINS(parcel_geog, publisher's own facility point) - no centroid anywhere. D85 whole-Earth parcel excluded by key.",
+   "n_rows": 34116,
+   "built_at": "2026-08-16 03:29:48.978753+00",
+   "notes": null
   },
   {
    "table_name": "in_si_d25_admitted",
@@ -1231,6 +1479,30 @@
    "notes": "zeros-class genuine find; SUBJECT-CHECK PENDING before any feature claims signal semantics"
   },
   {
+   "table_name": "in_si_d5_abandoned_buildings",
+   "source": "indiana_app.in_si_indy_abandoned_vacant + in_si_southbend_vacant_abandoned + _chronic_problem",
+   "method": "the ABANDONED-BUILDING half of D5, which is the actual seller-intent signal",
+   "n_rows": 7174,
+   "built_at": "2026-08-16 01:30:26.409925+00",
+   "notes": "OPERATOR RULING 2026-08-15: vacancy is two distinct things and only this half is seller intent. An abandoned building is a distressed asset an owner may want rid of; a parcel with no building is simply vacant land. Indy contributes 5,709 'Abandoned' and 1,411 'Vacant' - kept distinct at quality_mult 1.0 vs 0.7 because they are different assertions."
+  },
+  {
+   "table_name": "in_si_d5_vacant_land_NOT_A_SIGNAL",
+   "source": "indiana_app.in_si_signals WHERE source_id='si_d5_vacancy_derived'",
+   "method": "footprint-absence rows isolated OUT of the signal corpus",
+   "n_rows": 945896,
+   "built_at": "2026-08-16 01:30:33.628220+00",
+   "notes": "NOT A SELLER-INTENT SIGNAL - named so it cannot be mistaken for one. 945,896 rows flagging that a parcel has no building footprint. That is a LAND STATE already carried on in_sites as occ_group='no_structure', and it is undated because it is not an event. Counting it as D5 made it 52% of the Indiana SI corpus and made the screener's 'requires seller-intent signal' filter select EMPTY LAND: 840,819 of 847,410 flagged parcels were no_structure. Retained for traceability, never to be re-admitted as a signal."
+  },
+  {
+   "table_name": "in_si_d9_absentee_marion",
+   "source": "energy-platfrom.indiana_app.in_marion_parcel_crosswalk (gis.indy.gov sde_Parcel MapServer/5) x in_sites",
+   "method": "D9 absentee + D18 owner contact for Marion, derived from owner mailing fields the crosswalk already carried. Graduated: foreign_country > out_of_state > out_of_county_in_state > same_city_different_address > local_owner_occupied. D85 (080500000047000018) excluded from the join.",
+   "n_rows": 340765,
+   "built_at": "2026-08-16 19:53:54.508689+00",
+   "notes": "MARION ONLY \u2014 1 of 92 counties. This is a PUBLISHING footprint, not statewide coverage; its absence elsewhere is OUR gap, not the absence of absentee owners, and a statewide ranking must not weight it as if it were evenly available. Statewide D9 still needs the DLGF Gateway pull. NOT admitted into has_si_signal: absentee ownership is APPROACHABILITY, not distress, and the operator's standing ruling admits only distress that would plausibly move an owner to sell. Admission is an open operator question."
+  },
+  {
    "table_name": "in_si_evansville_demolition_permits",
    "source": "https://maps.evansvillegis.com/arcgis_server/rest/services/BC/BUILDING_COMMISSION_PERMITS/MapServer/0",
    "method": "arcgis_rest POST objectIds-chunked WHERE UPPER(USER_Project_Activity) LIKE '%WRECK%' (lane_c)",
@@ -1245,6 +1517,14 @@
    "n_rows": 5758,
    "built_at": "2026-08-14 23:05:53.327391+00",
    "notes": "D2_foreclosure (Vanderburgh assessor annual foreclosure layers 2006-2019) | layers: 14:Foreclosures_2019=373(pub 373); 12:Foreclosures_2018=221(pub 221); 11:Foreclosures_2017=250(pub 250); 0:Foreclosures - 2016=332(pub 332); 1:Foreclosures - 2015=334(pub 334); 2:Foreclosures - 2014=363(pub 363); 3:Foreclosures - 2013=519(pub 519); 4:Foreclosures - 2012=446(pub 446); 5:Foreclosures - 2011=439(pub 439); 6:Foreclosures - 2010=397(pub 397); 7:Foreclosures - 2009=613(pub 613); 8:Foreclosures - 2008=524(pub 524); 9:Foreclosures - 2007=413(pub 413); 10:Foreclosures - 2006=534(pub 534) | OBSERVED EVENT DATE granularity = the sale year in src_layer_name (assessor publishes one layer per year; no per-row filing date). Parcel-keyed via Current_Parcels_StatePIN/StatePIN (82-...). Full CAMA attributes incl owner, assessments, LastSaleDate. Duplicate standalone services ASSESSOR/FORECLOSURES_2017 and _2018 NOT pulled (same layers)."
+  },
+  {
+   "table_name": "in_si_evansville_landbank",
+   "source": "https://services1.arcgis.com/iZyBOluseC8ffQc2/arcgis/rest/services/('Landbank_January2023', '2023-01-01', 214)/FeatureServer/('LandBank_Owned_April2024', '2024-04-01', 190)",
+   "method": "Evansville Land Bank Corp inventory, ALL columns, layer DISCOVERED from the FeatureServer directory because the snapshot name rotates (Landbank_Available_July2025). AVAILABILITY semantics, not distress \u2014 admitted as A2_gov_surplus, never as D5_abandoned_building. Keyed by StatePIN; structure presence read from in_sites.",
+   "n_rows": 1660,
+   "built_at": "2026-08-16 15:42:46.653347+00",
+   "notes": null
   },
   {
    "table_name": "in_si_evansville_taxsale",
@@ -1263,12 +1543,36 @@
    "notes": "D1_tax_sale outcome (Vanderburgh tax-sale TRANSFERS 2006-2011) | layers: 0:Tax Sale Transfers - 2011=146(pub 146); 1:Tax Sale Transfers - 2010=228(pub 228); 2:Tax Sale Transfers - 2009=165(pub 165); 3:Tax Sale Transfers - 2008=57(pub 57); 4:Tax Sale Transfers - 2007=183(pub 183); 5:Tax Sale Transfers - 2006=162(pub 162) | Parcels actually transferred at tax sale, one layer per year (year in src_layer_name = observed event year). StatePIN parcel-keyed, owner + assessment attributes."
   },
   {
+   "table_name": "in_si_ibtr_placed",
+   "source": "energy-platfrom.indiana_app.in_si_refresh_ibtr_appeals + in_sites",
+   "method": "IBTR assessment appeals placed by their own stateParcelNumber rather than through the corpus copy's 'IN:'-prefixed key. Carries appealTypeName (Form 131/133/132/139) and attachmentDescriptions, neither of which had ever been surfaced. D85 excluded.",
+   "n_rows": 5438,
+   "built_at": "2026-08-16 20:03:44.794687+00",
+   "notes": null
+  },
+  {
    "table_name": "in_si_indy_abandoned_vacant",
    "source": "https://gis.indy.gov/server/rest/services/OpenData/OpenData_Infrastructure/MapServer/2",
    "method": "arcgis_rest_paged outFields=* (lane_c)",
    "n_rows": 7120,
    "built_at": "2026-08-14 22:56:07.935014+00",
    "notes": "D5_vacancy (city abandoned+vacant property registry) | publisher_count=7120 | Indy 'Abandoned and Vacant Houses' registry, parcel-keyed, STATUS in {Abandoned, Vacant}. NO event-date field exists on the layer - registry membership as of _pulled_at only (snapshot semantics). Identical copies exist at MapIndy/MapIndyProperty/MapServer/11 and /16 (same 7,120 count, same rows) - pulled ONCE from the OpenData copy; do not also wire the MapIndy copies."
+  },
+  {
+   "table_name": "in_si_indy_abandoned_vacant_spatial",
+   "source": "https://gis.indy.gov/server/rest/services/MapIndy/MapIndyProperty/MapServer/11",
+   "method": "Indy abandoned & vacant, WITH polygon geometry. ArcGIS REST paged query, outFields=* (ALL columns), geometry in EPSG:4326, shortfall-checked against returnCountOnly=7120. Public endpoint, no key. Columns renamed for BigQuery legality (no column dropped): SHAPE.STArea()->SHAPE_STArea__; SHAPE.STLength()->SHAPE_STLength__",
+   "n_rows": 7120,
+   "built_at": "2026-08-16 15:21:01.947214+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_indy_code_placed",
+   "source": "indiana_app.in_si_refresh_indy_code_enforcement + in_marion_address_crosswalk",
+   "method": "Unsafe Buildings + Vacant Board Order cases placed on parcels through Indy's OWN address authority (sde_Addressing layer 0, 465,050 addresses carrying FULL_ADDRESS and STATEPARCELNUMBER). Same publisher as the code corpus, so no invented normalisation: both sides canonicalised IDENTICALLY (upper, strip punctuation, collapse whitespace) and nothing more. A published crosswalk, not a geocode estimate. D85 excluded.",
+   "n_rows": 46411,
+   "built_at": "2026-08-16 15:55:22.931135+00",
+   "notes": null
   },
   {
    "table_name": "in_si_indy_surplus_parcels",
@@ -1285,6 +1589,46 @@
    "n_rows": 62368,
    "built_at": "2026-08-14 22:55:37.190846+00",
    "notes": "D1_tax_sale (Marion County archive w/ per-sale status) | publisher_count=62368 | Marion County tax-sale parcel records, TaxSaleViewer app layer. TAXYEAR spans 2009->2024; STATUSNAME (Satisfied/Deed Issued/...); STATUSDATE epoch-ms is the observed status event date; SALEID+RECORDTYPE identify the sale. PARCELNUMBER is the LOCAL Marion parcel id (7-digit), not the 18-digit state id. Distinct provenance from si_d1_sri_taxsale_listings (SRI actives): this is the county's own archive with outcomes. Geometry not stored (parcel-keyed)."
+  },
+  {
+   "table_name": "in_si_lane_d_enrichment",
+   "source": "six in_si_refresh_* tables",
+   "method": "measured value vocabularies for the Lane D columns that were pulled and never wired: saleTypeDescription, CASE_TYPE, TOWNSHIP+LINK, NAICS+PDF link, appealTypeName, Program+Landfill. No scraping \u2014 this was already in BigQuery.",
+   "n_rows": 509,
+   "built_at": "2026-08-16 20:03:48.182525+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_marion_route_check",
+   "source": "indiana_app.in_marion_parcel_crosswalk + in_si_indy_abandoned_vacant_spatial + in_sites",
+   "method": "Two-instrument check on Marion placement: the published local->state key mapping versus ST_CONTAINS of the building's own polygon centroid. The routes share no mechanism, so agreement is corroboration and disagreement is a finding. D85 excluded.",
+   "n_rows": 7120,
+   "built_at": "2026-08-16 15:24:54.886884+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_owner_signals",
+   "source": "indiana_app.in_si_d11_admitted + in_si_d27_admitted + in_si_signals(D19_warn)",
+   "method": "OWNER-GRAIN seller-intent signals, unioned and dated. They are NOT parcel-keyed and the measurement says they cannot be: the address bridge matches 6 of 983 (D11) and 0 of 156 (D27), and these are business-registry addresses where a street match would often point at a registered agent's office rather than the site. The route that WOULD work is owner name, blocked by mat_parcel_attrs.parcel_owner being NULL on all 3,553,381 Indiana rows (B1). County is INFERRED from the city via the modal county of that city's bridge parcels.",
+   "n_rows": 2174,
+   "built_at": "2026-08-16 03:23:16.348229+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_owner_signals_county",
+   "source": "indiana_app.in_si_owner_signals",
+   "method": "per-county counts of dissolutions, UCC lapses and WARN notices, with 3y/5y recency, for the SI Feed and Community pages. Counties with no inferred rows are absent, not zero.",
+   "n_rows": 67,
+   "built_at": "2026-08-16 03:23:19.657172+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_parcel_signals_v2",
+   "source": "indiana_app.in_si_signals + in_si_signals_parcel_dated + in_si_southbend_* + in_si_evansville_* + in_si_indy_abandoned_vacant + in_si_refresh_indy_code_enforcement",
+   "method": "every parcel-reachable SI signal after normalising THREE key namespaces (IN: prefix strip, punctuated state-id strip, address bridge), with a SEVERITY gate on South Bend code enforcement (95% litter/weeds) and Evansville demolition (90% residential teardowns). D85 whole-Earth parcel excluded. admit_status records WHY a row was excluded; nothing dropped.",
+   "n_rows": 119995,
+   "built_at": "2026-08-16 20:04:33.242934+00",
+   "notes": null
   },
   {
    "table_name": "in_si_refresh_brownfield_epa_in",
@@ -1335,11 +1679,35 @@
    "notes": "Lane D freshness refresh of warn_notices/D19 (1,039 IN rows held in si_signals, observed 1994-05-12..2026-07-21; registry separately measured 1,220 IN rows in BigQuery for source_state=IN). Parsed 1220 rows from the current single-page table this run. ALL columns captured: ['Company', 'City', 'Affected Workers', 'Notice Date', 'LO/CL Date', 'NAICS', 'Description of Work/Industry', 'Notice Type', 'col_8']. Time-sensitivity payoff: 'LO/CL Date' (layoff/closure date) and 'Notice Type' (WARN vs CL) per row let a consumer identify notices whose layoff/closure has since occurred."
   },
   {
+   "table_name": "in_si_signal_coverage",
+   "source": "indiana_app.in_si_signals + in_si_parcel_signals_v2",
+   "method": "per-signal coverage: corpus rows, keying, publisher date range, parcels reached and admitted, and what each ruling excluded. source_block keeps the corpus and new publisher tables apart.",
+   "n_rows": 24,
+   "built_at": "2026-08-16 20:04:40.086586+00",
+   "notes": null
+  },
+  {
    "table_name": "in_si_signals",
    "source": "energy.si_signals",
    "method": "one-time clip 2026-08-14",
    "n_rows": 1818158,
    "built_at": "2026-08-14 22:18:49.242540+00",
+   "notes": null
+  },
+  {
+   "table_name": "in_si_signals_parcel_dated",
+   "source": "energy-platfrom.indiana_app.in_si_signals + energy-platfrom.indiana_app.in_si_address_parcel_bridge",
+   "method": "address-keyed signal rows joined through in_si_address_parcel_bridge, aggregated to one row per (parcel_source, parcel_key, signal)",
+   "n_rows": 46790,
+   "built_at": "2026-08-16 01:36:57.269556+00",
+   "notes": "THE DATED PARCEL-SIGNAL LAYER. Carries MAX observed_date for signal rows that were address-keyed and therefore invisible to the parcel layer. 45,822 parcels, 63,329 events. max_observed_date and max_past_observed_date are SEPARATE columns because 4,565 events are SCHEDULED FUTURE dates (D1_tax_sale sale dates, D20_loan_maturity to 2036-03-01) - real forward-looking signals, but they must not read as recent activity. match_confidence high/medium_high/medium names the bridge tier; see in_si_address_parcel_bridge for the ceiling."
+  },
+  {
+   "table_name": "in_si_sites_flags_v2",
+   "source": "indiana_app.in_si_parcel_signals_v2",
+   "method": "per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gated), signal list, first/last event date and 3/5/10-year event counts so recency is filterable on screen.",
+   "n_rows": 102444,
+   "built_at": "2026-08-16 20:04:36.457793+00",
    "notes": null
   },
   {
@@ -1381,6 +1749,14 @@
    "n_rows": 47,
    "built_at": "2026-08-14 22:56:55.655576+00",
    "notes": "D5_vacancy (city V&A program list w/ outcomes) | publisher_count=47 | South Bend 'All Vacant and Abandoned Properties (Historic / Non-Authoritative)'. State_ID_LU = 18-digit state parcel id. OBSERVED EVENT DATE: Added_to_V_A_on_ (program entry) and State_ID_LU_Date_of_Outcome (outcome). Condition codes + repair cost estimates included."
+  },
+  {
+   "table_name": "in_si_sri_placed",
+   "source": "energy-platfrom.indiana_app.in_si_refresh_sri_taxsale_in + in_sites",
+   "method": "SRI tax-sale and foreclosure rows placed by the PUBLISHER'S OWN latitude/longitude (29,955 of 83,547 carry them) via ST_CONTAINS \u2014 no geocoder, no estimate, no centroid. saleTypeDescription splits Foreclosure into D2 and Tax/Certificate/Deed Sale into D1, because a tax sale and a foreclosure are different claims about an owner. D85 excluded.",
+   "n_rows": 31228,
+   "built_at": "2026-08-16 20:03:41.553451+00",
+   "notes": null
   },
   {
    "table_name": "in_si_state_warn_notices",
@@ -1613,6 +1989,110 @@
    "n_rows": 807,
    "built_at": "2026-08-15 06:32:22.223064+00",
    "notes": "IN zip-code areas"
+  },
+  {
+   "table_name": "vw_bus_headroom_300_located",
+   "source": "indiana_app.in_bus_headroom_300",
+   "method": "poi_name -> in_bus_headroom_miso (publisher coordinates)",
+   "n_rows": 642,
+   "built_at": "2026-08-15 23:54:13.181487+00",
+   "notes": "LOCATION JOIN, measured yield 642/642 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_ghgrp_emissions_located",
+   "source": "indiana_app.in_ghgrp_emissions",
+   "method": "facility_id -> in_ghgrp_facilities (publisher coordinates)",
+   "n_rows": 9310,
+   "built_at": "2026-08-15 23:54:29.682291+00",
+   "notes": "LOCATION JOIN, measured yield 9,310/9,310 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_nfirs_2020_located",
+   "source": "indiana_app.in_nfirs_basicincident_2020",
+   "method": "INCIDENT_KEY -> in_nfirs_incidentaddress_2020 (address grain; no coordinate invented)",
+   "n_rows": 38287,
+   "built_at": "2026-08-15 23:54:55.202550+00",
+   "notes": "LOCATION JOIN, measured yield 38,287/38,287 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_nfirs_2021_located",
+   "source": "indiana_app.in_nfirs_basicincident_2021",
+   "method": "INCIDENT_KEY -> in_nfirs_incidentaddress_2021 (address grain; no coordinate invented)",
+   "n_rows": 38492,
+   "built_at": "2026-08-15 23:54:57.763480+00",
+   "notes": "LOCATION JOIN, measured yield 38,492/38,492 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_nfirs_2022_located",
+   "source": "indiana_app.in_nfirs_basicincident_2022",
+   "method": "INCIDENT_KEY -> in_nfirs_incidentaddress_2022 (address grain; no coordinate invented)",
+   "n_rows": 39927,
+   "built_at": "2026-08-15 23:55:07.092995+00",
+   "notes": "LOCATION JOIN, measured yield 39,927/40,044 = 99.7%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_nfirs_2023_located",
+   "source": "indiana_app.in_nfirs_basicincident_2023",
+   "method": "INCIDENT_KEY -> in_nfirs_incidentaddress_2023 (address grain; no coordinate invented)",
+   "n_rows": 46599,
+   "built_at": "2026-08-15 23:55:10.165985+00",
+   "notes": "LOCATION JOIN, measured yield 46,599/46,748 = 99.7%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_nfirs_2024_located",
+   "source": "indiana_app.in_nfirs_basicincident_2024",
+   "method": "INCIDENT_KEY -> in_nfirs_incidentaddress_2024 (address grain; no coordinate invented)",
+   "n_rows": 49713,
+   "built_at": "2026-08-15 23:55:13.226368+00",
+   "notes": "LOCATION JOIN, measured yield 49,713/49,811 = 99.8%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_pjm_bus_withdrawal_located",
+   "source": "indiana_app.in_pjm_bus_withdrawal",
+   "method": "bus_number -> in_pjm_bus_locations_candidate (ESTIMATED locations, confidence tier carried)",
+   "n_rows": 229,
+   "built_at": "2026-08-15 23:54:16.064984+00",
+   "notes": "LOCATION JOIN, measured yield 229/1,475 = 15.5%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_pjm_queuescope_located",
+   "source": "indiana_app.in_pjm_queuescope_aep",
+   "method": "bus_number -> in_pjm_bus_locations_candidate",
+   "n_rows": 45953,
+   "built_at": "2026-08-15 23:54:26.718910+00",
+   "notes": "LOCATION JOIN, measured yield 45,953/303,671 = 15.1%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_pjm_rtep_upgrades_located",
+   "source": "indiana_app.in_pjm_rtep_upgrades",
+   "method": "upgrade_id -> details + cost allocations (place is TEXT; no coordinate is invented). The ~6% yield is CORRECT, not a defect: in_pjm_rtep_upgrades holds all 15,443 PJM upgrades across every state, and details were pulled only for the 932 Indiana ones.",
+   "n_rows": 932,
+   "built_at": "2026-08-15 23:54:32.495195+00",
+   "notes": "LOCATION JOIN, measured yield 932/932 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_si_candidates_located",
+   "source": "indiana_app.in_si_candidates",
+   "method": "parcel_source+parcel_key -> in_sites; keeps its own gj where present",
+   "n_rows": 4170,
+   "built_at": "2026-08-15 23:54:10.317316+00",
+   "notes": "LOCATION JOIN, measured yield 4,170/4,170 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_site_gates_located",
+   "source": "indiana_app.in_site_gates",
+   "method": "parcel_source+parcel_key -> in_sites (EXACT parcel geometry)",
+   "n_rows": 1200923,
+   "built_at": "2026-08-15 23:54:06.753859+00",
+   "notes": "LOCATION JOIN, measured yield 1,200,923/1,200,923 = 100.0%. A VIEW, not a table: this is a derivation of data already stored, so materialising it would duplicate rows and go stale. No coordinate is invented anywhere - where the join gives only a place name or an address, that is what the view carries."
+  },
+  {
+   "table_name": "vw_warn_notices_union",
+   "source": "indiana_app.in_si_refresh_warn_notices + in_si_state_warn_notices",
+   "method": "ONE WARN layer, not two partial ones (union-and-dedupe ruling). The two tables are the same scrape of the same publisher under different column names; A3 decided to keep one and never acted, so both stayed live and both were read. Dedupe on company|city|notice_date; the copy with a PDF link wins, ties break to 'refresh'. A `sources` badge records which copies held each notice, so a row present in only one copy is visible rather than silently promoted. Neither table is dropped \u2014 a dropped table teaches nothing and the next census rediscovers the name as a gap.",
+   "n_rows": 1194,
+   "built_at": "2026-08-16 16:44:45.830615+00",
+   "notes": null
   }
  ],
  "si_by_signal": [
@@ -1719,6 +2199,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 220,
+ "registry_rows_total": 280,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }
