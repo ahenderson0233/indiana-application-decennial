@@ -39,6 +39,14 @@ permitted write is APPEND-only rows to `energy.registry_sources`. Everything we 
 `energy-platfrom.indiana_app`, and **every table gets a `_registry` row in the same run that
 writes it.** **Restate this in every agent brief — agents do not inherit it.**
 
+**A registry row must be enough to RE-RUN the work** (operator, 2026-08-17). A row that merely
+exists is not compliant: it must carry the **exact parameterised URL** (not the site's home page),
+the **endpoint type** (`arcgis_feature_layer` / `json_api` / `html_page` / `xlsx_download` /
+`bq_clip`), the **loader command verbatim** (`RE-SCRAPE COMMAND: …`), the **parameters that define
+the slice**, the **publisher's own vintage** rather than your pull timestamp, and **what was
+excluded and why**. Test: *could a stranger refresh this table from the registry row alone?*
+`in_grid_plans` fails this today — its registry row says 7 rows while the table holds 618.
+
 **Never quote a count from a document, including this one.** Run the checkpoint and use what it
 prints. "199 of 199 wired" was stale within the hour; `SI_COVERAGE.md` asserted D4 was NOT HELD
 while 17,617 delinquent rows sat in the warehouse.

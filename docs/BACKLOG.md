@@ -114,6 +114,74 @@ in `docs/RTO_DIRECTIONS.md`; partial coverage is expected and fine. Request size
 (`request_mw`), never one table per size, so the existing 300 and 100 rungs fold in rather than
 duplicate. Sent to the in-flight agent as a scope extension.
 
+### G15 — FUTURE CAPACITY: the extraction dropped location, cost and dates (operator, 2026-08-17)
+
+*"Future capacity comes from the grid plans (from the IURC) and the updates from the ISOs/RTOs in
+Indiana; we should have these points plottable to some extent, and the only utility that we have
+data for currently is AES... for the new ones they often give a vague location (e.g. north of the
+business district in XXX) and should be plottable in a relative sense (see the Illinois tool)."*
+
+**Partial correction, measured 2026-08-17.** We hold **six** utilities, not one:
+NIPSCO 376 · AES Indiana (IPL) 102 · Duke Energy Indiana 57 · CenterPoint/SIGECO 35 ·
+Indiana Michigan Power 31 · unattributed IURC IRP page 17 = **618 rows, 391 of them projects.**
+
+**But the operator is right that almost nothing arrives, and the reason is worse than a missing
+utility — the location extraction failed across ALL of them:**
+
+| field on the 391 project rows | populated |
+|---|---:|
+| `county`, `city`, `location_text`, `line_endpoints`, `cost_usd_m` | **0 (0%)** |
+| `substation_names` | 7 (2%) |
+| `in_service_year` | 15 (4%) |
+| `voltage_kv` | 326 (83%) |
+
+`location_status` = **`neither` on 384 of 391**; only 7 are `joinable`. The schema has exactly the
+right columns and the parser filled voltage while dropping location, cost and in-service date.
+Downstream, `export_grid_sentiment.py` groups on `UPPER(IFNULL(county,'(UNLOCATED)'))`, so **all 618
+rows collapse into a single `(UNLOCATED)` bucket** — which is why the app looks like it holds
+nothing. ⚠ Also: `_registry` records `n_rows = 7` for `in_grid_plans` while the table holds 618.
+
+**The work, in order:**
+1. **Re-extract from the IURC TDSIC workpapers** (`document_url` is populated — the source docs are
+   already identified). Recover `location_text`, `city`, `county`, `substation_names`,
+   `line_endpoints`, `cost_usd_m`, `in_service_year`. This is the whole ballgame; everything below
+   depends on it.
+2. **Locate in two tiers, and never blend them:**
+   - **existing assets** → join by substation/facility ID to `in_substations` (exact point);
+   - **new assets** → a *vague* description ("north of the business district in Kokomo"). Plot as a
+     **location-uncertainty ring**, sized by how well the location is actually known, exactly as the
+     operator's Illinois dashboard does. ✅ **This does NOT breach the no-centroids rule:** a
+     centroid is banned because it *impersonates* a precise point; a ring explicitly states "the
+     asset is somewhere in here". Carry `location_grain` (site / substation / city / county) on
+     every row and colour or size the ring by it.
+3. **Fold in the ISO/RTO side, which we already hold and barely surface:** MISO MTEP
+   `in_txexp_miso_mtep_appendix_a_status` (328) and PJM RTEP `in_pjm_rtep_upgrades` (15,443),
+   `vw_pjm_rtep_upgrades_located` (932), `in_rtep_bus_summary` (79).
+4. **Chase the utilities still absent** — Hoosier Energy, IMPA, Wabash Valley — and confirm the
+   Duke/NIPSCO pulls are complete rather than a first page.
+5. Fix the `(UNLOCATED)` roll-up once locations exist.
+
+### G16 — RULE: an agent's registry row must be enough to RE-RUN the work (operator, 2026-08-17)
+
+*"Make sure the agents update the registries so everything is trackable and documented (e.g., URL,
+endpoint type, loader used)."*
+
+**Binding on every agent brief from now on.** A `_registry` row that merely exists is not
+compliant. Each row must carry:
+
+| must record | example |
+|---|---|
+| exact source **URL / endpoint**, parameterised | `giqueue.misoenergy.org/POI/api/poi_mf?pMaxValue=300` — not the site's home page |
+| endpoint **type** | `arcgis_feature_layer` · `json_api` · `html_page` · `xlsx_download` · `bq_clip` |
+| **loader** used, re-runnable verbatim | the estate convention: a literal `RE-SCRAPE COMMAND: <command>` string |
+| **parameters defining the slice** | `request_mw`, direction, RTO, state filter |
+| **observed vintage** from the publisher payload | not the pull timestamp |
+| row count and **what was excluded, and why** | |
+
+Test: *could a stranger refresh this table from the registry row alone?* If not, the row is
+incomplete. Sent to the in-flight agent as a standing requirement, including a back-fill of rows it
+had already written.
+
 ### G13 — voltage: filter by it, colour by it, and AUDIT it (operator, 2026-08-17)
 
 *"The substations/buses/transmission lines should also be filterable by kV and the transmission
