@@ -224,6 +224,50 @@ That is the single largest correction this application has shipped.
 **Still open under G29:** buses on the *map console* (the screener's are already exact), and the
 client-side `repPt()` fallback for uploaded rows, which must be labelled as a point measurement.
 
+### G33 — THE OWNER-SIGNALS PAGE IS A BUILD LOG, NOT A PRODUCT SURFACE (operator, 2026-08-17)
+
+*"That entire page needs a complete overhaul, and the information there needs to be much more
+streamlined (the tables are all over the place and there is seemingly no structure whatsoever — many
+of the tables are irrelevant and don't provide material insights or actionable results)."*
+
+**Measured, not asserted:** `si.html` carries **26 tables across 24 top-level `<h2>` sections, with
+exactly 1 sub-heading and 0 accordions.** Everything is at the same level, so nothing is subordinate
+to anything and the reader has no path through it. G5 gave the map console eight named accordions
+for the same reason; this page never got that pass.
+
+⭐ **But layout is the symptom. The disease is AUDIENCE.** Sorting the 24 sections by who they serve:
+
+| serves a DC/BESS developer | serves US — provenance, QA and build history |
+|---|---|
+| Signal inventory by signal | "The flag was a vacancy flag — what changed" |
+| Per-signal coverage (*what we can and cannot see*) | "Lane D — columns that were pulled and never wired" |
+| D22 environmental compliance | "D5 — vacancy is two different things" |
+| Highest-vacancy census tracts (context) | "Marion placement, checked by two instruments" |
+| Owner-grain signals (*why some signals cannot reach a parcel*) | "Admitted by operator sign-off — what was let in" |
+| | "Staged acquisitions — awaiting the subject test" |
+| | Per-source D11 / D27 / D25 / land-bank snapshot dumps |
+
+**At least seven sections exist to prove the corpus was built honestly.** That was exactly the right
+artefact *while building it* — several of them record genuine, hard-won corrections. It is not what a
+developer opens the page to find, and volume standing in for value is the specific failure the
+governing principle names.
+
+**The rebuild, and the test each surface must pass:**
+1. **Lead with the question the page exists to answer:** *which owners might sell me land, and how
+   strongly do we believe it?* Ranked parcels with a plain-language reason, not a signal taxonomy.
+2. **Then: what we can and cannot see.** Coverage is genuinely actionable — a developer must know
+   that 90% of our largest signal is undated (G14) and that some signals cannot reach a parcel at
+   all. Keep it, framed as a limit on the answer rather than as a statistic.
+3. **Collapse everything else into ONE `<details>` — "How this was built and checked."** Do not
+   delete it: `SI_COVERAGE.md` asserting D4 absent while 17,617 rows sat in the warehouse is exactly
+   what this material prevents. It simply is not a top-level surface. The **Data & sources** page is
+   already marked internal-by-design and exempt from G21 — much of this belongs there.
+4. **Apply G21's five requirements** to whatever survives, and the negative test: a table that cannot
+   answer "so what?" comes out.
+5. ⚠ **Preserve every element id that carries a filter or a payload key** — G5's rule, learned the
+   hard way: a renamed id kills a control **silently**, and `audit_frontend.py` reads source, not
+   runtime, so it will not catch it.
+
 ### G32 — MAP LAYERS BELONG INSIDE THE THEMED DROPDOWNS (operator, 2026-08-17)
 
 *"For the map layers, those should be embedded [in] the 1-6 dropdowns in the dashboard, so everything
@@ -458,6 +502,7 @@ below, **add its row here in the same edit.**
 | **G30** | **GitHub Pages deploy failures** | ✅ **CLOSED 2026-08-17 — NOT OUR DEFECT, and the previous diagnosis was WRONG** | ⭐ **Read the actual error before acting on this.** Run #128 (`9361a16`): `build` **SUCCEEDED** in 39s and uploaded a **363 MB `github-pages` artifact**, then `deploy` failed with **HTTP 503 — "No server is currently available… is githubstatus.com reporting a Pages outage? Please re-run the deployment at a later time."** A **transient GitHub-side Pages outage.** Exactly **4 failures ever — #125, #126, #127, #128 — matching the operator's 4 emails — and #129 SUCCEEDED with no change from us.** ⛔ **The inherited "cause is size" diagnosis is DISPROVEN:** the 363 MB artifact uploaded fine, no file exceeds 100 MB (largest 15.6 MB), and the published site is under the 1 GB Pages limit. Acting on it would have meant moving `data/sites/` to PMTiles/CDN/LFS — **large, risky, map-breaking work to fix a GitHub outage.** ⚠ Separately, the operator reports **a water agent failing to PUSH oversized files** — that is a *git push* rejection, not a Pages deploy, and the operator is handling it. **Two different email sources; do not conflate them** |
 | **G30b** | Repo pack is 2.91 GiB (hygiene, not a failure) | 🟡 **OPEN, LOW PRIORITY** | Real but *not* what broke anything: `size-pack` **2.91 GiB** from **12 commits × ~334 MB of already-gzipped** payload, which git cannot delta-compress, so each rebuild stores a full fresh copy. Slows clones; does not affect Pages. ⚠ **Shrinking the files does NOT shrink the pack** — a new copy *adds* to it; only history rewriting shrinks it. Measured win available if wanted: parcel coordinates carry **13 decimal places** (nanometre precision on a survey boundary); truncating to **6** (~0.11 m) is **45% smaller — 334 MB → ~185 MB** and invisible on screen. Do it when `data/sites/` is next regenerated, not as a standalone rewrite |
 | **G31** | **NHD watershed backfill** | 🟡 **AGENT RUNNING** | Geometry covers **59 of 76** HUC8 (waterbodies 57). Agent dispatched with a DATA-COLLECTION-ONLY brief to close the ~18-watershed gap. Coverage gap, not correctness — every row present is valid. Progress 2026-08-17: by-key pass, ~3,848 flowline keys, **100% publisher return rate** on the first 440 |
+| **G33** | **Owner-signals page needs a COMPLETE overhaul** | 🔴 **OPEN — operator, 2026-08-17** | *"That entire page needs a complete overhaul… the tables are all over the place and there is seemingly no structure whatsoever — many of the tables are irrelevant and don't provide material insights or actionable results."* **Measured: 26 tables, 24 top-level sections, 1 sub-heading, ZERO accordions** — a flat wall with no hierarchy. ⭐ **Root cause is not layout, it is AUDIENCE: `si.html` is a BUILD LOG, not a product surface.** At least 7 of its 24 sections document how the corpus was assembled and audited ("Lane D — columns pulled and never wired", "Marion placement checked by two instruments", "Admitted by operator sign-off", "The flag was a vacancy flag — what changed"). That was the right artefact while building; it is not what a developer opens. Rebuild around **"which owners might sell me land, and why do I believe it"**, and move provenance behind a single collapsed *How this was built* section — or onto the Data page, which is already exempt from G21 as internal-by-design |
 | **G32** | **Map layers belong INSIDE the themed dropdowns** | 🔴 **OPEN — operator, 2026-08-17** | *"For the map layers, those should be embedded [in] the 1-6 dropdowns in the dashboard, so everything stays consistent with their function."* Today the themed accordions (Owner motivation / Power & grid / Land & size / Environmental / Community / Market) and the map's LAYER toggles are two separate organising systems over the same subjects — a user turns on a grid filter in one place and a grid layer in another. **Each layer moves into the theme it belongs to**, so one dropdown owns one subject end-to-end: filter, layer and its "so what" together. ⚠ **Every one of ~65 element ids must survive the move** — G5 established that a renamed id kills a filter *silently* rather than erroring. Pairs with **G21**: a layer arriving in a themed section still needs its why-it-matters line, and a legend is not a "so what" |
 | **G12** | **💧 WATER** | 🟢 **ON THE MAP** | `in_water_county` (92/92) + `in_water_stress_basin` (34). Statewide 7,176.7 Mgal/d, thermoelectric 3,822.0. **Parcel-grain still open** (NHD proximity, ECHO discharge). Two silent traps hit and fixed; groundwater/NWIS genuinely NOT held |
 | ~~G12 old~~ | | | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
