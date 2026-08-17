@@ -251,6 +251,8 @@ table.rtable tr:hover td { background: #fbfcfd; }
 .bdg-st { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
 .bdg-un { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 .bdg-ol { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px;
+  vertical-align: -1px; margin-right: 1px; }
 abbr[title] { text-decoration: underline dotted #94a3b8; cursor: help; text-underline-offset: 2px; }
 
 ::-webkit-scrollbar { width: 9px; }

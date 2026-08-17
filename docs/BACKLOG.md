@@ -117,6 +117,52 @@ agent: enumerate `energy.__TABLES__` and `indiana_app._registry` for the subject
 The failure mode is always the same shape: **a plan built on what we remember instead of what we
 hold.**
 
+### G29 — 🔴 DISTANCE TO GRID ASSETS IS MEASURED WRONG ON THE MAP (operator, 2026-08-17)
+
+*"A parcel that has transmission running through it should say 0.0 mi from transmission, and it is
+currently stating ~0.55 mi... it should be measuring the closest point of transmission to the
+closest point of the parcel."*
+
+**Diagnosed, and the operator is right. Root cause is in `app.js`:**
+
+```js
+function repPt(geom) {           // "any coordinate ON the feature (a vertex)"
+  let c = geom.coordinates;
+  while (typeof c[0] !== "number") c = c[0];
+  return c;                      // <- THE FIRST VERTEX. Not the nearest point.
+}
+```
+
+`enrichDistances()` measures **first-vertex-of-parcel → a representative vertex of the asset**.
+Both ends are wrong for the question being asked:
+
+| end | what it uses | what it should use |
+|---|---|---|
+| parcel | its **first vertex**, an arbitrary corner | the nearest point on the parcel — **0 if the asset crosses it** |
+| line | one binned vertex per line | the nearest point **on the segment**, not on a vertex |
+
+Error is therefore up to *(parcel diagonal) + (vertex spacing on the line)*, always **overstating**
+distance, and it never returns 0 even when the asset physically crosses the parcel. It affects the
+map's grid filters, the evidence panel, uploaded sites, and the Power Plan's substation/line rows.
+
+⭐ **Second finding: we already have this right in one place, and wrong in another.**
+`build_screener_candidates.py` uses `ST_DISTANCE(parcel_geog, bus_point)` in BigQuery — true
+polygon-to-point geodesic distance, which correctly returns **0** when the point is inside the
+parcel. So the **screener's distances are exact while the map console's are approximate**, on the
+same parcels, from the same data. That is the *same defect class* as PJM and MISO headroom being
+computed by different rules and shown side by side.
+
+**Fix, in order:**
+1. **Compute distances in the warehouse and ship them**, exactly as the screener already does —
+   `ST_DISTANCE` against the real geometry for substations, lines, and connection points. One
+   method, exact, and no client-side approximation to drift from it.
+2. Where a client-side distance is unavoidable (an uploaded CSV with no parcel geometry), use
+   **point-to-SEGMENT** distance, not point-to-vertex, and label it as a point measurement.
+3. **Re-measure the fan-out of "within X miles" filters after the fix** — every distance shrinks,
+   so counts will rise. That is the correction landing, not a regression.
+4. ⚠ Do NOT apply the no-centroids rule as an objection here: measuring to the *nearest point on a
+   parcel* is exact, not a derived centre.
+
 ### G28 — 🔴 EXTENSIVE ACREAGE AUDIT: the inflation is not where it looks (operator, 2026-08-17)
 
 *"A full-scale extensive audit of our parcel acreage, since it seems inflated in many instances,
@@ -314,6 +360,8 @@ below, **add its row here in the same edit.**
 | **G9** | **Date-gate EVENT signals only** | 🟡 SCREENER DONE | Three-way gate (dated / standing / **undated**). Undated kept by default and toggleable. **Map console + `si.html` not done** |
 | **G10** | **"Vacant" means two things** | 🟡 SCREENER DONE | Undeveloped **land** vs vacant **building**. Still to sweep `has_vacancy_signal`, `f-vac`, `site_kind`, `si.html` |
 | **G11** | **Sentiment statuses not reaching the map** | 🔴 **OPEN — UNVERIFIED** | Measure the vocabulary diff between `county_context.json` (map) and `receipts.json.gz` + `in_dc_actions_resolved` (Community) **before** changing anything |
+| **G11** | **Verified county actions never reached the map** | ✅ **DONE** | 33 counties carry a verified action and the map called **13 of them "quiet"** — Cass has a **ban**, Floyd/Huntington/Whitley **moratoriums**, all with `has_local_restriction=false`. And **10 counties have APPROVED a data centre** with no representation at all. Now a categorical shading + legend |
+| **G29** | **Parcel→asset distance is measured wrong on the map** | 🔴 **OPEN** | `repPt()` uses the parcel's **first vertex** and one binned vertex per line, so a line crossing a parcel reads ~0.55 mi instead of **0.0**. Always overstates. ⭐ The screener already does this exactly in BigQuery — two methods in one app |
 | **G12** | **💧 WATER — in `energy`, reaches nothing** | 🔴 **OPEN** | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
 | **G13** | **Voltage: filter, colour, and AUDIT first** | 🔴 **OPEN** | Some voltages mislabeled. **Audit before colouring** — colouring by a wrong field renders the error in high contrast, and the bad kV already feeds the screener's substation filter. Unknown voltage gets its own colour, never the bottom of the scale |
 | **G14** | **Re-scrape missing signal dates** | 🔴 **OPEN** | **90% of tax-delinquency records (8,523 of 9,459) are undated** and it is our largest signal. Establish first whether the source publishes a date we failed to capture |

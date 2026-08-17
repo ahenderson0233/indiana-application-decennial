@@ -76,6 +76,14 @@ map.on("load", async () => {
       f.properties.opposition_intensity = c.posture?.opposition_intensity ?? null;
       f.properties.has_restriction = c.posture?.has_local_restriction ?? null;
       f.properties.queue_active_mw = c.queue?.active_mw ?? null;
+      // G11: the VERIFIED action, which the map previously could not see at all. Measured
+      // 2026-08-17: 33 counties carry one and the map called 13 of them "quiet" — Cass has a BAN,
+      // Floyd/Huntington/Whitley have moratoriums, all with has_local_restriction = false. And 10
+      // counties have APPROVED a data centre, which is the strongest positive signal there is and
+      // had no representation on the map whatsoever.
+      f.properties.action_tone = c.action_summary?.tone ?? null;
+      f.properties.action_headline = c.action_summary?.headline ?? null;
+      f.properties.action_approved = c.action_summary?.approved ? 1 : 0;
     }
   }
   map.addSource("counties", { type: "geojson", data: state.counties });
@@ -281,13 +289,62 @@ function countyPaint(metric) {
     return ["case", ["==", ["get", "queue_active_mw"], null], "#f2f2f0",
       ["interpolate", ["linear"], ["to-number", ["get", "queue_active_mw"], 0],
        0, "#f4f7fb", 200, "#c7d9f0", 1000, "#7fa8d9", 3000, "#3b6bb5"]];
+  // G11: shade by what the county has ACTUALLY DONE about data centres, verified at an official
+  // source. Deliberately a 4-colour categorical rather than a gradient - "has a ban" and "has
+  // approved one" are not two ends of one scale, they are different facts. Counties with no
+  // recorded action are neutral grey and must NOT read as permissive: absence of a recorded rule
+  // is not evidence there is no rule.
+  if (metric === "action_tone")
+    return ["match", ["get", "action_tone"],
+      "blocking", "#b91c1c",   // a ban or a live moratorium
+      "watch",    "#f59e0b",   // proposed, denied, uncodified - timing or precedent risk
+      "open",     "#15803d",   // has approved a data centre; precedent exists
+      "neutral",  "#cbd5e1",
+      "#f2f2f0"];              // nothing recorded - NOT the same as nothing there
   const field = metric === "ge25mw" ? "ge25mw" : "class_union";
   return ["interpolate", ["linear"], ["get", field],
     0, "#f4f7fb", 2000, "#dbe7f5", 10000, "#b7cfea", 30000, "#8fb2dc", 80000, "#5d8cc7"];
 }
-document.getElementById("county-metric").addEventListener("change", (e) => {
-  map.setPaintProperty("county-fill", "fill-color", countyPaint(e.target.value));
-});
+/* A shaded map with no legend is a colouring-in exercise (the governing principle: everything on
+   screen must say what it means for a decision). Each metric states its own scale AND its caveat. */
+const METRIC_LEGEND = {
+  action_tone: `<span class="swatch" style="background:#b91c1c"></span> ban or live moratorium ·
+    <span class="swatch" style="background:#f59e0b"></span> proposed / denied / uncodified ·
+    <span class="swatch" style="background:#15803d"></span> has approved one ·
+    <span class="swatch" style="background:#f2f2f0;border:1px solid #cbd5e1"></span> nothing recorded.
+    <b>Verified at an official source.</b> Grey means we found nothing — <b>not that nothing
+    exists</b>; Indiana's rules are mostly county moratoria no code library carries.`,
+  opposition_intensity: `Low <span class="swatch" style="background:#eef6ee"></span>
+    <span class="swatch" style="background:#fde68a"></span>
+    <span class="swatch" style="background:#f59e0b"></span>
+    <span class="swatch" style="background:#b91c1c"></span> high.
+    ⚠ Partly tracks <b>news volume</b>, so large metros read higher for reasons that are not
+    posture. Compare counties of similar size only.`,
+  queue_active_mw: `Active interconnection queue megawatts. Counts as future <b>supply</b> nearby,
+    not as competing demand.`,
+  class_union: `How many parcels passed the screen. A dense county is not a better county — it is a
+    bigger one.`,
+  ge25mw: `Parcels large enough for 25 MW at your density assumption.`,
+  none: `No shading.`,
+};
+function setCountyMetric(metric) {
+  // legend FIRST, and the map call guarded. setPaintProperty throws if the map never initialised
+  // (no WebGL, or a layer not yet added), and an exception there used to take the legend down with
+  // it — so the one part that still works without a map silently did not.
+  // ⚠ document.getElementById directly, NOT the $ helper: this runs at module scope during
+  // evaluation, and `const $` is declared a few lines BELOW. Calling $ here threw
+  // "Cannot access '$' before initialization" — a temporal-dead-zone error that aborted the whole
+  // of app.js. Same defect class the front-end audit was built to catch: a top-level throw kills
+  // every feature after it, with nothing on screen to say so.
+  const el = document.getElementById("metric-legend");
+  if (el) el.innerHTML = METRIC_LEGEND[metric] || "";
+  try {
+    if (map && map.getLayer && map.getLayer("county-fill"))
+      map.setPaintProperty("county-fill", "fill-color", countyPaint(metric));
+  } catch (e) { /* map not ready; the legend above is still correct */ }
+}
+document.getElementById("county-metric").addEventListener("change", (e) => setCountyMetric(e.target.value));
+setCountyMetric("class_union");
 
 /* ---------- screener ---------- */
 const $ = (id) => document.getElementById(id);

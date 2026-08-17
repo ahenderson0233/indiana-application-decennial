@@ -90,6 +90,68 @@ for r in client.query(f"""
 for r in client.query(f"SELECT geoid, projects, active_projects, active_mw, withdrawn_projects, total_mw FROM `{DS}.in_queue_counties`"):
     d = dict(r); g = d.pop("geoid")
     if g in ctx: ctx[g]["queue"] = d
+
+# ---------------------------------------------------------------------------------------------
+# G11 — THE VERIFIED COUNTY ACTIONS NEVER REACHED THE MAP.
+#
+# Measured 2026-08-17: 33 counties carry a VERIFIED data-centre action, and the map called 13 of
+# them "quiet" — including CASS, which has a **ban**, and FLOYD, HUNTINGTON and WHITLEY, which have
+# **moratoriums**, all with has_local_restriction = False. Meanwhile 10 counties have *approved* a
+# data centre — the most actionable positive signal a siter can have — and the map had no way to
+# show it at all.
+#
+# The cause is that the map read only `posture`, a 4-value summary (quiet / active_discussion /
+# restricted / contested) derived elsewhere, while the Community page read the 9-value verified
+# action vocabulary. Same estate, two surfaces, different answers. That is the same defect as the
+# receipts feed showing 4 ordinances while 107 county actions existed.
+#
+# Gated on posture_renderable, so an unverified news lead can never reach the map as an action.
+name_to_fips = {}
+for g, v in ctx.items():
+    nm = (v.get("posture") or {}).get("county_name")
+    if nm:
+        name_to_fips[nm.upper().replace(" COUNTY", "").strip()] = g
+
+ACTION_TONE = {          # what a siter should DO about each, not merely what it is called
+    "ban-prohibition":              ("blocking", "a ban is on the books — do not spend diligence here without counsel"),
+    "moratorium":                   ("blocking", "development is paused; find the expiry date before committing"),
+    "expired-moratorium":           ("watch",    "the pause has lapsed — check whether a permanent rule replaced it"),
+    "denied":                       ("watch",    "a project was refused here; understand why before repeating it"),
+    "adopted-uncodified-ordinance": ("watch",    "a rule exists that no code library carries — read the ordinance itself"),
+    "proposed":                     ("watch",    "a rule is moving; timing risk, not a block"),
+    "petition-pending":             ("watch",    "a decision is live right now"),
+    "withdrawn":                    ("neutral",  "a petition was pulled; the county has no standing rule from it"),
+    "approval-permissive":          ("open",     "this county has APPROVED a data centre — precedent exists"),
+}
+n_act = 0
+for r in client.query(f"""
+  SELECT county, confirmed_action_type AS action, jurisdiction, verified_instrument AS instrument,
+         CAST(COALESCE(verified_effective_from, verified_observed_date) AS STRING) AS observed,
+         official_url
+  FROM `{DS}.in_dc_actions_resolved`
+  WHERE posture_renderable AND county IS NOT NULL"""):
+    g = name_to_fips.get(r.county.upper().replace(" COUNTY", "").strip())
+    if not g:
+        continue
+    tone, why = ACTION_TONE.get(r.action, ("watch", "recorded action"))
+    ctx[g].setdefault("actions", []).append({
+        "action": r.action, "tone": tone, "why": why, "jurisdiction": r.jurisdiction,
+        "instrument": r.instrument, "observed": r.observed, "url": r.official_url})
+    n_act += 1
+
+# one rolled-up verdict per county so the map can shade and filter on it. Worst tone wins: a county
+# that has both approved one project and banned another is NOT "open".
+TONE_RANK = {"blocking": 3, "watch": 2, "neutral": 1, "open": 0}
+for g, v in ctx.items():
+    acts = v.get("actions") or []
+    if acts:
+        worst = max(acts, key=lambda a: TONE_RANK.get(a["tone"], 0))
+        v["action_summary"] = {"n": len(acts), "tone": worst["tone"],
+                               "headline": worst["action"], "why": worst["why"],
+                               "approved": any(a["action"] == "approval-permissive" for a in acts)}
+print(f"county actions attached to the map: {n_act} rows across "
+      f"{sum(1 for v in ctx.values() if v.get('actions'))} counties "
+      f"(the map previously showed a 4-value posture only)")
 # grid plans are county-NAME keyed (agent schema); emit a name-keyed dict for the app
 gp = {}
 for r in client.query(f"""

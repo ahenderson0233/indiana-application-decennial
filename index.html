@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=7e5a686e">
+<link rel="stylesheet" href="style.css?v=b5c8a6eb">
 </head>
 <body>
 <header id="topbar">
@@ -162,11 +162,13 @@
         <div class="subhead">Shade counties by</div>
         <select id="county-metric">
           <option value="class_union">how many screened sites</option>
+          <option value="action_tone">what the county has DONE about data centres</option>
           <option value="opposition_intensity">opposition intensity</option>
           <option value="queue_active_mw">active queue MW</option>
           <option value="ge25mw">parcels fitting 25 MW+</option>
           <option value="none">no shading</option>
         </select>
+        <div class="hint" id="metric-legend" style="margin-top:5px"></div>
       </div>
     </details>
 
@@ -252,6 +254,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=4cb2d338"></script>
-<script src="app.js?v=d5f00355"></script>
+<script src="app.js?v=8b5bdd55"></script>
 </body>
 </html>
