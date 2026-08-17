@@ -114,6 +114,51 @@ in `docs/RTO_DIRECTIONS.md`; partial coverage is expected and fine. Request size
 (`request_mw`), never one table per size, so the existing 300 and 100 rungs fold in rather than
 duplicate. Sent to the in-flight agent as a scope extension.
 
+### G17 — TARIFF COST MODEL: §13(8) is no longer "impossible", it is ACQUIRABLE
+
+Operator supplied `CPS_35MW_Rate_Model.xlsx` 2026-08-17: *"this is how the tariff costs should be
+broken out for the estimates (leveraging the tariff rate schedule and riders to compute a highly
+accurate estimate)... the schedules should change for a site depending on the max load,
+interconnection type, etc. This should be fully explained in the dossier, and should be seen as
+accurate in the Market and Rates section."*
+
+⚠ **This supersedes a standing conclusion.** §13(8) has been recorded twice as *not achievable as
+specified* because "no component-level Indiana tariff exists anywhere in the estate." That was a
+statement about **what we hold**, and it was true — we hold `in_utility_tariff_riders` (3 rows) and
+`in_dc_eei_tariffs` (5). It is **not** a statement about what is obtainable: Indiana tariff sheets
+and rider schedules are public IURC filings. **Reclassify §13(8) from structural to acquisition.**
+
+**The model shape to reproduce (from the supplied workbook):**
+
+| stage | components |
+|---|---|
+| **Inputs** | load MW · load factor · actual unit fuel cost $/kWh · riders (regulatory-asset amortisation, sales tax) · hours/yr |
+| **Load derivation** | billing demand kW = MW × 1000 · annual kWh = kW × hrs × load factor |
+| **Rate components** (per tariff sheet) | service availability $/mo · energy charge $/kWh · **fuel base embedded in rates** $/kWh · summer vs non-summer month counts |
+| **Per SERVICE VOLTAGE** ← the part we do not model at all today | demand $/kW-mo summer *and* non-summer, stated separately for **transmission** vs **distribution primary**, plus an **extra transformation adder** where more than one step-down is needed |
+| **Annualised** | fixed = availability × 12 · demand = kW × (summer rate × summer months + non-summer rate × non-summer months) · energy = kWh × energy charge · **fuel adjustment = (actual fuel − fuel base) × kWh** · then riders |
+| **Output** | total $/yr and **effective all-in $/kWh** |
+| **Brackets** | wholesale-energy floor · industrial-retail ceiling · a non-comparable class shown as reference only |
+| **Decomposition** | share of cost that is fixed / demand-shaped / volume-shaped |
+| **Verify list** | the assumptions a user must confirm with the utility, printed *with* the number |
+
+**Two things this makes non-negotiable:**
+1. **Service voltage changes the answer, and it is a SITE attribute.** In the worked example,
+   transmission service beats distribution primary by **$210,000/yr on 35 MW** — the same load, the
+   same utility, a different interconnection point. So the rate schedule is a *function of* max load
+   and interconnection type, exactly as the operator says, and a single blended $/kWh for a county
+   is not a weaker version of this — it is a different and misleading quantity.
+2. **The fuel adjustment is a delta, not a rate.** `(actual fuel − fuel base embedded in rates)`.
+   Ignoring the embedded base double-counts fuel; in the worked example fuel adjustment is
+   **$3.6M of $16.0M**, so getting it wrong moves the headline by more than 20%.
+
+**Work:** acquire per Indiana utility (AES Indiana, Duke Energy Indiana, NIPSCO, I&M, CenterPoint,
+IMPA, Hoosier, Wabash Valley) the large-load rate schedules with their **load-size eligibility
+thresholds**, demand/energy components by **service voltage**, the embedded fuel base, and the rider
+stack. Then build the calculator, surface it in **Market & cost**, and print the full breakdown
+**plus the verify-list** in the dossier. ⛔ The existing flattened-URDB cross-check is an *ordering
+hint* and must not be dressed up as this.
+
 ### G15 — FUTURE CAPACITY: the extraction dropped location, cost and dates (operator, 2026-08-17)
 
 *"Future capacity comes from the grid plans (from the IURC) and the updates from the ISOs/RTOs in
