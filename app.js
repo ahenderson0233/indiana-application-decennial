@@ -141,9 +141,14 @@ map.on("load", async () => {
              "line-width": ["match", ["get", "volt_class"],
                "735 and above", 3.0, "500-734", 2.8, "300-499", 2.6,
                "200-299", 2.1, "100-199", 1.7, "under 100", 1.1,
-               /* unknown */ 1.1],
-             "line-dasharray": ["case", ["==", ["get", "volt_class"], "unknown"], ["literal", [2, 2]],
-                                ["literal", [1, 0]]] } });
+               /* unknown */ 1.1] } });
+  /* ⛔ `line-dasharray` is NOT a data-driven paint property in MapLibre — a ["case"] expression on
+     it throws inside addLayer, and because that happens during boot it killed everything after it,
+     including the parcel layers. The map simply lost its parcels with no visible error.
+     The dashed treatment for unknown-voltage lines therefore needs its OWN layer, filtered. */
+  map.addLayer({ id: "grid-lines-unknown", type: "line", source: "grid",
+    filter: ["all", ["==", ["get", "layer"], "line"], ["==", ["get", "volt_class"], "unknown"]],
+    paint: { "line-color": "#b6bdc9", "line-width": 1.1, "line-dasharray": [2, 2] } });
   // A circle layer silently ignores polygon features, so the 933 footprint-only substations
   // need their own fill layer — otherwise they are in the payload and still invisible.
   map.addLayer({ id: "grid-subs", type: "circle", source: "grid",
@@ -418,6 +423,11 @@ function setLineKv(v) {
       map.setFilter("grid-lines", v === "all"
         ? ["==", ["get", "layer"], "line"]
         : ["all", ["==", ["get", "layer"], "line"], ["==", ["get", "volt_class"], v]]);
+      // the dashed unknown layer follows the same filter, or it would keep drawing unknown lines
+      // while the user has asked to see only 345 kV
+      if (map.getLayer("grid-lines-unknown"))
+        map.setLayoutProperty("grid-lines-unknown", "visibility",
+          (v === "all" || v === "unknown") ? "visible" : "none");
     }
   } catch (e) { /* map not ready; the legend above is still correct */ }
 }
@@ -580,7 +590,7 @@ $("f-usecase").addEventListener("change", () => {
 $("f-cand").addEventListener("change", syncLayers);
 
 /* ---------- layers panel ---------- */
-const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-lines"],
+const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-lines", "grid-lines-unknown"],
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
