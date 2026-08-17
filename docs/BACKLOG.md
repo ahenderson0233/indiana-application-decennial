@@ -554,6 +554,57 @@ joined-aggregate 403`, measured **with the full join contract in hand**. **The 6
 study and the 19,223-bus universe are not obtainable by any known route.** ⛔ Do not re-promote G7d
 on the strength of the catalogue row again.
 
+#### ⭐ G7k — WE ARE NOT MISSING COLUMNS. THE DPP-2025 SCHEMA IS PUBLIC AND WE HOLD EVERY MEASURE.
+
+Operator asked four times whether we had scraped *"some, not all"* of the columns. **Answered
+definitively 2026-08-17 with the publisher's own schema**, obtained from a route no prior session
+had tried: `DataColumns` on each table's **own `systemIdentifier`** rather than the shared layer id.
+It returns **200, public**.
+
+| `MISO_TSA_2025-11-11` — their DPP-2025 study, 691,523 rows | our equivalent, held |
+|---|---|
+| `FCITC` | `mw_available` |
+| `DFAX` | `percent_dfax` |
+| `RATING` | `rate_base_mva` / `derived_rating_mva` |
+| `CONSTRAINT` | `monitored_facility` |
+| `CONTINGENC` | `cont_name` |
+| `INI_LOAD` | `base_flow_mw` |
+| `PER_LOADED` | `percent_loading_before` |
+| `BUS_ID` · `KV` · `LATITUDE` · `LONGITUDE` | ✅ held (`MISO_POIs` carries 9 columns, all held) |
+| **`SCENARIO`** · **`YEAR`** | ❌ **not held — the study dimensions** |
+
+⭐ **So the gap was never columns.** We hold an equivalent for every measure their study publishes.
+The difference is (a) the **model** — DPP-2021 vs DPP-2025 — and (b) the **scenario/year**
+dimensions. Stop auditing our clips for missing MISO columns; audit the *model vintage* instead.
+
+#### ⛔ G7l — THE CARTOVISTA WALL, MAPPED EXHAUSTIVELY. Metadata public, ROWS protected.
+
+Operator, correctly on principle: *"we should be able to get around CartoVista, since they have to
+derive that set from somewhere… they only extract the information, they do NOT create the study."*
+**The principle holds — MISO authors DPP-2025 and CartoVista only renders it — but every CartoVista
+route to the ROWS is shut.** Measured 2026-08-17, including two routes no prior session tried:
+
+| route | result |
+|---|---|
+| `api/settings/miso/ferc` | **200** — and it yields the real study GUID `83dffd45-…`, `studyTitle: "DPP2025"`, `maxInjection: 5000` (matching the benchmark's 5,000 MW ceiling exactly) |
+| ⭐ `api/v2/maps/{poiAnalysisMapId}/details` | **200 — NEW.** Confirms `MISO_POIs_2025-11-11` **19,223**, `MISO_TSA_2025-11-11` **691,523**, `MISO_GIQueue` 3,253 |
+| ⭐ `api/v2/DataTable/{systemIdentifier}/DataColumns` | **200 — NEW.** Full schema, both tables (see G7k) |
+| `api/v2/DataTable/{systemIdentifier}/DataRows` **GET** | **405 Method Not Allowed** — so POST is the correct verb |
+| `api/v2/DataTable/{systemIdentifier}/DataRows` **POST** | **403** |
+| `Layer/{id}/geojson` · `dataQueryExecute` · joined aggregate | **403** |
+| MVT tiles | 200, **x/y only, no attributes** |
+| `ferc.cartovista.com/api/poi-analysis/miso/{study}` | **500** (route exists, wrong shape) |
+
+⚠ **The earlier 403s were partly an artefact of using the shared LAYER id.** Against each table's own
+`systemIdentifier` the metadata opens up — which is how the schema above was obtained. **The rows
+still 403 under the correct POST verb**, so the conclusion stands, but it now rests on the full set
+of routes rather than a partial one.
+
+⭐ **THE LEAD THAT REMAINS, and it follows the operator's own logic:** go to **MISO**, not the
+renderer. MISO authors DPP-2025 and FERC Order 2023 obliges publication. Unexplored: MISO's OASIS
+document tree, DPP-2025 cycle study reports, and `cdn.misoenergy.org` file listings.
+⛔ Do NOT re-probe CartoVista — it is now exhaustively mapped, twice.
+
 #### ⭐ G7j — OUR MISO DATA IS NOT STALE. **MISO'S PUBLIC TOOL IS.** Measured live 2026-08-17.
 
 This overturns how G22-B2 and G26 have framed the problem for two sessions. We have been recording
