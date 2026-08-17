@@ -83,6 +83,139 @@ agent: enumerate `energy.__TABLES__` and `indiana_app._registry` for the subject
 The failure mode is always the same shape: **a plan built on what we remember instead of what we
 hold.**
 
+### G28 — 🔴 EXTENSIVE ACREAGE AUDIT: the inflation is not where it looks (operator, 2026-08-17)
+
+*"A full-scale extensive audit of our parcel acreage, since it seems inflated in many instances,
+and I want us to be fully truthful in our representation of space (including outdoor space for
+BESS)."*
+
+**First pass measured, and it rules out the obvious suspect.** Across 532,868 candidates:
+
+| | |
+|---|---:|
+| both recorded and measured acreage present | 532,865 |
+| **disagree by >10%** | **131 (0.02%)** |
+| disagree by >50% | 111 |
+| recorded more than 2× measured | 82 |
+| **median recorded vs measured** | **23.75 ac vs 23.75 ac** |
+| max recorded vs measured | 6,374 ac vs 6,374 ac |
+| `outdoor_acres` exceeding parcel acres (impossible) | **0** |
+
+So the two measures **agree**, and the reconciliation logic (take the smaller, flag the dispute) is
+working. **If acreage looks inflated, it is not because our two numbers disagree.** The real
+candidates, in order of likely impact:
+
+1. ⭐ **The MW figure, not the acreage.** 6,374 acres × 4 MW/acre = **25,496 MW** is arithmetically
+   correct and absurd as a presentation — nobody builds a 25 GW campus. The screener and the Power
+   Plan both print it. **Suspect this first: the acreage may be right while the number derived from
+   it is meaningless.** Cap or band the displayed capacity, and say what the cap is.
+2. **Parcel area is not buildable area.** We treat 100% of a parcel as usable for a data centre.
+   Real buildable area is net of setbacks, easements and rights-of-way, internal water, steep
+   slope, and existing structures we do not intend to demolish. A flat density on a gross parcel
+   overstates every site, uniformly and invisibly.
+3. **Aggregated or mis-shaped source geometry** — the 111 parcels disagreeing by >50% and the 82
+   where recorded is more than double measured are a finite, auditable list. Work them individually.
+4. **Outdoor space for BESS.** `outdoor_acres` is parcel minus building footprints and never
+   exceeds the parcel, so it is not obviously wrong — but it is subject to exactly the same
+   buildable-vs-gross problem, and a battery pad has its own setback and access requirements.
+
+**Deliverable:** a documented buildable-area basis, applied consistently, with whatever we deduct
+stated on the face of the number. ⛔ Until then, do not present a derived MW as if it were a site
+capacity — it is an arithmetic upper bound on gross land, and should be labelled as one.
+
+### G27 — 🔴 WE UNDER-CLIPPED 401 COLUMNS ACROSS 24 TABLES (audited 2026-08-17)
+
+Operator: *"It is likely that we didn't scrape the full columns from any of these tables, so please
+explore this."* **Confirmed, and it is systemic rather than isolated.**
+`scripts/audit_clip_completeness.py` walks all 276 registered tables, resolves the 148 that clip an
+`energy.*` parent, and compares column sets (normalised for case, punctuation **and aliases** —
+the first run cried wolf on `latitude` vs `lat`, which is rule 9 reappearing in a new script).
+
+**Result: 24 clips are missing at least one parent column; 401 columns total.** Full detail in
+`docs/CLIP_COMPLETENESS.json`.
+
+| clip | held / parent | what was lost that matters |
+|---|---|---|
+| `in_nonattainment` | 13 / 62 | **`classification`** — the actual attainment status, plus its citation, URL and effective date. We hold the areas without the finding |
+| `in_gas_processing_plants` | 11 / 48 | `latitude`, `longitude`, `county`, `status`, `type` — **the gas assets cannot be plotted or filtered** |
+| `in_gas_lng_terminals` / `in_gas_storage` / `in_gas_compressor_stations` | 11 / 44, 44, 41 | same shape: coordinates, county and status all dropped |
+| **`in_bus_headroom_miso`** | **18 / 34** | **`percent_loading_before`**, `percent_loading_after`, `mw_available`, `derived_rating_mva`, `mw_impact` |
+| `in_miso_poi_ladder` | 18 / 34 | the same fields, in the table the agent built today |
+| `in_pjm_bus_locations_candidate` | 14 / 28 | `name`, `city`, `county`, `state`, `type`, `status` from the HIFLD parent |
+
+⭐ **`percent_loading_before` is the important one, and it is the exact column G26 needs.** It is how
+you tell *"this facility is already over its rating before your project"* from *"this facility is
+genuinely full"*. Without it, the app cannot distinguish the two and renders both as a bare zero.
+**The column we needed to explain our biggest data discrepancy is one we chose not to take.**
+
+**Not all 401 are defects.** `in_si_plottability` reads 3 of 25 **by design** — it is a deliberate
+one-row-per-geom_kind aggregate, not a row clip. Triage the list before re-clipping; the rule is to
+justify each exclusion, not to take every column reflexively.
+
+**Also from the operator:** *"ALL endpoint types, URLs, and loaders should be readily available in
+either of the BQ sets."* They are — `energy.registry_sources` carries `endpoint`, `endpoint_kind`,
+`acquisition_method` (often a literal `RE-SCRAPE COMMAND:`), `what_it_provides` and `status`, and
+`energy.endpoint_truth` (1,281 rows) exists alongside it. **Read those before writing any loader**
+(see G25).
+
+#### G26 — ⭐ WHY OUR HEADROOM UNDER-REPORTS: PRE-EXISTING OVERLOADS, AND AN *UNMITIGATED* CASE
+
+Operator, 2026-08-17: *"There may be some discrepancies with the data that we hold, since we likely
+didn't scrape for ALL columns, which may underrepresent our findings. Audit the differences,
+determine any reasoning and/or rationale, and follow Orennia's datasets as a baseline."*
+
+**Audited. The hypothesis is half right, and the real cause is sharper than a missing column.**
+
+**1. We did drop columns, and one of them mattered.** Our clip `in_miso_poi_300mw` (27 columns)
+took the raw API field names while the parent `energy.miso_poi_monitored_facilities` (34) carries
+the publisher's own metadata we never took: `_invariant_columns`, `_probe_dependent_columns`
+(**the request-invariance proof the agent later had to rediscover experimentally**), `_grain` and
+`_vintage`. We also never clipped `energy.miso_poi_headroom`, which carries **`headroom_state`**,
+`n_facilities_overloaded_base` and `max_facility_mw_available`.
+
+**2. What `headroom_state` reveals.** Nationally, 12,845 MISO POIs split
+**`ZERO_HEADROOM` 10,393** (avg **23.0** facilities overloaded in the BASE case) vs
+**`HAS_HEADROOM` 1,427** (avg **482.3 MW**, zero base overloads). The zeros are not measurements of
+capacity — they are POIs where a monitored facility is **already over its rating before any new
+request exists.**
+
+**3. Measured on Indiana: 26.3% of the 40,007 monitored-facility rows are pre-existing overloads**
+(`percent_loading_before >= 100`), averaging **16.4 per POI**. And on the 641 zero POIs,
+`max_facility_mw_available` averages **45,800 MW** — the most permissive facility is wide open while
+the binding one reads zero because it was already overloaded.
+
+| method | Indiana POIs with injection headroom > 0 |
+|---|---|
+| A. raw MIN over all facilities — **what we ship** | **1 of 642 (0.2%)** |
+| B. exclude pre-existing overloads | 642 of 642 (100%) |
+| C. DFAX ≥ 5% only | 1 of 642 (0.2%) |
+| D. full PJM recipe (both) | 642 of 642 (100%) |
+| **vendor baseline, tier 0** | **39.3%** |
+
+⚠ **Note our own inconsistency:** `in_pjm_bus_withdrawal` is built with *"dfax>=5pct, pre-existing
+overloads excluded+counted"*. **Our PJM and MISO numbers are computed by different rules**, which
+alone makes them non-comparable — and we present them side by side.
+
+**4. THE CAUSE, and it is in the vendor's case name.** Their powerflow case is
+**`DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final`** — **ERIS-*mitigated***. The mitigations are applied
+in the model, so the pre-existing overloads are resolved. Ours is an **unmitigated DPP-2021** case
+carrying four-year-old overloads, many of which have since been fixed by MTEP upgrades actually
+built. That is the mechanism by which the vintage matters, and it also explains the held capacity
+raster being deeply negative: those negatives are the **deficit from unmitigated overloads**.
+
+So all three observations reconcile: our 0.2% is *correct for an unmitigated 2021 case*; the raster
+agrees because it is the same unmitigated picture; and the vendor's 39.3% comes from a **mitigated,
+current** case.
+
+**5. What to do — and what NOT to do.**
+- ⛔ **Do NOT simply drop pre-existing overloads to reach 100%.** That is not their method either,
+  and it would replace an over-pessimistic number with an over-permissive one.
+- ✅ **Get the mitigated, current case.** We already hold candidates (G25) — start there, per G25.
+- ✅ **Make PJM and MISO use ONE rule**, whatever it is, and state it wherever a number appears.
+- ✅ **Clip the dropped columns**, especially `headroom_state` and `n_facilities_overloaded_base`:
+  *"zero because already overloaded"* and *"zero because genuinely full"* are different findings and
+  the app currently cannot tell a user which one it is showing.
+
 #### G25a — 🔴 WHAT THE HELD CAPACITY SURFACE SAYS, AND HOW IT DENTS MY OWN DIAGNOSIS
 
 `energy.miso_poi_capacity_surface_geotiff` is MISO's published capacity heat map **rasterised** —
@@ -147,6 +280,9 @@ below, **add its row here in the same edit.**
 | **G21** | **Every table must answer "so what?"** | 🔴 **OPEN** | ⚠ **Project-wide, not just the two examples.** SAIDI/gas were illustrations. Every table needs: why it matters to a DC/BESS developer, units + acronyms expanded, an ordering that makes good/bad obvious, and a link to affected sites |
 | **G22** | **Headroom = the ACTUAL, and the vintage** | 🟡 FIXED, ROOT CAUSE OPEN | median→actual→**unclamped** both fixed. Root cause of the zeros: our case is **DPP-2021 vs the baseline's DPP-2025** — four cycles stale. Fix is G7d |
 | **G23** | **49 missing PJM withdrawal buses** | 🔴 **OPEN, BLOCKED** | `in_pjm_queuescope_aep` covers **1,475 of AEP's 1,524** — 3.2% silently absent from every withdrawal answer. **Cannot start while an injection harvest runs** (never two QueueScope instances). Step 1 becomes free once injection completes: that table *is* the authoritative 1,524-bus list |
+| **G26** | **Headroom under-reports: pre-existing overloads + an UNMITIGATED case** | 🔴 **OPEN** | 26.3% of Indiana facility rows are already overloaded **before any request**. Their case is `ERIS-**mitigated**` DPP-2025; ours is unmitigated DPP-2021. Ours 0.2% vs their 39.3% with headroom. ⛔ Do NOT just drop overloads (that gives 100%) — get the mitigated case |
+| **G27** | **401 columns under-clipped across 24 tables** | 🔴 **OPEN** | Incl. **`percent_loading_before`** — the exact column needed to tell "already overloaded" from "genuinely full". Gas assets lost their coordinates; `in_nonattainment` lost `classification`. Detail in `docs/CLIP_COMPLETENESS.json` |
+| **G28** | **Extensive acreage audit** | 🔴 **OPEN** | Measured: the two acreage measures **agree** (median 23.75 = 23.75), so inflation is not drift. Suspect (a) the derived MW — 6,374 ac × 4 = 25,496 MW is absurd to print, (b) gross parcel treated as buildable area |
 | **G24** | **Asset URLs must be cache-busted** | ✅ **DONE** `92475c5` | `scripts/stamp_assets.py` content-hashes `app.js`/`common.js`/`style.css`. A stale asset cost a full debugging cycle; GitHub Pages caches just as hard as a browser |
 
 ### G7 — the finding that makes this urgent
