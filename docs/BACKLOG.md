@@ -554,6 +554,35 @@ joined-aggregate 403`, measured **with the full join contract in hand**. **The 6
 study and the 19,223-bus universe are not obtainable by any known route.** ⛔ Do not re-promote G7d
 on the strength of the catalogue row again.
 
+#### ⭐ G7j — OUR MISO DATA IS NOT STALE. **MISO'S PUBLIC TOOL IS.** Measured live 2026-08-17.
+
+This overturns how G22-B2 and G26 have framed the problem for two sessions. We have been recording
+"our case is four cycles stale" as **our** defect. It is not ours.
+
+**`https://giqueue.misoenergy.org/PoiAnalysis/PoiAnalysisConfig.xml`, fetched live, still reads:**
+
+> *"The tool is currently using the models and inputs from the **DPP-2021-Cycle**."*
+
+Our pull is dated **2026-08-06**, eleven days old, and it faithfully carries what MISO publishes
+**today**. So:
+
+| claim | verdict |
+|---|---|
+| "our MISO data is four cycles stale" | ❌ **wrong framing** — it is current for the source |
+| "MISO's *public* POI tool is four cycles behind" | ✅ **that is the actual fact**, from the publisher's own disclaimer |
+| "DPP-2025 is obtainable if we write a loader" | ❌ it is published only via the CartoVista FERC heatmap, which **403s on every tabular route** (re-tested today, G7d) |
+
+⭐ **What this means for the application, and it is defensible rather than apologetic:** our MISO
+headroom *is* MISO's own current public position. The gap to the vendor is not sloppiness on our
+part — they hold a DPP-2025 mitigated case that MISO does not serve publicly. **State that on the
+face of the number** ("MISO's published POI model, DPP-2021 cycle") rather than implying we are
+behind on work we could have done.
+
+⛔ **Stop re-recommending "get the mitigated case" as though it were engineering time.** Until a
+route to DPP-2025 exists, the MISO half of parity is **not achievable**, and recording it as
+NOT-ACHIEVABLE-AS-SPECIFIED with this measurement is the honest close — the same treatment §13(5)
+and §13(8) already get.
+
 #### ⚠ G7i — NEITHER OF OUR BUS DATASETS IS THE FERC ORDER 2023 STUDY (operator was right)
 
 Operator: *"We do have PJM datasets, but they were NOT derived from the FERC 2023 study, which
