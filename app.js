@@ -513,7 +513,14 @@ function jsMatches(p) {
     // coverage gap — the exact thing the spec's availability-normalisation rule forbids.
     // Undated parcels now pass and are COUNTED, so the user sees what recency could not judge.
     if (cut && p.si_last_event_date && p.si_last_event_date < cut) return false;
-    if (cut && !p.si_last_event_date) state.undatedSI++;
+    /* ⛔ UNDATED IS NOT OLD, and a bare `last_event >= cut` would delete it silently — NULL >= DATE
+       evaluates to NULL, not TRUE. That is "unpublished is NULL, never 0" wearing a new costume, and
+       it lands hardest on our biggest signal: 90% of tax-delinquency records carry no date at all.
+       So undated records are KEPT BY DEFAULT and the user chooses (G9 ruling, 2026-08-17). */
+    if (cut && !p.si_last_event_date) {
+      if (!$("f-keepundated").checked) return false;
+      state.undatedSI++;
+    }
   }
   if ($("f-noflood").checked && p.sfha_flood === true) return false;
   if ($("f-nowet").checked && p.wetland_on_parcel === true) return false;
@@ -551,6 +558,8 @@ function renderActiveFilters() {
   if (on("f-dline")) c.push(`≤${V("f-dline-mi")} mi of a line`);
   if (on("f-si")) c.push("owner-motivation signal");
   if (on("f-recent")) c.push(`activity in ${V("f-recent-days")} days`);
+  // an EXCLUSION must appear in the bar too - a collapsed section must never hide what it removed
+  if (on("f-recent") && !$("f-keepundated").checked) c.push("undated records excluded");
   if (on("f-cand")) c.push("incl. candidate signals");
   if (on("f-noflood")) c.push("no flood zone");
   if (on("f-nowet")) c.push("no wetland");
@@ -574,7 +583,7 @@ function applyFilters() {
   renderDenominator();
 }
 for (const id of ["f-ci", "f-ag", "f-vac", "f-other", "f-mw", "f-mw-val", "f-density", "f-si",
-  "f-recent", "f-recent-days", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
+  "f-recent", "f-recent-days", "f-keepundated", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
   "f-dsub", "f-dsub-mi", "f-dsub-kv", "f-dline", "f-dline-mi", "f-sent", "f-sent-max", "f-norestrict",
   "f-usecase", "f-cand"])
   $(id).addEventListener("change", applyFilters);

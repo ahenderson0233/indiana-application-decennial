@@ -139,9 +139,14 @@
         <label><input type="checkbox" id="f-recent"> &hellip; something happened in the last
           <input type="number" id="f-recent-days" value="90" min="1"> days</label>
         <label><input type="checkbox" id="f-cand"> Include candidate signals not yet admitted</label>
+        <label><input type="checkbox" id="f-keepundated" checked> Keep records where we never got a
+          date <span class="hint">(recency cannot be judged for them)</span></label>
         <div class="hint"><b>So what:</b> public records &mdash; unpaid taxes, a foreclosure, a
           demolition order &mdash; suggesting an owner may transact. Non-residential only, and only
-          trouble serious enough to plausibly move someone to sell.</div>
+          trouble serious enough to plausibly move someone to sell.<br>
+          <b>Undated is not old.</b> 90% of our largest signal (unpaid taxes) carries no date, so a
+          bare &ldquo;last 90 days&rdquo; cut would delete nine tenths of it for a reason about our
+          collection, not about the property. They are kept by default; untick to exclude them.</div>
       </div>
     </details>
 
@@ -286,6 +291,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=6ee5043d"></script>
-<script src="app.js?v=ae99093f"></script>
+<script src="app.js?v=19a783b5"></script>
 </body>
 </html>
