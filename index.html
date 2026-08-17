@@ -76,8 +76,16 @@
         <label><input type="checkbox" id="f-vac" checked> Undeveloped &mdash; no building on it</label>
         <label><input type="checkbox" id="f-other"> Other non-residential</label>
         <div class="hint"><b>&ldquo;Undeveloped&rdquo; is about land; &ldquo;vacant&rdquo; is about a
-          building.</b> Undeveloped land simply has no structure and is not a sign of distress. A
+          building.</b> Undeveloped land simply has no structure and is not a sign of distress &mdash;
+          it is the cleanest BESS land we hold, with nothing to demolish and no tenants to relieve. A
           vacant or abandoned <i>building</i> is an owner-motivation signal &mdash; section 4.</div>
+        <div class="subhead">Shown on the map</div>
+        <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
+        <label><input type="checkbox" id="L-log"> Rail and major roads</label>
+        <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
+        <div class="hint"><b>So what:</b> rail and highway access decide how construction loads and
+          transformers reach the site. Federal surplus is land a government body has already declared
+          it does not need &mdash; a rare case where the seller is publicly committed to disposing.</div>
       </div>
     </details>
 
@@ -93,6 +101,34 @@
           same as capacity to spare. A parcel beside a full substation is worse than one three miles
           from a connection point with headroom. For capacity, use the
           <a href="screener.html">Site screener</a>.</div>
+        <div class="subhead">Shown on the map</div>
+        <label><input type="checkbox" id="L-subs" checked> Substations</label>
+        <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
+        <label style="margin-left:18px">show only
+          <select id="L-line-kv" style="width:auto">
+            <option value="all">all voltages</option>
+            <option value="735 and above">735 kV and above</option>
+            <option value="500-734">500&ndash;734 kV</option>
+            <option value="300-499">300&ndash;499 kV</option>
+            <option value="200-299">200&ndash;299 kV</option>
+            <option value="100-199">100&ndash;199 kV</option>
+            <option value="under 100">under 100 kV</option>
+            <option value="unknown">voltage unknown</option>
+          </select></label>
+        <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
+        <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
+        <label><input type="checkbox" id="L-pjm"> PJM queue points</label>
+        <label><input type="checkbox" id="L-terr"> Utility service territories</label>
+        <label><input type="checkbox" id="L-gas"> Natural gas</label>
+        <label><input type="checkbox" id="L-fac"> Power plants &middot; solar &middot; wind</label>
+        <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
+          <span class="hint">(neighbours already holding air permits)</span></label>
+        <div class="hint"><b>So what:</b> voltage class is the fastest read on the map &mdash; a
+          765&nbsp;kV backbone and a sub-100&nbsp;kV lateral look the same on a plain map and are not
+          remotely the same siting fact. <b>Unknown voltage has its own colour</b> and is never drawn
+          as low voltage. Gas matters if you intend on-site generation; a 300&nbsp;MW plant needs
+          roughly 50&nbsp;MMcf/d. Large emitters signal neighbours who already hold air permits, so
+          the permitting path is precedented rather than novel.</div>
       </div>
     </details>
 
@@ -119,6 +155,20 @@
         <div class="hint"><b>So what:</b> the first three are hard constraints that can stop a
           project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
           larger federal tax credit.</div>
+        <div class="subhead">Shown on the map</div>
+        <label><input type="checkbox" id="L-padus"> Protected land</label>
+        <label><input type="checkbox" id="L-nonatt"> Air-quality nonattainment areas</label>
+        <label><input type="checkbox" id="L-bonusgeo"> Tax-credit areas <span class="hint">(incl. coal closures)</span></label>
+        <label><input type="checkbox" id="L-watershed"> Watersheds
+          <span class="hint">(39 Indiana subbasins)</span></label>
+        <label><input type="checkbox" id="L-waterstress"> Water stress
+          <span class="hint">(34 basins)</span></label>
+        <div class="hint"><b>So what:</b> a watershed is the unit water is actually allocated and
+          argued over in &mdash; two parcels a mile apart in different subbasins can face different
+          objections and different permitting bodies. Click one to see the rivers, reservoirs and
+          lakes it holds. Power generation is already Indiana&rsquo;s largest water user
+          (3,822 of 7,177 Mgal/d) and <b>99.5% of that is surface water</b>, so a new thermal load
+          competes for exactly what these layers show.</div>
       </div>
     </details>
 
@@ -132,58 +182,11 @@
           tracks <i>news volume</i>, so large metros read higher for reasons that are not posture.
           <b>Absence of a recorded rule is not evidence there is no rule</b> &mdash; Indiana's
           data-centre regulation is mostly county moratoria that no code library carries.</div>
-      </div>
-    </details>
-
-    <details class="acc">
-      <summary>Map layers <span class="acount">what is drawn</span></summary>
-      <div class="accbody">
-        <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
-        <label><input type="checkbox" id="L-subs" checked> Substations</label>
-        <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
-        <label style="margin-left:18px">show only
-          <select id="L-line-kv" style="width:auto">
-            <option value="all">all voltages</option>
-            <option value="735 and above">735 kV and above</option>
-            <option value="500-734">500&ndash;734 kV</option>
-            <option value="300-499">300&ndash;499 kV</option>
-            <option value="200-299">200&ndash;299 kV</option>
-            <option value="100-199">100&ndash;199 kV</option>
-            <option value="under 100">under 100 kV</option>
-            <option value="unknown">voltage unknown</option>
-          </select></label>
-        <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
-        <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
-        <label><input type="checkbox" id="L-pjm"> PJM queue points</label>
-        <label><input type="checkbox" id="L-gas"> Natural gas</label>
-        <label><input type="checkbox" id="L-terr"> Utility service territories</label>
+        <div class="subhead">Shown on the map</div>
         <label><input type="checkbox" id="L-dc"> &#11088; Existing data centres</label>
-        <div class="hint" style="margin-left:18px">solid = the publisher gave a site coordinate ·
+        <div class="hint" style="margin-left:18px">solid = the publisher gave a site coordinate &middot;
           <span style="color:#b45309">hollow amber = city centre only, so the position is
           approximate</span></div>
-        <label><input type="checkbox" id="L-fac"> Power plants · solar · wind</label>
-        <label><input type="checkbox" id="L-log"> Rail and major roads</label>
-        <div class="subhead">Neighbours and context</div>
-        <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
-          <span class="hint">(neighbours already holding air permits)</span></label>
-        <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
-        <div class="subhead">Water</div>
-        <label><input type="checkbox" id="L-watershed"> Watersheds
-          <span class="hint">(76 subbasins)</span></label>
-        <label><input type="checkbox" id="L-waterstress"> Water stress
-          <span class="hint">(34 basins)</span></label>
-        <div class="hint" style="margin-left:18px"><b>So what:</b> a watershed is the unit water is
-          actually allocated and argued over in &mdash; two parcels a mile apart in different
-          subbasins can face different objections and different permitting bodies. Click one to see
-          how many rivers, reservoirs and lakes it holds.<br>
-          <b>Rivers and lakes are not drawn</b>, because the national hydrography data we hold
-          carries attributes with <b>no geometry</b> &mdash; they can be counted per watershed but
-          not mapped. We are chasing the geometry.</div>
-
-        <div class="subhead">Environmental</div>
-        <label><input type="checkbox" id="L-padus"> Protected land</label>
-        <label><input type="checkbox" id="L-bonusgeo"> Tax-credit areas <span class="hint">(incl. coal closures)</span></label>
-        <label><input type="checkbox" id="L-nonatt"> Air-quality nonattainment areas</label>
         <div class="subhead">Shade counties by</div>
         <select id="county-metric">
           <option value="class_union">how many screened sites</option>
@@ -194,9 +197,13 @@
           <option value="none">no shading</option>
         </select>
         <div class="hint" id="metric-legend" style="margin-top:5px"></div>
+        <div class="hint"><b>So what:</b> existing data centres are both competition for the same
+          power and evidence a county has already accepted one. ⚠ <b>An approval never cancels a
+          ban:</b> where a county has both, the restriction still governs.</div>
       </div>
     </details>
 
+    
     <details class="acc">
       <summary>Rank the results <span class="acount">your weights</span></summary>
       <div class="accbody">
