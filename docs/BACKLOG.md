@@ -61,7 +61,7 @@ out with a reason.** Opened 2026-08-16.
 
 ---
 
-## NOW — in flight or next
+## COMPLETED THIS SESSION (nothing here is open)
 
 | # | task | why | state |
 |---|---|---|---|
@@ -70,20 +70,20 @@ out with a reason.** Opened 2026-08-16.
 | N3 | D9 absentee + D18 for Marion | 340,765 parcels · 28,763 out-of-state · 7,194 non-residential · 272,606 named owners | ✅ **DONE** `2e76cab` |
 | N4 | S1 D4 split out of D1 | 15,106 rows · 45 counties · 100% dated · 18 signals now reach a parcel | ✅ **DONE** `ff24c9e` |
 | N5 | A2 operator alias table | found the TELCO regex was filing pinned Lumen colos as telephone exchanges | ✅ **DONE** `e7246d2` |
-| N6 | **A3 upload parity** | the door DOES exist (`index.html:125`, my earlier doubt was wrong). Real defect found: uploads wrote `_sub_mi` while the scorer reads `_dsub_mi`, so **every uploaded row went unscored**, and line distance was never computed. Fixed by routing uploads through the same `enrichDistances` the map uses | **fix in, needs the round-trip test** |
+| N6 | **A3 upload parity** | the door DOES exist (`index.html:125`, my earlier doubt was wrong). Real defect found: uploads wrote `_sub_mi` while the scorer reads `_dsub_mi`, so **every uploaded row went unscored**, and line distance was never computed. Fixed by routing uploads through the same `enrichDistances` the map uses | ✅ **DONE** `35088b0` — §13(2) now PASSES, proven on 6 real Marion parcels |
 | N7 | **Load the re-sweep** — 18 counties, 3 flipped to ACTION_FOUND | Henry (~1 GW Surge PUD) and Tipton (moratorium, CO-ZO-13-26) VERIFIED; Sullivan (~$65B Potentia/Heartland, no county zoning) REPORTED | ✅ **DONE** |
-| N8 | Fold the re-sweep into the Community page + coverage | 3 counties currently render as "nothing found" when they are not | **next** |
+| N8 | Fold the re-sweep into the Community page + coverage | 3 counties were rendering as "nothing found" | ✅ **DONE** `45feac8` |
 
 ## THE LAST SESSION'S OPEN LIST — `PATH_TO_COMPLETE.md` §2a, audited 2026-08-16
 
 | # | task | audited state | effort |
 |---|---|---|---|
 | A1 | Fold county DC-action table into P5 | ✅ **DONE** — `in_dc_actions_county_v2` (107) + coverage (92) landed, wired to Community | done |
-| A2 | **Alias table for the DC cross-check** | **CONFIRMED OPEN** — zero alias tables exist; `in_cloudscene_crosscheck` has 2 rows naming a renamed operator | small |
-| A3 | **Upload parity test** | **CONFIRMED OPEN**, and worse than recorded: `app.js` has `parseCsv` but **no `FileReader`, no file input, no `accept=`**. §13(2) claims "the door exists" on a regex that matched `parseCsv`. Verify the door exists before testing parity | small |
+| A2 | Alias table for the DC cross-check | ✅ **DONE** `e7246d2` — and it exposed worse: the TELCO regex was filing pinned Lumen colos as telephone exchanges | done |
+| A3 | Upload parity test | ✅ **DONE** `35088b0`. My "the door may not exist" was WRONG — it is at `index.html:125`; I had searched only app.js. The real defect: uploads wrote `_sub_mi` while the scorer reads `_dsub_mi`, so every uploaded row went UNSCORED | done |
 | A4 | C4 saved workspaces | ✅ **DONE** `9569d12` — 40 controls enumerated dynamically + map view; round-trip verified in-browser | done |
 | A5 | D12 Indianapolis placement | ✅ **DONE** — **admitted 228 → 2,109 parcels, reached 10,370 → 23,140.** The "matches nothing" diagnosis predated the Marion address crosswalk: **85.9% of distinct addresses match `FULL_ADDRESS` exactly.** Widened 2 case types → 7, gated on INTENT per the operator | done |
-| A6 | **IDEM event dates** | **agent in flight** — found a bulk route (380 month-window POSTs, not 20,728 page fetches). **All 22,565 rows now at month precision**; enriching exact dates. `scrapers/lane_f/idem_dates.json`, NOT yet loaded | **load next** |
+| A6 | IDEM event dates | ✅ **DONE** `9ccb02a` — `in_si_d22_idem_dated`, all 22,565 dated (3,925 exact), 97.9% agreement between two routes. **69% of the corpus is >10 years old** | done |
 
 ## PHASE COMPLETION — what stands between here and A–E at 100%
 
@@ -95,11 +95,11 @@ out with a reason.** Opened 2026-08-16.
 | **D** acquisition | ✅ A5 and A6 both landed | nothing actionable — see SIGNALS |
 | **E** hardening | E1–E4 ✅ | the two structural §13 items below |
 
-### The three §13 PARTIALs, and whether they can actually close
+### The §13 items that remain — both structural, neither a defect
 
 | criterion | closeable? | what it needs |
 |---|---|---|
-| §13(2) upload parity | **YES** | confirm the upload door exists, then one round-trip test |
+| §13(2) upload parity | ✅ **CLOSED** | passed; round-trip proven on 6 real parcels |
 | §13(5) golden path | **NO, not as specified** | the dossier half is met; the **AI docket summary** half needs an LLM feature this app does not have. Closing it means building a feature, not finishing one |
 | §13(8) P6 acceptance | **NO** | no component-level Indiana tariff exists anywhere in the estate. Structural, not pending |
 
