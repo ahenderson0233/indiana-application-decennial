@@ -141,6 +141,18 @@
         <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
         <label><input type="checkbox" id="L-subs" checked> Substations</label>
         <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
+        <label style="margin-left:18px">show only
+          <select id="L-line-kv" style="width:auto">
+            <option value="all">all voltages</option>
+            <option value="735 and above">735 kV and above</option>
+            <option value="500-734">500&ndash;734 kV</option>
+            <option value="300-499">300&ndash;499 kV</option>
+            <option value="200-299">200&ndash;299 kV</option>
+            <option value="100-199">100&ndash;199 kV</option>
+            <option value="under 100">under 100 kV</option>
+            <option value="unknown">voltage unknown</option>
+          </select></label>
+        <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
         <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
         <label><input type="checkbox" id="L-pjm"> PJM queue points</label>
         <label><input type="checkbox" id="L-gas"> Natural gas</label>
@@ -267,6 +279,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=4cb2d338"></script>
-<script src="app.js?v=a52de1c2"></script>
+<script src="app.js?v=c47e08e2"></script>
 </body>
 </html>

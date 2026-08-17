@@ -124,8 +124,26 @@ map.on("load", async () => {
   map.addSource("grid", { type: "geojson", data: state.grid });
   map.addLayer({ id: "grid-lines", type: "line", source: "grid",
     filter: ["==", ["get", "layer"], "line"],
-    paint: { "line-color": ["step", ["to-number", ["get", "voltage"], 0], "#9aa5b5", 100, "#4a7bd0", 300, "#7c3aed"],
-             "line-width": ["step", ["to-number", ["get", "voltage"], 0], 1, 100, 1.7, 300, 2.6] } });
+    /* G13: coloured by the AUDITED voltage class, not by a raw number.
+       The previous paint did `to-number(voltage, 0)` on `voltage_raw`, which turns HIFLD's
+       "-999999" not-available marker into a real negative number — 335 lines were being drawn as
+       though they were the lowest-voltage in the state, for the wrong reason.
+       ⛔ `unknown` gets its OWN colour (dashed grey), never the bottom of the ramp: a line whose
+       voltage we do not know is not a small line. */
+    paint: { "line-color": ["match", ["get", "volt_class"],
+               "735 and above", "#4c1d95",
+               "500-734",       "#6d28d9",
+               "300-499",       "#7c3aed",
+               "200-299",       "#2563eb",
+               "100-199",       "#4a7bd0",
+               "under 100",     "#93b4e3",
+               /* unknown */    "#b6bdc9"],
+             "line-width": ["match", ["get", "volt_class"],
+               "735 and above", 3.0, "500-734", 2.8, "300-499", 2.6,
+               "200-299", 2.1, "100-199", 1.7, "under 100", 1.1,
+               /* unknown */ 1.1],
+             "line-dasharray": ["case", ["==", ["get", "volt_class"], "unknown"], ["literal", [2, 2]],
+                                ["literal", [1, 0]]] } });
   // A circle layer silently ignores polygon features, so the 933 footprint-only substations
   // need their own fill layer — otherwise they are in the payload and still invisible.
   map.addLayer({ id: "grid-subs", type: "circle", source: "grid",
@@ -376,6 +394,35 @@ function setCountyMetric(metric) {
 }
 document.getElementById("county-metric").addEventListener("change", (e) => setCountyMetric(e.target.value));
 setCountyMetric("class_union");
+
+/* G13: filter transmission lines by voltage class, with a legend that names what each colour is
+   AND admits what "unknown" means. 335 lines had HIFLD's -999999 not-available marker loaded as a
+   real number; 65 of those had a recoverable band and were rescued rather than binned. */
+const LINE_KV_LEGEND = `
+  <span class="swatch" style="background:#4c1d95"></span>735+ ·
+  <span class="swatch" style="background:#7c3aed"></span>300&ndash;499 ·
+  <span class="swatch" style="background:#2563eb"></span>200&ndash;299 ·
+  <span class="swatch" style="background:#4a7bd0"></span>100&ndash;199 ·
+  <span class="swatch" style="background:#93b4e3"></span>under 100 ·
+  <span class="swatch" style="background:#b6bdc9"></span>unknown (dashed).
+  <b>Unknown is its own colour, not the bottom of the scale</b> — a line whose voltage we do not
+  know is not a small line. 270 lines are genuinely unrated.`;
+function setLineKv(v) {
+  // document.getElementById, NOT the $ helper — this is called at module scope, above `const $`.
+  // Same temporal-dead-zone trap that setCountyMetric hit an hour earlier; I repeated it verbatim.
+  // The lesson that stuck: any function invoked during evaluation must not touch a later const.
+  const el = document.getElementById("line-kv-legend");
+  if (el) el.innerHTML = LINE_KV_LEGEND;
+  try {
+    if (map && map.getLayer && map.getLayer("grid-lines")) {
+      map.setFilter("grid-lines", v === "all"
+        ? ["==", ["get", "layer"], "line"]
+        : ["all", ["==", ["get", "layer"], "line"], ["==", ["get", "volt_class"], v]]);
+    }
+  } catch (e) { /* map not ready; the legend above is still correct */ }
+}
+const lkv = document.getElementById("L-line-kv");
+if (lkv) { lkv.addEventListener("change", (e) => setLineKv(e.target.value)); setLineKv("all"); }
 
 /* ---------- screener ---------- */
 const $ = (id) => document.getElementById(id);

@@ -122,6 +122,11 @@
           of a substation <span class="inline">of at least <input type="number" id="s-subkv" value="0" min="0"> kV</span></label>
         <p class="hint">Distance to a substation says a wire is nearby. It does <b>not</b> say
           there is capacity to spare. 0 turns this filter off.</p>
+        <p class="hint"><b>&#9888; Read the kV filter carefully.</b> <b>1,584 of 3,010 substations
+          (53%) have no published voltage.</b> Setting a minimum kV silently excludes every one of
+          them &mdash; so you would be discarding half the substations in the state, not because
+          they are too small but because nobody published a number. Leave it at 0 unless you
+          specifically need a rated substation.</p>
       </div>
     </details>
 

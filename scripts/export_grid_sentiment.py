@@ -59,10 +59,15 @@ print(f"  substations: {n_pt:,} points + {n_poly:,} footprint-only = {n_pt + n_p
 # lines / 2,706 km that no HIFLD line comes within 100 m of — an 11% length gain on the very
 # layer the parcel screener measures "distance to transmission" against, so merging it changes
 # real siting answers rather than only the picture.
+# G13: reads the AUDITED voltage table, not the raw union. 335 lines carried kv=-999999 (HIFLD's
+# not-available marker loaded as a number), which any colour ramp would have drawn as the
+# lowest-voltage lines in the state; 65 of those had a recoverable band. And all 1,114 OSM lines had
+# a NULL volt_class while carrying clean kv, so a class-based legend dropped 30% of the layer.
+# `unknown` ships as its own value and must get its own colour, never the bottom of the scale.
 for r in client.query(f"""
-  SELECT src, owner, voltage_raw AS voltage, kv, volt_class, status, sub_1, sub_2, osm_name,
-         merge_note, km, ST_ASGEOJSON(geog) AS gj
-  FROM `{DS}.in_transmission_union` WHERE geog IS NOT NULL"""):
+  SELECT src, owner, voltage_raw AS voltage, kv_clean AS kv, volt_class_clean AS volt_class,
+         had_sentinel, status, sub_1, sub_2, osm_name, merge_note, km, ST_ASGEOJSON(geog) AS gj
+  FROM `{DS}.in_transmission_voltage` WHERE geog IS NOT NULL"""):
     d = dict(r); gj = d.pop("gj")
     d["layer"] = "line"
     feats.append({"type": "Feature", "properties": d, "geometry": rc(json.loads(gj))})
