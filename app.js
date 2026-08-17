@@ -387,6 +387,36 @@ function countyOk(fips) {
   if ($("f-norestrict").checked && c.posture?.has_local_restriction === true) return false;
   return true;
 }
+/* G5: the rail collapses, so the filters in force must be visible somewhere that never does.
+   Without this, a user who set a filter in a closed section sees an empty map and cannot tell a
+   real "nothing matches" from a forgotten toggle. Reads the controls live, so it can never drift
+   out of step with what is actually applied. */
+function renderActiveFilters() {
+  const el = $("m-active"); if (!el) return;
+  const on = (id) => { const e = $(id); return e && e.checked; };
+  const c = [];
+  const uc = $("f-usecase");
+  if (uc) c.push(uc.value === "bess" ? "battery storage" : "data centre");
+  if (on("f-mw")) c.push(`fits ${fmt(V("f-mw-val"))}+ MW @ ${V("f-density")} MW/acre`);
+  const cls = [["f-ci", "commercial/industrial"], ["f-ag", "farmland"], ["f-vac", "undeveloped"]]
+    .filter(([id]) => !on(id)).map(([, l]) => l);
+  if (cls.length) c.push(`excluding ${cls.join(", ")}`);
+  if (on("f-other")) c.push("incl. other non-residential");
+  if (on("f-dsub")) c.push(`≤${V("f-dsub-mi")} mi of a ${V("f-dsub-kv")}+ kV substation`);
+  if (on("f-dline")) c.push(`≤${V("f-dline-mi")} mi of a line`);
+  if (on("f-si")) c.push("owner-motivation signal");
+  if (on("f-recent")) c.push(`activity in ${V("f-recent-days")} days`);
+  if (on("f-cand")) c.push("incl. candidate signals");
+  if (on("f-noflood")) c.push("no flood zone");
+  if (on("f-nowet")) c.push("no wetland");
+  if (on("f-noprot")) c.push("no protected land");
+  if (on("f-bonus")) c.push("tax-credit areas only");
+  if (on("f-sent")) c.push(`opposition ≤ ${V("f-sent-max")}`);
+  if (on("f-norestrict")) c.push("no local restriction");
+  el.innerHTML = `<div class="chipbar"><b>Filters in effect</b>${
+    c.map((x) => `<span class="chip">${x}</span>`).join("")}</div>`;
+}
+
 function applyFilters() {
   for (const [fips, feats] of state.loaded) {
     const ok = countyOk(fips);
@@ -395,12 +425,15 @@ function applyFilters() {
     map.setFilter(`sites-${fips}-fill`, ["in", ["get", "parcel_key"], ["literal", [...keys]]]);
     map.setFilter(`sites-${fips}-line`, ["in", ["get", "parcel_key"], ["literal", [...keys]]]);
   }
+  renderActiveFilters();
   renderDenominator();
 }
 for (const id of ["f-ci", "f-ag", "f-vac", "f-other", "f-mw", "f-mw-val", "f-density", "f-si",
   "f-recent", "f-recent-days", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
-  "f-dsub", "f-dsub-mi", "f-dsub-kv", "f-dline", "f-dline-mi", "f-sent", "f-sent-max", "f-norestrict"])
+  "f-dsub", "f-dsub-mi", "f-dsub-kv", "f-dline", "f-dline-mi", "f-sent", "f-sent-max", "f-norestrict",
+  "f-usecase", "f-cand"])
   $(id).addEventListener("change", applyFilters);
+renderActiveFilters();   // paint it once at boot, before any county has loaded
 // Switching use case moves the density to that use case's default — but only if the user has
 // not typed their own number, because silently overwriting a deliberate value is worse than
 // leaving a stale default. Both defaults stay adjustable either way.

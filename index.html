@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=a47336f5">
+<link rel="stylesheet" href="style.css?v=7e5a686e">
 </head>
 <body>
 <header id="topbar">
@@ -24,99 +24,172 @@
 <div id="layout">
   <aside id="rail">
 
+    <!-- G5: the rail is an ACCORDION. Operator, 2026-08-17 — showing every filter at once is
+         "a difficult to digest format". Each section opens its own controls, and the sections are
+         named in plain language (G8): no "Part 2", no "P1–P7".
+         ⚠ EVERY input id below is unchanged. app.js binds ~50 of them by id, and renaming one
+         would silently kill a filter rather than error. Structure changed, contract kept. -->
+
+    <div class="railcard intro">
+      <h2>How to use this map</h2>
+      <p class="hint" style="margin:0">Open a section below to filter. Anything you switch on shows
+        in the <b>Filters in effect</b> bar above the map, so a collapsed section can never hide a
+        filter that is changing what you see.</p>
+    </div>
+
     <div class="railcard">
-      <h2>Parts <span class="hint">(the four analysis pages — layers stay toggleable in any of them)</span></h2>
+      <h2>Jump to a view <span class="hint">(sets sensible layers — you can still change anything)</span></h2>
       <div id="presets">
         <button data-p="land" class="active">Land</button>
-        <button data-p="grid">Grid</button>
-        <button data-p="env">Environ.</button>
-        <button data-p="sentiment">Sentiment</button>
+        <button data-p="grid">Power</button>
+        <button data-p="env">Environment</button>
+        <button data-p="sentiment">Local rules</button>
       </div>
     </div>
 
-    <div class="railcard">
-      <h2>Site screener <span class="hint">(composes across all parts)</span></h2>
-      <div class="subhead">Property class</div>
-      <label><input type="checkbox" id="f-ci" checked> Strict C&amp;I</label>
-      <label><input type="checkbox" id="f-ag" checked> Agriculture</label>
-      <label><input type="checkbox" id="f-vac" checked> Vacant (no structure)</label>
-      <label><input type="checkbox" id="f-other"> Other non-residential</label>
-      <div class="subhead">Size &amp; intent</div>
-      <label>Use case
-        <select id="f-usecase">
-          <option value="dc">Hyperscale DC — whole parcel</option>
-          <option value="bess">BESS — outdoor space only</option>
-        </select></label>
-      <div class="hint" id="usecase-note" style="margin:-2px 0 4px">A hyperscale DC builds over or
-        removes an existing structure, so its buildable area is the <b>whole parcel</b>. BESS sites
-        <i>around</i> what is already there, so it uses <b>outdoor space</b> (parcel − footprints).</div>
-      <label><input type="checkbox" id="f-mw" checked> Fits ≥ <input type="number" id="f-mw-val" value="25" min="1"> MW
-        <span class="hint">@ <input type="number" id="f-density" value="4" min="1" max="20" step="0.5"> MW/acre (4=DC, 10=BESS — defaults, adjustable)</span></label>
-      <label><input type="checkbox" id="f-si"> Requires seller-intent signal</label>
-      <label><input type="checkbox" id="f-recent"> … with event in last <input type="number" id="f-recent-days" value="90" min="1"> days</label>
-      <label><input type="checkbox" id="f-cand"> Show candidate signals (staged D21)</label>
-      <div class="subhead">Grid access (Part 2)</div>
-      <label><input type="checkbox" id="f-dsub"> ≤ <input type="number" id="f-dsub-mi" value="2" min="0.1" step="0.1"> mi of a substation ≥ <input type="number" id="f-dsub-kv" value="69" min="0"> kV</label>
-      <label><input type="checkbox" id="f-dline"> ≤ <input type="number" id="f-dline-mi" value="1" min="0.1" step="0.1"> mi of a transmission line</label>
-      <div class="subhead">Environmental gates (Part 4)</div>
-      <label><input type="checkbox" id="f-noflood"> Exclude SFHA flood</label>
-      <label><input type="checkbox" id="f-nowet"> Exclude wetland-on-parcel</label>
-      <label><input type="checkbox" id="f-noprot"> Exclude protected-land overlap</label>
-      <label><input type="checkbox" id="f-bonus"> Require bonus-credit eligibility</label>
-      <div class="subhead">Community (Part 5, county grain)</div>
-      <label><input type="checkbox" id="f-sent"> Opposition intensity ≤ <input type="number" id="f-sent-max" value="2" min="0" step="1"></label>
-      <label><input type="checkbox" id="f-norestrict"> Exclude counties with local restrictions</label>
-    </div>
+    <details class="acc" open>
+      <summary><span class="step">1</span> What are you building?</summary>
+      <div class="accbody">
+        <label class="blk">Project type
+          <select id="f-usecase">
+            <option value="dc">Data centre &mdash; whole parcel</option>
+            <option value="bess">Battery storage &mdash; open ground only</option>
+          </select></label>
+        <div class="hint" id="usecase-note">A data centre builds over or removes what is there, so
+          its buildable area is the <b>whole parcel</b>. A battery fits <i>around</i> existing
+          buildings, so it uses <b>open ground</b> (parcel &minus; building footprints).</div>
+        <label><input type="checkbox" id="f-mw" checked> Fits at least
+          <input type="number" id="f-mw-val" value="25" min="1"> MW</label>
+        <div class="hint">at <input type="number" id="f-density" value="4" min="1" max="20" step="0.5">
+          MW per acre &mdash; 4 for a data centre, 10 for batteries. <b>Your assumption</b>, not
+          something we measured.</div>
+        <div class="hint" style="margin-top:5px"><b>So what:</b> this is the first cut. A motivated
+          owner on a two-acre lot is not a site.</div>
+      </div>
+    </details>
 
-    <div class="railcard">
-      <h2>Layers <span class="hint">(all composable)</span></h2>
-      <label><input type="checkbox" id="L-parcels" checked> Parcels (screened)</label>
-      <label><input type="checkbox" id="L-subs" checked> Substations</label>
-      <label><input type="checkbox" id="L-lines" checked> Transmission lines <span class="hint">(HIFLD + OSM merged — 27,866 km)</span></label>
-      <label><input type="checkbox" id="L-bus" checked> MISO bus headroom (labels = median MW)</label>
-      <label><input type="checkbox" id="L-pjm"> PJM queue points + estimated buses</label>
-      <label><input type="checkbox" id="L-gas"> Natural gas</label>
-      <label><input type="checkbox" id="L-terr"> Service territories</label>
-      <label><input type="checkbox" id="L-dc"> ⭐ Existing data centres (242)</label>
-      <div class="hint" style="margin:-2px 0 4px 18px">solid = publisher gave a site coordinate (150) ·
-        <span style="color:#b45309">hollow amber = city centroid only (92), position approximate</span></div>
-      <label><input type="checkbox" id="L-fac"> Plants · solar · wind</label>
-      <label><input type="checkbox" id="L-log"> Logistics (rail · primary/secondary roads)</label>
-      <div class="subhead">Context layers <span class="hint">(loaded on first use)</span></div>
-      <label><input type="checkbox" id="L-ghgrp"> GHGRP emitters <span class="hint">(263 — neighbours holding air permits)</span></label>
-      <label><input type="checkbox" id="L-frpp"> Federal surplus property <span class="hint">(1,552)</span></label>
-      <div class="subhead">Environmental</div>
-      <label><input type="checkbox" id="L-padus"> Protected land</label>
-      <label><input type="checkbox" id="L-bonusgeo"> Bonus-credit geographies <span class="hint">(incl. coal-closure)</span></label>
-      <label><input type="checkbox" id="L-nonatt"> Air nonattainment areas</label>
-      <div class="subhead">County shading</div>
-      <select id="county-metric">
-        <option value="class_union">screened-class density</option>
-        <option value="opposition_intensity">opposition intensity</option>
-        <option value="queue_active_mw">active queue MW</option>
-        <option value="ge25mw">parcels ≥25 MW</option>
-        <option value="none">none</option>
-      </select>
-    </div>
+    <details class="acc">
+      <summary><span class="step">2</span> Land &amp; size</summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="f-ci" checked> Commercial or industrial</label>
+        <label><input type="checkbox" id="f-ag" checked> Farmland</label>
+        <label><input type="checkbox" id="f-vac" checked> Undeveloped &mdash; no building on it</label>
+        <label><input type="checkbox" id="f-other"> Other non-residential</label>
+        <div class="hint"><b>&ldquo;Undeveloped&rdquo; is about land; &ldquo;vacant&rdquo; is about a
+          building.</b> Undeveloped land simply has no structure and is not a sign of distress. A
+          vacant or abandoned <i>building</i> is an owner-motivation signal &mdash; section 4.</div>
+      </div>
+    </details>
 
-    <div class="railcard">
-      <h2>Composite score <span class="hint">(your weights)</span></h2>
-      <label><input type="checkbox" id="sc-on"> Rank screened sites 0–100</label>
+    <details class="acc">
+      <summary><span class="step">3</span> Power &amp; grid</summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="f-dsub"> Within
+          <input type="number" id="f-dsub-mi" value="2" min="0.1" step="0.1"> mi of a substation of at least
+          <input type="number" id="f-dsub-kv" value="69" min="0"> kV</label>
+        <label><input type="checkbox" id="f-dline"> Within
+          <input type="number" id="f-dline-mi" value="1" min="0.1" step="0.1"> mi of a transmission line</label>
+        <div class="hint"><b>So what:</b> these measure <i>distance to a wire</i>, which is not the
+          same as capacity to spare. A parcel beside a full substation is worse than one three miles
+          from a connection point with headroom. For capacity, use the
+          <a href="screener.html">Site screener</a>.</div>
+      </div>
+    </details>
+
+    <details class="acc">
+      <summary><span class="step">4</span> Owner motivation</summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="f-si"> Only sites with a signal that the owner may sell</label>
+        <label><input type="checkbox" id="f-recent"> &hellip; something happened in the last
+          <input type="number" id="f-recent-days" value="90" min="1"> days</label>
+        <label><input type="checkbox" id="f-cand"> Include candidate signals not yet admitted</label>
+        <div class="hint"><b>So what:</b> public records &mdash; unpaid taxes, a foreclosure, a
+          demolition order &mdash; suggesting an owner may transact. Non-residential only, and only
+          trouble serious enough to plausibly move someone to sell.</div>
+      </div>
+    </details>
+
+    <details class="acc">
+      <summary><span class="step">5</span> Environmental constraints</summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="f-noflood"> Exclude mapped flood zones</label>
+        <label><input type="checkbox" id="f-nowet"> Exclude wetland on the parcel</label>
+        <label><input type="checkbox" id="f-noprot"> Exclude protected-land overlap</label>
+        <label><input type="checkbox" id="f-bonus"> Only federal energy-community tax-credit areas</label>
+        <div class="hint"><b>So what:</b> the first three are hard constraints that can stop a
+          project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
+          larger federal tax credit.</div>
+      </div>
+    </details>
+
+    <details class="acc">
+      <summary><span class="step">6</span> Community &amp; local rules</summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="f-sent"> Opposition intensity at most
+          <input type="number" id="f-sent-max" value="2" min="0" step="1"></label>
+        <label><input type="checkbox" id="f-norestrict"> Exclude counties with a local restriction</label>
+        <div class="hint"><b>So what:</b> county-level, not parcel-level. Opposition intensity partly
+          tracks <i>news volume</i>, so large metros read higher for reasons that are not posture.
+          <b>Absence of a recorded rule is not evidence there is no rule</b> &mdash; Indiana's
+          data-centre regulation is mostly county moratoria that no code library carries.</div>
+      </div>
+    </details>
+
+    <details class="acc">
+      <summary>Map layers <span class="acount">what is drawn</span></summary>
+      <div class="accbody">
+        <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
+        <label><input type="checkbox" id="L-subs" checked> Substations</label>
+        <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
+        <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
+        <label><input type="checkbox" id="L-pjm"> PJM queue points</label>
+        <label><input type="checkbox" id="L-gas"> Natural gas</label>
+        <label><input type="checkbox" id="L-terr"> Utility service territories</label>
+        <label><input type="checkbox" id="L-dc"> &#11088; Existing data centres</label>
+        <div class="hint" style="margin-left:18px">solid = the publisher gave a site coordinate ·
+          <span style="color:#b45309">hollow amber = city centre only, so the position is
+          approximate</span></div>
+        <label><input type="checkbox" id="L-fac"> Power plants · solar · wind</label>
+        <label><input type="checkbox" id="L-log"> Rail and major roads</label>
+        <div class="subhead">Neighbours and context</div>
+        <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
+          <span class="hint">(neighbours already holding air permits)</span></label>
+        <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
+        <div class="subhead">Environmental</div>
+        <label><input type="checkbox" id="L-padus"> Protected land</label>
+        <label><input type="checkbox" id="L-bonusgeo"> Tax-credit areas <span class="hint">(incl. coal closures)</span></label>
+        <label><input type="checkbox" id="L-nonatt"> Air-quality nonattainment areas</label>
+        <div class="subhead">Shade counties by</div>
+        <select id="county-metric">
+          <option value="class_union">how many screened sites</option>
+          <option value="opposition_intensity">opposition intensity</option>
+          <option value="queue_active_mw">active queue MW</option>
+          <option value="ge25mw">parcels fitting 25 MW+</option>
+          <option value="none">no shading</option>
+        </select>
+      </div>
+    </details>
+
+    <details class="acc">
+      <summary>Rank the results <span class="acount">your weights</span></summary>
+      <div class="accbody">
+      <label><input type="checkbox" id="sc-on"> Score matching sites 0&ndash;100</label>
       <div id="sc-weights" class="hidden">
         <div class="hint" style="margin:4px 0 6px">Weights are yours to set — these are defaults, not
           an answer. A part with no data for a site is <b>left out of that site's average</b>, never
           scored zero, so a site is never punished for our coverage gap.</div>
-        <label>P1 Seller intent <input type="range" id="w-p1" min="0" max="5" step="1" value="2"><span class="wv" id="wv-p1">2</span></label>
-        <label>P2 Grid access <input type="range" id="w-p2" min="0" max="5" step="1" value="5"><span class="wv" id="wv-p2">5</span></label>
-        <label>P3 Land &amp; size <input type="range" id="w-p3" min="0" max="5" step="1" value="4"><span class="wv" id="wv-p3">4</span></label>
-        <label>P4 Environmental <input type="range" id="w-p4" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p4">3</span></label>
-        <label>P5 Community <input type="range" id="w-p5" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p5">3</span></label>
-        <label>P6 Market &amp; infra <input type="range" id="w-p6" min="0" max="5" step="1" value="1"><span class="wv" id="wv-p6">1</span></label>
+        <label>Owner motivation <input type="range" id="w-p1" min="0" max="5" step="1" value="2"><span class="wv" id="wv-p1">2</span></label>
+        <label>Power &amp; grid <input type="range" id="w-p2" min="0" max="5" step="1" value="5"><span class="wv" id="wv-p2">5</span></label>
+        <label>Land &amp; size <input type="range" id="w-p3" min="0" max="5" step="1" value="4"><span class="wv" id="wv-p3">4</span></label>
+        <label>Environmental <input type="range" id="w-p4" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p4">3</span></label>
+        <label>Community &amp; rules <input type="range" id="w-p5" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p5">3</span></label>
+        <label>Market &amp; cost <input type="range" id="w-p6" min="0" max="5" step="1" value="1"><span class="wv" id="wv-p6">1</span></label>
         <div class="rowbtns" style="margin-top:6px"><button id="sc-rank">Rank sites in view</button>
           <button id="sc-reset">Reset weights</button></div>
         <div id="sc-out" class="hint"></div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <div id="denominator" class="railcard panelbox">loading…</div>
 
@@ -160,7 +233,12 @@
 
   </aside>
 
-  <div id="map"><div id="tooltip" class="hidden"></div></div>
+  <div id="mapwrap">
+    <!-- G5 safeguard. Sections collapse, so without this a user cannot see WHY results vanished.
+         Never collapsible, always reflects live control state. -->
+    <div id="m-active"></div>
+    <div id="map"><div id="tooltip" class="hidden"></div></div>
+  </div>
 
   <aside id="evidence" class="hidden">
     <div id="evidence-head"><h2 id="ev-title">Evidence</h2>
@@ -174,6 +252,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=4cb2d338"></script>
-<script src="app.js?v=2c46e7d0"></script>
+<script src="app.js?v=d5f00355"></script>
 </body>
 </html>

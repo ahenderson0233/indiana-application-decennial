@@ -45,7 +45,14 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 #btn-measure.active { background: #0f172a; color: #fff; border-color: #0f172a; }
 
 /* map + tooltip */
-#map { flex: 1; position: relative; }
+#mapwrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#map { flex: 1; position: relative; min-height: 0; }
+/* the active-filter bar sits ABOVE the map and never collapses — it is the safeguard that makes
+   the accordion rail safe. A user who cannot see which filters are on cannot tell an empty result
+   from a broken one. */
+#m-active:empty { display: none; }
+#m-active { padding: 6px 10px; border-bottom: 1px solid #e3e6ec; background: #f6f7f9; }
+#m-active .chipbar { border-radius: 6px; padding: 5px 9px; }
 #tooltip { position: absolute; z-index: 30; pointer-events: none; background: #0f172acc;
   color: #fff; font-size: 11.5px; padding: 4px 8px; border-radius: 5px; max-width: 300px; }
 #tooltip.hidden { display: none; }
