@@ -289,7 +289,8 @@ below, **add its row here in the same edit.**
 | **G18** | **Charts must be labelled and explained** | 🔴 **OPEN** | `svgLine()` draws a bare polyline — no axes, scale, range or units — **and plots `slice(-120)` while its caption claims 228 months.** The chart contradicts its own caption |
 | **G19** | **De-duplicate substations** | ✅ **DONE** | 848 duplicates collapsed. Also found **503 taps + 27 dead ends** mixed in with real substations, and two unreconciled type vocabularies → `asset_class` added. Real substations: **1,741**, not 3,858 |
 | **G20** | **100% parity with the vendor extract** | 🔴 **OPEN** | Root-caused: **dedup did NOT eat them** — 76% of the 42 are taps/dead-ends (taxonomy, not loss). Derive taps from line topology as their own class; chase the 6 real gaps; **Pike County 765 kV is `Planned`** → belongs to G15 |
-| **G21** | **Every table must answer "so what?"** | 🔴 **OPEN** | ⚠ **Project-wide, not just the two examples.** SAIDI/gas were illustrations. Every table needs: why it matters to a DC/BESS developer, units + acronyms expanded, an ordering that makes good/bad obvious, and a link to affected sites |
+| **G21** | **EVERY surface must answer "so what?"** | 🟡 **4 of ~18 done** | ⚠ **PROJECT-WIDE — map layers, tables, charts AND the screener**, not the two example cards. Five requirements per surface + a full ❌ inventory in the G21 section. A surface that cannot answer it comes out |
+| **G18** | **Charts labelled and explained** | ✅ **DONE** | `chartLine()` replaces the bare polyline: real axes, units, zero-based, full range, plain reading, and a partial-final-period guard. Fixed the `slice(-120)`-vs-caption contradiction |
 | **G22** | **Headroom = the ACTUAL, and the vintage** | 🟡 FIXED, ROOT CAUSE OPEN | median→actual→**unclamped** both fixed. Root cause of the zeros: our case is **DPP-2021 vs the baseline's DPP-2025** — four cycles stale. Fix is G7d |
 | **G23** | **49 missing PJM withdrawal buses** | 🔴 **OPEN, BLOCKED** | `in_pjm_queuescope_aep` covers **1,475 of AEP's 1,524** — 3.2% silently absent from every withdrawal answer. **Cannot start while an injection harvest runs** (never two QueueScope instances). Step 1 becomes free once injection completes: that table *is* the authoritative 1,524-bus list |
 | **G26** | **Headroom under-reports: pre-existing overloads + an UNMITIGATED case** | 🔴 **OPEN** | 26.3% of Indiana facility rows are already overloaded **before any request**. Their case is `ERIS-**mitigated**` DPP-2025; ours is unmitigated DPP-2021. Ours 0.2% vs their 39.3% with headroom. ⛔ Do NOT just drop overloads (that gives 100%) — get the mitigated case |
@@ -558,11 +559,50 @@ Both are raw dumps. Neither states what a developer should do:
 | **Utility reliability** | `SAIDI 2,766 · SAIFI 4.61` with no units, no expansion, no ranking | **SAIDI is minutes without power per year.** 2,766 min = **46 hours/yr** — that utility cannot support a data centre without serious on-site backup, while AES Indiana's 467 min ≈ 7.8 h/yr can. Rank utilities, band them against uptime tiers, and say what the difference costs in backup generation |
 | **Gas capacity at borders** | the same `2,000 MMcf/d` repeated once per year, 1,017 rows | **Can I run on-site generation here?** A 300 MW gas plant needs roughly 50 MMcf/d. Show capacity *near the site*, how much is already contracted, and how many MW it could actually support |
 
-**Rule to apply everywhere:** every table gets (1) a one-line *why this matters to a
-data-centre/BESS developer*, (2) units and acronyms expanded per G8, (3) an ordering or banding that
-makes the good and bad ends obvious, and (4) a link back to the sites it affects. **A table that
-cannot answer "so what?" comes out** — per the operator's standing instruction that everything
-should be actionable rather than a means to an end.
+### ⛔ G21 IS PROJECT-WIDE. THE TWO TABLES WERE EXAMPLES, NOT THE SCOPE.
+
+Operator, 2026-08-17, twice: *"My SAIDI/SAIFI comment was largely meant as an example that should be
+completed throughout the project, not just for that table"* and *"ALL of the tables and data that we
+either show on the map or through tables, charts, or the screener should all answer the 'so what'
+question, not just the two charts."*
+
+**THE BAR — every rendered surface must carry all five:**
+
+| # | requirement |
+|---|---|
+| 1 | **A one-line "why this matters to a data-centre / BESS developer"**, in the reader's terms |
+| 2 | **Units on the number, and every acronym expanded** (G8). `SAIDI 2,766` → `32.0 hrs off per year` |
+| 3 | **An ordering or banding that makes the good and bad ends obvious** — worst-first, or an explicit band |
+| 4 | **A translation into the reader's decision unit** where one exists — MMcf/d → MW supportable; minutes → hours of backup; acres → MW at a stated density |
+| 5 | **A link back to the sites it affects**, or a statement that it is context only |
+
+**And the negative test: a surface that cannot answer "so what?" comes out.** Volume is not value —
+the gas table shipped **1,017 rows that said about 40 distinct things** because the source repeats
+each route once per year.
+
+#### The inventory. Every surface, and its state. ❌ = not yet done.
+
+| surface | where | state |
+|---|---|---|
+| Statewide demand chart | Market | ✅ units, full range, plain reading |
+| Generation (emissions-monitored) chart | Market | ✅ + partial-final-period guard |
+| Utility reliability | Market | ✅ hours not minutes, worst-first, banded to backup implications |
+| Gas border capacity | Market | ✅ latest year per route (1,017→30), translated to MW supportable |
+| Gas operationally-available capacity | Market | 🟡 framing added; rows not yet translated |
+| Gas locations / OAC by county | Market | ❌ |
+| Tariff cross-check, wholesale floor, eligibility | Market | ❌ — and see G17 |
+| Delivered fuel cost · demand response · EQR filers · URDB tariffs | Market | ❌ |
+| **Every map LAYER** — substations, lines, buses, queue, gas, territories, data centres, logistics, GHGRP, federal surplus, protected land, bonus geographies, nonattainment | Map console | ❌ **a legend is not a "so what"**; each layer needs why-it-matters and what to do about it |
+| County shading metrics | Map console | ❌ what does "opposition intensity 4" mean for a decision? |
+| Evidence panel rows | Map console | 🟡 sourced, not yet consequence-framed |
+| Screener result columns | Screener | 🟡 grid/owner columns explained; acreage + capacity columns still need the G28 buildable caveat |
+| Ordinances · county actions · receipts · disasters | Community | ❌ |
+| Owner-signal tables | Owner signals | 🟡 plain names shipped; consequence framing not |
+| Legislative preview | Community | ❌ |
+| Table inventory · estate census · wiring | Data & sources | ➖ internal by design — exempt, but say so on the page |
+
+**Do not treat this as done until the inventory has no ❌.** It is a pass over every page, not a
+fix to two cards.
 
 ### G20 — 100% PARITY with the vendor extract, and WHY the 42 are missing (operator, 2026-08-17)
 

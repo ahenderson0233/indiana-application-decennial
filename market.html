@@ -14,14 +14,29 @@
     <div class="card"><h2>CEMS gross generation (monthly)</h2><div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
   </div>
   <div class="gridcards">
-    <div class="card"><h2>Utility reliability (SAIDI / SAIFI)</h2>
-      <div class="scroll"><table id="t-rel"><tr><th>utility · year</th><th>SAIDI min/yr</th><th>SAIFI</th><th>customers</th></tr></table></div>
+    <div class="card"><h2>How reliable is each utility?</h2>
+      <p class="hint"><b>Why this matters:</b> the figure below is <b>how many minutes a typical
+        customer is without power each year</b>. A data centre targeting high availability has to
+        cover that gap with its own generation and batteries, so a poor utility is not a
+        dealbreaker &mdash; it is a capital cost. <b>525 minutes is roughly 8.75 hours a year.</b></p>
+      <div class="scroll"><table id="t-rel"><tr><th>Utility</th><th>Hours off per year</th>
+        <th>Outages per year</th><th>What it means</th><th>Customers</th></tr></table></div>
       <div class="prov" id="p-rel"></div></div>
-    <div class="card"><h2>Gas capacity at Indiana borders (EIA design) + daily OAC held</h2>
-      <div class="scroll"><table id="t-gas"><tr><th>pipeline · year</th><th>from→to</th><th>MMcf/d</th></tr></table></div>
+    <div class="card"><h2>Could you run your own generation here?</h2>
+      <p class="hint"><b>Why this matters:</b> if the grid cannot serve you soon enough, on-site gas
+        generation is the usual fallback. A rough rule is <b>~8&nbsp;MMcf/d of gas per 100&nbsp;MW</b>
+        of gas-fired generation, so a 300&nbsp;MW campus needs on the order of
+        <b>25&ndash;50&nbsp;MMcf/d</b>. The figures below are <b>pipeline design capacity at
+        Indiana's borders</b> &mdash; the size of the pipe, <i>not</i> what is unsold today.</p>
+      <div class="scroll"><table id="t-gas"><tr><th>Pipeline</th><th>Route</th>
+        <th>Design capacity</th><th>Could support</th></tr></table></div>
       <div class="prov" id="p-gas"></div></div>
   </div>
-  <div class="card"><h2>Gas — daily operationally-available capacity (EBB), 9 pipelines held</h2>
+  <div class="card"><h2>Gas — how much is actually free on a given day</h2>
+    <p class="hint"><b>Why this matters:</b> the table above is the size of the pipe. This one is
+      <b>operationally-available capacity</b> — what the pipeline reports as unsold and deliverable
+      on a given day, published on each pipeline’s electronic bulletin board. This is the number
+      that decides whether on-site generation is actually feasible at your site.</p>
     <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
     <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
@@ -79,23 +94,83 @@
     <div class="scroll"><table id="t-gaps"><tr><th>utility</th><th>tariff</th><th>component</th><th>rate</th><th>state</th><th>source</th></tr></table></div>
     <div class="prov" id="p-rate"></div></div>
 </div>
-<script src="common.js?v=5072e99b"></script>
+<script src="common.js?v=4cb2d338"></script>
 <script>
 (async () => {
   await loadProv();
   const m = await fetchGz("data/market.json.gz");
-  if (m.state_demand) { document.getElementById("c-demand").innerHTML = svgLine(m.state_demand, "demand_mwh", "#b45309");
-    document.getElementById("p-demand").textContent = prov("in_ferc714_state_demand") + ` · ${m.state_demand.length} months`; }
-  document.getElementById("c-cems").innerHTML = svgLine(m.monthly, "gross_load_mwh");
-  document.getElementById("p-cems").textContent = prov("in_cems_monthly") + ` · ${m.monthly.length} months`;
-  document.getElementById("t-rel").insertAdjacentHTML("beforeend", (m.reliability || [])
-    .filter(r => r.saidi_minutes_per_year != null).slice(0, 40).map(r =>
-    `<tr><td>${String(r.utility_name).slice(0, 40)} ${r.data_year}</td><td>${fmt(Math.round(r.saidi_minutes_per_year))}</td><td>${r.saifi_times_per_year ?? "—"}</td><td>${fmt(r.number_of_customers)}</td></tr>`).join(""));
-  document.getElementById("p-rel").textContent = prov("in_eia861_reliability");
-  document.getElementById("t-gas").insertAdjacentHTML("beforeend", (m.gas_state_capacity || [])
-    .filter(r => r.year >= 2015).sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 40).map(r =>
-    `<tr><td>${r.pipeline || ""} ${r.year}</td><td>${r.state_from}→${r.state_to}</td><td>${fmt(r.capacity_mmcfd)}</td></tr>`).join(""));
-  document.getElementById("p-gas").textContent = prov("in_gas_state_capacity") + " · daily operationally-available capacity held for 9 pipelines (in_gas_capacity_*) — page section next";
+  // Charts carry their units, their real date range and a plain reading (G18). The old version
+  // drew a bare polyline over slice(-120) while the caption said 228 months.
+  if (m.state_demand) {
+    const d = m.state_demand, first = d[0].demand_mwh, last = d[d.length - 1].demand_mwh;
+    const pct = ((last - first) / first) * 100;
+    document.getElementById("c-demand").innerHTML = chartLine(d, "demand_mwh", {
+      unit: "MWh per month", color: "#b45309",
+      reading: `Indiana's total electricity demand ${pct >= 0 ? "rose" : "fell"} about
+        ${Math.abs(pct).toFixed(0)}% across this period, with a strong summer/winter cycle.
+        For a site-hunter this is the backdrop: new large load lands on top of a system that is
+        already growing.`,
+    });
+    document.getElementById("p-demand").textContent = prov("in_ferc714_state_demand") +
+      ` · ${d.length} months · FERC Form 714, the federal hourly-demand filing`;
+  }
+  document.getElementById("c-cems").innerHTML = chartLine(m.monthly, "gross_load_mwh", {
+    unit: "MWh per month", color: "#0f172a",
+    reading: `Output from Indiana's emissions-monitored generating units. The long decline is coal
+      retiring. It matters because retiring capacity is what a new large load competes with for
+      firm supply — and what the queue is being built to replace.`,
+  });
+  document.getElementById("p-cems").textContent = prov("in_cems_monthly") +
+    ` · ${m.monthly.length} months · EPA Continuous Emissions Monitoring System`;
+  // G21: ranked worst-first, minutes converted to HOURS (the unit a person can picture), and each
+  // row states the consequence. A bare "SAIDI 2,766" is a number; "46 hours off per year" is a
+  // decision. Banding is by outage hours, which is what drives backup sizing.
+  const relRows = (m.reliability || [])
+    .map(r => ({ ...r, saidi: Number(r.saidi_minutes_per_year) }))
+    .filter(r => Number.isFinite(r.saidi) && r.saidi > 0)
+    .sort((a, b) => b.saidi - a.saidi);
+  const band = (h) => h >= 20 ? ["worst", "Heavy backup required — over a day of outage a year"]
+    : h >= 8 ? ["mid", "Typical for a rural cooperative; plan real backup"]
+    : h >= 3 ? ["ok", "Reasonable for a large load with normal backup"]
+    : ["best", "Strong — among the best in the state"];
+  document.getElementById("t-rel").insertAdjacentHTML("beforeend", relRows.slice(0, 40).map(r => {
+    const hrs = r.saidi / 60, [cls, meaning] = band(hrs);
+    return `<tr><td>${String(r.utility_name).slice(0, 34)}
+        <div class="sub2">${r.ownership || ""} · ${r.data_year}</div></td>
+      <td class="num"><b>${hrs.toFixed(1)}</b> hrs<div class="sub2">${fmt(Math.round(r.saidi))} min</div></td>
+      <td class="num">${r.saifi_times_per_year ? Number(r.saifi_times_per_year).toFixed(1) : "—"}</td>
+      <td><span class="bdg bdg-${cls === "worst" ? "ol" : cls === "best" ? "st" : "un"}">${meaning}</span></td>
+      <td class="num">${fmt(r.number_of_customers)}</td></tr>`;
+  }).join(""));
+  document.getElementById("p-rel").textContent = prov("in_eia861_reliability") +
+    " · SAIDI = System Average Interruption Duration Index (minutes off per customer per year);" +
+    " SAIFI = the number of separate outages. Worst first — utilities reporting no figure are omitted, not scored zero.";
+  // G21: the old table repeated the SAME pipeline and capacity once per year, so 1,017 rows said
+  // about 40 distinct things. Collapse to the LATEST year per route, and convert MMcf/d into the
+  // unit the reader actually cares about - how many MW of gas generation it could support.
+  const MMCFD_PER_100MW = 8;
+  const latest = new Map();
+  for (const r of (m.gas_state_capacity || [])) {
+    const k = `${r.pipeline}|${r.state_from}|${r.state_to}`;
+    const prev = latest.get(k);
+    if (!prev || Number(r.year) > Number(prev.year)) latest.set(k, r);
+  }
+  const gasRows = [...latest.values()]
+    .filter(r => (r.state_from === "Indiana" || r.state_to === "Indiana"))
+    .sort((a, b) => Number(b.capacity_mmcfd) - Number(a.capacity_mmcfd)).slice(0, 30);
+  document.getElementById("t-gas").insertAdjacentHTML("beforeend", gasRows.map(r => {
+    const mmcfd = Number(r.capacity_mmcfd) || 0;
+    const mw = Math.round((mmcfd / MMCFD_PER_100MW) * 100);
+    return `<tr><td>${r.pipeline || ""}<div class="sub2">latest filed ${r.year}</div></td>
+      <td>${r.state_from} &rarr; ${r.state_to}</td>
+      <td class="num"><b>${fmt(mmcfd)}</b> MMcf/d</td>
+      <td class="num">~${fmt(mw)} MW<div class="sub2">if it were all available</div></td></tr>`;
+  }).join(""));
+  document.getElementById("p-gas").textContent = prov("in_gas_state_capacity") +
+    " · MMcf/d = million cubic feet per day. Latest filed year per route only — the source repeats" +
+    " each route once per year, which made 1,017 rows look like 1,017 findings." +
+    " ⚠ Design capacity is the size of the pipe, NOT unsold capacity: how much is actually" +
+    " available on a given day is the operationally-available capacity below.";
   function renderProxy() {
     const mw = Number(document.getElementById("rp-mw").value) || 300;
     const lf = Number(document.getElementById("rp-lf").value) || 0.85;

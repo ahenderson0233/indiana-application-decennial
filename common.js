@@ -153,9 +153,85 @@ function glossify(root) {
   }
 }
 
+/* ============================================================================================
+   CHARTS (G18). Operator, 2026-08-17: "if we are intending to use charts like the ones attached,
+   they should be labeled and explained fully."
+
+   The previous version drew a bare polyline and nothing else — no axes, no scale, no units, no
+   date range. A reader could see that something oscillated and could not tell whether the range
+   was 2 GWh or 20 GWh, or what period was covered.
+
+   ⛔ AND IT CONTRADICTED ITS OWN CAPTION. It silently plotted `series.slice(-120)` while the
+   caption beside it read "228 months" — so the chart showed 120 of them. That is a correctness
+   bug, not a styling one: the picture and the label described different datasets.
+
+   Three things it now always does:
+     1. Y axis with real values and the unit, and it is ZERO-BASED by default. Scaling to
+        min..max exaggerates variation; a demand series that never drops below 6 GWh looks like it
+        collapses to nothing if the axis starts at 6.
+     2. X axis showing the ACTUAL first and last period plotted, and the full series unless the
+        caller asks otherwise — and if anything IS dropped it is stated on the chart.
+     3. A partial-final-period guard. CEMS ends 2026-04 at 54,227 MWh against a typical few
+        million — an incomplete month, which drew a cliff that looks like the grid switched off.
+        A trailing point below 20% of the previous median is greyed and labelled "partial", never
+        silently plotted as a collapse.                                                          */
+function chartLine(series, key, opts = {}) {
+  const o = Object.assign({ unit: "", color: "#b45309", xKey: "month", zeroBased: true,
+                            reading: "", height: 150 }, opts);
+  const all = (series || []).filter((r) => r && r[key] != null);
+  if (all.length < 2) return `<div class="hint cannot">not enough data to draw</div>`;
+
+  // partial final period: real, and it drew a cliff that read as a collapse
+  const vals = all.map((r) => Number(r[key]));
+  const mid = [...vals].sort((a, b) => a - b)[Math.floor(vals.length / 2)];
+  const partial = vals[vals.length - 1] < mid * 0.2;
+  const s = partial ? all.slice(0, -1) : all;
+  const v = s.map((r) => Number(r[key]));
+
+  const W = 640, H = o.height, L = 62, R = 10, T = 12, B = 26;
+  const hi = Math.max(...v), lo = o.zeroBased ? 0 : Math.min(...v);
+  const span = (hi - lo) || 1;
+  const x = (i) => L + (i / (s.length - 1)) * (W - L - R);
+  const y = (n) => T + (1 - (n - lo) / span) * (H - T - B);
+
+  const si = (n) => Math.abs(n) >= 1e9 ? (n / 1e9).toFixed(1) + "B"
+    : Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(1) + "M"
+    : Math.abs(n) >= 1e3 ? (n / 1e3).toFixed(0) + "k" : String(Math.round(n));
+
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + f * span);
+  const grid = ticks.map((t) => `<line x1="${L}" y1="${y(t).toFixed(1)}" x2="${W - R}"
+      y2="${y(t).toFixed(1)}" stroke="#e8ebf0" stroke-width="1"/>
+    <text x="${L - 6}" y="${(y(t) + 3).toFixed(1)}" font-size="9.5" fill="#7a8494"
+      text-anchor="end">${si(t)}</text>`).join("");
+
+  const path = v.map((n, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(n).toFixed(1)}`).join("");
+  const per = (r) => String(r && r[o.xKey] || "").slice(0, 7);
+
+  return `<figure class="chart">
+    <svg viewBox="0 0 ${W} ${H}" role="img" style="width:100%">
+      ${grid}
+      <path d="${path}" fill="none" stroke="${o.color}" stroke-width="1.4"/>
+      <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="#cbd5e1"/>
+      <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#cbd5e1"/>
+      <text x="${L}" y="${H - 8}" font-size="9.5" fill="#7a8494">${per(s[0])}</text>
+      <text x="${W - R}" y="${H - 8}" font-size="9.5" fill="#7a8494"
+        text-anchor="end">${per(s[s.length - 1])}</text>
+      <text x="${L - 6}" y="${T - 3}" font-size="9.5" fill="#556" text-anchor="end"
+        font-weight="600">${o.unit}</text>
+    </svg>
+    <figcaption class="hint">
+      ${o.reading ? `<b>${o.reading}</b><br>` : ""}
+      Showing <b>all ${fmt(s.length)}</b> periods, ${per(s[0])} to ${per(s[s.length - 1])}.
+      Vertical axis ${o.zeroBased ? "starts at zero" : "is not zero-based, so variation looks larger than it is"}${o.unit ? `, in ${o.unit}` : ""}.
+      ${partial ? `<br><b>The final period (${per(all[all.length - 1])}) is excluded</b> — it reports
+        ${si(vals[vals.length - 1])} against a typical ${si(mid)}, i.e. an incomplete period, and
+        plotting it drew a cliff that looked like a collapse.` : ""}
+    </figcaption>
+  </figure>`;
+}
+
+/* kept so older call sites do not break; new code should call chartLine() */
 function svgLine(series, key, color = "#0f172a") {
-  const s = series.slice(-120), mx = Math.max(...s.map((r) => r[key] || 0));
-  const pts = s.map((r, i) => `${(i / (s.length - 1) * 300).toFixed(1)},${(80 - (r[key] || 0) / mx * 75).toFixed(1)}`).join(" ");
-  return `<svg viewBox="0 0 300 84" style="width:100%;max-width:640px;background:#f8fafc;border:1px solid #e3e6ec;border-radius:6px"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.2"/></svg>`;
+  return chartLine(series, key, { color });
 }
 document.addEventListener("DOMContentLoaded", () => renderNav());
