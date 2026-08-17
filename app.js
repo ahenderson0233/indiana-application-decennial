@@ -1694,6 +1694,34 @@ function openParcelEvidence(p, fips) {
     <div class="prov">${prov("in_substations")} · ${p._dist_exact
         ? "distances measured edge-to-edge against the real line and parcel geometry, so 0.0 mi means the asset physically crosses the parcel"
         : "⚠ approximate — measured from a representative point on the parcel, so a true 0.0 is reported as a small non-zero distance"} · distances are floors against mapped features, not service guarantees</div>
+    ${(() => {
+      /* QUEUE PRESSURE. Both RTOs are already held — in_queue carries 583 MISO and 361 PJM Indiana
+         rows with MW and status, and county_context ships the rollup. The county map already SHADES
+         by active queue MW; what was missing is the parcel-level read, which is where a developer
+         actually asks the question.
+         ⚠ TWO OPPOSED READINGS, and only stating both is honest: queued GENERATION nearby is future
+         supply, which helps a large load — but it is simultaneously competition for the same
+         interconnection study slots and the same network upgrades. And a high WITHDRAWAL rate is a
+         third signal entirely: it says projects that tried here gave up. */
+      const q = (state.ctx?.by_fips?.[fips] || {}).queue;
+      if (!q || !q.projects) return "";
+      const wd = q.withdrawn_projects || 0, tot = q.projects || 0;
+      const attrition = tot ? Math.round(100 * wd / tot) : 0;
+      return `
+    <h3>Queue pressure — who is ahead of you here?</h3><table>
+      ${row("active projects in this county", `${fmt(q.active_projects || 0)} of ${fmt(tot)} ever queued`)}
+      ${row("active queued capacity", `${fmt(q.active_mw || 0)} MW`)}
+      ${row("withdrawn", `${fmt(wd)} projects (${attrition}% of all attempts)`)}
+    </table>
+    <div class="sowhat"><b>What this means.</b> ${
+      (q.active_mw || 0) > 0
+        ? `<b>${fmt(q.active_mw)} MW across ${fmt(q.active_projects)} live projects</b> is already in the interconnection queue in this county. That cuts both ways: queued generation is future <i>supply</i> near your load, but it is also competition for the same study slots and the same network upgrades, and those projects hold their place ahead of you.`
+        : `No live queue activity in this county — you would not be competing for study slots locally, but there is also no nearby generation being built out.`
+      }${attrition >= 50 && tot >= 4
+        ? ` ⚠ <b>${attrition}% of everything ever queued here was withdrawn.</b> That is a signal about how hard interconnection has proved locally, not about your site.`
+        : ""}</div>
+    <div class="prov">${prov("in_queue")} · county grain, both RTOs · active/withdrawn are the publisher's own status</div>` ;
+    })()}
     ${p.x_wat_mi != null ? `
     <h3>Water — can this site be cooled?</h3><table>
       ${row("nearest water source", `${p.x_wat_name || "unnamed"} (${p.x_wat_kind || "surface water"}) · ${p.x_wat_on ? "<b>on this parcel</b>" : `${p.x_wat_mi} mi`}`)}
