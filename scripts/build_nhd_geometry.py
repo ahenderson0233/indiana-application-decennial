@@ -45,12 +45,15 @@ NORM = "LOWER(REPLACE(REPLACE(permanent_identifier,'{',''),'}',''))"
 SPECS = {
     "in_nhd_flowline_geom": dict(
         raw="_raw_nhd_flowline", src="nhd_flowline", lid=6,
+        cut="ftype = 460 AND gnis_name IS NOT NULL",
         cols=f"""permanent_identifier, gnis_id, gnis_name, lengthkm, reachcode,
                  SUBSTR(reachcode,1,8) AS huc8, ftype, fcode, flowdir, innetwork, mainpath,
                  resolution,{DECODE}""",
     ),
     "in_nhd_waterbody_geom": dict(
         raw="_raw_nhd_waterbody", src="nhd_waterbody", lid=12,
+        cut="ftype = 436 OR (ftype = 390 AND areasqkm >= 0.1) "
+            "OR (ftype = 466 AND areasqkm >= 0.1)",
         cols=f"""permanent_identifier, gnis_id, gnis_name, areasqkm, elevation, reachcode,
                  SUBSTR(reachcode,1,8) AS huc8, ftype, fcode, resolution,{DECODE}""",
     ),
@@ -68,7 +71,13 @@ for table, s in SPECS.items():
       FROM `energy-platfrom.energy.{s['src']}`
       WHERE UPPER(IFNULL(src_state,'')) = 'IN'
     ),
-    r AS (SELECT * FROM `{DS}.{s['raw']}` WHERE _geom IS NOT NULL)
+    -- The raw NDJSON is the bbox sweep PLUS a by-key backfill pass, and the two can return the same
+    -- feature, so dedupe on the key rather than trusting the puller's in-memory set.
+    r AS (
+      SELECT * FROM `{DS}.{s['raw']}`
+      WHERE _geom IS NOT NULL
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY {NORM} ORDER BY objectid) = 1
+    )
     SELECT
       {s['cols']},
       -- Indiana membership decided by KEY, not by the bounding box the features were fetched with.
@@ -120,7 +129,7 @@ for table, s in SPECS.items():
     print(f"  ST_ISEMPTY              : {m.empty_geom:,}")
     print(f"  degenerate (measure<=0) : {m.degenerate:,}")
     print(f"  max {meas:<16}: {m.max_measure:,}")
-    print(f"  centroid off the map    : {m.off_map:,}   <- D85 inverted-polygon guard")
+    print(f"  not touching Indiana    : {m.off_map:,}")
     print(f"  in Indiana NHD slice    : {m.in_slice:,}")
     print(f"  outside it (border/adj) : {m.out_of_state:,}")
     print(f"  role source / constraint: {m.src:,} / {m.con:,}")
@@ -128,10 +137,29 @@ for table, s in SPECS.items():
     assert m.null_geom == 0, "unparseable geometry survived the load"
     assert m.empty_geom == 0, "a geometry collapsed to empty under make_valid"
     assert m.degenerate == 0, "zero-length/zero-area geometry present"
-    assert m.max_measure < 1e14, "D85 GUARD TRIPPED: a geometry is near planet-sized (inverted)"
-    assert m.off_map == 0, "a geometry centroid is outside the Indiana neighbourhood"
+    # D85 guard. Lake Michigan, the largest legitimate member, is 5.77e10 m2. Earth is 5.10e14 m2.
+    # 1e12 sits two orders above the real maximum and two below an inverted polygon.
+    assert m.max_measure < 1e12, "D85 GUARD TRIPPED: a geometry is planet-scale (inverted)"
+    assert m.off_map == 0, "a geometry does not touch the Indiana neighbourhood at all"
     assert m.huc_bad_len == 0, "huc8 lost its leading zero - the INT64 trap fired again"
     assert m.in_slice > 0, "nothing matched the Indiana key set - check permanent_identifier format"
+
+    # COMPLETENESS, PROVEN NOT ASSUMED. Every permanent_identifier that the read-only attribute table
+    # says is in Indiana AND in our cut must now have geometry. A bbox sweep alone reached 97.5% of
+    # flowlines and 82.8% of waterbodies; the by-key backfill pass exists to close that gap, and this
+    # is the check that says whether it did.
+    comp = list(client.query(f"""
+    WITH want AS (SELECT DISTINCT {NORM} k FROM `energy-platfrom.energy.{s['src']}`
+                  WHERE UPPER(IFNULL(src_state,'')) = 'IN' AND ({s['cut']})),
+         got  AS (SELECT DISTINCT {NORM} k FROM `{DS}.{table}`)
+    SELECT COUNT(*) want_n, COUNTIF(g.k IS NULL) still_missing
+    FROM want w LEFT JOIN got g USING (k)"""))[0]
+    pct = 100.0 * (comp.want_n - comp.still_missing) / comp.want_n
+    print(f"  Indiana cut completeness: {comp.want_n - comp.still_missing:,}/{comp.want_n:,} "
+          f"= {pct:.2f}%   still missing {comp.still_missing:,}")
+    assert comp.still_missing == 0, (
+        f"{comp.still_missing:,} Indiana features of the stated cut have no geometry - "
+        f"re-run: python scripts/pull_nhd_geometry.py --backfill")
 
     for r in client.query(f"""
       SELECT ftype, ftype_label, water_role, COUNT(*) n, COUNTIF(in_nhd_indiana_slice) in_n
@@ -171,6 +199,89 @@ for table, s in SPECS.items():
     ).result()
     print(f"  registered {table} in indiana_app._registry")
     MEASURED[table] = m
+
+# -------------------------------------------------------------------------------------------------
+# NHDArea ftype 460 - THE BIG RIVERS AS POLYGONS.
+#
+# Built separately because it is the one layer with no counterpart anywhere in `energy`: the estate
+# holds nhd_flowline and nhd_waterbody and nothing else, so there is no authoritative Indiana key
+# list to match against and no reachcode to cut a huc8 from. Rather than invent a membership test and
+# present it as authority, the Indiana flag here is an HONEST APPROXIMATION and is named as one:
+# intersection with the union of the county polygons the estate actually holds, which is 87 of
+# Indiana's 92. FALSE therefore does NOT prove a feature is outside Indiana.
+#
+# Why this table has to exist at all: NHD represents a river as a LINE only while it is narrow. Wide
+# rivers become POLYGONS here and their flowline degrades to ftype 558 ArtificialPath. The Wabash has
+# 46 ftype-460 line segments against 1,947 ArtificialPath ones. Without this table, Indiana's largest
+# rivers are ~2% present and every distance-to-river answer near them is wrong.
+# -------------------------------------------------------------------------------------------------
+AREA = "in_nhd_area_geom"
+print("=" * 78)
+print(AREA)
+job = client.query(f"""
+CREATE OR REPLACE TABLE `{DS}.{AREA}` AS
+WITH r AS (
+  SELECT * FROM `{DS}._raw_nhd_area` WHERE _geom IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY {NORM} ORDER BY objectid) = 1
+),
+counties AS (SELECT ST_UNION_AGG(geom) g FROM `{DS}.in_queue_counties` WHERE geom IS NOT NULL)
+SELECT permanent_identifier, gnis_id, gnis_name, areasqkm, elevation, ftype, fcode, resolution,
+       'StreamRiverArea' AS ftype_label,
+       'source' AS water_role,
+       ST_INTERSECTS(SAFE.ST_GEOGFROMGEOJSON(_geom, make_valid => TRUE), (SELECT g FROM counties))
+         AS in_indiana_counties_87of92,
+       SAFE.ST_GEOGFROMGEOJSON(_geom, make_valid => TRUE) AS geog,
+       '{BASE}/9' AS _source_url,
+       CURRENT_TIMESTAMP() AS built_at
+FROM r
+""")
+job.result()
+a = list(client.query(f"""
+SELECT COUNT(*) n, COUNT(DISTINCT permanent_identifier) dpid, COUNTIF(geog IS NULL) null_geom,
+       COUNTIF(geog IS NOT NULL AND ST_ISEMPTY(geog)) empty_geom,
+       COUNTIF(ST_AREA(geog) <= 0) degenerate, ROUND(MAX(ST_AREA(geog)), 1) max_area,
+       COUNTIF(in_indiana_counties_87of92) in_ct, COUNTIF(gnis_name IS NOT NULL) named,
+       ROUND(SUM(ST_AREA(geog))/1e6, 1) total_km2
+FROM `{DS}.{AREA}`"""))[0]
+print(f"  rows                      : {a.n:,}  (distinct pid {a.dpid:,})")
+print(f"  geog NULL / empty / degen : {a.null_geom:,} / {a.empty_geom:,} / {a.degenerate:,}")
+print(f"  max ST_AREA               : {a.max_area:,}")
+print(f"  intersects an IN county   : {a.in_ct:,}  (county union is 87 of 92)")
+print(f"  carrying a gnis_name      : {a.named:,}")
+print(f"  total river surface       : {a.total_km2:,} km2")
+assert a.null_geom == 0 and a.empty_geom == 0 and a.degenerate == 0, "bad NHDArea geometry"
+assert a.max_area < 1e12, "D85 GUARD TRIPPED on NHDArea"
+
+client.query(f"DELETE FROM `{DS}._registry` WHERE table_name=@t",
+             job_config=bigquery.QueryJobConfig(query_parameters=[
+                 bigquery.ScalarQueryParameter("t", "STRING", AREA)])).result()
+client.query(
+    f"INSERT INTO `{DS}._registry` (table_name, source, method, n_rows, gb_scanned, built_at, notes) "
+    f"VALUES (@t,@s,@m,@n,@g,CURRENT_TIMESTAMP(),@no)",
+    job_config=bigquery.QueryJobConfig(query_parameters=[
+        bigquery.ScalarQueryParameter("t", "STRING", AREA),
+        bigquery.ScalarQueryParameter("s", "STRING", f"{BASE}/9/query"),
+        bigquery.ScalarQueryParameter("m", "STRING",
+            "USGS TNM NHD ArcGIS REST layer 9 (Area - Large Scale), FTYPE=460 StreamRiver POLYGONS, "
+            "f=geojson, outSR=4326, geometryPrecision=6, 72 x 0.5-degree bbox tiles. "
+            "RE-SCRAPE COMMAND: python scripts/pull_nhd_geometry.py area && "
+            "python scripts/build_nhd_geometry.py"),
+        bigquery.ScalarQueryParameter("n", "INT64", int(a.n)),
+        bigquery.ScalarQueryParameter("g", "FLOAT64", round(job.total_bytes_processed/1024**3, 3)),
+        bigquery.ScalarQueryParameter("no", "STRING",
+            f"THE BIG RIVERS. NHD draws a river as a line only while it is narrow; once it is wide "
+            f"it becomes a polygon here and its flowline degrades to ftype 558 ArtificialPath. "
+            f"Measured on the Indiana slice: Wabash River has 46 ftype-460 LINE segments against "
+            f"1,947 ArtificialPath; White River 99 vs 1,921; Tippecanoe 14 vs 1,274. So "
+            f"in_nhd_flowline_geom alone holds roughly 2% of the Wabash and any distance-to-river "
+            f"measure near a major river is wrong without this table. {a.total_km2:,} km2 of river "
+            f"surface over {a.n:,} polygons; only {a.named:,} carry a gnis_name, because NHD names "
+            f"the flowline rather than the area. NO AUTHORITATIVE INDIANA TEST EXISTS for this "
+            f"layer - the estate holds no NHDArea table and no state polygon - so "
+            f"in_indiana_counties_87of92 is intersection with the union of the 87 county polygons "
+            f"in in_queue_counties, and FALSE does not prove a feature is outside Indiana.")])
+).result()
+print(f"  registered {AREA} in indiana_app._registry")
 
 # ---------------------------------------------------------------------------------------------
 # APPEND to energy.registry_sources. This INSERT is the ONE permitted write to the read-only
@@ -212,12 +323,32 @@ ROWS = [
              "over 10 ha' is all three ftypes summed and silently includes the 661 marshes. "
              "ST_ISVALID passes on all rows."),),
 ]
+# `energy` is APPEND-ONLY to this session: an INSERT is the one permitted write, and there is no
+# UPDATE or DELETE available to take a mistake back. So the append has to be idempotent by
+# construction. INSERT ... SELECT ... WHERE NOT EXISTS makes a re-run with unchanged counts a no-op;
+# if the count HAS changed the new row is appended and its notes say which row it supersedes, since
+# correcting the earlier row in place is not something we are allowed to do.
 SQL = """
 INSERT INTO `energy-platfrom.energy.registry_sources`
  (source_name, endpoint, endpoint_kind, access, status, acquisition_method,
   what_it_provides, object_names, geography_state, measured_rows, notes)
-VALUES (@sn,@ep,@ek,@ac,@st,@am,@wp,@on,@gs,@mr,@no)"""
+SELECT @sn,@ep,@ek,@ac,@st,@am,@wp,@on,@gs,@mr,@no
+FROM (SELECT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM `energy-platfrom.energy.registry_sources`
+  WHERE endpoint = @ep AND IFNULL(measured_rows, -1) = @mr)"""
 for r in ROWS:
+    prior = list(client.query(
+        "SELECT measured_rows, COUNT(*) OVER () c FROM `energy-platfrom.energy.registry_sources` "
+        "WHERE endpoint = @ep ORDER BY measured_rows DESC LIMIT 1",
+        job_config=bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query")])))
+    if prior and prior[0].measured_rows != r["measured_rows"]:
+        r["notes"] += (f" SUPERSEDES an earlier row appended for this same endpoint that recorded "
+                       f"measured_rows={prior[0].measured_rows:,}; that count predated the "
+                       f"by-key backfill pass and understated the capture. `energy` is append-only "
+                       f"to the acquiring session, so the stale row could not be corrected in place "
+                       f"- read the highest measured_rows for this endpoint as current.")
     client.query(SQL, job_config=bigquery.QueryJobConfig(query_parameters=[
         bigquery.ScalarQueryParameter("sn", "STRING", r["source_name"]),
         bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query"),

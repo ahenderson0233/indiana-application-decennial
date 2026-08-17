@@ -63,7 +63,7 @@ try:
 except Exception:
     pass
 
-import json, os, time, threading, urllib.parse, urllib.request
+import json, os, time, threading, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from google.cloud import bigquery
 
@@ -93,6 +93,19 @@ LAYERS = [
          where="FTYPE=436 OR (FTYPE=390 AND AREASQKM>=0.1) OR (FTYPE=466 AND AREASQKM>=0.1)",
          fields="OBJECTID,PERMANENT_IDENTIFIER,GNIS_ID,GNIS_NAME,AREASQKM,ELEVATION,"
                 "REACHCODE,FTYPE,FCODE,RESOLUTION"),
+    # ⭐ NHDArea, ftype 460. THE BIG RIVERS, AND WITHOUT THIS THEY ARE ALMOST ENTIRELY ABSENT.
+    # NHD maps a river as a LINE only while it is narrow. Once it is wide enough to have two banks
+    # worth drawing, the water becomes a POLYGON in NHDArea and the line through it degrades to
+    # ftype 558 ArtificialPath. Measured on the Indiana slice:
+    #     Wabash River       46 ftype-460 line segments vs 1,947 ArtificialPath
+    #     White River        99 vs 1,921 · Tippecanoe 14 vs 1,274 · Mississinewa 11 vs 855
+    # So a "named ftype 460" pull - exactly what was specified - captures about 2% of the Wabash.
+    # Any "distance to the nearest river" built on lines alone is wrong for every major Indiana
+    # river, and wrong in the dangerous direction: it reports the big reliable water as far away.
+    # These polygons are the actual wetted surface and are the right thing to measure to.
+    dict(lid=9, name="area", where="FTYPE=460",
+         fields="OBJECTID,PERMANENT_IDENTIFIER,GNIS_ID,GNIS_NAME,AREASQKM,ELEVATION,"
+                "FTYPE,FCODE,RESOLUTION"),
 ]
 
 _lock = threading.Lock()
@@ -192,6 +205,12 @@ SCHEMAS = {
         _S("reachcode", "STRING"), _S("ftype", "INT64"), _S("fcode", "INT64"),
         _S("resolution", "INT64"), _S("_geom", "STRING"),
     ],
+    # NHDArea has NO reachcode field, so there is no huc8 to cut from it.
+    "area": [
+        _S("objectid", "INT64"), _S("permanent_identifier", "STRING"), _S("gnis_id", "STRING"),
+        _S("gnis_name", "STRING"), _S("areasqkm", "FLOAT64"), _S("elevation", "FLOAT64"),
+        _S("ftype", "INT64"), _S("fcode", "INT64"), _S("resolution", "INT64"), _S("_geom", "STRING"),
+    ],
 }
 
 
@@ -211,6 +230,111 @@ def load(path, table, name):
     return tb.num_rows
 
 
+# -------------------------------------------------------------------------------------------------
+# BACKFILL BY EXPLICIT KEY. The tiled bbox is a fetch mechanism, not a definition of Indiana, and it
+# proved incomplete: NHD's Indiana slice spills past the state line (a reservoir at latitude 41.906
+# sits above the 41.90 box edge), so a first pass on the box alone captured 148,317 of 152,165 named
+# flowlines and 4,900 of 5,915 waterbodies. Widening the box would be guessing at how far to widen.
+# Instead ask BigQuery which permanent_identifiers of our cut are still missing and request exactly
+# those by key - which is the operator's own rule: select by an explicit key list where you can.
+# This makes the capture PROVABLY complete rather than probably complete.
+# -------------------------------------------------------------------------------------------------
+BACKFILL_SQL = {
+    "flowline": """
+      SELECT permanent_identifier FROM `energy-platfrom.energy.nhd_flowline`
+      WHERE UPPER(IFNULL(src_state,'')) = 'IN' AND ftype = 460 AND gnis_name IS NOT NULL""",
+    "waterbody": """
+      SELECT permanent_identifier FROM `energy-platfrom.energy.nhd_waterbody`
+      WHERE UPPER(IFNULL(src_state,'')) = 'IN'
+        AND (ftype = 436 OR (ftype = 390 AND areasqkm >= 0.1) OR (ftype = 466 AND areasqkm >= 0.1))""",
+}
+KEYFIELD = {"flowline": "permanent_identifier", "waterbody": "PERMANENT_IDENTIFIER"}
+# Flowline permanent_identifiers are 38-char brace-wrapped GUIDs, so 40 of them make a ~1.6 KB
+# IN(...) clause. 100 of them (~4.1 KB) is past what the service accepts and comes back HTTP 500.
+BATCH = 40
+
+
+def post(lid, body, retry_5xx=True):
+    """POST a query. retry_5xx=False when a 500 is EXPECTED and means 'that request was too big'.
+
+    Retrying a deterministic 500 is pure latency: the service refuses an over-long IN(...) clause
+    every time, so the three backoff sleeps burn 21 seconds before the caller can do the one thing
+    that actually helps, which is send a shorter list.
+    """
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(f"{BASE}/{lid}/query",
+                                         data=urllib.parse.urlencode(body).encode(), headers=UA)
+            with urllib.request.urlopen(req, timeout=180) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code < 500 or not retry_5xx or attempt == 3:
+                raise
+            time.sleep(2 ** attempt * 3)
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt * 3)
+
+
+def fetch_by_keys(lid, keyfield, fields, keys):
+    """Ask for an explicit key list, halving the batch whenever the service refuses it.
+
+    The service returns HTTP 500 - not a structured error - once the IN(...) clause gets too long.
+    The exact ceiling is undocumented and there is no point guessing a magic constant that will rot,
+    so back off by bisection until it answers, and never silently drop a key.
+    """
+    ids = "','".join(keys)
+    try:
+        d = post(lid, {"where": f"{keyfield} IN ('{ids}')", "outFields": fields,
+                       "returnGeometry": "true", "outSR": "4326",
+                       "geometryPrecision": str(GEOM_PRECISION), "f": "geojson"},
+                 retry_5xx=(len(keys) == 1))
+        return d.get("features", [])
+    except urllib.error.HTTPError:
+        if len(keys) == 1:
+            raise
+        mid = len(keys) // 2
+        time.sleep(0.5)
+        return (fetch_by_keys(lid, keyfield, fields, keys[:mid])
+                + fetch_by_keys(lid, keyfield, fields, keys[mid:]))
+
+
+def backfill(layer):
+    client = bigquery.Client(project="energy-platfrom")
+    name = layer["name"]
+    path = os.path.join(OUT, f"{name}.ndjson")
+    have = set()
+    for line in open(path, encoding="utf-8"):
+        pid = json.loads(line).get("permanent_identifier")
+        if pid:
+            have.add(pid.strip("{}").lower())
+    want = {r.permanent_identifier for r in client.query(BACKFILL_SQL[name])}
+    missing = sorted(p for p in want if p.strip("{}").lower() not in have)
+    print(f"  [{name}] Indiana slice wants {len(want):,}; NDJSON already holds "
+          f"{len(want) - len(missing):,}; fetching {len(missing):,} by key")
+    if not missing:
+        return 0
+    got, t0 = 0, time.time()
+    with open(path, "a", encoding="utf-8") as fh:
+        for i in range(0, len(missing), BATCH):
+            chunk = missing[i:i + BATCH]
+            for f in fetch_by_keys(layer["lid"], KEYFIELD[name], layer["fields"], chunk):
+                g = f.get("geometry")
+                if not g:
+                    continue
+                props = {k.lower(): v for k, v in (f.get("properties") or {}).items()}
+                props["_geom"] = json.dumps(g, separators=(",", ":"))
+                fh.write(json.dumps(props, separators=(",", ":")) + "\n")
+                got += 1
+            if (i // BATCH) % 10 == 0:
+                print(f"    ...{i + len(chunk):,}/{len(missing):,} requested, {got:,} returned "
+                      f"({time.time() - t0:.0f}s)", flush=True)
+            time.sleep(0.4)
+    print(f"  [{name}] backfilled {got:,} of {len(missing):,} requested")
+    return got
+
+
 if __name__ == "__main__":
     only = _sys.argv[1] if len(_sys.argv) > 1 else None
     for layer in LAYERS:
@@ -218,11 +342,15 @@ if __name__ == "__main__":
             continue
         print(f"=== pulling {layer['name']} (layer {layer['lid']}): {layer['where']}")
         path = os.path.join(OUT, f"{layer['name']}.ndjson")
-        if "--load-only" in _sys.argv and os.path.exists(path):
+        if ("--load-only" in _sys.argv or "--backfill" in _sys.argv) and os.path.exists(path):
             n = sum(1 for _ in open(path, encoding="utf-8"))
             print(f"  reusing {path} ({n:,} lines)")
         else:
             path, n = pull(layer)
+        # NHDArea has no counterpart table in `energy` (the estate holds nhd_flowline and
+        # nhd_waterbody only), so there is no authoritative key list to backfill against.
+        if "--backfill" in _sys.argv and layer["name"] in BACKFILL_SQL:
+            n += backfill(layer)
         assert n > 0, f"{layer['name']}: zero features - check the endpoint before believing this"
         got = load(path, f"_raw_nhd_{layer['name']}", layer["name"])
         print(f"  loaded {got:,} rows into {DS}._raw_nhd_{layer['name']}")
