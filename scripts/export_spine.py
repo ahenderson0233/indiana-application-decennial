@@ -1,5 +1,18 @@
 """Export the v0 map-spine artifacts from indiana_app into the repo's data/ tree.
 
+⛔ THIS SCRIPT AND export_sites_exact.py BOTH WRITE data/sites/*.geojson.gz, AND THEY DISAGREE.
+This one carries the v1 `has_si_signal` — about 847,400 flagged, 99% of it empty land.
+export_sites_exact.py carries the v2 flag: 24,275, non-residential and severity-gated.
+WHICHEVER RUNS LAST WINS.
+
+Running this on 2026-08-17 silently reverted the shipped payload to the old flag. Nothing errored
+and no panel went blank; the map would simply have shown 847,403 "seller-intent" parcels, almost
+all of them vacant land. `scripts/checkpoint.py` caught it on the next run by comparing the
+payload against the warehouse — which is the entire reason that check exists.
+
+**AFTER RUNNING THIS: run scripts/export_sites_exact.py, THEN scripts/checkpoint.py.**
+Treat the site files this script emits as the superseded generation.
+
 Outputs (all gzipped; the client decompresses natively via DecompressionStream):
   data/counties.geojson.gz     92 county polygons + full rollup stats (100% of parcels counted)
   data/sites/{fips}.geojson.gz per-county class-union parcels, EXACT geometry, full attributes
@@ -90,8 +103,10 @@ unassigned = list(client.query(f"""
 SELECT (SELECT COUNT(*) FROM `{DS}.in_sites` WHERE parcel_geog IS NOT NULL)
      - (SELECT COUNT(*) FROM `{DS}.in_sites_county`) AS n"""))[0].n
 si_unmapped = list(client.query(f"""
-SELECT COUNT(*) AS n FROM `energy-platfrom.energy.mat_si_plottable`
-WHERE state='IN' AND geom_kind='none'"""))[0].n
+-- reads the CLIP, not energy. An export is on the path to what the user sees, so the app must
+-- be rebuildable from indiana_app alone; build scripts may read energy, exports may not.
+SELECT IFNULL(SUM(rows_), 0) AS n FROM `{DS}.in_si_plottability`
+WHERE geom_kind = 'none'"""))[0].n
 reg = [dict(r) for r in client.query(
     f"SELECT table_name, source, n_rows, CAST(built_at AS STRING) AS built_at FROM `{DS}._registry` "
     f"QUALIFY ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY built_at DESC)=1 ORDER BY table_name")]
