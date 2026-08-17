@@ -77,6 +77,15 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 #evidence-body a:hover { text-decoration: underline; }
 .prov { font-size: 10.5px; color: #7a8a9c; margin-top: 3px; }
 .cannot { color: #a55; font-style: italic; }
+/* THE GOVERNING PRINCIPLE, given a place on screen. Operator, 2026-08-17: "everything should be
+   insightful and/or actionable that we display anywhere to the user." A .sowhat block says what a
+   figure CHANGES about a siting decision, in the reader's terms — never a restatement of the number
+   above it. Deliberately distinct from .prov (which is provenance) and .hint (which is UI guidance).
+   G21 reuses this across every remaining surface, so keep it generic. */
+.sowhat { font-size: 12px; line-height: 1.5; color: #24405c; background: #f1f6fc;
+  border-left: 3px solid #2563eb; border-radius: 0 5px 5px 0;
+  padding: 7px 10px; margin: 7px 0 3px; }
+.sowhat b { color: #14304d; }
 .est-badge { display: inline-block; background: #fef2f2; color: #b91c1c; border: 1px dashed #dc2626;
   border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
 .unstar { font-size: 10.5px; margin-left: 6px; }

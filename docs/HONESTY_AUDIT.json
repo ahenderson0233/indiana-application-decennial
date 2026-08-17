@@ -1,11 +1,6 @@
 {
- "audited_at": "2026-08-17T17:20:59.946906+00:00",
+ "audited_at": "2026-08-17T18:59:14.792006+00:00",
  "checks_run": 13,
- "failures": 1,
- "findings": [
-  {
-   "check": "every committed loader has a table in _registry",
-   "detail": "73 loaders scanned \u00b7 1 name only tables that DO NOT EXIST\n         !! scripts/build_nhd_geometry.py -> ['in_nhd_flowline_geom', 'in_nhd_waterbody_geom']"
-  }
- ]
+ "failures": 0,
+ "findings": []
 }

@@ -241,12 +241,58 @@ try:
 except Exception as e:
     print(f"  (warehouse unreachable, skipped: {str(e)[:60]})")
 
+# ---------------------------------------------------------------------------------------------
+# BOOT CHECK — the defect class this audit could not see, because it reads SOURCE, not RUNTIME.
+#
+# 2026-08-17: a data-driven expression was given to `line-dasharray`. MapLibre does not accept a
+# data-driven value for that property, so it THREW during map construction. Every layer after the
+# throw — including the parcels — was never added. The page served 200, every asset loaded, this
+# audit reported zero findings, and the operator's report was "I can no longer see the parcels."
+# Nothing in the source is syntactically wrong; the property simply cannot take that value.
+#
+# Two defences, because neither alone is enough:
+#   1. STATIC (here): the paint properties MapLibre requires to be CONSTANT. If one of them is
+#      handed an expression array — ["case"...], ["match"...], ["get"...] — flag it.
+#   2. RUNTIME (app.js): `document.body.dataset.ready` is stamped only after the style loads and
+#      every layer is added. If the boot throws, the attribute is absent. Check it in a browser:
+#          await page.evaluate(() => document.body.dataset.ready)   // "1" == booted
+#      A source-only audit can never prove a map booted; only the browser can.
+CONSTANT_ONLY_PAINT = [
+    "line-dasharray", "line-gradient", "fill-antialias", "fill-extrusion-pattern",
+    "raster-fade-duration", "line-translate", "fill-translate", "icon-translate",
+    "text-translate", "circle-translate", "background-pattern",
+]
+EXPR_HEADS = ("case", "match", "step", "interpolate", "get", "coalesce", "has", "to-number")
+for rel in PAGES + SHARED_JS:
+    src = read(rel)
+    if not src:
+        continue
+    for prop in CONSTANT_ONLY_PAINT:
+        # find `"line-dasharray":` and look at what follows, up to the next property or close
+        for m in re.finditer(r'["\']' + re.escape(prop) + r'["\']\s*:\s*(.{0,120})', src, re.S):
+            tail = m.group(1).lstrip()
+            if not tail.startswith("["):
+                continue
+            inner = tail[1:].lstrip()
+            if inner[:1] in ('"', "'") and any(
+                    inner[1:].startswith(h) for h in EXPR_HEADS):
+                add(rel, "CONSTANT_ONLY_PAINT_GIVEN_EXPRESSION",
+                    f"'{prop}' is handed a data-driven expression. MapLibre requires a constant "
+                    f"here and THROWS during map construction — every layer added after it, "
+                    f"including the parcels, silently never appears")
+
+if not any(re.search(r"dataset\.ready\s*=", read(f)) for f in SHARED_JS + ["app.js"]):
+    add("app.js", "NO_BOOT_MARKER",
+        "no `document.body.dataset.ready` is stamped after the map finishes booting, so no "
+        "runtime check can distinguish 'booted' from 'threw halfway through addLayer'")
+
 by_kind = defaultdict(list)
 for f in findings:
     by_kind[f["kind"]].append(f)
 
 SEVERE = {"JS_REFS_MISSING_ID", "CONST_REDECLARED", "PAYLOAD_MISSING", "PAYLOAD_UNREADABLE",
-          "DUPLICATE_ID", "MISSING_PAGE", "READS_SUPERSEDED_TABLE"}
+          "DUPLICATE_ID", "MISSING_PAGE", "READS_SUPERSEDED_TABLE",
+          "CONSTANT_ONLY_PAINT_GIVEN_EXPRESSION"}
 for kind in sorted(by_kind, key=lambda k: (k not in SEVERE, k)):
     mark = "!!" if kind in SEVERE else "  "
     print(f"\n{mark} {kind}  ({len(by_kind[kind])})")

@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 278 of 285 registered objects reach a surface
+## 282 of 291 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -19,9 +19,11 @@ The instrument separates two roles, because the first version of this measuremen
 |---|---:|---|
 | `in_miso_facility_detail` | 40007 | `scripts/build_miso_facility_detail.py` |
 | `in_miso_poi_ladder` | 230286 | `—` |
+| `in_nhd_flowline_geom` | 160128 | `—` |
+| `in_nhd_waterbody_geom` | 6415 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
-| `in_water_parcel` | 532868 | `scripts/build_water_parcel.py` |
+| `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
 | `in_water_surface_inventory` | 1 | `scripts/build_water_county.py` |
 
@@ -41,6 +43,7 @@ headline can be audited rather than taken on trust:
 | `_indiana_census` | direct | `data.html`, `scripts/acceptance_run.py` |
 | `in_acs_county` | direct | `app.js` |
 | `in_acs_tract_vacancy` | direct | `si.html`, `scripts/export_context_layers.py` |
+| `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
@@ -160,7 +163,9 @@ headline can be audited rather than taken on trust:
 | `in_nfirs_incidentaddress_2023` | direct | `app.js` |
 | `in_nfirs_incidentaddress_2024` | direct | `app.js` |
 | `in_nfirs_structure_fires` | direct | `si.html`, `scripts/export_si_sources.py` |
+| `in_nhd_flowline_geom` | **none** | — |
 | `in_nhd_waterbody` | direct | `app.js` |
+| `in_nhd_waterbody_geom` | **none** | — |
 | `in_nonattainment` | direct | `app.js` |
 | `in_nrc_reactors` | direct | `app.js` |
 | `in_openstates_energy_bill_abstracts` | direct | `community.html`, `scripts/export_legislature.py` |
@@ -299,10 +304,13 @@ headline can be audited rather than taken on trust:
 | `in_water_aqueduct` | direct | `app.js` |
 | `in_water_county` | direct | `scripts/export_water.py` |
 | `in_water_cwns_2022` | direct | `scripts/export_context_layers.py` |
+| `in_water_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_water_parcel` | **none** | — |
 | `in_water_stress_basin` | **none** | — |
+| `in_water_stress_basin_geo` | direct | `scripts/export_water.py` |
 | `in_water_surface_inventory` | **none** | — |
 | `in_water_use` | direct | `app.js` |
+| `in_watershed_inventory` | direct | `scripts/export_water.py` |
 | `in_weather_stations` | direct | `scripts/export_context_layers.py` |
 | `in_wetlands` | direct | `app.js`, `scripts/build_site_gates.py` |
 | `in_wind_turbines` | direct | `scripts/export_context_layers.py`, `scripts/export_facilities.py` |

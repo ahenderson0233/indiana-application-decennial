@@ -713,27 +713,66 @@ document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => {
 const FILL_COLOR = ["case", ["==", ["get", "has_si_signal"], true], "#d97706",
   ["==", ["get", "occ_group"], "ci"], "#2563eb",
   ["==", ["get", "occ_group"], "agriculture"], "#059669", "#64748b"];
+/* G29 — PREFER THE EXACT DISTANCE WE SHIPPED; approximate only when we have none.
+ *
+ * The loop below measures from repPt() — the parcel's FIRST VERTEX — to one binned vertex per line.
+ * Both ends are wrong, it always OVERSTATES, and it can never return 0 even when the conductor
+ * physically crosses the parcel. Measured: on the 41,986 parcels a line actually crosses, this
+ * method returns a median 0.088 mi and up to 0.772 mi where the true answer is 0.0.
+ *
+ * `in_asset_distance_parcel` computes the real thing — ST_DISTANCE(parcel_geog, line_geog) — and
+ * export_sites_exact.py ships it as x_line_mi / x_sub_mi. Those cover the 532,868 screener
+ * candidates. Anything else (an uploaded CSV row with no parcel polygon, a parcel outside the
+ * candidate set) has no exact value and still needs the approximation, so the fallback stays.
+ *
+ * `_dist_exact` rides on every parcel so the evidence panel can say WHICH measurement it is
+ * showing. A number whose method is invisible is the defect that produced this fix. */
 function enrichDistances(feats) {
   for (const ft of feats) {
+    const p = ft.properties;
     const [lon, lat] = repPt(ft.geometry);
-    let best = null;
-    for (const s of binNear(state.subBins, lon, lat)) {
-      const d = havM(lat, lon, s.lat, s.lon);
-      if (!best || d < best.d) best = { d, s };
+
+    // ---- transmission line ----
+    if (p.x_line_mi != null) {
+      p._dline_mi = p.x_line_mi;          // exact: 0.0 when the line crosses the parcel
+      p._dline_kv = p.x_line_kv ?? null;  // null = voltage not published; never render as 0 kV
+      p._dline_on = !!p.x_line_on;
+      p._dist_exact = true;
+    } else {
+      let bl = null;
+      for (const v of binNear(state.lineBins, lon, lat)) {
+        const d = havM(lat, lon, v.lat, v.lon);
+        if (!bl || d < bl.d) bl = { d, v };
+      }
+      if (bl) { p._dline_mi = +(bl.d / MI).toFixed(2); p._dline_kv = bl.v.kv; }
+      p._dist_exact = false;
     }
-    if (best) { ft.properties._dsub_mi = +(best.d / MI).toFixed(2); ft.properties._dsub_kv = best.s.kv; ft.properties._dsub_name = best.s.name; }
-    let bl = null;
-    for (const v of binNear(state.lineBins, lon, lat)) {
-      const d = havM(lat, lon, v.lat, v.lon);
-      if (!bl || d < bl.d) bl = { d, v };
+
+    // ---- substation ----
+    if (p.x_sub_mi != null) {
+      p._dsub_mi = p.x_sub_mi;
+      p._dsub_kv = p.x_sub_kv ?? null;
+      p._dsub_name = p.x_sub_name || null;
+    } else {
+      let best = null;
+      for (const s of binNear(state.subBins, lon, lat)) {
+        const d = havM(lat, lon, s.lat, s.lon);
+        if (!best || d < best.d) best = { d, s };
+      }
+      if (best) { p._dsub_mi = +(best.d / MI).toFixed(2); p._dsub_kv = best.s.kv; p._dsub_name = best.s.name; }
     }
-    if (bl) { ft.properties._dline_mi = +(bl.d / MI).toFixed(2); ft.properties._dline_kv = bl.v.kv; }
+
+    // ---- connection point (bus). Still client-side: no exact bus distance is shipped yet. ----
+    // ⚠ GUARDED. enrichDistances runs inside the county fetch's .then(), so if poiList had not
+    // loaded yet this loop threw "state.poiList is not iterable" and took the WHOLE function with
+    // it — every parcel in that county silently lost EVERY distance, substation and line included,
+    // with the rejection swallowed by the promise chain. Found by calling this directly in a browser.
     let bp = null;
-    for (const q of state.poiList) {
+    for (const q of (Array.isArray(state.poiList) ? state.poiList : [])) {
       const d = havM(lat, lon, q.lat, q.lon);
       if (!bp || d < bp.d) bp = { d, q };
     }
-    if (bp) { ft.properties._dpoi_mi = +(bp.d / MI).toFixed(1); ft.properties._dpoi_name = bp.q.name; ft.properties._dpoi_median = bp.q.median; }
+    if (bp) { p._dpoi_mi = +(bp.d / MI).toFixed(1); p._dpoi_name = bp.q.name; p._dpoi_median = bp.q.median; }
   }
 }
 function addCountyLayers(fips, fc) {
@@ -1605,11 +1644,45 @@ function openParcelEvidence(p, fips) {
       Screened on the recorded acreage; the exact figures are shown above unchanged so you can judge them.
       126 of 1,200,924 class-union parcels show this — see docs/HANDOFF.md.</div>` : ""}
     <div class="prov">${prov("in_sites")} · exact figures from mat_parcel_outdoor_exact (footprint∩parcel measured, shared buildings not double-counted) · density is your adjustable assumption, not an answer</div>
-    <h3>Grid access (P2) — computed to nearest mapped feature</h3><table>
-      ${row("nearest substation", p._dsub_name ? `${p._dsub_name} (${p._dsub_kv} kV) · ${p._dsub_mi} mi` : null)}
-      ${row("nearest transmission line", p._dline_mi != null ? `${p._dline_kv} kV · ${p._dline_mi} mi (to nearest vertex)` : null)}
-      ${row("nearest MISO POI", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
-    <div class="prov">${prov("in_substations")} · distances are floors against mapped features, not service guarantees</div>
+    <h3>Power &amp; grid — how hard is it to get power here?</h3><table>
+      ${row("nearest substation", p._dsub_name
+          ? `${p._dsub_name}${p._dsub_kv ? ` (${p._dsub_kv} kV)` : " (voltage not published)"} · ${p._dsub_mi === 0 ? "on this parcel" : `${p._dsub_mi} mi`}`
+          : null)}
+      ${row("nearest transmission line", p._dline_mi != null
+          ? `${p._dline_kv ? `${p._dline_kv} kV` : "voltage not published"} · ${p._dline_on ? "<b>runs across this parcel</b>" : `${p._dline_mi} mi`}`
+          : null)}
+      ${row("nearest connection point", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
+    ${p._dline_mi != null ? `<div class="sowhat"><b>What this means.</b> ${
+      p._dline_on
+        ? "A transmission line already crosses this parcel, so there is <b>no greenfield line to build</b> — but expect an easement and conductor-clearance constraint that shapes where you can put steel."
+        : (p._dline_mi <= 1
+            ? `A line is ${p._dline_mi} mi away — close enough that a spur is usually a cost item rather than a route-and-permit project.`
+            : `The nearest line is ${p._dline_mi} mi away, so budget for a build and its own right-of-way.`)
+      } ${
+      p._dline_kv == null
+        ? "⚠ This line's voltage is not published, so its capacity is unknown — it is <b>not</b> a low-voltage line, we simply cannot tell."
+        : (p._dline_kv >= 345
+            ? `At ${p._dline_kv} kV this is backbone transmission, the class that can carry a hyperscale campus.`
+            : (p._dline_kv >= 100
+                ? `At ${p._dline_kv} kV this is sub-transmission — workable, but confirm it can take your load.`
+                : `At ${p._dline_kv} kV this is a distribution-class lateral and <b>will not serve a 300 MW load</b> without a major upgrade, whatever its distance says.`))
+      }</div>` : ""}
+    <div class="prov">${prov("in_substations")} · ${p._dist_exact
+        ? "distances measured edge-to-edge against the real line and parcel geometry, so 0.0 mi means the asset physically crosses the parcel"
+        : "⚠ approximate — measured from a representative point on the parcel, so a true 0.0 is reported as a small non-zero distance"} · distances are floors against mapped features, not service guarantees</div>
+    ${p.x_wat_mi != null ? `
+    <h3>Water — can this site be cooled?</h3><table>
+      ${row("nearest water source", `${p.x_wat_name || "unnamed"} (${p.x_wat_kind || "surface water"}) · ${p.x_wat_on ? "<b>on this parcel</b>" : `${p.x_wat_mi} mi`}`)}
+    </table>
+    <div class="sowhat"><b>What this means.</b> ${
+      p.x_wat_on
+        ? "A surface-water source sits on this parcel, so a cooling intake is a site-design question rather than a pipeline project — subject to a withdrawal permit."
+        : (p.x_wat_mi <= 1
+            ? `Water is ${p.x_wat_mi} mi away — close enough that an intake and pipe are a normal cost line.`
+            : `The nearest source is ${p.x_wat_mi} mi away; past about a mile, piping water becomes its own project with its own easements.`)
+      }${p.x_wat_greatlake ? " ⚠ The nearest source is <b>Lake Michigan</b>, which is governed by the Great Lakes Compact — a materially harder withdrawal regime than an inland river, whatever the short distance suggests." : ""}
+      Power generation is already Indiana's largest water user — 3,822 of 7,177 Mgal/d withdrawn statewide — and <b>99.5% of that is drawn from surface water</b>, the same kind of source measured above. A new thermal load is competing for the resource this parcel would draw on, not an untouched one.</div>
+    <div class="prov">${prov("in_water_distance_parcel")} · nearest NHD water <b>source</b> (reservoir, lake or named river) by exact geometry; swamp and marsh are excluded because a wetland is something to permit around, not draw from</div>` : ""}
     <h3>Seller intent (P1)</h3><table>
       ${row("carries SI signal", p.has_si_signal === true ? "yes" : (p.has_si_signal === false ? "no" : null))}
       ${row("signal types / events", p.si_signal_types != null ? `${p.si_signal_types} / ${p.si_signal_events}` : null)}

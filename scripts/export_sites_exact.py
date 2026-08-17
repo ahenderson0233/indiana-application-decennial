@@ -69,11 +69,23 @@ SELECT sc.county_fips, s.* EXCEPT(parcel_geog, {", ".join(V1_SI)}),
        f.si_keying, f.si_date_basis,
        IFNULL(f.si_excluded_residential, 0)  AS si_excl_resid,
        IFNULL(f.si_excluded_low_severity, 0) AS si_excl_lowsev,
+       -- G29: EXACT parcel-to-asset distance, measured polygon-to-geometry in BigQuery.
+       -- The map computes these client-side from the parcel's FIRST VERTEX, which always
+       -- overstates and can never return 0. Shipping the exact value lets app.js prefer it and
+       -- fall back to its approximation only where one was never computed (e.g. uploaded rows).
+       d.line_mi AS x_line_mi, d.line_kv AS x_line_kv, d.line_on_parcel AS x_line_on,
+       d.sub_mi  AS x_sub_mi,  d.sub_kv  AS x_sub_kv,  d.sub_name AS x_sub_name,
+       -- WATER, at parcel grain and by the same exact method (G12d). Cooling is a first-order
+       -- constraint for a hyperscale DC, and this is the half of G12 that never reached a surface.
+       w.water_mi AS x_wat_mi, w.water_on_parcel AS x_wat_on, w.water_name AS x_wat_name,
+       w.water_kind AS x_wat_kind, w.nearest_is_great_lake AS x_wat_greatlake,
        ST_ASGEOJSON(s.parcel_geog) AS gj
 FROM `{DS}.in_sites` s
 JOIN `{DS}.in_sites_county` sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates` g USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2` f USING (parcel_source, parcel_key)
+LEFT JOIN `{DS}.in_asset_distance_parcel` d USING (parcel_source, parcel_key)
+LEFT JOIN `{DS}.in_water_distance_parcel`  w USING (parcel_source, parcel_key)
 WHERE s.occ_group='ci' OR s.mw_datacenter_4_per_acre>=25
    OR s.has_vacancy_signal OR s.has_si_signal OR IFNULL(f.has_si_signal, FALSE)
 ORDER BY sc.county_fips"""
@@ -84,9 +96,21 @@ def jd(o):
     if isinstance(o, (datetime.date, datetime.datetime)): return o.isoformat()
     if isinstance(o, decimal.Decimal): return float(o)
     return str(o)
+
+# COORDINATE PRECISION. ⚠ This function had a silent defect for its whole life: it was called as
+# rc(json.loads(gj)) — i.e. with a GeoJSON geometry, which is a **dict** — and it handled only float
+# and list, so it hit `return x` and returned the geometry COMPLETELY UNROUNDED. The rounding the
+# author intended never once ran, and the shipped files carry up to 16 decimal places.
+# Measured consequence: data/sites/ is 334 MB, and 45% of that is precision nobody can use.
+#
+# 6 decimals is ~0.11 m at Indiana's latitude. County assessor parcel boundaries are not accurate to
+# a metre, let alone to the 0.01 mm that 13 decimals implies, so this discards no real information —
+# it discards the false precision of a float printed in full. The dict branch is the fix.
+NDP = 6
 def rc(x):
-    if isinstance(x, float): return round(x, 7)
-    if isinstance(x, list): return [rc(v) for v in x]
+    if isinstance(x, float): return round(x, NDP)
+    if isinstance(x, list):  return [rc(v) for v in x]
+    if isinstance(x, dict):  return {k: rc(v) for k, v in x.items()}   # <- the branch that was missing
     return x
 
 # The SI detail only means something on a flagged parcel. Emitting a dozen nulls on 1.2M
@@ -96,7 +120,14 @@ SI_DETAIL = ("si_signal_types", "si_signal_events", "si_signals", "si_first_even
              "si_last_event_date", "si_events_3y", "si_events_5y", "si_events_10y",
              "si_keying", "si_date_basis", "si_excl_resid", "si_excl_lowsev")
 
-counts, no_geom, n_si = {}, 0, 0
+# G29 exact-distance keys. in_asset_distance_parcel covers the 532,868 SCREENER CANDIDATES, not all
+# ~1.2M rendered parcels, so most features have no exact value. An absent key is the honest encoding
+# of "not computed for this parcel" and lets app.js fall back to its own measurement; emitting six
+# nulls on 700k features would add megabytes and say nothing.
+X_DIST = ("x_line_mi", "x_line_kv", "x_line_on", "x_sub_mi", "x_sub_kv", "x_sub_name",
+          "x_wat_mi", "x_wat_on", "x_wat_name", "x_wat_kind", "x_wat_greatlake")
+
+counts, no_geom, n_si, n_exact, n_online, n_wat, n_waton = {}, 0, 0, 0, 0, 0, 0
 def flush(fips, buf):
     with gzip.open(os.path.join(OUT, f"{fips}.geojson.gz"), "wt", encoding="utf-8", compresslevel=6) as f:
         json.dump({"type": "FeatureCollection", "features": buf}, f, separators=(",", ":"), default=jd)
@@ -111,6 +142,14 @@ for r in it:
     if d.get("has_si_signal"): n_si += 1
     else:
         for k in SI_DETAIL: d.pop(k, None)
+    if d.get("x_line_mi") is not None:
+        n_exact += 1
+        if d.get("x_line_on"): n_online += 1
+    if d.get("x_wat_mi") is not None:
+        n_wat += 1
+        if d.get("x_wat_on"): n_waton += 1
+    for k in X_DIST:                      # drop the key entirely rather than ship a null
+        if d.get(k) is None: d.pop(k, None)
     if fips != cur and cur is not None:
         flush(cur, buf); buf = []
     cur = fips
@@ -123,5 +162,13 @@ print(f"\nRE-EXPORT COMPLETE: {len(counts)} counties written, {total:,} features
       f"{no_geom} skipped for null geometry; {with_exact} files on disk", flush=True)
 print(f"carrying an ADMITTED seller-intent signal (v2, non-residential, severity-gated): "
       f"{n_si:,} features", flush=True)
+print(f"carrying EXACT G29 grid distances: {n_exact:,} features, of which "
+      f"{n_online:,} have a transmission line PHYSICALLY ON the parcel (0.0 mi) — the case the "
+      f"map's first-vertex method reported as ~0.55 mi", flush=True)
+print(f"carrying EXACT water distance (G12d): {n_wat:,} features, of which {n_waton:,} have a "
+      f"water SOURCE physically on the parcel", flush=True)
+mb = sum(os.path.getsize(os.path.join(OUT, f)) for f in os.listdir(OUT) if f.endswith(".gz")) / 1e6
+print(f"data/sites/ on disk: {mb:,.0f} MB at {NDP} decimal places "
+      f"(~{0.11 if NDP==6 else 0.011:.2f} m; assessor boundaries are not accurate to that)", flush=True)
 if len(counts) != 92:
     print(f"WARNING: wrote {len(counts)} counties, expected 92 — the set is NOT consistent.", flush=True)
