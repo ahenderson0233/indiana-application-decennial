@@ -362,7 +362,8 @@ below, **add its row here in the same edit.**
 | **G11** | **Sentiment statuses not reaching the map** | 🔴 **OPEN — UNVERIFIED** | Measure the vocabulary diff between `county_context.json` (map) and `receipts.json.gz` + `in_dc_actions_resolved` (Community) **before** changing anything |
 | **G11** | **Verified county actions never reached the map** | ✅ **DONE** | 33 counties carry a verified action and the map called **13 of them "quiet"** — Cass has a **ban**, Floyd/Huntington/Whitley **moratoriums**, all with `has_local_restriction=false`. And **10 counties have APPROVED a data centre** with no representation at all. Now a categorical shading + legend |
 | **G29** | **Parcel→asset distance is measured wrong on the map** | 🔴 **OPEN** | `repPt()` uses the parcel's **first vertex** and one binned vertex per line, so a line crossing a parcel reads ~0.55 mi instead of **0.0**. Always overstates. ⭐ The screener already does this exactly in BigQuery — two methods in one app |
-| **G12** | **💧 WATER — in `energy`, reaches nothing** | 🔴 **OPEN** | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
+| **G12** | **💧 WATER** | 🟡 **COUNTY GRAIN LANDED** | `in_water_county` (92/92) + `in_water_stress_basin` (34). Statewide 7,176.7 Mgal/d, thermoelectric 3,822.0. **Parcel-grain still open** (NHD proximity, ECHO discharge). Two silent traps hit and fixed; groundwater/NWIS genuinely NOT held |
+| ~~G12 old~~ | | | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
 | **G13** | **Voltage: filter, colour, and AUDIT first** | 🔴 **OPEN** | Some voltages mislabeled. **Audit before colouring** — colouring by a wrong field renders the error in high contrast, and the bad kV already feeds the screener's substation filter. Unknown voltage gets its own colour, never the bottom of the scale |
 | **G14** | **Re-scrape missing signal dates** | 🔴 **OPEN** | **90% of tax-delinquency records (8,523 of 9,459) are undated** and it is our largest signal. Establish first whether the source publishes a date we failed to capture |
 | **G15** | **Future capacity — IURC + ISO/RTO, plottable** | 🔴 **OPEN** | 6 utilities held, but location/cost/in-service extracted at **0%**. Re-extract, then locate in two tiers: exact join for existing assets, **uncertainty rings** for vaguely-described new ones |
@@ -931,7 +932,81 @@ do not differ. Measuring is what caught it.
 **Blocked as of 2026-08-17:** `pull_pjm_injection.py` is mid-harvest. Starting the withdrawal run
 now would be exactly the collision the constraint forbids.
 
-### G12 — 💧 water data is in `energy` and reaches nothing (operator, 2026-08-17)
+### G12 — 💧 WATER: county grain LANDED; the parcel-grain half is still open
+
+**Built 2026-08-17.** `in_water_county` (92 of 92 counties) and `in_water_stress_basin` (34 basins).
+Statewide withdrawal **7,176.7 Mgal/d**, of which **thermoelectric cooling is 3,822.0** — power
+generation is already the largest water user in the state, which is the context a new large load
+arrives into.
+
+#### The water estate we hold — enumerate this before adding anything (G25)
+
+| table | rows | state |
+|---|---:|---|
+| `nwi_wetlands` | 40,575,843 | already used for the wetland gate |
+| `nhd_flowline` | 39,542,980 (**2,415,369 Indiana**) | 🔴 **not used** — rivers/streams |
+| `nhd_waterbody` | 10,431,981 (**186,667 Indiana**) | 🔴 **not used** — lakes/reservoirs |
+| `nfhl_flood_zones` | 5,554,986 | already used for the flood gate |
+| `water_cwns_2022` + `vw_cwns_flow` | 1,118,786 / 340,457 | ✅ clipped |
+| `water_aqueduct` | 68,506 (**34 Indiana basins**) | ✅ clipped |
+| `fema_nri_counties` | 3,232 (**92 Indiana**) | ✅ drought risk clipped |
+| `water_use` | 3,223 (**92 Indiana**) | ✅ clipped |
+| `drought_by_state` · `water_drought_monitor` | small | 🟡 state grain — context only |
+| `groundwater_sites` · `vw_state_water_dc_context` | 50 rows each | 🔴 **a COUNT, not the sites.** Indiana = **10,802 groundwater monitoring sites**, 165 data centres, 15.3 DCs per 1,000 sites (rank 12 for DCs, 39 for groundwater density). We hold **only the number** |
+
+#### 🔴 NWIS / groundwater: searched for, and genuinely NOT held
+
+Operator expected NWIS and groundwater data in the warehouse. **Measured: it is not there.** A full
+sweep for `nwis|gw|ground|aquif|spring|depth|level|subsurf|geolog|soil` returns no USGS NWIS table —
+the only groundwater objects are the two 50-row state-level rollups above, which carry a *count* of
+Indiana's 10,802 monitoring sites and none of the sites themselves.
+
+**What that means for siting:** we can say Indiana has a lot of groundwater monitoring and is a
+data-centre-heavy state relative to it (rank 12 vs 39). We **cannot** answer *"is there groundwater
+under this parcel, at what depth, and is the aquifer declining"* — which is the question a
+DC using well water actually asks. `water_aqueduct.gtd_*` (groundwater table decline) is basin
+grain and is the closest proxy we hold.
+
+**Acquisition item:** USGS NWIS site inventory + groundwater levels for Indiana (public API,
+`waterservices.usgs.gov`). ⚠ Per G25, re-check `energy.__TABLES__` and `registry_sources` first —
+this sweep was name-based and a differently-named table could still exist.
+| ⭐ **`echo_cwa_facilities`** | 524,512 (**13,217 Indiana**) | 🔴 **not used — and it is the discharge answer.** EPA ECHO Clean Water Act / NPDES permitted dischargers. **1,147 Indiana facilities carry a design flow, totalling 4,436 MGD.** The registry lists `epa_echo_dmr` as *"pending"* while **this is already loaded** |
+| `epa_echo_dmr` | — | 🟡 `pending` — the per-outfall discharge *measurements*. The facility layer above is held; the monitoring series is not |
+
+⛔ **AND `echo_cwa_facilities` IS ITSELF UNDER-CLIPPED — a G27 case, and a disabling one.**
+Its 17 columns include **`faclong` but NO `faclat`**. Longitude without latitude cannot place a
+single one of the 13,217 facilities on a map. Re-clip before building anything on it; a
+"13,217 located facilities" claim would be false today.
+
+#### ⚠ TWO TRAPS, BOTH SILENT, BOTH HIT ON THE FIRST BUILD
+
+1. **`water_cwns_2022.facid` is NULL on every row.** The obvious join matched nothing and **all 92
+   counties silently lost their wastewater data** while the script reported success. The real key is
+   `af_nbr` → `facility_id`, keeping the 2-digit state prefix and dropping the next two characters —
+   established by testing four candidate transformations, not by reasoning about the format.
+2. ⭐ **`vw_cwns_flow` is one row per facility PER SURVEY YEAR** (`/contents/1984/`, `/1986/`, …),
+   fan-out **9.79**. Summing across it adds each plant once per survey it ever appeared in and
+   **inflates every flow roughly tenfold** — while looking entirely plausible. Fixed by taking the
+   latest survey year per facility.
+
+Also corrected: the first version hand-rolled its own CWNS aggregation and thereby **missed
+`flow_existing_industrial_mgd`** — the most relevant flow for a data centre, which discharges as an
+industrial user. G25 in its exact form: look at what we hold before rebuilding it badly.
+
+#### 🔴 STILL OPEN — the parcel-grain half, which is the actual screening dimension
+
+County totals tell you the context; they do not tell you whether **this parcel** can get water.
+That needs NHD proximity, and we hold the data:
+
+- **Water source** — nearest reservoir (ftype 436, 3,659 in Indiana), lake ≥10 ha (2,301 of 186,667)
+  or named river (ftype 460). ⚠ **ftype 466 is swamp/marsh — a constraint, not a source**, and
+  336/420/428/558 are ditches, conduits, pipelines and artificial paths. Decode the codes before
+  screening on them.
+- **Discharge** — `epa_echo_dmr` for permitted discharge volumes.
+- Then a `nearest_water_mi` column beside `nearest bus`, subject to the **G29 distance fix**: use
+  `ST_DISTANCE` against real geometry so a river crossing a parcel reads **0.0**, not 0.55.
+
+### G12 (original note) — water data is in `energy` and reaches nothing (operator, 2026-08-17)
 
 *"We also do not have water data currently hitting the app — this is located in energy BQ and should
 be wired, as applicable."*

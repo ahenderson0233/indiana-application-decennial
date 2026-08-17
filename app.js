@@ -313,7 +313,12 @@ const METRIC_LEGEND = {
     <span class="swatch" style="background:#15803d"></span> has approved one ·
     <span class="swatch" style="background:#f2f2f0;border:1px solid #cbd5e1"></span> nothing recorded.
     <b>Verified at an official source.</b> Grey means we found nothing — <b>not that nothing
-    exists</b>; Indiana's rules are mostly county moratoria no code library carries.`,
+    exists</b>; Indiana's rules are mostly county moratoria no code library carries.
+    <br><b>A restriction outranks a development.</b> 10 counties have approved a data centre and
+    <b>6 of them are still amber or red</b> — Lake County has an approval <i>and</i> a moratorium.
+    An existing project does not erase a ban, so the colour shows the restriction. The approval is
+    still worth knowing: a county that has said yes before may be readier to say yes again, which
+    is why it is kept as its own fact rather than averaged away.`,
   opposition_intensity: `Low <span class="swatch" style="background:#eef6ee"></span>
     <span class="swatch" style="background:#fde68a"></span>
     <span class="swatch" style="background:#f59e0b"></span>
