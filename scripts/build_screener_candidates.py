@@ -56,11 +56,24 @@ WITH cand AS (
 ),
 -- MISO: INJECTION. Generator-side. Present so a co-located generation play can be screened,
 -- NOT as an answer to "can this site be served".
+-- ⛔ THE ACTUAL IS A **MINIMUM** OVER BINDING CONSTRAINTS, NOT A MEDIAN OVER THE CONSTRAINT SET.
+-- This query previously took `median_mw` and it was badly wrong. Measured 2026-08-17: median_mw
+-- averages ~1,193 MW across the 642 Indiana POIs while the ACTUAL at a 300 MW request is 0 MW on
+-- 641 of 642, because facilities_at_zero averages 15.8 of 59.8 monitored facilities - the binding
+-- constraints are already at their limit in the base case. A median mixes the one constraint that
+-- sets the answer in with dozens that do not, so it reads as ~1,193 MW of capacity that is not
+-- there. The worst/median/best triple was never a methodology, it was a workaround for a probe run
+-- at pmax_request=99999 that returned worst_mw=0 on ~88% of POIs.
 bus_inj AS (
-  SELECT bus_name AS nm, poi_name AS poi, kv, median_mw AS mw, worst_mw, best_mw,
-         worst_binding_facility AS binding, ST_GEOGPOINT(lon, lat) AS g
-  FROM `{DS}.in_bus_headroom_miso`
-  WHERE location_status = 'indiana' AND lat IS NOT NULL AND lon IS NOT NULL
+  SELECT m.bus_name AS nm, m.poi_name AS poi, m.kv,
+         l.headroom_mw AS mw,          -- ACTUAL at the 300 MW rung (min over binding constraints)
+         l.request_fits AS fits_300,
+         m.worst_mw, m.best_mw,
+         m.worst_binding_facility AS binding, ST_GEOGPOINT(m.lon, m.lat) AS g
+  FROM `{DS}.in_bus_headroom_miso` m
+  LEFT JOIN `{DS}.in_bus_headroom_miso_ladder` l
+    ON l.poi_name = m.poi_name AND l.request_mw = 300
+  WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL
 ),
 -- PJM: WITHDRAWAL. Load-side. THIS is the direction a data centre needs.
 bus_wd AS (

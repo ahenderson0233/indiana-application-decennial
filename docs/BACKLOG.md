@@ -183,6 +183,117 @@ in `docs/RTO_DIRECTIONS.md`; partial coverage is expected and fine. Request size
 (`request_mw`), never one table per size, so the existing 300 and 100 rungs fold in rather than
 duplicate. Sent to the in-flight agent as a scope extension.
 
+### G22 — 🔴 THE HEADROOM METRIC WAS WRONG, AND THE CALIBRATION GAP IS NOW MEASURED
+
+Operator, 2026-08-17: *"we use worst, median, and best case scenarios, and we should really only be
+presenting the 'actuals' as Orennia does"*, then *"we should be using Orennia as the baseline that we
+are attempting to recreate, so ensure that our numbers largely resemble theirs."*
+
+**A. The defect, found and fixed same-day.** `export_grid_siting.py` and
+`build_screener_candidates.py` both published **`median_mw`** as the headline MISO figure.
+
+⛔ **Headroom is a MINIMUM over binding constraints. A median over the constraint set is not a
+weaker version of it — it is a different quantity.** A median mixes the one facility that sets the
+answer in with dozens that do not bind at all.
+
+| MISO injection, 642 Indiana POIs | value |
+|---|---|
+| `median_mw` — **what we published this morning** | **1,194 MW** average |
+| **actual** (min over binding constraints) | **0.2 MW** average |
+| POIs with actual headroom > 0 at a 300 MW request | **1 of 642** |
+
+Cross-checked against the pre-existing `in_bus_headroom_300`: **both say 1 of 642**, so the ladder is
+faithful. Cause: `facilities_at_zero` averages **15.8 of 59.8** monitored facilities — the binding
+constraints are already at their limit in the base case. The worst/median/best triple was never a
+methodology; it was a **workaround for a degenerate probe** run at `pmax_request=99999` that returned
+`worst_mw=0` on ~88% of POIs. Fixed: the headline now comes from `in_bus_headroom_miso_ladder` (the
+actual at each request size); worst/median/best survive only as `ctx_*` fields, never as the answer.
+
+**B. Calibration against the baseline — we are now directionally right and still far too pessimistic.**
+
+Their Indiana-heavy extract (constraint areas DEI, IPL, NIPS, SIGE), 2,023 buses, both directions,
+upgrade tiers 0–4:
+
+| direction | tier | median MW | buses with >0 |
+|---|---|---:|---:|
+| Injection | **0** | **0** | 795 of 2,023 (**39.3%**) |
+| Injection | 2 | 68 | 1,187 |
+| Injection | 4 | 179 | 1,862 (**94%**) |
+| Withdrawal | **0** | **0** | 691 of 2,023 (34.2%) |
+| Withdrawal | 4 | 71 | 1,330 |
+
+✅ **Their tier-0 median is also 0 MW** — so ~0 is the honest tier-0 answer and the 1,194 MW we were
+publishing was indefensible.
+❌ **But they show 39.3% of buses with some tier-0 injection headroom and we show 0.16%.**
+
+**B2. ⭐ ROOT CAUSE OF THE ZEROS: OUR STUDY IS FOUR CYCLES STALE. AUDITED 2026-08-17.**
+
+Operator: *"I positively know that Orennia would never have a bus headroom value of 0.2 MW, so this
+should be audited."* Audited. (Precision first: **no individual bus reads 0.2 MW** — that is the mean
+over 642 POIs of which 641 are exactly 0.0. The objection still lands.)
+
+First hypothesis — that they run a *greenfield* case while we run the queue-stacked case — is
+**DISPROVED**. Their `Interconnection Scenario` is `ISO Base Case` and their
+`Generator Modeling Assumptions` is *"Active queue generators up to **DPP 2025** as of Phase 1"*.
+That is the same MISO DPP family we use. Same question, same model type.
+
+**The difference is VINTAGE:**
+
+| | powerflow case | transmission modelling |
+|---|---|---|
+| **ours** | **`DPP-2021-Cycle`** | (2021-era) |
+| **theirs** | **`DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final`**, study year 2030 Summer Peak | **"MTEP 2025 Upgrades as of Jan 2026"** |
+
+**Why a 2021 vintage pins everything at zero:** a DPP-2021 queue stack models the grid as saturated
+by every project queued in 2021 — the large majority of which have since **withdrawn** — while
+omitting four years of MTEP transmission upgrades that have actually been built since. The result is
+a model of a grid that is full of generation that never got built and missing wires that now exist.
+That is not a wrong calculation; it is a correct calculation on a stale case.
+
+**Solution, and it is already on the list: ⭐ G7d.** The catalogued-but-unbuilt
+**MISO POI Analysis Heatmap (CartoVista, FERC) is explicitly `DPP2025`** — the *same cycle* the
+vendor uses — with 19,223 buses. So G7d is not merely a 30× coverage upgrade, **it is the vintage
+fix and the calibration fix at once.** Promote it to the top of the grid work.
+
+⚠ Until it lands, any MISO headroom figure we show must carry its vintage on the face of it. A
+2021-cycle zero presented without that label reads as *"this bus is full"* when it means *"our model
+of this bus is four years old"*.
+
+**C. The gap is the UPGRADE TIER, and we have no such dimension.** Their capacity climbs
+0 → 8 → 68 → 114 → 179 MW as tiers 0→4 are allowed; at tier 4, 94% of buses have headroom. Our
+single figure is effectively *tier 0, over only the constraint set MISO chose to publish*. Three
+things close it, in order:
+1. **Add upgrade tiers** — "what could this bus take if we paid for N upgrades" is the question a
+   developer actually asks, and it is where essentially all the capacity is. Cost and lead time per
+   tier come from their cost file's shape (`Total Upgrade Cost ($MM)`, `Min/Max Lead Time (Years)`).
+2. ⭐ **G7d CartoVista** — 2,023 of their buses vs our 642 is a 3× coverage gap; CartoVista offers
+   **19,223**.
+3. **Derive withdrawal from DFAX** (G7d route 2) so the load direction exists in MISO at all.
+
+⚠ **Do not "tune" our numbers toward theirs.** The target is to reproduce their *method* — actual at
+a stated request size, per direction, per upgrade tier — and let our numbers land where the public
+data puts them. Matching an output without matching the method is fitting to an answer key.
+
+### G21 — tables must answer "so what?" (operator, 2026-08-17)
+
+*"Tables like the ones attached are great, but they aren't actionable. We need to explain why it
+matters for a DC or BESS developer, and organize the data in an actionable way — how would the user
+actually act on this data?"* Examples supplied: the **reliability (SAIDI/SAIFI)** table and the
+**gas capacity at Indiana borders** table.
+
+Both are raw dumps. Neither states what a developer should do:
+
+| table | what it shows now | what it must answer |
+|---|---|---|
+| **Utility reliability** | `SAIDI 2,766 · SAIFI 4.61` with no units, no expansion, no ranking | **SAIDI is minutes without power per year.** 2,766 min = **46 hours/yr** — that utility cannot support a data centre without serious on-site backup, while AES Indiana's 467 min ≈ 7.8 h/yr can. Rank utilities, band them against uptime tiers, and say what the difference costs in backup generation |
+| **Gas capacity at borders** | the same `2,000 MMcf/d` repeated once per year, 1,017 rows | **Can I run on-site generation here?** A 300 MW gas plant needs roughly 50 MMcf/d. Show capacity *near the site*, how much is already contracted, and how many MW it could actually support |
+
+**Rule to apply everywhere:** every table gets (1) a one-line *why this matters to a
+data-centre/BESS developer*, (2) units and acronyms expanded per G8, (3) an ordering or banding that
+makes the good and bad ends obvious, and (4) a link back to the sites it affects. **A table that
+cannot answer "so what?" comes out** — per the operator's standing instruction that everything
+should be actionable rather than a means to an end.
+
 ### G20 — 100% PARITY with the vendor extract, and WHY the 42 are missing (operator, 2026-08-17)
 
 *"If we do have data that is missing from our tables that they have within their tables, we should

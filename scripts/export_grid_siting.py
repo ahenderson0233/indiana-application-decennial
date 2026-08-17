@@ -70,16 +70,46 @@ buses = []
 
 # ---------------------------------------------------------------- MISO: INJECTION
 # location_status='indiana' is the publisher's own placement, not a centroid we derived.
-# median_mw is the headline figure: worst/best bracket it across the contingency set, and a
-# screener that quoted best_mw would be quoting the most favourable single contingency.
+#
+# ⛔ THE HEADLINE IS THE ACTUAL, WHICH IS A **MINIMUM** OVER CONSTRAINTS. NOT A MEDIAN.
+# This file previously published `median_mw` as the headline and that was badly wrong.
+# Headroom is set by the FIRST constraint to bind, so it is a min; a median across the monitored
+# facility x contingency set mixes the binding constraint in with dozens of unconstrained ones and
+# answers a question nobody asked. Measured 2026-08-17: `median_mw` averages ~1,193 MW across the
+# 642 Indiana POIs, while the actual at a 300 MW request is **0 MW on 641 of 642** — because
+# `facilities_at_zero` averages 15.8 of 59.8 monitored facilities, i.e. the binding constraints are
+# already at their limit in the base case. Publishing the median would have told a user a bus had
+# ~1,193 MW available when it has none.
+#
+# Operator, 2026-08-17: "we use worst, median, and best case scenarios, and we should really only
+# be presenting the 'actuals' as Orennia does." Correct, and the worst/median/best columns were
+# never a methodology choice - they were a workaround for a degenerate probe run at
+# pmax_request=99999, which returned worst_mw=0 on ~88% of POIs.
+#
+# So: the headline comes from the LADDER (the actual at each stated request size), and
+# worst/best ride along as context only, clearly named as such.
 n_miso = 0
 for r in client.query(f"""
-  SELECT poi_name, bus_number, bus_name, kv, area_name,
-         headroom_mw, worst_mw, best_mw, median_mw,
-         facilities_at_zero, monitored_facilities, worst_binding_facility, vintage, lat, lon
-  FROM `{DS}.in_bus_headroom_miso`
-  WHERE location_status = 'indiana' AND lat IS NOT NULL AND lon IS NOT NULL"""):
+  WITH lad AS (
+    SELECT poi_name,
+           ARRAY_AGG(STRUCT(request_mw, ROUND(headroom_mw, 1) AS mw, request_fits)
+                     ORDER BY request_mw) AS ladder
+    FROM `{DS}.in_bus_headroom_miso_ladder`
+    GROUP BY poi_name
+  )
+  SELECT m.poi_name, m.bus_number, m.bus_name, m.kv, m.area_name,
+         m.worst_mw, m.best_mw, m.median_mw,
+         m.facilities_at_zero, m.monitored_facilities, m.worst_binding_facility, m.vintage,
+         m.lat, m.lon,
+         IFNULL(lad.ladder, []) AS ladder
+  FROM `{DS}.in_bus_headroom_miso` m
+  LEFT JOIN lad ON lad.poi_name = m.poi_name
+  WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL"""):
     d = dict(r)
+    ladder = [dict(x) for x in (d.get("ladder") or [])]
+    # headline = the actual at the smallest rung we hold. The client re-reads `ladder` for the
+    # size the user actually selects; this is only the default.
+    head = next((x for x in ladder if x["request_mw"] == 100), ladder[0] if ladder else None)
     buses.append({
         "src": "MISO",
         "direction": "injection",          # <- generator-side. NOT a load-serving number.
@@ -88,10 +118,12 @@ for r in client.query(f"""
         "bus": d["bus_number"],
         "kv": d["kv"],
         "area": d["area_name"],
-        "mw": r1(d["median_mw"]),          # headline
-        "mw_worst": r1(d["worst_mw"]),
-        "mw_best": r1(d["best_mw"]),
-        "mw_raw": r1(d["headroom_mw"]),
+        "mw": r1(head["mw"]) if head else None,      # ACTUAL (min over constraints), not a median
+        "mw_basis": "actual at the stated request size (minimum over binding constraints)",
+        "ladder": ladder,                            # every rung, so the UI can follow the user
+        "ctx_worst": r1(d["worst_mw"]),              # context only - never the headline
+        "ctx_best": r1(d["best_mw"]),
+        "ctx_median": r1(d["median_mw"]),
         "at_zero": d["facilities_at_zero"],
         "monitored": d["monitored_facilities"],
         "binding": d["worst_binding_facility"],
