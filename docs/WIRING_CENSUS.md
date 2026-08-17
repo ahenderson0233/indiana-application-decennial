@@ -11,17 +11,23 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 282 of 291 registered objects reach a surface
+## 282 of 297 registered objects reach a surface
 
 ### Not reaching a surface
 
 | object | rows | built by |
 |---|---:|---|
+| `in_bus_capacity_tier0` | 2117 | `—` |
+| `in_miso_dpp2025_counties` | 1000 | `—` |
+| `in_miso_dpp2025_footprint` | 1 | `—` |
+| `in_miso_dpp2025_ph1_project_costs` | 202 | `—` |
 | `in_miso_facility_detail` | 40007 | `scripts/build_miso_facility_detail.py` |
 | `in_miso_poi_ladder` | 230286 | `—` |
-| `in_nhd_flowline_geom` | 160128 | `—` |
-| `in_nhd_waterbody_geom` | 6415 | `—` |
+| `in_nhd_flowline_geom` | 163976 | `—` |
+| `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
+| `in_pjm_qs_tc2phii_inj` | 393475 | `—` |
+| `in_pjm_qs_tc2phii_wd` | 11191 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
@@ -46,6 +52,7 @@ headline can be audited rather than taken on trust:
 | `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
+| `in_bus_capacity_tier0` | **none** | — |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | direct | `scripts/export_grid_siting.py` |
@@ -141,6 +148,9 @@ headline can be audited rather than taken on trust:
 | `in_lbnl_interconnection_costs` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
 | `in_marion_parcel_crosswalk` | direct | `si.html` |
+| `in_miso_dpp2025_counties` | **none** | — |
+| `in_miso_dpp2025_footprint` | **none** | — |
+| `in_miso_dpp2025_ph1_project_costs` | **none** | — |
 | `in_miso_facility_detail` | **none** | — |
 | `in_miso_poi` | direct | `app.js` |
 | `in_miso_poi_300mw` | direct | `app.js`, `scripts/build_headroom_300.py` |
@@ -200,6 +210,8 @@ headline can be audited rather than taken on trust:
 | `in_pjm_bus_withdrawal` | direct | `app.js`, `grid.html` |
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
+| `in_pjm_qs_tc2phii_inj` | **none** | — |
+| `in_pjm_qs_tc2phii_wd` | **none** | — |
 | `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
 | `in_pjm_queuescope_aep` | direct | `app.js`, `scripts/build_pjm_withdrawal.py` |
 | `in_pjm_queuescope_injection` | derivative | `feeds `vw_pjm_bus_injection_ladder` via `scripts/build_pjm_injection_rollup.py`` |
