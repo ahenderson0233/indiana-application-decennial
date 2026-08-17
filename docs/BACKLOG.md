@@ -64,18 +64,39 @@ should be able to easily pick up what each function does"* — plus *"every tabl
 a feature, but that doesn't mean we need irrelevant tables scattered throughout; everything should
 be actionable and insightful to the user, and in a simple, easy to digest manner."*
 
+### ⚠ THE INDEX IS THE CONTRACT. Every operator request in this session has a row here.
+
+An item that exists only in prose further down this file **is invisible in practice** — the operator
+could not find the water item (G12) on 2026-08-17 because it had no row in this table, and the
+49-missing-bus item had reached the task list but never this document at all. If you add a G-item
+below, **add its row here in the same edit.**
+
 | # | task | state | notes |
 |---|---|---|---|
-| **G1** | **Screener tab** (`screener.html`) | 🔴 OPEN | Full-page ranked screener composing P1–P7. **Grid siting done as CAPACITY, not proximity.** ⛔ Operator instruction: **do NOT reference the national buildout's screener** — it holds P1 only and is materially incomplete, and we can do better than what it offers today |
-| **G2** | **Insights summary tab** (`insights.html`) | 🔴 OPEN | What the data actually says — where opportunity concentrates, top counties, coverage gaps. Written for someone who does not know the tool |
-| **G3** | **Dossier → 3–5 page Power Plan** | 🔴 OPEN | Restructure on the PerpetualGrid *Power Plan* model the operator supplied (3 examples: LA-Cajun, NJ-Jetstream, WI-Maple). Must print cleanly to PDF |
-| **G4** | **Grid-siting section** (screener or map dashboard) | 🟡 PAYLOAD LANDED | `data/gridsiting.json.gz` shipped: 871 buses, 328 MTEP projects, 116 LBNL cost studies, 145 territories. **UI not built.** Modelled on the operator's own two references (below) |
-| **G5** | **Rail → P1–P7 accordions** | 🔴 OPEN | Operator, 2026-08-17: the rail shows every filter at once. Make Land/Grid/Environment/Sentiment **and more** into dropdowns that open the dashboard with their own filters. ⚠ **Design constraint: collapsing filters HIDES ACTIVE STATE** — needs a persistent active-filter summary or a user will not know why results vanished |
-| **G6** | **Polish / professionalism pass** | 🔴 OPEN | Reduce clunk. Every table earns its place with an actionable insight or comes out |
-| **G8** | **Plain language — kill the internal jargon everywhere** | 🔴 OPEN | Operator, 2026-08-17: *"the user won't know what P1–P7 are... and there are other similar examples throughout the app."* **Our codenames are invisible to the reader.** See the translation table below — it is binding on every new page and is a rename pass on every existing one |
-| **G7** | **Both directions from BOTH RTOs** | 🟢 **MOSTLY LANDED** | Agent interim report 2026-08-17 — see G7c. Three tables landed with the full 6-rung ladder; MISO withdrawal **BLOCKED with verbatim publisher wording**, as anticipated. **NOT YET WIRED to any page** — that is the open half |
-| **G18** | **Charts must be labelled and explained** | 🔴 OPEN | `svgLine()` draws a bare polyline: no axes, no scale, no date range. And it plots `slice(-120)` while the caption says 228 months — the chart contradicts its own caption |
-| **G19** | **De-duplicate substations** | 🔴 OPEN | 848 located rows share a coordinate with another row; 2,925 located rows are only 2,077 distinct substations. Counts overstate by ~41%; distances are unaffected |
+| **G1** | **Screener tab** (`screener.html`) | ✅ **DONE** `d1e2c95` | Ranked screener, grid as **CAPACITY not proximity**. ⛔ **Do NOT reference the national buildout's screener** — it holds P1 only and is materially incomplete |
+| **G2** | **Insights summary tab** (`insights.html`) | ✅ **DONE** `d1e2c95` | What the data says, for someone who has never used the tool, including what it *cannot* tell you |
+| **G3** | **Dossier → 3–5 page Power Plan** | ✅ **DONE** `92475c5` | Four pages on the supplied model, prints to PDF. Figure 1 stakeholders (point-in-polygon), Figure 2 parcel diagram to scale, Figure 3 path-to-power, Figure 4 checklist, Figure 5 evidence, appendix |
+| **G4** | **Grid-siting UI** | 🟡 PAYLOAD LANDED | `data/gridsiting.json.gz`: 871 buses, 328 MTEP, 116 cost studies, 145 territories. Wired into the Power Plan; **still not a map/dashboard section** |
+| **G5** | **Rail → plain-named accordions** | 🔴 **OPEN** | Rail shows every filter at once. Make the parts into dropdowns — **and add more than the current four**. ⚠ Collapsing HIDES ACTIVE STATE; needs a persistent active-filter summary (the pattern already shipped in `screener.html`) |
+| **G6** | **Polish / professionalism pass** | 🔴 **OPEN** | Reduce clunk; every table earns its place or comes out |
+| **G7** | **Both directions, BOTH RTOs** | 🟢 MOSTLY LANDED | PJM injection + MISO ladder landed; MISO withdrawal **BLOCKED, verbatim wording recorded**. **Not yet wired to any page** |
+| **G8** | **Plain language everywhere** | 🟡 PARTLY DONE | Shared glossary in `common.js`; nav renamed; screener/insights/Power Plan clean. **Existing pages not yet swept** |
+| **G9** | **Date-gate EVENT signals only** | 🟡 SCREENER DONE | Three-way gate (dated / standing / **undated**). Undated kept by default and toggleable. **Map console + `si.html` not done** |
+| **G10** | **"Vacant" means two things** | 🟡 SCREENER DONE | Undeveloped **land** vs vacant **building**. Still to sweep `has_vacancy_signal`, `f-vac`, `site_kind`, `si.html` |
+| **G11** | **Sentiment statuses not reaching the map** | 🔴 **OPEN — UNVERIFIED** | Measure the vocabulary diff between `county_context.json` (map) and `receipts.json.gz` + `in_dc_actions_resolved` (Community) **before** changing anything |
+| **G12** | **💧 WATER — in `energy`, reaches nothing** | 🔴 **OPEN** | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
+| **G13** | **Voltage: filter, colour, and AUDIT first** | 🔴 **OPEN** | Some voltages mislabeled. **Audit before colouring** — colouring by a wrong field renders the error in high contrast, and the bad kV already feeds the screener's substation filter. Unknown voltage gets its own colour, never the bottom of the scale |
+| **G14** | **Re-scrape missing signal dates** | 🔴 **OPEN** | **90% of tax-delinquency records (8,523 of 9,459) are undated** and it is our largest signal. Establish first whether the source publishes a date we failed to capture |
+| **G15** | **Future capacity — IURC + ISO/RTO, plottable** | 🔴 **OPEN** | 6 utilities held, but location/cost/in-service extracted at **0%**. Re-extract, then locate in two tiers: exact join for existing assets, **uncertainty rings** for vaguely-described new ones |
+| **G16** | **Agent registry rows must be re-runnable** | ✅ **RULE SET** | URL, endpoint type, loader command, slice params, publisher vintage, exclusions. In `SESSION_START.md` and sent to the agent |
+| **G17** | **Component tariff cost model** | 🔴 **OPEN** | Reclassifies §13(8) from *impossible* to *acquirable*. Service voltage is a **site attribute** worth $210k/yr on 35 MW; fuel adjustment is a **delta** worth $3.6M of $16.0M |
+| **G18** | **Charts must be labelled and explained** | 🔴 **OPEN** | `svgLine()` draws a bare polyline — no axes, scale, range or units — **and plots `slice(-120)` while its caption claims 228 months.** The chart contradicts its own caption |
+| **G19** | **De-duplicate substations** | ✅ **DONE** | 848 duplicates collapsed. Also found **503 taps + 27 dead ends** mixed in with real substations, and two unreconciled type vocabularies → `asset_class` added. Real substations: **1,741**, not 3,858 |
+| **G20** | **100% parity with the vendor extract** | 🔴 **OPEN** | Root-caused: **dedup did NOT eat them** — 76% of the 42 are taps/dead-ends (taxonomy, not loss). Derive taps from line topology as their own class; chase the 6 real gaps; **Pike County 765 kV is `Planned`** → belongs to G15 |
+| **G21** | **Every table must answer "so what?"** | 🔴 **OPEN** | ⚠ **Project-wide, not just the two examples.** SAIDI/gas were illustrations. Every table needs: why it matters to a DC/BESS developer, units + acronyms expanded, an ordering that makes good/bad obvious, and a link to affected sites |
+| **G22** | **Headroom = the ACTUAL, and the vintage** | 🟡 FIXED, ROOT CAUSE OPEN | median→actual→**unclamped** both fixed. Root cause of the zeros: our case is **DPP-2021 vs the baseline's DPP-2025** — four cycles stale. Fix is G7d |
+| **G23** | **49 missing PJM withdrawal buses** | 🔴 **OPEN, BLOCKED** | `in_pjm_queuescope_aep` covers **1,475 of AEP's 1,524** — 3.2% silently absent from every withdrawal answer. **Cannot start while an injection harvest runs** (never two QueueScope instances). Step 1 becomes free once injection completes: that table *is* the authoritative 1,524-bus list |
+| **G24** | **Asset URLs must be cache-busted** | ✅ **DONE** `92475c5` | `scripts/stamp_assets.py` content-hashes `app.js`/`common.js`/`style.css`. A stale asset cost a full debugging cycle; GitHub Pages caches just as hard as a browser |
 
 ### G7 — the finding that makes this urgent
 
@@ -565,7 +586,31 @@ sources with different gating, so the two surfaces can legitimately disagree —
 shape of the bug that showed 4 ordinances while 107 county actions existed. Compare the distinct
 status/posture vocabulary reaching each surface and report the diff before changing anything.
 
-### G12 — water data is in `energy` and reaches nothing (operator, 2026-08-17)
+### G23 — 49 PJM withdrawal buses are silently missing (operator, 2026-08-17)
+
+`in_pjm_queuescope_aep` (303,671 rows) and its rollup `in_pjm_bus_withdrawal` (1,475 buses) are an
+**incomplete harvest**. QueueScope offers **1,524** AEP (owner 739) POI buses in WITHDRAWAL mode —
+the same count it offers in INJECTION mode — so **49 buses (3.2%) are missing** and are absent from
+every withdrawal answer the application gives, with nothing on screen to say so.
+
+⚠ This was first written up as a *direction difference* ("the bus lists differ by direction"). They
+do not differ. Measuring is what caught it.
+
+**Fix, in order:**
+1. **Identify the missing buses.** Compare `DISTINCT bus_number` in `in_pjm_queuescope_aep` against
+   the authoritative 1,524-bus list. **This becomes free** once the injection harvest completes —
+   `in_pjm_queuescope_injection` then *is* that list, so the 49 fall out of a subtraction with no
+   extra scraping.
+2. **Re-run the withdrawal harvest.** Use the wrapper pattern in `scripts/pull_pjm_injection.py`,
+   which imports the upstream loader and rebinds `DATASET`/`TABLE`/`CKPT` without editing
+   `ingest/`. Point `CKPT` at the ORIGINAL `energy-platform/data/_ckpt_pjm_queuescope/` or accept a
+   full 2–5 h re-harvest. ⛔ **RUN SEQUENTIALLY — never two QueueScope instances at once.**
+3. Rebuild `in_pjm_bus_withdrawal` via `scripts/build_pjm_withdrawal.py` and refresh its registry row.
+
+**Blocked as of 2026-08-17:** `pull_pjm_injection.py` is mid-harvest. Starting the withdrawal run
+now would be exactly the collision the constraint forbids.
+
+### G12 — 💧 water data is in `energy` and reaches nothing (operator, 2026-08-17)
 
 *"We also do not have water data currently hitting the app — this is located in energy BQ and should
 be wired, as applicable."*

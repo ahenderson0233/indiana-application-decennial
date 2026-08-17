@@ -32,11 +32,17 @@ feats = []
 # precisely the ones OSM contributes uniquely. Emit a point where the publisher gives one and
 # the FOOTPRINT where it does not: exact published geometry either way, and no centroid is
 # derived to fake a point.
+# READS THE DEDUPED TABLE. `in_substations` inherits 848 duplicate rows from upstream - 2,925
+# located rows on only 2,077 distinct coordinates, with ROCKPORT STATION appearing three times on
+# one point - so the map was drawing ~848 markers on top of each other and every "N substations"
+# figure overstated by ~41%. `in_substations_dedup` also carries `asset_class`, because the table
+# mixes 503 line TAPs and 27 DEAD ENDs in with real substations: neither is a place you can
+# interconnect a data centre, and they must be separable rather than silently counted as stations.
 n_pt = n_poly = 0
 for r in client.query(f"""
   SELECT substation_name, max_kv, min_kv, county, status, substation_type, line_count,
-         operator, sources, lat, lon, footprint_geojson
-  FROM `{DS}.in_substations`
+         operator, sources, asset_class, duplicates_collapsed, lat, lon, footprint_geojson
+  FROM `{DS}.in_substations_dedup`
   WHERE lat IS NOT NULL OR footprint_geojson IS NOT NULL"""):
     d = dict(r); lat, lon = d.pop("lat"), d.pop("lon"); fp = d.pop("footprint_geojson")
     d["layer"] = "substation"
