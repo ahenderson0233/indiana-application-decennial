@@ -54,6 +54,40 @@ out with a reason.** Opened 2026-08-16.
 
 ---
 
+## ⭐ THE GOVERNING PRINCIPLE — read this before any other item in this file
+
+> **Operator, 2026-08-17:** *"The entire point of this application is really answering the 'so
+> what' question, so everything should be insightful and/or actionable that we display anywhere to
+> the user."*
+
+**This is not a backlog item. It is the product thesis, and it outranks every task below.**
+
+The application's job is not to *hold* Indiana's siting data — the warehouse already does that. Its
+job is to tell a data-centre or BESS developer **what to do next, and why**. A number that is
+correct, sourced, freshly built and beautifully rendered is still a **failure** if the reader cannot
+say what it changes about their decision.
+
+**Apply it as a veto, not as a polish step:**
+
+| ask of every single thing on screen | if the answer is no |
+|---|---|
+| Can a developer say what this changes about their decision? | it does not ship |
+| Is it in their units, not ours? | translate it (minutes → hours of backup; MMcf/d → MW supportable; acres → MW at a stated density) |
+| Would they know which end is good? | order or band it |
+| Does volume stand in for value? | collapse it — 1,017 gas rows said about 40 distinct things |
+| Is it context rather than a finding? | say so explicitly, and keep it small |
+
+**Consequence for the roadmap:** G21's inventory is the checklist for *existing* surfaces, but the
+principle binds **new** work too. Nothing gets added to any page — a map layer, a table, a chart, a
+screener column, a dossier row — without its "so what" written at the same time. A surface that
+cannot earn one is not a surface we build.
+
+⛔ The counter-example to avoid is already in the repo's history: **four ordinances rendered while
+107 verified county actions existed.** That was correct data, correctly sourced, and useless —
+because nobody asked what a reader was supposed to conclude from it.
+
+---
+
 ## 🔴 OPEN WORKSTREAM — FRONT-END REVAMP, opened 2026-08-17 by the operator
 
 **The §2a backlog above is closed. This is a NEW and LARGER body of work, and none of it is done.**

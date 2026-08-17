@@ -32,6 +32,23 @@ for *what is true today*.
 
 ---
 
+## ⭐ THE GOVERNING PRINCIPLE — everything on screen must answer "so what?"
+
+Operator, 2026-08-17: *"The entire point of this application is really answering the 'so what'
+question, so everything should be insightful and/or actionable that we display anywhere to the
+user."*
+
+The warehouse already **holds** Indiana's siting data. The application's job is to tell a
+data-centre or BESS developer **what to do next, and why**. A figure that is correct, sourced,
+freshly built and beautifully rendered still **fails** if the reader cannot say what it changes
+about their decision.
+
+Treat it as a **veto on new work**, not a polish step: nothing goes onto a page — map layer, table,
+chart, screener column, dossier row — without its "so what" written at the same time, in the
+reader's units, ordered so the good and bad ends are obvious. If a surface cannot earn one, it is
+not a surface we build. See the governing-principle block and the G21 inventory in
+`docs/BACKLOG.md`.
+
 ## ⛔ THE RULES, and the failure that earned each one
 
 **Write boundary.** `energy-platfrom.energy` is READ-ONLY — another session owns it. The one
