@@ -1400,6 +1400,16 @@ function renderPowerPlan(p, fips) {
       (${acr.acres.toFixed(0)} acres, ${acr.basis}). ${mwReality(mw, density).note}`
       : `<b>Size is the binding constraint.</b> ${acr.acres.toFixed(2)} acres supports about ${fmt(mw)} MW
          — below the 25 MW datacentre floor.`,
+    /* Undeveloped land is NOT an owner-motivation signal — emptiness says nothing about whether
+       the owner will sell (G10, and the D5 split parked 945,896 footprint-absence rows as
+       NOT_A_SIGNAL). But it IS a genuine build advantage, and the app kept these parcels for
+       exactly that reason. Say why, rather than leaving the reader to infer it. */
+    (p.site_kind === "no_structure" || (Number(p.structure_count) || 0) === 0)
+      ? `<b>Nothing built on this parcel.</b> That is not a distress signal — an empty parcel says
+         nothing about whether its owner will sell — but it is a real <b>build</b> advantage: no
+         demolition, no tenants to relieve, no structure to work around, and the whole area is
+         available for a battery pad. Undeveloped land is the cleanest BESS inventory we hold.`
+      : null,
     wdBus ? `Nearest <b>load-side</b> connection point is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
         at ${wdBus.mi} mi, with <b>${fmt(wdBus.mw)} MW</b> of published withdrawal capacity.`
       : `<b>No load-side capacity figure exists for this site.</b> ${ba === "MISO" ? "MISO" : "The grid operator here"}
@@ -1473,7 +1483,9 @@ function renderPowerPlan(p, fips) {
     </table>
 
     <h3>Key takeaways and concerns</h3>
-    <ul class="pp-list">${takeaways.map((t) => `<li>${t}</li>`).join("")}</ul>
+    <!-- .filter(Boolean): takeaways may now contain nulls (an entry that only applies to some
+         parcels, e.g. the undeveloped-land note). Without it a null renders as "<li>null</li>". -->
+    <ul class="pp-list">${takeaways.filter(Boolean).map((t) => `<li>${t}</li>`).join("")}</ul>
 
     <h3>Next steps for this property</h3>
     <ol class="pp-list">${steps.map((t) => `<li>${t}</li>`).join("")}</ol>
