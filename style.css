@@ -132,6 +132,89 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 .scorebar { height: 6px; background: #eef1f5; border-radius: 3px; overflow: hidden; margin: 2px 0 5px; }
 .scorebar > i { display: block; height: 100%; background: #d97706; }
 
+/* ============================================================================================
+   SCREENER PAGE
+   The rail is an ACCORDION rather than one long list of every control. Operator, 2026-08-17:
+   showing every filter at once is "a difficult to digest format". The hazard of collapsing
+   filters is that active state becomes invisible, so #s-active is a PERMANENT summary of every
+   filter in effect and is not collapsible.
+   ============================================================================================ */
+#scr-layout { display: flex; align-items: flex-start; height: calc(100% - 92px); }
+#scr-rail { width: 340px; min-width: 340px; padding: 12px; border-right: 1px solid #e3e6ec;
+  overflow-y: auto; height: 100%; background: #f6f7f9; }
+#scr-main { flex: 1; overflow-y: auto; height: 100%; padding: 14px 20px 60px; }
+
+#scr-rail .intro p { font-size: 12.5px; margin: 0 0 6px; }
+#scr-rail .intro b { color: #0f172a; }
+
+.acc { background: #fff; border: 1px solid #e3e6ec; border-radius: 8px; margin-bottom: 9px;
+  box-shadow: 0 1px 2px rgba(15,23,42,.04); overflow: hidden; }
+.acc > summary { cursor: pointer; padding: 9px 11px; font-size: 12.5px; font-weight: 600;
+  color: #1b2333; display: flex; align-items: center; gap: 8px; list-style: none; }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::after { content: "▸"; margin-left: auto; color: #94a3b8; font-size: 11px; }
+.acc[open] > summary::after { content: "▾"; }
+.acc[open] > summary { border-bottom: 1px solid #eef0f4; background: #fbfcfd; }
+.acc > summary:hover { background: #f4f6f9; }
+.acc .step { display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; background: #0f172a; color: #fff;
+  font-size: 10.5px; font-weight: 700; flex: none; }
+.acc .acount { font-size: 10.5px; font-weight: 400; color: #7a8494; }
+.accbody { padding: 9px 11px 11px; }
+.accbody label { display: block; margin: 4px 0; font-size: 12.5px; }
+.accbody label.blk { margin: 8px 0 2px; font-weight: 600; color: #334155; }
+.accbody select { width: 100%; padding: 5px; border: 1px solid #ccd3de; border-radius: 6px;
+  background: #fff; font: inherit; font-size: 12.5px; margin-top: 3px; }
+.accbody input[type=number] { width: 62px; padding: 2px 4px; border: 1px solid #ccd3de;
+  border-radius: 4px; font: inherit; }
+.accbody .inline { font-weight: 400; white-space: nowrap; }
+.accbody p.hint { margin: 3px 0 7px; }
+.accbody .subhead { margin-top: 11px; }
+
+/* the two-questions explainer: the single most important idea on the page */
+.explain { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 7px;
+  padding: 8px 10px; margin: 2px 0 10px; font-size: 12px; }
+.explain b { color: #78350f; }
+table.mini { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11.5px; }
+table.mini td { padding: 3px 4px; vertical-align: top; border-bottom: 1px solid #fde68a; }
+table.mini td:first-child { width: 42%; color: #78350f; }
+
+.chipbar { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 7px 11px;
+  font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.chipbar b { color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; font-size: 10px;
+  margin-right: 4px; }
+.chip { background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 2px 9px; }
+
+.hcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;
+  margin: 12px 0; }
+.hcard { background: #fff; border: 1px solid #e3e6ec; border-radius: 10px; padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.hcard .bigstat { color: #0f172a; }
+
+.card.notice { border-left: 3px solid #d97706; }
+table.rtable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.rtable th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #e3e6ec;
+  color: #667; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+table.rtable th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+table.rtable th.sortable:hover { color: #0f172a; }
+table.rtable th.on { color: #0f172a; }
+table.rtable td { padding: 5px 6px; border-bottom: 1px solid #f0f2f6; vertical-align: top; }
+table.rtable td.num { text-align: right; white-space: nowrap; }
+table.rtable tr:hover td { background: #fbfcfd; }
+.sub2 { font-size: 10.5px; color: #7a8494; font-weight: 400; }
+.warn { color: #b45309; font-weight: 700; cursor: help; }
+
+/* Recency badges. "date unknown" must read as OUR gap, not as a property of the site, so it is
+   neutral grey rather than a red warning; "standing condition" is a positive fact (it does not
+   expire) so it is not styled as a caveat either. */
+.bdg { display: inline-block; border-radius: 4px; padding: 0 5px; font-size: 9.5px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .03em; cursor: help;
+  vertical-align: 1px; }
+.bdg-st { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.bdg-un { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.bdg-ol { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+abbr[title] { text-decoration: underline dotted #94a3b8; cursor: help; text-underline-offset: 2px; }
+
 ::-webkit-scrollbar { width: 9px; }
 ::-webkit-scrollbar-thumb { background: #c7ced9; border-radius: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

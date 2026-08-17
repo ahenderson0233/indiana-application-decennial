@@ -11,10 +11,15 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 269 of 269 registered objects reach a surface
+## 270 of 273 registered objects reach a surface
 
-**Every registered object reaches at least one surface.**
+### Not reaching a surface
 
+| object | rows | built by |
+|---|---:|---|
+| `in_bus_headroom_miso_ladder` | 3852 | `—` |
+| `in_miso_poi_ladder` | 230286 | `—` |
+| `in_pjm_queuescope_injection` | 39750 | `—` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -36,6 +41,7 @@ headline can be audited rather than taken on trust:
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
+| `in_bus_headroom_miso_ladder` | **none** | — |
 | `in_candidate_sites_colleges` | direct | `app.js` |
 | `in_candidate_sites_private_schools` | direct | `scripts/export_context_layers.py` |
 | `in_candidate_sites_schools` | direct | `scripts/export_context_layers.py` |
@@ -124,12 +130,13 @@ headline can be audited rather than taken on trust:
 | `in_iurc_dockets` | direct | `app.js`, `community.html` |
 | `in_land_faa_sua` | direct | `app.js` |
 | `in_land_military_bases` | direct | `app.js` |
-| `in_lbnl_interconnection_costs` | direct | `app.js` |
+| `in_lbnl_interconnection_costs` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
 | `in_marion_parcel_crosswalk` | direct | `si.html` |
 | `in_miso_poi` | direct | `app.js` |
 | `in_miso_poi_300mw` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_miso_poi_identity` | direct | `app.js` |
+| `in_miso_poi_ladder` | **none** | — |
 | `in_news_dc` | direct | `app.js`, `community.html` |
 | `in_nfirs_basicincident_2020` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_nfirs_basicincident_2021` | direct | `si.html`, `scripts/export_si_sources.py` |
@@ -181,6 +188,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_queuescope_aep` | direct | `app.js`, `scripts/build_pjm_withdrawal.py` |
+| `in_pjm_queuescope_injection` | **none** | — |
 | `in_pjm_rtep_cost_allocations` | direct | `app.js`, `grid.html` |
 | `in_pjm_rtep_upgrade_details` | direct | `app.js`, `grid.html` |
 | `in_pjm_rtep_upgrades` | direct | `app.js` |
@@ -203,6 +211,7 @@ headline can be audited rather than taken on trust:
 | `in_rtep_bus_summary` | direct | `grid.html`, `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `app.js`, `grid.html` |
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
+| `in_screener_candidates` | direct | `scripts/export_screener.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
 | `in_seismic` | direct | `app.js` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |
@@ -266,11 +275,11 @@ headline can be audited rather than taken on trust:
 | `in_state_irp_catalog` | direct | `app.js` |
 | `in_storm_events` | direct | `community.html`, `scripts/export_context_layers.py` |
 | `in_substations` | direct | `app.js`, `grid.html` |
-| `in_territories` | direct | `app.js` |
+| `in_territories` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_transmission_lines` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_transmission_union` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_tribal_land` | direct | `app.js` |
-| `in_txexp_miso_mtep_appendix_a_status` | direct | `app.js` |
+| `in_txexp_miso_mtep_appendix_a_status` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_urdb_rates` | direct | `app.js`, `market.html` |
 | `in_usa_structures_county` | direct | `app.js` |
 | `in_ustp_ch7_tfr` | direct | `app.js` |
@@ -292,7 +301,7 @@ headline can be audited rather than taken on trust:
 | `vw_nfirs_2022_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_nfirs_2023_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_nfirs_2024_located` | direct | `scripts/export_location_joins.py` |
-| `vw_pjm_bus_withdrawal_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
+| `vw_pjm_bus_withdrawal_located` | direct | `scripts/export_grid_siting.py` |
 | `vw_pjm_queuescope_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_pjm_rtep_upgrades_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_si_candidates_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |

@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-17T13:54:24.988531+00:00",
+ "run_at": "2026-08-17T15:04:55.768130+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 116 payloads + pages \u00b7 0 leaks"
+   "detail": "scanned 118 payloads + pages \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
-   "state": "PASS",
-   "detail": "MEASURED this run: 269 of 269 registered objects reach a surface"
+   "state": "FAIL",
+   "detail": "MEASURED this run: 270 of 273 registered objects reach a surface \u00b7 3 unwired: ['in_bus_headroom_miso_ladder', 'in_miso_poi_ladder', 'in_pjm_queuescope_injection']"
   },
   {
    "criterion": 2,

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insights — Indiana Siting Intelligence</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="topbar">
+  <div id="title">Indiana Siting Intelligence <span class="tag">beta</span></div>
+  <div id="statebar">Insights &mdash; what the data says</div>
+</header>
+<nav id="nav"></nav>
+
+<div class="page">
+  <h1>What this tool knows about siting in Indiana</h1>
+  <p class="sub">A plain summary of what we hold, what it says, and &mdash; just as important
+    &mdash; what it cannot tell you yet. Every figure below is read live from the same data the
+    map and the screener use, so nothing here can quietly disagree with them.</p>
+
+  <div class="card notice">
+    <h2>Start here if you have never used this tool</h2>
+    <table>
+      <tr><td style="width:170px"><b>Map console</b></td>
+          <td>Look at Indiana. Turn layers on and off, click a parcel, read its evidence.</td></tr>
+      <tr><td><b>Site screener</b></td>
+          <td>The opposite direction: describe what you want to build, get a ranked list back.
+            <b>Start here if you know your requirements.</b></td></tr>
+      <tr><td><b>Power &amp; grid</b></td><td>Substations, lines, connection points and queues.</td></tr>
+      <tr><td><b>Market &amp; cost</b></td><td>Electricity rates, gas pipeline capacity, tariffs.</td></tr>
+      <tr><td><b>Community &amp; local rules</b></td>
+          <td>Which counties have passed rules about data centres, and where opposition is active.
+            <b>This is the part most tools miss.</b></td></tr>
+      <tr><td><b>Owner signals</b></td>
+          <td>Public records suggesting an owner may be open to selling.</td></tr>
+      <tr><td><b>Data &amp; sources</b></td><td>Every table behind all of it, with build dates.</td></tr>
+    </table>
+  </div>
+
+  <div id="i-headline"></div>
+  <div id="i-grid"></div>
+  <div id="i-counties"></div>
+  <div id="i-signals"></div>
+  <div id="i-gaps"></div>
+</div>
+
+<script src="common.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+(async function () {
+  renderNav();
+  $("i-headline").innerHTML = '<div class="card">Loading…</div>';
+  const [S, G] = await Promise.all([
+    fetchGz("data/screener.json.gz"), fetchGz("data/gridsiting.json.gz"),
+  ]);
+  const C = Object.entries(S.counties).map(([fips, v]) => ({ fips, ...v }));
+  const sum = (k) => C.reduce((a, x) => a + (x[k] || 0), 0);
+  const totQ = sum("qualifying"), totSig = sum("with_signal"), totLoad = sum("with_load_bus");
+
+  /* ---------- headline ---------- */
+  $("i-headline").innerHTML = `
+    <h2 style="margin:22px 0 2px;font-size:16px">The short version</h2>
+    <div class="hcards">
+      <div class="hcard"><div class="bigstat">${fmt(totQ)}</div>
+        <div class="hint">parcels across all 92 counties that could physically host a project
+          &mdash; big enough for 25 MW, or carrying a reason the owner might sell</div></div>
+      <div class="hcard"><div class="bigstat">${fmt(totSig)}</div>
+        <div class="hint">of those show a public record suggesting the owner may be motivated
+          &mdash; the scarce part, and the reason this tool exists</div></div>
+      <div class="hcard"><div class="bigstat">${(100 * totLoad / totQ).toFixed(0)}%</div>
+        <div class="hint">is how much of that we can currently answer the
+          <b>&ldquo;can it actually get power?&rdquo;</b> question for</div></div>
+    </div>`;
+
+  /* ---------- the grid finding: the most important thing on this page ---------- */
+  const inj = G.buses.filter((b) => b.direction === "injection").length;
+  const wd = G.buses.filter((b) => b.direction === "withdrawal").length;
+  $("i-grid").innerHTML = `
+    <div class="card notice">
+      <h2>The biggest single gap, stated plainly</h2>
+      <p>Connecting to the grid is two different questions, and the answer to one tells you
+        nothing about the other:</p>
+      <table style="margin:8px 0">
+        <tr><td style="width:230px"><b>Can this site GET power?</b></td>
+            <td>What a data centre needs. <b>${fmt(wd)}</b> connection points measured.</td></tr>
+        <tr><td><b>Can this site SEND power?</b></td>
+            <td>What a generator needs. <b>${fmt(inj)}</b> connection points measured.</td></tr>
+      </table>
+      <p><b>Most of Indiana is served by MISO, and MISO publishes only the sending-power
+        direction.</b> The getting-power figures we do hold come from PJM, which in Indiana covers
+        mainly the Fort Wayne, Muncie and South Bend area. So for roughly three fifths of candidate
+        sites, the number a data-centre developer most wants does not exist in public data yet.</p>
+      <p class="hint"><b>What we do about it:</b> we never substitute one direction for the other,
+        even though both are large positive megawatt figures from real grid models. A site with no
+        getting-power figure is shown as <i>not measured</i> &mdash; not as zero, and not as a bad
+        site. Acquiring the missing direction is open work.</p>
+      <p class="prov">${G.direction_note}</p>
+    </div>`;
+
+  /* ---------- where the opportunity concentrates ---------- */
+  const byQ = [...C].sort((a, b) => b.qualifying - a.qualifying).slice(0, 12);
+  const byS = [...C].sort((a, b) => b.with_signal - a.with_signal).slice(0, 12);
+  // two DIFFERENT columns per row: the metric this table ranks on, then the complementary one.
+  // Passing the same key for both printed the identical number twice, which reads as a bug in the
+  // data rather than in the template.
+  const row = (x, a, b) => `<tr><td>${x.name}</td><td class="num">${fmt(x[a])}</td>
+      <td class="num">${fmt(x[b])}</td>
+      <td class="num">${x.with_load_bus ? (100 * x.with_load_bus / x.qualifying).toFixed(0) + "%"
+        : '<span class="cannot">none</span>'}</td></tr>`;
+  $("i-counties").innerHTML = `
+    <h2 style="margin:22px 0 2px;font-size:16px">Where the opportunity sits</h2>
+    <p class="sub">Two different questions, so two different lists. A county can be rich in land
+      and poor in motivated owners, or the reverse.</p>
+    <div class="gridcards">
+      <div class="card"><h2>Most usable land</h2>
+        <table><tr><th>County</th><th class="num">Sites</th><th class="num">Motivated owners</th>
+          <th class="num">Power answerable</th></tr>${byQ.map((x) => row(x, "qualifying", "with_signal")).join("")}</table>
+        <p class="prov">&ldquo;Sites&rdquo; = parcels big enough for 25 MW or carrying an owner
+          signal. &ldquo;Power answerable&rdquo; = share where we hold the getting-power figure.</p></div>
+      <div class="card"><h2>Most motivated owners</h2>
+        <table><tr><th>County</th><th class="num">Motivated owners</th><th class="num">All sites</th>
+          <th class="num">Power answerable</th></tr>${byS.map((x) => row(x, "with_signal", "qualifying")).join("")}</table>
+        <p class="prov">Counting parcels with at least one public record suggesting the owner may
+          sell. Urban counties score higher partly because they generate more records, not only
+          because more owners want out.</p></div>
+    </div>`;
+
+  /* ---------- what the signals actually are ---------- */
+  const tally = {}, dated = {}, undated = {};
+  for (const s of S.sites) {
+    if (!s.has_signal || !s.signals) continue;
+    for (const raw of String(s.signals).split(",")) {
+      const k = raw.trim(); if (!k) continue;
+      tally[k] = (tally[k] || 0) + 1;
+      if (s.last_event) dated[k] = (dated[k] || 0) + 1; else undated[k] = (undated[k] || 0) + 1;
+    }
+  }
+  const sig = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  const mx = sig.length ? sig[0][1] : 1;
+  $("i-signals").innerHTML = `
+    <div class="card">
+      <h2>What &ldquo;a motivated owner&rdquo; actually means here</h2>
+      <p class="hint">These are public records, not opinions. We only count non-residential
+        property, and only trouble serious enough that it would plausibly move someone to sell
+        &mdash; a single parking citation does not qualify, ten years of unresolved violations
+        does.</p>
+      <table>
+        <tr><th>Signal</th><th>What it tells you</th><th class="num">Parcels</th>
+            <th style="width:150px">Share</th><th class="num">No date recorded</th></tr>
+        ${sig.map(([k, n]) => {
+          const e = SIGNAL_PLAIN[k] || [k, ""];
+          const u = undated[k] || 0;
+          return `<tr><td><b>${e[0]}</b>${e[2] === "state"
+              ? ' <span class="bdg bdg-st" title="a standing condition - it does not expire">standing</span>' : ""}</td>
+            <td class="hint">${e[1] || ""}</td>
+            <td class="num">${fmt(n)}</td>
+            <td><div class="scorebar"><i style="width:${(100 * n / mx).toFixed(1)}%"></i></div></td>
+            <td class="num">${u ? `${fmt(u)} <span class="hint">(${(100 * u / n).toFixed(0)}%)</span>`
+              : '<span class="hint">&mdash;</span>'}</td></tr>`;
+        }).join("")}
+      </table>
+      <p class="prov"><b>Read the last column carefully.</b> Where we hold a record but not its
+        date, we cannot tell you whether it is current. That is our gap, not a fact about the
+        property, so those records are shown as <i>date unknown</i> and never as recent. It matters
+        most for unpaid property taxes, the largest signal we hold.</p>
+    </div>`;
+
+  /* ---------- honest limits ---------- */
+  $("i-gaps").innerHTML = `
+    <div class="card">
+      <h2>What this tool cannot tell you</h2>
+      <table>
+        <tr><td style="width:250px"><b>Whether power is actually available</b></td>
+            <td>We can show published headroom at the nearest connection point. Only the utility's
+              own study can tell you what you can really get, and when.</td></tr>
+        <tr><td><b>What the land costs</b></td>
+            <td>We hold no price or valuation data. A motivated owner is not a cheap owner.</td></tr>
+        <tr><td><b>Who owns it, everywhere</b></td>
+            <td>Owner names are held for Marion County. Statewide owner data is not.</td></tr>
+        <tr><td><b>Whether local rules will allow it</b></td>
+            <td>We hold adopted ordinances and moratoriums we could verify at an official source.
+              Indiana's real regulation is mostly county-level and often uncodified, so absence of
+              a rule in our data is <b>not</b> evidence there is no rule.</td></tr>
+        <tr><td><b>Water</b></td>
+            <td class="cannot">Not yet wired into this application. It is a first-order constraint
+              for large-scale cooling and it is open work.</td></tr>
+        <tr><td><b>A recommendation</b></td>
+            <td>Nothing here ranks sites for you unless you set the weights yourself. The defaults
+              are a starting point, not an answer.</td></tr>
+      </table>
+      <p class="prov">Built from data/screener.json.gz (${String(S.built_at_utc).slice(0, 16)}Z) and
+        data/gridsiting.json.gz (${String(G.built_at_utc).slice(0, 16)}Z). Counties covered:
+        ${C.length} of 92.</p>
+    </div>`;
+
+  glossify("i-grid"); glossify("i-gaps"); glossify("i-counties");
+})();
+</script>
+</body>
+</html>
