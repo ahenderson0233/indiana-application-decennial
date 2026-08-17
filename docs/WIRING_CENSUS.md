@@ -11,15 +11,15 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 270 of 273 registered objects reach a surface
+## 274 of 277 registered objects reach a surface
 
 ### Not reaching a surface
 
 | object | rows | built by |
 |---|---:|---|
-| `in_bus_headroom_miso_ladder` | 3852 | `—` |
 | `in_miso_poi_ladder` | 230286 | `—` |
-| `in_pjm_queuescope_injection` | 39750 | `—` |
+| `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
+| `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -41,7 +41,7 @@ headline can be audited rather than taken on trust:
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
-| `in_bus_headroom_miso_ladder` | **none** | — |
+| `in_bus_headroom_miso_ladder` | direct | `scripts/export_grid_siting.py` |
 | `in_candidate_sites_colleges` | direct | `app.js` |
 | `in_candidate_sites_private_schools` | direct | `scripts/export_context_layers.py` |
 | `in_candidate_sites_schools` | direct | `scripts/export_context_layers.py` |
@@ -183,12 +183,14 @@ headline can be audited rather than taken on trust:
 | `in_padus` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_parcel_attrs` | direct | `app.js`, `scripts/build_territories.py` |
 | `in_peeringdb_facilities` | direct | `app.js`, `scripts/investigate_cloudscene_gap.py` |
+| `in_pjm_bus_injection` | **none** | — |
 | `in_pjm_bus_locations_candidate` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_bus_withdrawal` | direct | `app.js`, `grid.html` |
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
+| `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
 | `in_pjm_queuescope_aep` | direct | `app.js`, `scripts/build_pjm_withdrawal.py` |
-| `in_pjm_queuescope_injection` | **none** | — |
+| `in_pjm_queuescope_injection` | derivative | `feeds `vw_pjm_bus_injection_ladder` via `scripts/build_pjm_injection_rollup.py`` |
 | `in_pjm_rtep_cost_allocations` | direct | `app.js`, `grid.html` |
 | `in_pjm_rtep_upgrade_details` | direct | `app.js`, `grid.html` |
 | `in_pjm_rtep_upgrades` | direct | `app.js` |
@@ -275,6 +277,7 @@ headline can be audited rather than taken on trust:
 | `in_state_irp_catalog` | direct | `app.js` |
 | `in_storm_events` | direct | `community.html`, `scripts/export_context_layers.py` |
 | `in_substations` | direct | `app.js`, `grid.html` |
+| `in_substations_dedup` | direct | `scripts/export_grid_sentiment.py` |
 | `in_territories` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_transmission_lines` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_transmission_union` | direct | `app.js`, `scripts/export_context_layers.py` |
@@ -301,6 +304,7 @@ headline can be audited rather than taken on trust:
 | `vw_nfirs_2022_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_nfirs_2023_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_nfirs_2024_located` | direct | `scripts/export_location_joins.py` |
+| `vw_pjm_bus_injection_ladder` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_pjm_bus_withdrawal_located` | direct | `scripts/export_grid_siting.py` |
 | `vw_pjm_queuescope_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_pjm_rtep_upgrades_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |

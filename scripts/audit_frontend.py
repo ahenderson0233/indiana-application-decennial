@@ -101,7 +101,14 @@ for page in PAGES:
 
     # a page's own inline scripts, plus app.js only where the page loads it
     inline = "\n".join(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S))
-    loads_app = 'src="app.js"' in html
+    # ⚠ MATCH THE FILENAME, NOT THE WHOLE URL. Assets now carry a cache-busting content hash
+    # (`app.js?v=d798ada5`, see scripts/stamp_assets.py), and an exact-string test for
+    # 'src="app.js"' silently stopped matching the moment stamping shipped. The audit then believed
+    # index.html loaded NO script and reported all 33 of its element ids as unreferenced - the
+    # entire scoring UI declared dead, which is precisely the rule-9 false-positive class this file
+    # was rewritten to eliminate. An audit that cries wolf gets ignored, so it must tolerate a
+    # query string.
+    loads_app = re.search(r'src="app\.js(\?[^"]*)?"', html) is not None
     js = inline + ("\n" + read("app.js") if loads_app else "")
 
     # ---- 6. duplicate id attributes -----------------------------------------------------------
