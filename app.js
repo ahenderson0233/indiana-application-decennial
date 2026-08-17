@@ -902,7 +902,7 @@ function row(k, v) {
 function show(title, html, starKey) {
   // every panel hides the dossier button; openParcelEvidence and openDossier re-show it, so a
   // substation or queue-point panel can never offer a dossier for a parcel it is not about
-  if (!/^(Parcel|Dossier)/.test(title)) {
+  if (!/^(Parcel|Dossier|Power Plan)/.test(title)) {
     $("ev-dossier").classList.add("hidden");
     state.dossierFor = null;
   }
@@ -916,18 +916,128 @@ function show(title, html, starKey) {
   } else star.classList.add("hidden");
   panel.classList.remove("hidden");
 }
-/* ---------- C1: the dossier ----------
-   The evidence panel answers "what do we know about this parcel". A dossier answers the question
-   management actually asks: "should we pursue this site, and what would we need to check next".
-   Those are different documents. This assembles all six parts into one printable verdict, and it
-   is deliberately built from the SAME functions the screener and the panel use — acreageOf(),
-   scoreSite(), prov() — so a dossier can never disagree with the map that produced it.
+/* ---------- G3: THE POWER PLAN ----------
+   A four-page, print-to-PDF site document modelled on the Power Plan format the operator supplied
+   (three worked examples: LA-Cajun, NJ-Jetstream, WI-Maple). The evidence panel answers "what do we
+   know about this parcel"; this answers the question a developer actually takes to a utility:
+   "what is the path to power here, who do I have to talk to, and what do I have to find out next".
 
-   Three rules it must not break:
+   Page 1  status, load ramp, key takeaways, next steps, Figure 1 stakeholders, Figure 2 diagram
+   Page 2  Figure 3 Path-to-Power Outlook - generation, transmission, tariffs, local rules
+   Page 3  Figure 4 interconnection checklist, Figure 5 evidence held
+   Page 4  site detail and the stakeholder-meeting appendix
+
+   Built from the SAME functions the screener and the panel use - acreageOf(), scoreSite(), prov()
+   - so the document can never disagree with the map that produced it.
+
+   Rules it must not break:
      · every figure names its source table and build date
-     · cannot-assess is printed as itself and is LEFT OUT of the score denominator, never zeroed
-     · MW figures are adjustable assumptions at the user's own density, and say so             */
-function openDossier(p, fips) {
+     · cannot-assess prints as itself and is LEFT OUT of the score denominator, never zeroed
+     · MW figures are adjustable assumptions at the user's own density, and say so
+     · a headroom figure ALWAYS carries its direction and its study vintage. Our MISO case is
+       DPP-2021 and a 0 from a four-year-old queue model must never read as "this bus is full" */
+
+/* which service territory contains the parcel - Figure 1 needs the utility, and the utility is a
+   polygon question, not a county question */
+function territoryAt(lat, lon) {
+  if (!state.terr || lat == null || lon == null) return null;
+  const inRing = (ring) => {
+    let hit = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  };
+  for (const f of state.terr.features) {
+    const g = f.geometry; if (!g) continue;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+    for (const poly of polys) if (poly.length && inRing(poly[0])) return f.properties;
+  }
+  return null;
+}
+
+/* nearest connection point IN A NAMED DIRECTION, and IN THE SITE'S OWN GRID.
+   Two constraints, both learned the hard way on the first render:
+
+   1. Never "nearest bus" without the direction — a withdrawal number and an injection number
+      answer different questions, and measured on 200 AEP buses they agree on exactly ZERO.
+   2. ⛔ Never a bus from a DIFFERENT balancing authority. The first Power Plan drawn for a Marion
+      County site (MISO / AES Indiana) quoted a **PJM** withdrawal bus 40.6 miles away as its
+      load-side answer, while Figure 1 correctly said no MISO load-side figure exists. The document
+      contradicted itself on the same page. A PJM bus cannot serve a MISO-territory site: you do
+      not get to interconnect to a neighbouring RTO because its data happens to be published.
+   3. And a cap, because a "nearest" 40 miles away is not a fact about the site. */
+const BUS_MAX_MI = 25;
+function nearestBus(lat, lon, direction, ba) {
+  if (!state.gridsiting || lat == null) return null;
+  let best = null;
+  for (const b of state.gridsiting.buses) {
+    if (b.direction !== direction || b.lat == null) continue;
+    if (ba && b.src && b.src !== ba) continue;        // same grid operator only
+    const d = havM(lat, lon, b.lat, b.lon);
+    if (!best || d < best.d) best = { d, b };
+  }
+  if (!best) return null;
+  const mi = +(best.d / MI).toFixed(1);
+  return mi > BUS_MAX_MI ? null : { ...best.b, mi };
+}
+
+/* Grid-model facility names are raw solver identifiers - "243275 05DELAWR1 138 245803 05DELAWR2
+   138 Z1" is a from-bus, a to-bus, voltages and a circuit id run together. Printing that in a
+   document a developer takes to a utility is noise. Keep the readable station names. */
+function bindingPlain(s) {
+  if (!s) return null;
+  const names = String(s).match(/[A-Z][A-Z0-9_.\-]{3,}/g) || [];
+  const clean = [...new Set(names.map((n) => n.replace(/^\d+/, "")).filter((n) => n.length > 2))];
+  return clean.length ? clean.slice(0, 2).join(" – ") : String(s).slice(0, 40);
+}
+
+/* Figure 2 - the parcel drawn from its own geometry. No basemap, no centroid: the outline is the
+   publisher's polygon, scaled to fit. A dossier that showed a pin instead of the parcel would be
+   showing a place, not a property. */
+function parcelDiagram(fips, key) {
+  const feats = state.loaded.get(fips) || [];
+  const ft = feats.find((f) => f.properties.parcel_key === key);
+  if (!ft || !ft.geometry) return `<div class="hint cannot">Parcel outline not loaded — open the
+    county on the map first and the diagram will draw.</div>`;
+  const pts = [];
+  (function walk(c) {
+    if (typeof c[0] === "number") { pts.push(c); return; }
+    for (const x of c) walk(x);
+  })(ft.geometry.coordinates);
+  if (!pts.length) return "";
+  const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const W = 300, H = 190, pad = 12;
+  const sx = (x1 - x0) || 1e-6, sy = (y1 - y0) || 1e-6;
+  const k = Math.min((W - 2 * pad) / sx, (H - 2 * pad) / sy);
+  const px = (q) => [pad + (q[0] - x0) * k, H - pad - (q[1] - y0) * k];
+  const rings = ft.geometry.type === "Polygon" ? [ft.geometry.coordinates]
+    : ft.geometry.type === "MultiPolygon" ? ft.geometry.coordinates : [];
+  const paths = rings.map((poly) => poly.map((ring) =>
+    `<path d="${ring.map((q, i) => `${i ? "L" : "M"}${px(q).map((n) => n.toFixed(1)).join(",")}`).join(" ")}Z"
+      fill="#d97706" fill-opacity=".18" stroke="#b45309" stroke-width="1.3"/>`).join("")).join("");
+  // a scale bar makes the drawing readable as a SIZE rather than a shape
+  const midLat = (y0 + y1) / 2;
+  const mPerDeg = 111320 * Math.cos(midLat * Math.PI / 180);
+  const barM = 200, barPx = (barM / mPerDeg) * k;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:340px;background:#fbfcfd;
+      border:1px solid #e3e6ec;border-radius:6px">${paths}
+    ${barPx > 8 && barPx < W - 30 ? `<line x1="${pad}" y1="${H - 5}" x2="${pad + barPx}" y2="${H - 5}"
+      stroke="#334155" stroke-width="1.5"/><text x="${pad}" y="${H - 8}" font-size="8"
+      fill="#334155">200 m</text>` : ""}</svg>`;
+}
+
+async function openDossier(p, fips) {
+  if (!state.gridsiting) {
+    try { state.gridsiting = await fetchGz("data/gridsiting.json.gz"); }
+    catch { state.gridsiting = { buses: [], mtep: [], utilities: [] }; }
+  }
+  return renderPowerPlan(p, fips);
+}
+
+function renderPowerPlan(p, fips) {
   const a = (x) => x == null ? null : Number(x).toFixed(2);
   // county context is NESTED — {posture, queue, iocs, fcc}, not flat. Reading it flat produced
   // ten spurious "cannot assess" rows on the first build, which is a dossier lying about our
@@ -960,7 +1070,7 @@ function openDossier(p, fips) {
   }).join("");
 
   const siDetail = p.has_si_signal === true ? `
-      ${row("signals", p.si_signals)}
+      ${row("Owner-motivation signals", signalsPlain(p.si_signals))}
       ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null)}
       ${row("events in 3 / 5 / 10 yrs", p.si_events_3y != null ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
       ${row("how it reached this parcel", p.si_keying)}
@@ -971,83 +1081,255 @@ function openDossier(p, fips) {
   const tables = ["in_sites", "in_si_sites_flags_v2", "in_site_gates", "in_substations",
                   "in_transmission_union", "in_si_d22_echo_indiana"];
 
-  show(`Dossier — parcel ${p.parcel_key}`, `
-    <div class="dossier">
-    <h3>Verdict</h3>
-    <div class="hint" style="font-size:12.5px;margin-bottom:6px">${verdict}.
-      Composite <b>${Math.round(r.composite)}</b> over ${assessable} of 6 assessable parts
-      (total weight ${r.weightUsed}).${missing.length ? ` Not assessable here:
-      ${missing.map((k) => PART_NAME[k]).join(", ")} — excluded from the denominator.` : ""}</div>
-    <table>${partRows}</table>
-    <div class="prov">Weights are the user's own and change the ranking. A part we could not
-      measure is dropped from the denominator rather than scored zero, so a data gap never
-      masquerades as a bad site.</div>
+  /* ---- the Power Plan's own inputs ---- */
+  const lat = Number(p.lat), lon = Number(p.lon);
+  const T = territoryAt(lat, lon) || {};
+  const ba = (T.control_area || "").toUpperCase();
+  // both constrained to the site's OWN balancing authority - see nearestBus()
+  const wdBus = nearestBus(lat, lon, "withdrawal", ba);   // load side - what a data centre needs
+  const injBus = nearestBus(lat, lon, "injection", ba);   // generator side
+  const target = uc === "dc" ? Math.min(mw, 300) : Math.min(mw, 5);
+  const G = state.gridsiting || { mtep: [], utilities: [] };
+  const mtepNear = (G.mtep || []).filter((m) =>
+    wdBus && String(m.from_sub || "").toUpperCase().includes(String(wdBus.name || "~~").toUpperCase().slice(0, 6)));
 
-    <h3>P3 · Land &amp; size</h3><table>
-      ${row("county", po.county_name || fips)}${row("class", p.occ_group)}
-      ${row("recorded parcel acres", a(p.parcel_acres))}
-      ${row("exact parcel acres (measured geometry)", a(p.exact_parcel_acres))}
-      ${row("screened on", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
-      ${acr.disputed ? `<tr><td>acreage dispute</td><td class="cannot">the two measures disagree</td>
-        <td class="hint">the SMALLER is used; never the larger, which is the number that makes a site look viable</td></tr>` : ""}
-      ${row(`capacity @ ${density} MW/acre (${uc === "dc" ? "whole parcel — a structure is demolition scope" : "outdoor space only"})`, mw + " MW")}
-      ${row("fits ≥25 MW datacentre", fitsDC ? "yes" : "no")}
-      ${row("fits ≥5 MW BESS", fitsBESS ? "yes" : "no")}</table>
-    <div class="prov">${prov("in_sites")}</div>
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const regulated = String(T.regulated || "").toUpperCase().startsWith("Y") || T.utility_type === "INVESTOR OWNED";
 
-    <h3>P1 · Seller intent</h3><table>${siDetail}</table>
-    <div class="prov">${prov("in_si_sites_flags_v2")} · admitted at the NON-RESIDENTIAL level only
-      and only where severity would plausibly move an owner to sell</div>
+  /* Figure 1 - who has to say yes. Four roles, because those are the four conversations. */
+  const fig1 = `
+    <table class="pp">
+      <tr><th>#</th><th>Role</th><th>Who</th><th>What it means for you</th></tr>
+      <tr><td>1</td><td><b>Electric service utility</b></td>
+        <td>${T.utility || '<span class="cannot">not resolved at this point</span>'}</td>
+        <td class="hint">The company that would actually serve the site. They run the load study and
+          set your rate schedule.</td></tr>
+      <tr><td>2</td><td><b>Generation provider</b></td>
+        <td>${T.utility ? (regulated
+            ? `${T.utility} <span class="hint">(regulated market)</span>`
+            : `${T.utility} or the wholesale market`) : '<span class="cannot">not resolved</span>'}</td>
+        <td class="hint">${regulated
+          ? "A regulated market, so power is bought through the utility. Securing generation bilaterally may still be possible via a special contract."
+          : "Generation can be procured from the utility or on the wholesale market."}</td></tr>
+      <tr><td>3</td><td><b>Transmission owner</b></td>
+        <td>${T.holding_company || T.utility || '<span class="cannot">not resolved</span>'}</td>
+        <td class="hint">Owns the high-voltage wires you would connect to, and builds any upgrades
+          your project triggers.</td></tr>
+      <tr><td>4</td><td><b>Balancing authority</b></td>
+        <td>${ba || '<span class="cannot">not resolved</span>'}</td>
+        <td class="hint">${ba === "MISO"
+          ? "MISO runs the grid here. ⚠ MISO publishes only the sending-power direction, so the load-side headroom figure a data centre needs does not exist in public data for this site."
+          : ba === "PJM" ? "PJM runs the grid here, and publishes load-side (withdrawal) capacity — the direction a data centre needs."
+          : "Sets the interconnection process and study queue."}</td></tr>
+    </table>`;
 
-    <h3>P2 · Grid access</h3><table>
-      ${row("nearest substation", p._dsub_name ? `${p._dsub_name} (${p._dsub_kv} kV) · ${p._dsub_mi} mi` : null)}
-      ${row("nearest transmission line", p._dline_mi != null ? `${p._dline_kv} kV · ${p._dline_mi} mi` : null)}
-      ${row("nearest MISO POI", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
-    <div class="prov">${prov("in_substations")} · distances are floors against mapped features,
-      not service guarantees. Headroom direction is disclosed: PJM figures are LOAD, the MISO
-      viewer publishes INJECTION only.</div>
+  /* Key takeaways - generated, not written. Each one is a fact with a consequence. */
+  const takeaways = [
+    fitsDC ? `The parcel physically fits <b>${fmt(mw)} MW</b> at your ${density} MW/acre assumption
+      (${acr.acres.toFixed(0)} acres, ${acr.basis}).`
+      : `<b>Size is the binding constraint.</b> ${acr.acres.toFixed(2)} acres fits about ${fmt(mw)} MW
+         — below the 25 MW datacentre floor.`,
+    wdBus ? `Nearest <b>load-side</b> connection point is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
+        at ${wdBus.mi} mi, with <b>${fmt(wdBus.mw)} MW</b> of published withdrawal capacity.`
+      : `<b>No load-side capacity figure exists for this site.</b> ${ba === "MISO" ? "MISO" : "The grid operator here"}
+         does not publish withdrawal headroom, so the number a data centre most needs cannot be
+         quoted — this is a gap in public data, not a finding about the site.`,
+    injBus && injBus.mw > 0
+      ? `Nearest generation-side point <b>${injBus.name}</b> shows ${fmt(injBus.mw)} MW of injection
+         headroom — relevant only if you intend to co-locate generation.`
+      : `Generation-side headroom nearby reads <b>zero</b>. ⚠ Our MISO study case is
+         <b>DPP-2021</b>, four cycles old: it models a grid saturated by projects queued in 2021,
+         most since withdrawn, and omits transmission built since. Treat a zero here as
+         <i>“our model is stale”</i>, not <i>“this bus is full”</i>.`,
+    p.has_si_signal === true
+      ? `The owner shows a public reason to sell: <b>${signalsPlain(p.si_signals) || "signal on record"}</b>${
+          p.si_last_event_date ? ` (latest ${p.si_last_event_date})` : " — date not recorded"}.`
+      : `<b>No owner-motivation signal.</b> This is a cold approach — the land is capable, but
+         nothing suggests the owner is looking to transact.`,
+    po.posture ? `County posture is <b>${po.posture}</b>${po.local_moratoriums
+      ? ` with ${po.local_moratoriums} moratorium(s) recorded` : ""}.` : null,
+  ].filter(Boolean);
 
-    <h3>P4 · Environmental gates</h3><table>
-      ${row("SFHA flood", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — flag" : "clear (measured)"))}
-      ${row("wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES — flag" : "clear (measured)"))}
-      ${row("protected land", p.protected_land === undefined ? null : (p.protected_land ? "YES — flag" : "clear (measured)"))}
-      ${row("energy-community bonus", p.bonus_kinds)}</table>
-    <div class="prov">${prov("in_site_gates")}</div>
+  /* Next steps - the actual calls to make, in order */
+  const steps = [
+    T.utility ? `Engage <b>${T.utility}</b> to confirm service territory and open a load study for
+      a ~${fmt(target)} MW request at this address.`
+      : `Confirm which utility serves this parcel — our territory polygons did not resolve it.`,
+    ba === "MISO"
+      ? `Ask ${T.utility || "the utility"} directly for load-serving capability at the nearest
+         station. <b>MISO publishes no public withdrawal headroom</b>, so the utility's own study is
+         the only route to that number.`
+      : `Ask for a QueueScope-equivalent withdrawal study at the nearest bus and confirm the
+         published figure against the utility's own model.`,
+    `Establish the rate schedule that applies at ~${fmt(target)} MW and at your expected service
+      voltage. <b>Service voltage materially changes the bill</b> — on a worked 35 MW example,
+      transmission-level service was about $210,000/yr cheaper than distribution primary.`,
+    po.has_local_restriction
+      ? `⚠ Local restrictions are recorded in this county — confirm current zoning status and any
+         moratorium expiry before spending on diligence.`
+      : `Confirm local zoning and whether any moratorium is pending. Indiana's data-centre rules are
+         largely county-level and often uncodified, so absence from our data is not proof of absence.`,
+    acr.disputed ? `Resolve the acreage dispute with the county assessor before relying on capacity.` : null,
+  ].filter(Boolean);
 
-    <h3>P5 · Community posture <span class="hint">(COUNTY grain, not parcel)</span></h3><table>
-      ${row("county posture", po.posture)}
-      ${row("local restriction on the books", po.has_local_restriction === undefined ? null : (po.has_local_restriction ? "YES" : "none recorded"))}
-      ${row("moratoriums / bans", po.local_moratoriums != null ? `${po.local_moratoriums} / ${po.local_bans ?? 0}` : null)}
-      ${row("opposition intensity", po.opposition_intensity != null ? `${po.opposition_intensity} (statewide median 0, p90 4, max 25)` : null)}
-      ${row("opposition actions / news articles", po.opp_actions != null ? `${po.opp_actions} / ${po.news_articles ?? 0}` : null)}
-      ${row("court activity — mortgage foreclosures / evictions", ioc.mf != null ? `${fmt(ioc.mf)} / ${fmt(ioc.ev)}` : null)}</table>
-    <div class="prov">Opposition intensity partly tracks NEWS VOLUME, so large metros read higher
-      for reasons that are not posture. <b>Codified ordinances are not the whole picture</b> —
-      Indiana's decision-relevant data-centre regulation is currently county moratoria published on
-      county websites, which no code library contains. See Community.</div>
+  show(`Power Plan — parcel ${p.parcel_key}`, `
+    <div class="dossier powerplan">
 
-    <h3>P6 · Market &amp; cost</h3><table>
-      ${row("active interconnection queue MW in county", q.active_mw != null ? `${fmt(q.active_mw)} MW — counts as SUPPLY, not competing demand` : null)}
-      ${row("queue projects (active / total)", q.projects != null ? `${q.active_projects ?? 0} / ${q.projects}` : null)}
-      ${row("withdrawn projects", q.withdrawn_projects)}
-      ${row("business fibre ≥100/20", c.fcc && c.fcc.units ? `${(100*(c.fcc.fiber_units||0)/c.fcc.units).toFixed(0)}% of county business units` : null)}</table>
-    <div class="prov">There is <b>no per-parcel tariff figure here, deliberately</b>: the itemised
-      rate engine is C2 and is not built. The flattened-URDB cross-check on Market is an ordering
-      hint, not a number to underwrite, and putting it on a parcel dossier would lend it a
-      precision it does not have.</div>
+    <!-- ============================ PAGE 1 ============================ -->
+    <div class="pp-hd">
+      <div><b>The Power Plan</b> — ${po.county_name || fips} County, Indiana</div>
+      <div class="hint">Parcel ${p.parcel_key} · prepared ${dateStr}</div>
+    </div>
 
-    <h3>What to check next</h3>
-    <div class="hint">${[
-      !fitsBESS ? "Parcel is below the smallest use case — deprioritise unless assembled with neighbours." : null,
-      acr.disputed ? "Acreage is disputed between recorded and measured geometry — confirm with the assessor before relying on capacity." : null,
-      p.has_si_signal !== true ? "No admitted seller-intent signal — this is a cold approach." : null,
-      p.si_events_3y === 0 && p.has_si_signal === true ? "Signal exists but nothing inside 3 years — confirm the owner's position is still current." : null,
-      p.sfha_flood ? "In an SFHA flood zone — a gate, not a preference." : null,
-      "Owner identity is NOT held: mat_parcel_attrs.parcel_owner is NULL on all 3,553,381 Indiana parcels.",
-    ].filter(Boolean).map((s) => `• ${s}`).join("<br>")}</div>
+    <table class="pp">
+      <tr><th style="width:31%">Interconnection status</th>
+          <td>No utility study on record for this site. This is a <b>prospecting</b> document: it
+            describes the path to power, not a project in progress.</td></tr>
+      <tr><th>Expected load ramp</th>
+          <td>Phase 1 <b>${fmt(target)} MW</b> · Phase 2 TBD · Phase 3 TBD
+            <div class="hint">Phase 1 is your ${density} MW/acre assumption capped at a typical
+              first phase. Edit the density on the left to change it.</div></td></tr>
+      <tr><th>Verdict</th><td>${verdict}</td></tr>
+    </table>
 
-    <div class="prov" style="margin-top:10px">Sources used in this dossier:<br>
-      ${tables.map((t) => prov(t)).join("<br>")}</div>
+    <h3>Key takeaways and concerns</h3>
+    <ul class="pp-list">${takeaways.map((t) => `<li>${t}</li>`).join("")}</ul>
+
+    <h3>Next steps for this property</h3>
+    <ol class="pp-list">${steps.map((t) => `<li>${t}</li>`).join("")}</ol>
+
+    <h3>Figure 1 · Electric stakeholder roles and responsibilities</h3>
+    ${fig1}
+    <div class="prov">${prov("in_territories")} · service territory resolved by point-in-polygon
+      against the published territory boundary, not by county.</div>
+
+    <h3>Figure 2 · Parcel diagram</h3>
+    ${parcelDiagram(fips, p.parcel_key)}
+    <div class="prov">The parcel's own recorded boundary, drawn to scale. No centroid is used
+      anywhere in this document.</div>
+
+    <!-- ============================ PAGE 2 ============================ -->
+    <div class="pp-break"></div>
+    <h3>Figure 3 · Path-to-power outlook</h3>
+    <table class="pp">
+      <tr><th style="width:19%">Parameter</th><th style="width:46%">What we hold</th><th>What it means</th></tr>
+
+      <tr><td><b>Getting power<br>(withdrawal)</b></td>
+        <td>${wdBus
+          ? `<b>${wdBus.name}</b> · ${fmt(wdBus.kv)} kV · ${wdBus.mi} mi<br>
+             <b>${fmt(wdBus.mw)} MW</b> published withdrawal capacity
+             ${wdBus.binding ? `<div class="hint">first constraint to bind: ${bindingPlain(wdBus.binding)}</div>` : ""}
+             <div class="hint">vintage: ${wdBus.vintage || "per publisher"}</div>`
+          : `<span class="cannot">Not published for this location.</span>`}</td>
+        <td class="hint">${wdBus
+          ? `This is the direction a data centre needs. It is a published screening figure, not a
+             service guarantee — only the utility's own study is binding.`
+          : `<b>A gap in public data, not a property of the site.</b> Most of Indiana sits in MISO,
+             which publishes only the generation direction. Ask the utility directly.`}</td></tr>
+
+      <tr><td><b>Sending power<br>(injection)</b></td>
+        <td>${injBus
+          ? `<b>${injBus.name}</b> · ${fmt(injBus.kv)} kV · ${injBus.mi} mi<br>
+             <b>${fmt(injBus.mw)} MW</b> injection headroom
+             <div class="hint">study case: DPP-2021 cycle</div>`
+          : `<span class="cannot">No connection point within 25 miles.</span>`}</td>
+        <td class="hint">Only relevant if you intend to co-locate generation or export.
+          <b>It is not a substitute for the withdrawal figure</b> — measured on 200 buses, the two
+          directions agreed on <b>none</b> of them.</td></tr>
+
+      <tr><td><b>Generation capacity</b></td>
+        <td>${q.active_mw != null
+          ? `${fmt(q.active_mw)} MW active in the county interconnection queue across
+             ${fmt(q.active_projects ?? 0)} project(s)${q.withdrawn_projects
+             ? `<div class="hint">${fmt(q.withdrawn_projects)} projects have withdrawn</div>` : ""}`
+          : `<span class="cannot">no queue activity recorded in this county</span>`}</td>
+        <td class="hint">Queue volume counts as future <b>supply</b> nearby, not as competing
+          demand. High withdrawal counts are normal and indicate queue churn, not failure.</td></tr>
+
+      <tr><td><b>Planned transmission</b></td>
+        <td>${(G.mtep || []).length
+          ? `${fmt((G.mtep || []).length)} MISO expansion projects recorded statewide${mtepNear.length
+              ? `, ${mtepNear.length} referencing the nearest station` : ""}`
+          : `<span class="cannot">none recorded</span>`}</td>
+        <td class="hint">Where capacity is <i>going</i> to appear. A site next to a planned upgrade
+          may be viable on a later timeline even if it is constrained today.</td></tr>
+
+      <tr><td><b>Tariffs and rates</b></td>
+        <td>${T.utility ? `${T.utility} — ${regulated ? "regulated" : "market"} service`
+          : `<span class="cannot">utility not resolved</span>`}
+          <div class="hint">No component-level Indiana tariff is held yet.</div></td>
+        <td class="hint"><b>Your rate schedule depends on your maximum load and your service
+          voltage</b>, and both are site decisions. We deliberately do not print a $/kWh here:
+          a blended county average would look precise and be wrong. This is open work.</td></tr>
+
+      <tr><td><b>Local rules</b></td>
+        <td>${po.posture || '<span class="cannot">not assessed</span>'}
+          ${po.local_moratoriums != null ? `<div class="hint">${po.local_moratoriums} moratorium(s),
+            ${po.local_bans ?? 0} ban(s) recorded</div>` : ""}</td>
+        <td class="hint">Indiana's decision-relevant data-centre regulation is mostly county
+          moratoria published on county websites, which no code library contains.
+          <b>Absence here is not evidence of absence.</b></td></tr>
+    </table>
+
+    <!-- ============================ PAGE 3 ============================ -->
+    <div class="pp-break"></div>
+    <h3>Figure 4 · Large-load interconnection checklist</h3>
+    <table class="pp">
+      <tr><th style="width:42%">Milestone</th><th style="width:16%">Status</th><th>What it is</th></tr>
+      ${[["Informal utility guidance", "The first conversation — is the utility willing to serve this size here?"],
+         ["Study agreement executed", "A signed agreement to run the load study, usually with a deposit."],
+         ["Load study returned", "The utility's own answer on what can be served and what must be built."],
+         ["System impact study", "What your load does to the wider network, and which upgrades it triggers."],
+         ["Regulatory approval", "Commission sign-off where a special contract or new tariff is needed."],
+         ["Design and procurement", "Long-lead equipment ordered — transformers can run years."],
+         ["Facilities construction agreement", "Who builds what, by when, at whose cost."],
+         ["Electric service agreement", "The contract that actually delivers power."]]
+        .map(([m, d]) => `<tr><td>${m}</td><td class="cannot">Not started</td>
+          <td class="hint">${d}</td></tr>`).join("")}
+    </table>
+    <div class="prov">Every milestone reads <b>Not started</b> because no study documentation exists
+      for this site — that is the honest status of a prospect, and the checklist is here so the path
+      is visible before you commit.</div>
+
+    <h3>Figure 5 · Evidence held for this site</h3>
+    <table class="pp">
+      <tr><th style="width:31%">Question</th><th>What we can show</th></tr>
+      ${row("Land &amp; size", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
+      ${row("Fits a 25 MW datacentre", fitsDC ? "yes" : "no")}
+      ${row("Fits a 5 MW battery", fitsBESS ? "yes" : "no")}
+      ${acr.disputed ? `<tr><td>Acreage dispute</td><td class="cannot">recorded and measured
+        acreage disagree — the SMALLER is used, never the larger</td></tr>` : ""}
+      ${row("Flood zone", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — mapped flood hazard" : "clear (measured)"))}
+      ${row("Wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES" : "clear (measured)"))}
+      ${row("Protected land overlap", p.protected_land === undefined ? null : (p.protected_land ? "YES" : "clear (measured)"))}
+      ${row("Federal tax-credit zone", p.bonus_kinds)}
+      ${siDetail}
+    </table>
+    <div class="prov">Sources used in this document:<br>${tables.map((t) => prov(t)).join("<br>")}</div>
+
+    <!-- ============================ PAGE 4 ============================ -->
+    <div class="pp-break"></div>
+    <h3>Scoring detail</h3>
+    <div class="hint" style="margin-bottom:6px">Composite <b>${Math.round(r.composite)}</b> over
+      ${assessable} of 6 assessable parts (total weight ${r.weightUsed}).${missing.length
+      ? ` Not assessable here: ${missing.map((k) => PART_NAME[k]).join(", ")} — excluded from the
+        denominator rather than scored zero, so a data gap never masquerades as a bad site.` : ""}
+      <b>The weights are yours</b> and change the ranking; these are defaults, not an answer.</div>
+    <table class="pp">${partRows}</table>
+
+    <h3>Appendix · Stakeholder meeting record</h3>
+    <table class="pp">
+      <tr><th style="width:22%">Meeting</th><td class="fillin">&nbsp;</td></tr>
+      <tr><th>Date</th><td class="fillin">&nbsp;</td></tr>
+      <tr><th>Utility attendees</th><td class="fillin">&nbsp;</td></tr>
+      <tr><th>Our attendees</th><td class="fillin">&nbsp;</td></tr>
+      <tr><th>Capacity discussed</th><td class="fillin">&nbsp;</td></tr>
+      <tr><th>Action items</th><td class="fillin" style="height:54px">&nbsp;</td></tr>
+    </table>
+    <div class="prov" style="margin-top:10px"><b>What this document is not.</b> It is a screening
+      pack built from public data. It does not price the land, name the owner, or guarantee power.
+      Every capacity figure is a published screening number superseded by the utility's own study,
+      and every figure above names the table and build date it came from.</div>
     </div>`,
     `${p.parcel_source}|${p.parcel_key}`);
   state.dossierFor = { p, fips };

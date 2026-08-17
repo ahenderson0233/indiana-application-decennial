@@ -96,6 +96,37 @@ html, body { height: 100%; font: 13.5px/1.5 "Segoe UI", system-ui, -apple-system
 .bigstat + .hint { margin-top: 2px; }
 .scroll { max-height: 480px; overflow-y: auto; }
 
+/* ============================================================================================
+   THE POWER PLAN (G3) — a four-page site document that must survive being printed to PDF.
+   Modelled on the Power Plan format the operator supplied. The page breaks are explicit rather
+   than emergent, because a document whose sections land wherever the paper happens to end is not
+   a deliverable you can hand to a utility.
+   ============================================================================================ */
+.powerplan .pp-hd { border-bottom: 3px solid #d97706; padding-bottom: 6px; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.powerplan .pp-hd b { font-size: 14.5px; }
+.powerplan h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: #556; margin: 14px 0 5px; border-bottom: 1px solid #e3e6ec; padding-bottom: 3px; }
+table.pp { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+table.pp th { text-align: left; padding: 4px 5px; background: #f6f7f9; color: #475569;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; vertical-align: top;
+  border-bottom: 1px solid #e3e6ec; }
+table.pp td { padding: 4px 5px; border-bottom: 1px solid #f0f2f6; vertical-align: top; }
+table.pp td.fillin { border-bottom: 1px solid #cbd5e1; background: #fcfcfd; }
+.pp-list { margin: 4px 0 4px 18px; padding: 0; font-size: 12.5px; }
+.pp-list li { margin-bottom: 5px; }
+.pp-break { height: 0; }
+
+@media print {
+  /* one page per section, and never split a figure across the fold */
+  .pp-break { break-before: page; page-break-before: always; height: 0; }
+  .powerplan table.pp, .powerplan .pp-list { break-inside: avoid; page-break-inside: avoid; }
+  .powerplan h3 { break-after: avoid; page-break-after: avoid; }
+  .powerplan svg { break-inside: avoid; }
+  table.pp th { background: #f2f4f7 !important; -webkit-print-color-adjust: exact;
+    print-color-adjust: exact; }
+}
+
 /* dossier: printing isolates the evidence panel as a branded one-pager */
 @media print {
   #topbar, #rail, #map, #ev-close, #ev-star, #ev-print, #ev-dossier, #tooltip { display: none !important; }
