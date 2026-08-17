@@ -102,6 +102,53 @@ public load-side equivalent may simply not exist.
 load-side bus within 25 miles**, while 515,932 (97%) have an injection bus. For three fifths of the
 candidate set, *the direction a data centre actually needs is unavailable.*
 
+#### G7d — 🟢 MISO BUS HEADROOM: A ROUTE EXISTS, AND IT IS ALREADY CATALOGUED
+
+Operator, 2026-08-17: *"Is there any other methodology we can use to obtain MISO bus headroom? That
+is a crucial necessity of our tool."* **Yes — three, and the best one is public, catalogued and
+never built.** The agent's BLOCKED verdict was correct about the `poi_mf` API specifically; it is
+not the whole picture.
+
+**ROUTE 1 — MISO POI Analysis Heatmap (CartoVista/FERC, DPP2025). ⭐ Do this first.**
+Already in `energy.registry_sources` as **`CATALOGED-not-built`, access `public`**:
+`https://cloud.cartovista.com/miso/ferc/poi-analysis-map`
+It provides, per the catalogue entry: **19,223 POI buses with kV and lat/lon**, and a
+**691,523-row transfer-study table with FCITC MW per bus × constraint × contingency × scenario ×
+year**. FCITC (First Contingency Incremental Transfer Capability) is a **transfer** quantity, i.e.
+source→sink, which is the shape that carries direction. **19,223 buses against the 642 we currently
+hold located is a 30× coverage increase**, and it is a FERC Order 2023 heatmap, published because
+the rule requires publication. This is the single highest-value unbuilt item in the estate for this
+application.
+
+**ROUTE 2 — derive withdrawal from the study data we already own.**
+`in_miso_poi_300mw` (40,007 rows) carries `DFax`, `BaseFlowMw`, `ContFlowMw`, `RateBaseMva`,
+`RateContMva`, `MwImpact`, `MonitoredFacilityName`, `ContName` — a complete DC-power-flow constraint
+table. Headroom in a direction is `min over (facility, contingency) of (rating − base flow) / |shift
+factor|`, and the shift factor **flips sign** for withdrawal. That is exactly how the vendor extract
+is built (its columns include `Flow Direction` and `Shift Factor`).
+⚠ **Honest limitation, which must be stated wherever the number appears:** MISO returned only the
+constraints that bind for *injection* at each POI. Withdrawal loads a *different* set of facilities,
+and those rows are not in the payload. A derived withdrawal figure is therefore an **upper bound
+over an incomplete constraint set** — a labelled estimate, never a published figure, and it must
+never be styled like one.
+
+**ROUTE 3 — utility load hosting-capacity maps** (the pattern the operator's Illinois dashboard uses,
+where ComEd/Ameren publish load and generation hosting capacity):
+- `I&M/AEP hosting capacity map (PROD_MI_HC_GRID)` — **`done`, public, ArcGIS**, Indiana. Already
+  acquired nationally as `hca_aep_multistate_repull` (IN/MI/OH) and **not clipped into this app.**
+- `Duke Energy Indiana Grid Hosting Capacity` — BLOCKED · `der_in_duke_energy_indiana` — blocked ·
+  `Duke Indiana / NIPSCO / AES Indiana / CenterPoint IN hosting-capacity maps` — blocked/gated.
+  ⚠ **Re-test these.** Standing rule 11: *a wall is an observation, not a property of a host* —
+  four robots-403 walls did not reproduce on re-test.
+- Precedent that it is publishable: `Duke Energy Carolinas POI Heatmap` is **BUILT+LOADED** and
+  provides *"transmission bus WORST-CASE TRANSFER LIMIT (trlim MW) under N-1, **injection AND
+  withdrawal***". Duke publishes both directions in the Carolinas — so ask why not in Indiana.
+
+**Also noted, and NOT usable in the tool:** `Transect interconnection data` — BUILT+LOADED but
+**NDA-gated** — provides buses, interconnection capacity/cost, substations and lines with power-flow
+and N-1 for Indiana (MISO/PJM). Same category as the Orennia extract: **benchmark only, never a
+source.**
+
 #### G7c — AGENT INTERIM REPORT, 2026-08-17 (verify before building on it)
 
 | deliverable | state |
@@ -135,6 +182,52 @@ Ladder to acquire: **100 / 300 / 500 / 1000 / 2500 / 5000 MW**, for BOTH directi
 in `docs/RTO_DIRECTIONS.md`; partial coverage is expected and fine. Request size must be a COLUMN
 (`request_mw`), never one table per size, so the existing 300 and 100 rungs fold in rather than
 duplicate. Sent to the in-flight agent as a scope extension.
+
+### G20 — 100% PARITY with the vendor extract, and WHY the 42 are missing (operator, 2026-08-17)
+
+*"If we do have data that is missing from our tables that they have within their tables, we should
+analyze that and determine why that is the case, and determine possible solutions (e.g., I know we
+use a deduping methodology, and maybe that removed some real observations)."* Then: *"Instead of
+JUST chasing the >=345kV substation, we should strive for 100% parity... ~97.5% parity isn't enough,
+and we should attempt to gain 100%, if feasibly possible."*
+
+**Root-caused 2026-08-17. The dedup hypothesis is DISPROVED, and the cause is a taxonomy gap.**
+
+Our clip is faithful: `energy.mat_grid_substations` holds **3,858 Indiana rows on 2,077 distinct
+coordinates** — byte-identical in count to `in_substations`. Nothing was dropped by us, and the
+duplicates (G19) are inherited from upstream rather than introduced. The 42 are absent from the
+**upstream** table too.
+
+| their `Type` | n | what it actually is |
+|---|---:|---|
+| **Tap** | **25** | a connection point *on a line*, not a substation |
+| **Dead End** | **7** | a line-termination structure |
+| Substation | 6 | ← **genuine substation gaps** |
+| Not Available | 4 | 4 of these are `Osmunknown*` — OSM nodes their model kept |
+
+**76% of the gap is not substations at all.** HIFLD and OSM catalogue *substations*; the vendor's
+asset model catalogues *network nodes*. That is a definitional difference, not lost data — and it is
+also why "dedup ate them" is the wrong diagnosis.
+
+**Route to 100%, by class:**
+1. **Taps and dead ends (32).** Derive them from topology rather than acquire them: a tap is where a
+   line meets a line, and we hold `in_transmission_union` (3,737 segments with geometry). Compute
+   line-to-line junctions and terminations, and register them as their **own asset class** — never
+   merged into the substation table, or we recreate the taxonomy confusion in the other direction.
+2. **The 6 typed `Substation`** — Aq3 Mp (Knox), Unknown174219 (Sullivan), Unknown176298 (Martin),
+   Mccool Rd (Porter), New Haven (Spencer), and Pike County 765 kV. Chase individually against
+   HIFLD/OSM upstream; these are the real gaps.
+3. ⭐ **`Pike County 765kV` is `status = Planned`.** It is not a missing existing asset — it is a
+   **future** one, and a 765 kV substation is a major siting fact. **It belongs to G15
+   (future capacity), not to a substation backfill.** Worth its own look: a planned 765 kV station
+   is exactly the kind of thing a hyperscale campus follows.
+4. **The 4 `Osmunknown*`** — present in OSM, absent from our merge. Check whether the upstream OSM
+   pull filtered them (unknown voltage is a likely culprit) — and recall the standing rule that
+   unknown voltage must never be treated as 0.
+
+**Parity is achievable.** After classes 1–3 the residual is 0, and the honest statement becomes
+*"we hold 100% of their substations, plus taps and dead ends as a separate class"* rather than a
+single blended percentage that hides a taxonomy difference.
 
 ### G18 — every chart must be labelled and explained (operator, 2026-08-17)
 
