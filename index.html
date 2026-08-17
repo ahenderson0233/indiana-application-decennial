@@ -155,6 +155,19 @@
         <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
           <span class="hint">(neighbours already holding air permits)</span></label>
         <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
+        <div class="subhead">Water</div>
+        <label><input type="checkbox" id="L-watershed"> Watersheds
+          <span class="hint">(76 subbasins)</span></label>
+        <label><input type="checkbox" id="L-waterstress"> Water stress
+          <span class="hint">(34 basins)</span></label>
+        <div class="hint" style="margin-left:18px"><b>So what:</b> a watershed is the unit water is
+          actually allocated and argued over in &mdash; two parcels a mile apart in different
+          subbasins can face different objections and different permitting bodies. Click one to see
+          how many rivers, reservoirs and lakes it holds.<br>
+          <b>Rivers and lakes are not drawn</b>, because the national hydrography data we hold
+          carries attributes with <b>no geometry</b> &mdash; they can be counted per watershed but
+          not mapped. We are chasing the geometry.</div>
+
         <div class="subhead">Environmental</div>
         <label><input type="checkbox" id="L-padus"> Protected land</label>
         <label><input type="checkbox" id="L-bonusgeo"> Tax-credit areas <span class="hint">(incl. coal closures)</span></label>
@@ -254,6 +267,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=4cb2d338"></script>
-<script src="app.js?v=8b5bdd55"></script>
+<script src="app.js?v=a52de1c2"></script>
 </body>
 </html>

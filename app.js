@@ -172,6 +172,32 @@ map.on("load", async () => {
              ["==", ["get", "utility_type"], "cooperative"], "#fcd34d", "#d1d5db"],
              "fill-opacity": 0.28, "fill-outline-color": "#475569" } }, "county-line");
 
+  /* ---- G12: water. Watersheds and water-stress basins.
+     Rivers and lakes are deliberately ABSENT: the national hydrography tables carry attributes
+     with NO geometry on any of their 50M rows, so watercourses can be counted per watershed but
+     cannot be drawn. Inventing a blue line from something else would be worse than omitting it. */
+  state.water = await fetchGz("data/water.geojson.gz");
+  map.addSource("water", { type: "geojson", data: state.water });
+  // stress first so watershed outlines sit on top of it
+  map.addLayer({ id: "water-stress-fill", type: "fill", source: "water",
+    filter: ["==", ["get", "layer"], "stress_basin"], layout: { visibility: "none" },
+    paint: { "fill-color": ["interpolate", ["linear"], ["to-number", ["get", "stress_score"], 0],
+               0, "#e0f2fe", 1, "#7dd3fc", 2, "#fbbf24", 3, "#f97316", 4, "#b91c1c"],
+             "fill-opacity": 0.4, "fill-outline-color": "#0369a1" } }, "county-line");
+  map.addLayer({ id: "water-ws-fill", type: "fill", source: "water",
+    filter: ["==", ["get", "layer"], "watershed"], layout: { visibility: "none" },
+    paint: { "fill-color": "#0ea5e9", "fill-opacity": 0.10 } }, "county-line");
+  map.addLayer({ id: "water-ws-line", type: "line", source: "water",
+    filter: ["==", ["get", "layer"], "watershed"], layout: { visibility: "none" },
+    paint: { "line-color": "#0369a1", "line-width": 1.1, "line-dasharray": [3, 2] } }, "county-line");
+  for (const lid of ["water-ws-fill", "water-stress-fill"]) {
+    map.on("click", lid, (e) => { if (!state.measure.on) openWaterEvidence(e.features[0].properties); });
+    map.on("mousemove", lid, (e) => showTip(e, e.features[0].properties.layer === "watershed"
+      ? `${e.features[0].properties.name} watershed`
+      : `water stress: ${e.features[0].properties.stress_label || "unrated"}`));
+    map.on("mouseleave", lid, hideTip);
+  }
+
   state.overlays = await fetchGz("data/overlays.geojson.gz");
   map.addSource("overlays", { type: "geojson", data: state.overlays });
   map.addLayer({ id: "env-padus", type: "fill", source: "overlays",
@@ -511,6 +537,7 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
   "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
   "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
   "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
+  "L-watershed": ["water-ws-fill", "water-ws-line"], "L-waterstress": ["water-stress-fill"],
   "L-dc": ["fac-dc", "fac-dc-city"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
 /* ---------- context layers: 1 MB of geometry, so fetched on FIRST USE, not at boot ----------
    Six layers share one payload. The first toggle loads it and builds all six; later toggles
@@ -1011,6 +1038,56 @@ function show(title, html, starKey) {
   } else star.classList.add("hidden");
   panel.classList.remove("hidden");
 }
+/* Water evidence. Every row states what it means for a project, per the governing principle: a
+   watershed name and a score are trivia until the reader knows what to do about them. */
+function openWaterEvidence(p) {
+  if (p.layer === "stress_basin") {
+    const sc = Number(p.stress_score);
+    const verdict = sc >= 3 ? "<b class='cannot'>Contested.</b> Expect scrutiny on any large new withdrawal, and budget time for it."
+      : sc >= 2 ? "<b>Moderately stressed.</b> Withdrawal is workable but will be looked at."
+      : "<b>Not stress-constrained.</b> Water is unlikely to be the thing that stops you here.";
+    return show(`Water stress — basin ${p.basin_id}`, `
+      <div class="hint" style="margin-bottom:8px">${verdict}</div>
+      <table>
+        ${row("Baseline water stress", p.stress_label)}
+        ${row("Water depletion", p.depletion_label)}
+        ${row("Groundwater decline", p.groundwater_decline_label)}
+      </table>
+      <div class="prov"><b>What this is:</b> the share of available surface water already
+        allocated, from the WRI Aqueduct dataset, published per hydrological basin. It measures
+        <i>competition for water</i>, not whether water is physically present.
+        <b>Basins are not counties</b> — we keep them at their published grain rather than
+        averaging them onto a county, which would invent a precision the source does not have.</div>`);
+  }
+  const rivers = Number(p.named_rivers) || 0, res = Number(p.reservoirs) || 0;
+  const lakes = Number(p.lakes_over_10ha) || 0;
+  const verdict = (res + lakes) > 0
+    ? `<b>Surface water is present in this watershed</b> — ${res} reservoir(s) and ${lakes} lake(s)
+       over 10 hectares, plus ${fmt(rivers)} named rivers.`
+    : rivers > 0
+      ? `<b>Rivers but no substantial standing water.</b> ${fmt(rivers)} named rivers and no
+         reservoir or lake above 10 hectares, so a surface-water supply here means a river intake.`
+      : `<b class="cannot">No substantial surface water recorded in this watershed.</b>`;
+  show(`Watershed — ${p.name}`, `
+    <div class="hint" style="margin-bottom:8px">${verdict}</div>
+    <table>
+      ${row("Watershed code (HUC8)", p.huc8)}
+      ${row("States it spans", p.states)}
+      ${row("Area", p.area_sqkm ? `${fmt(p.area_sqkm)} km²` : null)}
+      ${row("Named rivers", rivers)}
+      ${row("Reservoirs", res)}
+      ${row("Lakes over 10 hectares", lakes)}
+      ${row("Largest waterbody", p.largest_waterbody_sqkm ? `${fmt(p.largest_waterbody_sqkm)} km²` : null)}
+    </table>
+    <div class="prov"><b>Why a watershed and not a county:</b> water is allocated, contested and
+      permitted by watershed. Two parcels a mile apart in different subbasins can face different
+      objections and different bodies. Note this watershed may cross a state line — several of
+      Indiana's drain into Ohio, Michigan or Illinois, which is a jurisdictional fact worth knowing
+      early.<br><b>The rivers and lakes above are counted, not drawn.</b> The national hydrography
+      data we hold carries attributes with no geometry, so we can tell you how many there are and
+      not where they run.</div>`);
+}
+
 /* ---------- G3: THE POWER PLAN ----------
    A four-page, print-to-PDF site document modelled on the Power Plan format the operator supplied
    (three worked examples: LA-Cajun, NJ-Jetstream, WI-Maple). The evidence panel answers "what do we
