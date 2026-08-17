@@ -362,7 +362,7 @@ below, **add its row here in the same edit.**
 | **G11** | **Sentiment statuses not reaching the map** | 🔴 **OPEN — UNVERIFIED** | Measure the vocabulary diff between `county_context.json` (map) and `receipts.json.gz` + `in_dc_actions_resolved` (Community) **before** changing anything |
 | **G11** | **Verified county actions never reached the map** | ✅ **DONE** | 33 counties carry a verified action and the map called **13 of them "quiet"** — Cass has a **ban**, Floyd/Huntington/Whitley **moratoriums**, all with `has_local_restriction=false`. And **10 counties have APPROVED a data centre** with no representation at all. Now a categorical shading + legend |
 | **G29** | **Parcel→asset distance is measured wrong on the map** | 🔴 **OPEN** | `repPt()` uses the parcel's **first vertex** and one binned vertex per line, so a line crossing a parcel reads ~0.55 mi instead of **0.0**. Always overstates. ⭐ The screener already does this exactly in BigQuery — two methods in one app |
-| **G12** | **💧 WATER** | 🟡 **COUNTY GRAIN LANDED** | `in_water_county` (92/92) + `in_water_stress_basin` (34). Statewide 7,176.7 Mgal/d, thermoelectric 3,822.0. **Parcel-grain still open** (NHD proximity, ECHO discharge). Two silent traps hit and fixed; groundwater/NWIS genuinely NOT held |
+| **G12** | **💧 WATER** | 🟢 **PARCEL GRAIN LIVE** | `in_water_county` (92/92) + `in_water_stress_basin` (34). Statewide 7,176.7 Mgal/d, thermoelectric 3,822.0. **Parcel-grain still open** (NHD proximity, ECHO discharge). Two silent traps hit and fixed; groundwater/NWIS genuinely NOT held |
 | ~~G12 old~~ | | | A first-order cooling constraint, so a missing **screening dimension**, not a missing layer. Clip the Indiana slice into `indiana_app` (**clip, do not duplicate**), register, export, surface in the screener and map |
 | **G13** | **Voltage: filter, colour, and AUDIT first** | 🔴 **OPEN** | Some voltages mislabeled. **Audit before colouring** — colouring by a wrong field renders the error in high contrast, and the bad kV already feeds the screener's substation filter. Unknown voltage gets its own colour, never the bottom of the scale |
 | **G14** | **Re-scrape missing signal dates** | 🔴 **OPEN** | **90% of tax-delinquency records (8,523 of 9,459) are undated** and it is our largest signal. Establish first whether the source publishes a date we failed to capture |
@@ -993,7 +993,34 @@ Also corrected: the first version hand-rolled its own CWNS aggregation and there
 `flow_existing_industrial_mgd`** — the most relevant flow for a data centre, which discharges as an
 industrial user. G25 in its exact form: look at what we hold before rebuilding it badly.
 
-#### ⛔⛔ G12b — THE PARCEL JOIN IS BLOCKED: **NHD HAS NO GEOMETRY, NATIONALLY**
+#### ✅ G12c — PARCEL-GRAIN WATER **IS** LIVE, via the attributes. (Operator: *"can we not measure
+against the attributes?"* — yes, and the answer was better than the blocker.)
+
+`in_water_parcel`: **532,868 parcels, fan-out 1.000, 100% matched** to one of 34 basins.
+
+| | |
+|---|---:|
+| parcels in a **high water-stress** basin | **57,380** |
+| parcels in a **high groundwater-decline** basin | 2,708 |
+| parcels straddling a basin boundary (**worst stress kept**) | 11,085 |
+
+**How it works without NHD geometry.** `water_aqueduct` carries **`geometry_geojson`** and all 34
+Indiana basins parse as valid GEOGRAPHY, so a parcel can be placed **inside a basin** by
+`ST_INTERSECTS` even though no river can be measured to. Straddling parcels take the **worst**
+stress — the same worst-wins logic as the county actions: a parcel spanning an easy and a contested
+basin cannot be assumed to draw from the easy side.
+
+⚠ **State plainly what this answers and what it does not.** It answers *"how contested is water
+here, and is the groundwater declining"* — a real constraint that changes permitting difficulty. It
+does **not** answer *"how far is the nearest river"*; that stays blocked below.
+
+**And a second attribute route is open and unused:** `reachcode`'s first 8 digits are the HUC8
+watershed, populated on **all 2,415,369 Indiana flowlines with zero missing (77 watersheds)**. So
+rivers and lakes can be inventoried per watershed from attributes alone. The missing link is a HUC8
+boundary polygon to place parcels in — **we hold none**; that is a smaller acquisition than
+re-loading 39.5M NHD geometries.
+
+#### ⛔ G12b — DISTANCE-TO-WATER REMAINS BLOCKED: **NHD HAS NO GEOMETRY, NATIONALLY**
 
 Attempted 2026-08-17 on the operator's request. Built, ran, and returned a **confident zero** —
 532,868 parcels, **not one within 10 miles of water**, in a state with 972,487 river segments. That
