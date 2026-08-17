@@ -56,38 +56,19 @@ feats = []
 # ---- watersheds, with their surface-water inventory computed FROM ATTRIBUTES ----
 # The inventory is the point: no geometry is needed to count what a watershed contains, because
 # reachcode's first 8 digits ARE the HUC8 and it is populated on all 2,415,369 Indiana flowlines.
+# ⛔ READS indiana_app ONLY. The checkpoint caught an earlier version of this file querying
+# energy.nhd_* directly: a BUILD script may read energy, an EXPORT may not, or the app cannot be
+# rebuilt without the platform dataset. The per-watershed inventory is now the registered clip
+# `in_watershed_inventory`.
 for r in client.query(f"""
-WITH riv AS (
-  SELECT SUBSTR(reachcode, 1, 8) AS huc8,
-         COUNTIF(SAFE_CAST(ftype AS INT64) = 460) AS river_segments,
-         COUNT(DISTINCT IF(SAFE_CAST(ftype AS INT64) = 460, gnis_name, NULL)) AS named_rivers
-  FROM `energy-platfrom.energy.nhd_flowline`
-  WHERE UPPER(IFNULL(src_state, '')) = 'IN' AND reachcode IS NOT NULL
-  GROUP BY huc8
-),
-lak AS (
-  SELECT SUBSTR(reachcode, 1, 8) AS huc8,
-         COUNTIF(SAFE_CAST(ftype AS INT64) = 436) AS reservoirs,
-         COUNTIF(SAFE_CAST(ftype AS INT64) = 390
-                 AND SAFE_CAST(areasqkm AS FLOAT64) >= 0.1) AS lakes_over_10ha,
-         ROUND(MAX(SAFE_CAST(areasqkm AS FLOAT64)), 2) AS largest_waterbody_sqkm
-  FROM `energy-platfrom.energy.nhd_waterbody`
-  WHERE UPPER(IFNULL(src_state, '')) = 'IN' AND reachcode IS NOT NULL
-  GROUP BY huc8
-)
-SELECT b.huc8, b.name, b.states, ROUND(b.area_sqkm) AS area_sqkm,
-       IFNULL(riv.river_segments, 0) AS river_segments,
-       IFNULL(riv.named_rivers, 0) AS named_rivers,
-       IFNULL(lak.reservoirs, 0) AS reservoirs,
-       IFNULL(lak.lakes_over_10ha, 0) AS lakes_over_10ha,
-       lak.largest_waterbody_sqkm,
-       -- simplified to ~120 m. At state/county zoom the full-resolution boundary is invisible and
-       -- costs 14 MB; the simplified layer is a tenth of that. Watershed edges are administrative
-       -- boundaries, not a measurement, so simplifying them loses nothing a reader could use.
+SELECT i.huc8, i.name, i.states, ROUND(i.area_sqkm) AS area_sqkm,
+       i.river_segments, i.named_rivers, i.reservoirs, i.lakes_over_10ha,
+       i.largest_waterbody_sqkm,
+       -- simplified to ~120 m: watershed edges are administrative boundaries, not measurements,
+       -- and at state zoom the full-resolution vertices cost 14 MB and show nothing.
        ST_ASGEOJSON(ST_SIMPLIFY(b.geog, 120)) AS gj
-FROM `{DS}.in_huc8_boundaries` b
-LEFT JOIN riv USING (huc8)
-LEFT JOIN lak USING (huc8)
+FROM `{DS}.in_watershed_inventory` i
+JOIN `{DS}.in_huc8_boundaries` b USING (huc8)
 WHERE b.geog IS NOT NULL"""):
     d = dict(r)
     gj = d.pop("gj")
@@ -97,14 +78,10 @@ n_ws = len(feats)
 
 # ---- water-stress basins (WRI Aqueduct), kept at BASIN grain ----
 for r in client.query(f"""
-  SELECT aq30_id AS basin_id,
-         SAFE_CAST(bws_score AS FLOAT64) AS stress_score, bws_label AS stress_label,
-         SAFE_CAST(bwd_score AS FLOAT64) AS depletion_score, bwd_label AS depletion_label,
-         SAFE_CAST(gtd_score AS FLOAT64) AS groundwater_decline_score,
-         gtd_label AS groundwater_decline_label,
-         ST_ASGEOJSON(ST_SIMPLIFY(SAFE.ST_GEOGFROMGEOJSON(geometry_geojson, make_valid => TRUE), 120)) AS gj
-  FROM `energy-platfrom.energy.water_aqueduct`
-  WHERE UPPER(IFNULL(name_1, '')) LIKE '%INDIANA%'"""):
+  SELECT basin_id, stress_score, stress_label, depletion_score, depletion_label,
+         groundwater_decline_score, groundwater_decline_label,
+         ST_ASGEOJSON(ST_SIMPLIFY(geog, 120)) AS gj
+  FROM `{DS}.in_water_stress_basin_geo`"""):
     d = dict(r)
     gj = d.pop("gj")
     if not gj:

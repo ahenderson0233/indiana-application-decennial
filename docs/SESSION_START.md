@@ -24,7 +24,8 @@ Then read, in this order — and no further than this, because it is enough:
 |---|---|---|
 | 1 | `docs/BACKLOG.md` | the ledger. The block at the top is **generated**; everything below is the plan, the operator rulings, and the rules earned by getting things wrong |
 | 2 | `docs/TABLE_INVENTORY.md` | **generated.** All ~269 objects and, per object, whether it carries OWNER data, a real DATE, a STATUS vocabulary, coordinates or a parcel key |
-| 3 | `docs/SIGNAL_REALITY.json` | **generated.** Every SI signal classed as done / not-split / wrong-grain / blocked / awaiting-operator, so you stop re-recommending finished or impossible work |
+| 3 | `docs/HANDOFF_2026-08-17.md` | **the front-end revamp session.** ⚠ Lists the AGENTS that were still running, and every file/reference the operator supplied |
+| 4 | `docs/SIGNAL_REALITY.json` | **generated.** Every SI signal classed as done / not-split / wrong-grain / blocked / awaiting-operator, so you stop re-recommending finished or impossible work |
 
 `docs/PATH_TO_COMPLETE.md`, `docs/HANDOFF.md` and `docs/GAMEPLAN.md` are HISTORY. They contain
 figures that were true when written and are not now. Read them for *how* something was done, never

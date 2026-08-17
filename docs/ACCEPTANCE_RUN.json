@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-17T16:15:25.182634+00:00",
+ "run_at": "2026-08-17T17:21:17.223632+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 118 payloads + pages \u00b7 0 leaks"
+   "detail": "scanned 120 payloads + pages \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 274 of 277 registered objects reach a surface \u00b7 3 unwired: ['in_miso_poi_ladder', 'in_pjm_bus_injection', 'in_pjm_qs_withdrawal_rungcheck']"
+   "detail": "MEASURED this run: 278 of 285 registered objects reach a surface \u00b7 7 unwired: ['in_miso_facility_detail', 'in_miso_poi_ladder', 'in_pjm_bus_injection', 'in_pjm_qs_withdrawal_rungcheck', 'in_water_parcel', 'in_water_stress_basin']"
   },
   {
    "criterion": 2,
@@ -48,7 +48,7 @@
    "criterion": 7,
    "name": "adjustables are config-driven",
    "state": "PASS",
-   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 13 literal MW mentions remain in prose/labels, which are copy not thresholds"
+   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 14 literal MW mentions remain in prose/labels, which are copy not thresholds"
   },
   {
    "criterion": 8,

@@ -1356,10 +1356,19 @@ function renderPowerPlan(p, fips) {
     injBus && injBus.mw > 0
       ? `Nearest generation-side point <b>${injBus.name}</b> shows ${fmt(injBus.mw)} MW of injection
          headroom — relevant only if you intend to co-locate generation.`
-      : `Generation-side headroom nearby reads <b>zero</b>. ⚠ Our MISO study case is
-         <b>DPP-2021</b>, four cycles old: it models a grid saturated by projects queued in 2021,
-         most since withdrawn, and omits transmission built since. Treat a zero here as
-         <i>“our model is stale”</i>, not <i>“this bus is full”</i>.`,
+      : injBus && injBus.overloaded_base > 0
+        // G27: we can now say WHY the zero, instead of only that it is zero.
+        ? `Generation-side headroom reads <b>zero at ${injBus.name}</b>, and we can say why:
+           <b>${injBus.overloaded_base} monitored facilities there are already over their rating
+           before any new request exists</b>, while the most permissive facility at the same point
+           shows ${fmt(injBus.best_facility_mw)} MW. So the zero describes <b>a constraint that
+           predates your project</b>, not a bus with nothing left. ⚠ Our study case is
+           <b>DPP-2021</b>, four cycles old and <i>unmitigated</i>; the current published case has
+           those mitigations applied.`
+        : `Generation-side headroom nearby reads <b>zero</b>. ⚠ Our MISO study case is
+           <b>DPP-2021</b>, four cycles old: it models a grid saturated by projects queued in 2021,
+           most since withdrawn, and omits transmission built since. Treat a zero here as
+           <i>“our model is stale”</i>, not <i>“this bus is full”</i>.`,
     p.has_si_signal === true
       ? `The owner shows a public reason to sell: <b>${signalsPlain(p.si_signals) || "signal on record"}</b>${
           p.si_last_event_date ? ` (latest ${p.si_last_event_date})` : " — date not recorded"}.`

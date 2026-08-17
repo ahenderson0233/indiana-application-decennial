@@ -109,9 +109,12 @@ for r in client.query(f"""
          m.worst_mw, m.best_mw, m.median_mw,
          m.facilities_at_zero, m.monitored_facilities, m.worst_binding_facility, m.vintage,
          m.lat, m.lon,
-         lad.true_mw, IFNULL(lad.ladder, []) AS ladder
+         lad.true_mw, IFNULL(lad.ladder, []) AS ladder,
+         -- G27: WHY a POI reads zero. Re-clipped columns the original clip dropped.
+         st.headroom_state, st.n_facilities_overloaded_base, st.max_facility_mw_available
   FROM `{DS}.in_bus_headroom_miso` m
   LEFT JOIN lad ON lad.poi_name = m.poi_name
+  LEFT JOIN `{DS}.in_miso_poi_state` st ON st.poi_name = m.poi_name
   WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL"""):
     d = dict(r)
     ladder = [dict(x) for x in (d.get("ladder") or [])]
@@ -137,6 +140,12 @@ for r in client.query(f"""
         "monitored": d["monitored_facilities"],
         "binding": d["worst_binding_facility"],
         "vintage": d["vintage"],
+        # G27: the zero's CAUSE. A bus reading 0 because a monitored facility was already over its
+        # rating before any request is a different finding from a bus that is genuinely full, and
+        # until now both rendered as a bare zero.
+        "state": d.get("headroom_state"),
+        "overloaded_base": d.get("n_facilities_overloaded_base"),
+        "best_facility_mw": r1(d.get("max_facility_mw_available")),
         "conf": "publisher",               # publisher-supplied coordinates
         "lat": r6(d["lat"]), "lon": r6(d["lon"]),
     })
