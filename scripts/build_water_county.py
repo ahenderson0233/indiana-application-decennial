@@ -57,7 +57,23 @@ WITH use AS (
          SAFE_CAST(in_wtotl AS FLOAT64) AS industrial_mgd,
          SAFE_CAST(pt_wtotl AS FLOAT64) AS thermoelectric_mgd,
          SAFE_CAST(ir_wfrto AS FLOAT64) AS irrigation_mgd,
-         SAFE_CAST(to_wtotl AS FLOAT64) AS total_withdrawal_mgd
+         SAFE_CAST(to_wtotl AS FLOAT64) AS total_withdrawal_mgd,
+         -- ⭐ THE GROUND / SURFACE SPLIT, FOR EVERY SECTOR. The first version of this clip took only
+         -- the public-supply split and so could not answer "how much groundwater does this county
+         -- already draw" - which led to a recommendation to send an agent after per-county
+         -- groundwater data we were already holding. Measured: 92 of 92 counties, 698.8 Mgal/d
+         -- groundwater against 6,477.9 surface. G27 (under-clipping) committed inside the very
+         -- script written to fix G25 (check what you hold first).
+         SAFE_CAST(to_wgwto AS FLOAT64) AS total_ground_mgd,
+         SAFE_CAST(to_wswto AS FLOAT64) AS total_surface_mgd,
+         SAFE_CAST(in_wgwto AS FLOAT64) AS industrial_ground_mgd,
+         SAFE_CAST(in_wswto AS FLOAT64) AS industrial_surface_mgd,
+         SAFE_CAST(pt_wgwto AS FLOAT64) AS thermoelectric_ground_mgd,
+         SAFE_CAST(pt_wswto AS FLOAT64) AS thermoelectric_surface_mgd,
+         SAFE_CAST(ir_wgwfr AS FLOAT64) AS irrigation_ground_mgd,
+         -- what share of this county's water already comes from underground: the single most
+         -- useful groundwater figure we can give without well-level data
+         SAFE_DIVIDE(SAFE_CAST(to_wgwto AS FLOAT64), SAFE_CAST(to_wtotl AS FLOAT64)) AS ground_share
   FROM `energy-platfrom.energy.water_use`
   WHERE UPPER(state) IN ('IN', 'INDIANA')
 ),
@@ -109,6 +125,26 @@ cwns AS (
   WHERE UPPER(w.state) = 'IN'
   GROUP BY cnty
 ),
+-- ⭐ DISCHARGE. EPA ECHO Clean Water Act / NPDES permitted dischargers - 13,217 in Indiana.
+-- This is the other half of the water question and the one most siting tools omit: a data centre
+-- must PUT WATER BACK, and a discharge permit is what allows it. Rolled up per county here rather
+-- than mapped, because the clip carries `faclong` and NO `faclat` (a G27 under-clip): longitude
+-- alone cannot place a facility, so the county name is the finest grain we can honestly use today.
+echo AS (
+  SELECT UPPER(REGEXP_REPLACE(facstdcountyname, r' County$', '')) AS cnty,
+         COUNT(*) AS npdes_permits,
+         COUNTIF(SAFE_CAST(cwptotaldesignflownmbr AS FLOAT64) > 0) AS npdes_with_design_flow,
+         ROUND(SUM(SAFE_CAST(cwptotaldesignflownmbr AS FLOAT64)), 2) AS npdes_design_flow_mgd,
+         ROUND(MAX(SAFE_CAST(cwptotaldesignflownmbr AS FLOAT64)), 2) AS npdes_largest_permit_mgd
+  FROM `energy-platfrom.energy.echo_cwa_facilities`
+  WHERE UPPER(IFNULL(cwpstate, '')) = 'IN' AND facstdcountyname IS NOT NULL
+  GROUP BY cnty
+),
+-- ⭐ SURFACE WATER SOURCE. Is there anything here big enough to draw cooling water from?
+-- ftype is a numeric NHD code and the codes matter: 436 Reservoir and 460 StreamRiver are SOURCES;
+-- 466 SwampMarsh is a CONSTRAINT, not a source; 336/420/428/558 are ditches, underground conduits,
+-- pipelines and artificial paths and are not water you can take. Screening on ftype without
+-- decoding it would count a drainage ditch as a river.
 -- Drought risk at county grain, from FEMA's National Risk Index. Water availability is not only a
 -- question of what is there today; it is whether it is reliably there.
 nri AS (
@@ -126,10 +162,34 @@ SELECT u.*,
        c.facilities_without_flow,
        n.drought_annual_frequency, n.drought_events_recorded,
        n.drought_hazard_rating, n.drought_expected_annual_loss_rating,
+       e.npdes_permits, e.npdes_with_design_flow, e.npdes_design_flow_mgd,
+       e.npdes_largest_permit_mgd,
        CURRENT_TIMESTAMP() AS built_at
 FROM use u
 LEFT JOIN cwns c ON c.cnty = UPPER(u.county_name)
+LEFT JOIN echo e ON e.cnty = UPPER(u.county_name)
 LEFT JOIN nri  n USING (county_fips)
+"""
+
+# statewide surface-water inventory, kept separate because NHD is state-sliced not county-sliced
+SQL_SURFACE = f"""
+CREATE OR REPLACE TABLE `{DS}.in_water_surface_inventory` AS
+SELECT 'IN' AS state, wb.*, fl.*, CURRENT_TIMESTAMP() AS built_at
+FROM (SELECT COUNT(*) AS n_waterbodies,
+             COUNTIF(SAFE_CAST(ftype AS INT64) = 436) AS reservoirs,
+             COUNTIF(SAFE_CAST(ftype AS INT64) = 390) AS lakes_ponds,
+             COUNTIF(SAFE_CAST(ftype AS INT64) = 466) AS swamp_marsh_NOT_a_source,
+             COUNTIF(SAFE_CAST(areasqkm AS FLOAT64) >= 0.1) AS waterbodies_over_10ha,
+             COUNTIF(SAFE_CAST(areasqkm AS FLOAT64) >= 1.0) AS waterbodies_over_1sqkm,
+             ROUND(MAX(SAFE_CAST(areasqkm AS FLOAT64)), 2) AS largest_waterbody_sqkm
+      FROM `energy-platfrom.energy.nhd_waterbody`
+      WHERE UPPER(IFNULL(src_state, '')) = 'IN') wb
+CROSS JOIN
+     (SELECT COUNTIF(SAFE_CAST(ftype AS INT64) = 460) AS stream_river_segments,
+             COUNT(DISTINCT IF(SAFE_CAST(ftype AS INT64) = 460, gnis_name, NULL)) AS named_rivers,
+             COUNTIF(SAFE_CAST(ftype AS INT64) = 336) AS canal_ditch_NOT_a_source
+      FROM `energy-platfrom.energy.nhd_flowline`
+      WHERE UPPER(IFNULL(src_state, '')) = 'IN') fl
 """
 
 # ---------------------------------------------------------------- basin grain (NOT flattened)
@@ -147,7 +207,8 @@ FROM `energy-platfrom.energy.water_aqueduct`
 WHERE UPPER(IFNULL(name_1, '')) LIKE '%INDIANA%'
 """
 
-for name, sql in [("in_water_county", SQL_COUNTY), ("in_water_stress_basin", SQL_BASIN)]:
+for name, sql in [("in_water_county", SQL_COUNTY), ("in_water_stress_basin", SQL_BASIN),
+                  ("in_water_surface_inventory", SQL_SURFACE)]:
     client.query(sql).result()
     print(f"built {name}")
 

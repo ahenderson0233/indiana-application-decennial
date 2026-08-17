@@ -993,6 +993,39 @@ Also corrected: the first version hand-rolled its own CWNS aggregation and there
 `flow_existing_industrial_mgd`** — the most relevant flow for a data centre, which discharges as an
 industrial user. G25 in its exact form: look at what we hold before rebuilding it badly.
 
+#### ⛔⛔ G12b — THE PARCEL JOIN IS BLOCKED: **NHD HAS NO GEOMETRY, NATIONALLY**
+
+Attempted 2026-08-17 on the operator's request. Built, ran, and returned a **confident zero** —
+532,868 parcels, **not one within 10 miles of water**, in a state with 972,487 river segments. That
+is the instrument, not the data, and measuring it found this:
+
+| table | rows | rows carrying `SHAPE` geometry |
+|---|---:|---:|
+| `energy.nhd_flowline` | 39,542,980 | **0** |
+| `energy.nhd_waterbody` | 10,431,981 | **0** |
+
+**Both NHD tables are attribute-only. The `SHAPE:GEOGRAPHY` column exists in the schema and is NULL
+on every row, nationally.** So the 2,415,369 Indiana flowlines and 186,667 waterbodies can be
+counted and classified but **cannot be spatially joined to anything, by anyone, for any state.**
+This is a platform-wide load defect, not an Indiana one — worth telling the platform session.
+
+The empty result table was **dropped rather than kept**: 532,868 rows of NULL water columns
+registered as a parcel-water answer reads as *"no Indiana parcel is near water"*, which is worse
+than having no table at all.
+
+**To unblock, in order:**
+1. **Re-acquire NHD with geometry.** `registry_sources` records it as `bulk_gdb_zip` — the
+   geometry is in the source and was dropped on load. This is a G27 case at 50M-row scale.
+2. Alternative sources already held that DO carry geometry: `nfhl_flood_zones` (93 GB) and
+   `nwi_wetlands` (231 GB) are used successfully for the flood and wetland gates, so geometry
+   loading works in this estate — NHD specifically is the gap.
+3. `echo_cwa_facilities` has `faclong` but **no `faclat`** — the same story on the discharge side.
+
+**The script is written and correct** (`scripts/build_water_parcel.py`): exact
+`ST_DISTANCE(parcel_geog, SHAPE)` so water crossing a parcel returns **0.0** — G29 done right — with
+ftype decoded, a stated ≥10 ha lake gate, D85 excluded and fan-out asserted. It will work unchanged
+the moment geometry exists.
+
 #### 🔴 STILL OPEN — the parcel-grain half, which is the actual screening dimension
 
 County totals tell you the context; they do not tell you whether **this parcel** can get water.
