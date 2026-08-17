@@ -208,7 +208,7 @@
   </main>
 </div>
 
-<script src="common.js?v=4cb2d338"></script>
+<script src="common.js?v=6ee5043d"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -321,7 +321,7 @@ function activeChips() {
   c.push(`<i>${$("s-use").selectedOptions[0].text}</i>`);
   if (t) c.push(`${fmt(t)} MW or larger`);
   if (N("s-acres")) c.push(`${fmt(N("s-acres"))}+ acres`);
-  const excl = [["s-ci", "commercial/industrial"], ["s-ag", "farmland"], ["s-vac", "vacant"], ["s-oth", "other"]]
+  const excl = [["s-ci", "commercial/industrial"], ["s-ag", "farmland"], ["s-vac", "undeveloped land"], ["s-oth", "other"]]
     .filter(([id]) => !$(id).checked).map(([, l]) => l);
   if (excl.length) c.push(`excluding ${excl.join(", ")}`);
   c.push($("s-dir").value === "wd" ? "getting power" : $("s-dir").value === "inj" ? "sending power" : "either direction");

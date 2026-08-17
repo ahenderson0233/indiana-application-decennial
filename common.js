@@ -234,4 +234,42 @@ function chartLine(series, key, opts = {}) {
 function svgLine(series, key, color = "#0f172a") {
   return chartLine(series, key, { color });
 }
+/* ---------------------------------------------------------------------------------------------
+ * G28 — A DERIVED MW IS NOT A SITE CAPACITY. Say so, everywhere it appears.
+ *
+ * acres x MW/acre is arithmetic, not engineering. Measured across the 532,868 screener candidates
+ * the median is a sane 94 MW and p99 is 710 MW — but the tail is not sane: 2,204 parcels compute
+ * above 1,000 MW, 368 above 2,000 MW, and the maximum is 25,428 MW. A 6,374-acre farm multiplied by
+ * 4 MW/acre is arithmetically correct and absurd as a presentation: nobody has built a 25 GW campus.
+ *
+ * ⛔ The fix is NOT to cap the number silently — that hides real land from a reader who may be
+ * assembling a multi-phase campus. The fix is to BAND it against what has actually been built and
+ * to state the two things the arithmetic ignores:
+ *   1. gross parcel area, before setbacks, easements, rights-of-way, internal water, steep slope
+ *      and existing structures — real buildable area is always smaller (G28);
+ *   2. land is only one gate. Power, water and community posture bind long before acreage does.
+ *
+ * Returns {band, note} — band is a short label, note is the honest sentence. Both are safe to
+ * render raw. G21 reuses this anywhere a derived MW is shown.
+ * ------------------------------------------------------------------------------------------- */
+function mwReality(mw, density) {
+  const m = Number(mw) || 0;
+  const d = density ? ` at ${density} MW/acre` : "";
+  if (m >= 2000) return { band: "land-area artefact", note:
+    `<b>Treat ${Math.round(m).toLocaleString()} MW as an upper bound on LAND, not a site capacity.</b> ` +
+    `It is gross acreage${d}, before setbacks, easements, internal water and existing structures — ` +
+    `and it exceeds every data-centre campus ever built. Large parcels like this are phased over ` +
+    `years, and power will bind long before land does.` };
+  if (m >= 1000) return { band: "very large, phase it", note:
+    `At ${Math.round(m).toLocaleString()} MW this is at the very top of what exists anywhere — the ` +
+    `largest operating campuses are roughly 1,000–2,000 MW. Read it as multi-phase land, not a ` +
+    `single build, and note it is gross acreage${d} before setbacks and easements.` };
+  if (m >= 25) return { band: "hyperscale-capable", note:
+    `Gross acreage${d}, before setbacks, easements, internal water and existing structures, so real ` +
+    `buildable capacity is lower. Land is rarely the binding constraint at this size — power is.` };
+  return { band: "below the data-centre floor", note:
+    `Below the 25 MW datacentre floor${d}, though it may still suit a BESS. Gross acreage, before ` +
+    `setbacks and easements.` };
+}
+
 document.addEventListener("DOMContentLoaded", () => renderNav());

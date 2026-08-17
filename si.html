@@ -194,7 +194,7 @@
     (an unwired MF mortgage-foreclosure code found in the same workbook) · WARN 1,220 · brownfields 1,483.
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
 </div>
-<script src="common.js?v=4cb2d338"></script>
+<script src="common.js?v=6ee5043d"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -216,13 +216,13 @@
     `<b>${fmt(fs.flagged)}</b> parcels carry an admitted seller-intent signal, <b>${fmt(fs.dated)}</b>
      of them dated, <b>${fmt(fs.r3)}</b> with an event inside 3 years. The previous flag read
      <b>847,410</b> — but 99.2% of that was EMPTY LAND, because its only parcel-keyed input was
-     footprint absence, which is a land state and not intent to sell. Vacant land still renders
+     footprint absence, which is a land state and not intent to sell. Undeveloped land still renders
      and is still the BESS sizing basis; it simply stopped counting as intent.
      <b>${fmt(fs.excl_resid)}</b> residential-class and <b>${fmt(fs.excl_lowsev)}</b> below-severity
      signal rows are held with the reason recorded, not deleted.`;
   document.getElementById("t-v2class").insertAdjacentHTML("beforeend",
     [["commercial / industrial", fs.ci], ["other non-residential", fs.other_nonres],
-     ["agriculture", fs.ag], ["vacant land (BESS)", fs.land]]
+     ["agriculture", fs.ag], ["undeveloped land (BESS)", fs.land]]
     .map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`).join(""));
 
   const cap = V2.capability;
@@ -254,11 +254,11 @@
      not intent to sell. Only <b>${fmt(d5.abandoned_buildings.n)}</b> rows across
      ${d5.abandoned_buildings.srcs} sources are the real signal. Splitting them is the single
      largest correction in this application: it is why the seller-intent flag fell from 847,410 to
-     ${fmt(fs.flagged)}. <b>Vacant land did not leave the app</b> — it still renders and is still
+     ${fmt(fs.flagged)}. <b>Undeveloped land did not leave the app</b> — it still renders and is still
      the BESS sizing basis. It simply stopped being counted as intent.`;
   document.getElementById("t-d5").insertAdjacentHTML("beforeend", d5.by_source.map(s =>
     `<tr><td>${s.source_id}</td><td>${fmt(s.n)}</td><td>${fmt(s.keyed)}</td></tr>`).join("") +
-    `<tr><td><b>vacant land — NOT a signal</b></td><td>${fmt(d5.vacant_land.n)}</td>
+    `<tr><td><b>undeveloped land — NOT a signal</b></td><td>${fmt(d5.vacant_land.n)}</td>
      <td class="hint">kept for BESS siting</td></tr>`);
 
   const lb = V2.landbank_summary;
@@ -269,7 +269,7 @@
      means they were disposed of. That last number does not exist if you keep only the newest copy.
      <b>${fmt(lb.placed)}</b> of ${fmt(lb.pins)} reach a parcel (${Math.round(100*lb.placed/Math.max(lb.pins,1))}%):
      ${fmt(lb.vacant_lots)} vacant lots · <b>${fmt(lb.nonres_structure)}</b> with a non-residential
-     structure · ${fmt(lb.residential)} residential. The city called it "mostly vacant lots"; that
+     structure · ${fmt(lb.residential)} residential. The city called it &ldquo;mostly vacant lots&rdquo; (their words, not our vocabulary); that
      is measured here rather than taken on trust.`;
   document.getElementById("t-lb").insertAdjacentHTML("beforeend", V2.landbank_snapshots.map(s =>
     `<tr><td>${s.snapshot}</td><td>${fmt(s.n)}</td><td>${fmt(s.parcels)}</td></tr>`).join(""));

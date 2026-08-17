@@ -455,7 +455,7 @@ function classOk(p) {
    WHOLE PARCEL. A BESS sites around what is already there, so it gets OUTDOOR SPACE
    (parcel − measured footprints). Scoring every use case on outdoor space structurally
    under-rated C&I parcels — they carry the buildings — which is exactly backwards for a DC.
-   For vacant land the two are the same number, so the ruling only moves parcels with structures.
+   For undeveloped land the two are the same number, so the ruling only moves parcels with structures.
 
    Either basis can disagree with itself. Measured across the class union: 126 of 1,200,924
    parcels report an exact area under half the recorded acreage, and for 85 of them
@@ -813,7 +813,9 @@ const tip = document.getElementById("tooltip");
 function tipText(p) {
   // same acreageOf() as the screener and the evidence panel — a tooltip that disagreed with
   // the panel it opens would be two instruments claiming one parcel
-  if (p.parcel_key) return `${p.occ_group || ""} · ${Number(p.parcel_acres || 0).toFixed(1)} ac · fits ${Math.floor(acreageOf(p).acres * V("f-density"))} MW${p.has_si_signal ? " · SI" : ""}${p._dsub_mi != null ? ` · sub ${p._dsub_mi} mi` : ""}`;
+  // "land supports up to", never "fits": acres x MW/acre is an upper bound on GROSS land, and the
+  // tooltip is the one surface a user reads without any surrounding caveat (G28).
+  if (p.parcel_key) return `${p.occ_group || ""} · ${Number(p.parcel_acres || 0).toFixed(1)} ac · land supports up to ${Math.floor(acreageOf(p).acres * V("f-density"))} MW${p.has_si_signal ? " · SI" : ""}${p._dsub_mi != null ? ` · sub ${p._dsub_mi} mi` : ""}`;
   if (p.layer === "bus_poi") return `${p.poi_name} · median ${fmt(p.median_mw)} MW / best ${fmt(p.best_mw)} MW`;
   if (p.layer === "substation") return `${p.substation_name || "substation"} · ${p.min_kv ?? "?"}–${p.max_kv ?? "?"} kV`;
   if (p.layer === "line") return `${p.voltage || "?"} kV line · ${p.owner || ""}`;
@@ -1326,8 +1328,9 @@ function renderPowerPlan(p, fips) {
   const fitsBESS = (Number(p.parcel_acres) || 0) >= 0.5;
   const verdict = !fitsBESS
     ? `<b class="cannot">Too small for either use case</b> — ${acr.acres.toFixed(2)} ac cannot host a ~5 MW BESS`
-    : fitsDC ? `<b>Viable for a hyperscale search</b> — fits ${mw} MW at ${density} MW/acre`
-             : `<b>BESS-scale only</b> — fits ${mw} MW at ${density} MW/acre; below the 25 MW datacentre floor`;
+    : fitsDC ? `<b>Viable for a hyperscale search</b> — land supports up to ${fmt(mw)} MW at ${density} MW/acre
+                <span class="hint">(${mwReality(mw, density).band})</span>`
+             : `<b>BESS-scale only</b> — land supports ~${mw} MW at ${density} MW/acre; below the 25 MW datacentre floor`;
 
   const partRows = Object.keys(PART_NAME).map((k) => {
     const s = r.parts[k];
@@ -1393,9 +1396,9 @@ function renderPowerPlan(p, fips) {
 
   /* Key takeaways - generated, not written. Each one is a fact with a consequence. */
   const takeaways = [
-    fitsDC ? `The parcel physically fits <b>${fmt(mw)} MW</b> at your ${density} MW/acre assumption
-      (${acr.acres.toFixed(0)} acres, ${acr.basis}).`
-      : `<b>Size is the binding constraint.</b> ${acr.acres.toFixed(2)} acres fits about ${fmt(mw)} MW
+    fitsDC ? `The land supports <b>up to ${fmt(mw)} MW</b> at your ${density} MW/acre assumption
+      (${acr.acres.toFixed(0)} acres, ${acr.basis}). ${mwReality(mw, density).note}`
+      : `<b>Size is the binding constraint.</b> ${acr.acres.toFixed(2)} acres supports about ${fmt(mw)} MW
          — below the 25 MW datacentre floor.`,
     wdBus ? `Nearest <b>load-side</b> connection point is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
         at ${wdBus.mi} mi, with <b>${fmt(wdBus.mw)} MW</b> of published withdrawal capacity.`
@@ -1699,7 +1702,7 @@ function openParcelEvidence(p, fips) {
     <div class="prov">${prov("in_si_sites_flags_v2")} · admitted at the NON-RESIDENTIAL level only
       — a ~300 MW datacentre and a ~5 MW BESS both need land a house does not have — and only where
       severity would plausibly move an owner to sell, so a weed citation and a residential teardown
-      do not qualify. Vacant land still renders for BESS siting; footprint absence simply stopped
+      do not qualify. Undeveloped land still renders for BESS siting; footprint absence simply stopped
       counting as intent. Where a date basis reads "layer name", the publisher wrote the event date
       into the dataset title rather than a column, so it is month- or year-precision.</div>
     <h3>Environmental gates (P4)</h3><table>
