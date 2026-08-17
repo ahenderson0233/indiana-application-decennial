@@ -90,9 +90,17 @@ buses = []
 # worst/best ride along as context only, clearly named as such.
 n_miso = 0
 for r in client.query(f"""
+  -- ⛔ `pMaxValue` IS A REPORTING CLAMP, NOT A STUDY INPUT: PMax(X) = min(PMax_true, X).
+  -- Proven twice (docs/RTO_DIRECTIONS.md): 67/67 facilities live, and 38,381 of 38,381 distinct
+  -- (POI, facility) keys across two independent harvests, zero violations. `headroom_mw_unclamped`
+  -- is therefore INVARIANT across every rung (verified: 1.27 avg at all six) and is the TRUE
+  -- headroom; `headroom_mw` is that value clipped to whatever request size was asked for.
+  -- Taking the rung-100 clamped value as the headline reported 100 MW for J1724 POI 138, whose
+  -- real headroom is 815.3 MW - an 8x understatement on the one Indiana POI that has capacity.
   WITH lad AS (
     SELECT poi_name,
-           ARRAY_AGG(STRUCT(request_mw, ROUND(headroom_mw, 1) AS mw, request_fits)
+           MAX(headroom_mw_unclamped) AS true_mw,          -- rung-invariant; the actual headroom
+           ARRAY_AGG(STRUCT(request_mw, ROUND(headroom_mw, 1) AS mw_clamped, request_fits)
                      ORDER BY request_mw) AS ladder
     FROM `{DS}.in_bus_headroom_miso_ladder`
     GROUP BY poi_name
@@ -101,15 +109,14 @@ for r in client.query(f"""
          m.worst_mw, m.best_mw, m.median_mw,
          m.facilities_at_zero, m.monitored_facilities, m.worst_binding_facility, m.vintage,
          m.lat, m.lon,
-         IFNULL(lad.ladder, []) AS ladder
+         lad.true_mw, IFNULL(lad.ladder, []) AS ladder
   FROM `{DS}.in_bus_headroom_miso` m
   LEFT JOIN lad ON lad.poi_name = m.poi_name
   WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL"""):
     d = dict(r)
     ladder = [dict(x) for x in (d.get("ladder") or [])]
-    # headline = the actual at the smallest rung we hold. The client re-reads `ladder` for the
-    # size the user actually selects; this is only the default.
-    head = next((x for x in ladder if x["request_mw"] == 100), ladder[0] if ladder else None)
+    # The headline is the UNCLAMPED figure. It does not vary by rung; what varies is whether the
+    # ask fits inside it, which is `request_fits` and is a comparison, not a different measurement.
     buses.append({
         "src": "MISO",
         "direction": "injection",          # <- generator-side. NOT a load-serving number.
@@ -118,9 +125,11 @@ for r in client.query(f"""
         "bus": d["bus_number"],
         "kv": d["kv"],
         "area": d["area_name"],
-        "mw": r1(head["mw"]) if head else None,      # ACTUAL (min over constraints), not a median
-        "mw_basis": "actual at the stated request size (minimum over binding constraints)",
-        "ladder": ladder,                            # every rung, so the UI can follow the user
+        "mw": r1(d.get("true_mw")),                  # ACTUAL, unclamped. Not a median, not a rung.
+        "mw_basis": ("true headroom (minimum over binding constraints, unclamped). Request size "
+                     "does NOT change this number - it only decides whether the ask fits inside it"),
+        "fits": {str(x["request_mw"]): x["request_fits"] for x in ladder},
+        "ladder": ladder,                            # rung detail retained for audit
         "ctx_worst": r1(d["worst_mw"]),              # context only - never the headline
         "ctx_best": r1(d["best_mw"]),
         "ctx_median": r1(d["median_mw"]),

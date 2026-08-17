@@ -169,7 +169,57 @@ see. Wire after the agent's final report confirms the AEP footprint is complete.
 ⚠ And per the standing rule: **verify, do not inherit.** Re-measure row counts and the direction/
 `request_mw` columns directly before the screener or dossier depends on them.
 
-#### G7b — the request-size ladder (operator, 2026-08-17)
+#### G7b — ⛔ CORRECTED: THE LADDER PREMISE IS MEASURABLY FALSE. Headroom is request-INVARIANT.
+
+**I recorded the operator's ladder instruction as a physical claim and it does not hold.** The
+premise below — *"a bus with 800 MW available to a 100 MW request may have far less available to a
+1,000 MW request"* — was disproved in both RTOs by the agent, and separately by me.
+
+| RTO | proof | result |
+|---|---|---|
+| **PJM** | same 25 AEP buses, case 4, injection, at 100/300/500/1000/2500/5000 MW, deduped 1:1 on (bus, facility, contingency) | **`available_mw` byte-identical at every rung — max delta 0.0** on 7,950 rows each. `impact_mw` scales *exactly* 3/5/10/25/50× |
+| **MISO** | `pMaxValue` identity across two independent harvests | **`PMax(X) == min(PMax_true, X)` — a REPORTING CLAMP, not a study input.** 38,381 of 38,381 distinct (POI, facility) keys, **zero violations**. Confirmed again here: `headroom_mw_unclamped` is invariant at 1.27 avg across all six rungs while the clamped value climbs 0.16 → 0.47 → 0.78 → 1.27 |
+
+**Consequences:**
+1. **One harvest per direction answers every rung.** The ~22 hours of extra PJM scraping the 6×2×2
+   grid implied buys **zero** new information in the headroom column. Do not run it.
+2. **The true headroom is the UNCLAMPED value.** ⚠ I then shipped a *second* bug: after fixing
+   median→actual I took the **rung-100 clamped** value as the headline, which reported **100 MW for
+   `J1724 POI 138` whose real headroom is 815.3 MW** — an 8× understatement on the single Indiana
+   POI that has capacity. Fixed; `export_grid_siting.py` now publishes `headroom_mw_unclamped` plus
+   a `fits` map per request size.
+3. **What the request size actually decides is FIT, and that is the siting signal.** PJM, 25 buses:
+   6 fit 100 MW, 1 fits 300 MW, **0 fit 500 MW and above.**
+4. `_invariant_columns` vs `_probe_dependent_columns` were already recorded in the publisher's own
+   harvest metadata. We had the answer and did not read it.
+
+#### G7e — INJECTION AND WITHDRAWAL AGREE ON ZERO BUSES (measured, not argued)
+
+200 AEP buses measured in **both** directions: **0 equal.** Injection is larger on 129, smaller on
+71. There is no offset and no ratio — the disagreement is unpredictable per bus. This is the
+empirical backing for the standing rule that one direction must never substitute for the other:
+doing so would be wrong on **100% of buses**, in a direction you cannot guess.
+
+#### G7f — MISO Indiana injection is structurally near-zero *in the DPP-2021 case*
+
+641 of 642 POIs read zero at **every** rung including 100 MW; the sole exception is
+`J1724 POI 138` at **815.3 MW**. So the 300 MW probe was not hiding headroom — in this model there
+is none. ⚠ **This does not overturn G22-B2:** the vintage gap (ours DPP-2021 vs the baseline's
+DPP-2025 with MTEP upgrades as of Jan 2026) remains the best explanation for why the vendor sees
+39.3% of buses with tier-0 headroom where we see 0.16%. Both statements are true: our model is
+correctly reporting near-zero, *and* our model is four cycles stale.
+
+#### G7g — ⛔ CARTOVISTA IS A HOST, NOT A GATE. A trial buys nothing.
+
+Operator asked what a CartoVista free trial would immediately address. **Nothing.** CartoVista is
+the mapping *platform* MISO publishes on — `cloud.cartovista.com/miso/ferc/poi-analysis-map` is
+MISO's FERC Order 2023 map hosted there, and the registry records `access: public`, because Order
+2023 **requires** publication. A CartoVista subscription sells their GIS software; it confers no
+privileged access to MISO study data, because there is no access gate to pass.
+**The blocker on G7d is engineering time to write the loader, not a credential.** Do not buy a
+trial for this.
+
+#### G7b (original text, retained for the record — its premise is disproved above)
 
 **Headroom is a FUNCTION of the request size, and we harvested exactly one rung per direction:**
 MISO injection at `pMaxValue=300` only; PJM withdrawal at `desired_mw=100` only. A bus with 800 MW
