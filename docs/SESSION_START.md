@@ -56,6 +56,11 @@ permitted write is APPEND-only rows to `energy.registry_sources`. Everything we 
 `energy-platfrom.indiana_app`, and **every table gets a `_registry` row in the same run that
 writes it.** **Restate this in every agent brief — agents do not inherit it.**
 
+**Newly scraped data updates BOTH registries, in the same run that writes it** (operator,
+2026-08-17): a `_registry` row in `indiana_app` **and** an APPEND to `energy.registry_sources` with
+the source name, endpoint, endpoint kind, access, status, re-scrape command, what it provides, the
+object names and the measured row count. The append is the one permitted write to `energy`.
+
 **A registry row must be enough to RE-RUN the work** (operator, 2026-08-17). A row that merely
 exists is not compliant: it must carry the **exact parameterised URL** (not the site's home page),
 the **endpoint type** (`arcgis_feature_layer` / `json_api` / `html_page` / `xlsx_download` /
