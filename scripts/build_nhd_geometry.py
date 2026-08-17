@@ -33,6 +33,20 @@ DS = "energy-platfrom.indiana_app"
 BASE = "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer"
 client = bigquery.Client(project="energy-platfrom")
 
+# --append: INSERT the rows staged by `pull_nhd_geometry.py --append-missing` into the two finished
+# tables instead of rebuilding them.
+#
+# ⛔ WHY A SEPARATE MODE AND NOT JUST A RE-RUN. The default path is CREATE OR REPLACE. Re-running it
+#    to pick up a backfill would DISCARD the rows already in the table and rebuild from
+#    `_raw_nhd_*` - which is only safe while the raw tables are a complete record, and on
+#    2026-08-17 they were not: the tables held 160,128 verified flowlines while the Indiana cut
+#    wanted 152,165 and only 148,317 of those had geometry. A replace risks trading a measured
+#    160,128 rows for whatever the raw happens to contain. This mode only ever adds.
+#
+# In this mode the NHDArea section is SKIPPED. `in_nhd_area_geom` is not part of the backfill and
+# rebuilding it would rewrite a table, and a registry row, that nothing asked us to touch.
+APPEND = "--append" in _sys.argv
+
 # ftype -> (label, role). Kept in ONE place so no query re-invents it.
 DECODE = """
   CASE ftype WHEN 460 THEN 'StreamRiver' WHEN 436 THEN 'Reservoir'
@@ -64,8 +78,7 @@ MEASURED = {}
 for table, s in SPECS.items():
     print("=" * 78)
     print(table)
-    sql = f"""
-    CREATE OR REPLACE TABLE `{DS}.{table}` AS
+    body = f"""
     WITH in_keys AS (
       SELECT DISTINCT {NORM} AS k
       FROM `energy-platfrom.energy.{s['src']}`
@@ -74,7 +87,7 @@ for table, s in SPECS.items():
     -- The raw NDJSON is the bbox sweep PLUS a by-key backfill pass, and the two can return the same
     -- feature, so dedupe on the key rather than trusting the puller's in-memory set.
     r AS (
-      SELECT * FROM `{DS}.{s['raw']}`
+      SELECT * FROM `{DS}.{{RAW}}`
       WHERE _geom IS NOT NULL
       QUALIFY ROW_NUMBER() OVER (PARTITION BY {NORM} ORDER BY objectid) = 1
     )
@@ -88,8 +101,27 @@ for table, s in SPECS.items():
     FROM r
     LEFT JOIN in_keys k ON k.k = {NORM}
     """
-    job = client.query(sql)
-    job.result()
+    if APPEND:
+        # Column list read from the LIVE schema, never typed from memory, and the SELECT above is
+        # already in schema order. Asserting the two agree is what makes the positional INSERT safe.
+        cols = [f.name for f in client.get_table(f"{DS}.{table}").schema]
+        expect = ["permanent_identifier", "gnis_id", "gnis_name"]
+        assert cols[:3] == expect, f"unexpected leading columns in {table}: {cols[:3]}"
+        assert cols[-4:] == ["in_nhd_indiana_slice", "geog", "_source_url", "built_at"], cols[-4:]
+        before = list(client.query(f"SELECT COUNT(*) n FROM `{DS}.{table}`"))[0].n
+        # WHERE NOT already present -> re-running this appends nothing. An append with no undo has
+        # to be idempotent by construction, the same way the energy.registry_sources append is.
+        sql = (f"INSERT INTO `{DS}.{table}` ({', '.join(cols)})\n"
+               + body.replace("{RAW}", f"{s['raw']}_backfill").rstrip()
+               + f"\n    WHERE {NORM} NOT IN (SELECT DISTINCT {NORM} FROM `{DS}.{table}`)")
+        job = client.query(sql)
+        job.result()
+        after = list(client.query(f"SELECT COUNT(*) n FROM `{DS}.{table}`"))[0].n
+        print(f"  APPENDED {after - before:,} rows  ({before:,} -> {after:,}); nothing replaced")
+    else:
+        job = client.query(f"CREATE OR REPLACE TABLE `{DS}.{table}` AS"
+                           + body.replace("{RAW}", s["raw"]))
+        job.result()
 
     # ⚠ BigQuery HAS NO ST_ISVALID - that is PostGIS. A BigQuery GEOGRAPHY is valid BY CONSTRUCTION:
     # anything that cannot be made into a valid spherical geography is REJECTED at parse time, which
@@ -105,6 +137,10 @@ for table, s in SPECS.items():
     m = list(client.query(f"""
     SELECT COUNT(*) n,
            COUNT(DISTINCT permanent_identifier) dpid,
+           -- Braces and case normalised: '{{ABC}}' and 'abc' are the SAME feature, and an append
+           -- that lands one of each is a duplicate that a raw DISTINCT would not see.
+           COUNT(DISTINCT {NORM}) dnorm,
+           COUNT(DISTINCT huc8) dhuc8,
            COUNTIF(geog IS NULL) null_geom,
            COUNTIF(geog IS NOT NULL AND ST_ISEMPTY(geog)) empty_geom,
            COUNTIF(geog IS NOT NULL AND {meas} <= 0) degenerate,
@@ -122,25 +158,56 @@ for table, s in SPECS.items():
            -- "genuinely enormous" from "inside-out".
            COUNTIF(geog IS NOT NULL AND NOT ST_INTERSECTS(
                      geog,
-                     ST_GEOGFROMTEXT('POLYGON((-89 37,-84 37,-84 42.5,-89 42.5,-89 37))'))) off_map
+                     ST_GEOGFROMTEXT('POLYGON((-89 37,-84 37,-84 42.5,-89 42.5,-89 37))'))) off_map,
+           -- ...AND THAT THE INDIANA SLICE DID NOT CLAIM. This is the invariant that survived
+           -- contact with the data; plain off_map did not. Measured 2026-08-17 after the by-key
+           -- pass completed the cut: 932 of 163,976 flowlines sit outside the box and EVERY ONE of
+           -- them is a row `energy.nhd_flowline` itself tags src_state='IN'. 785 are just into
+           -- western Ohio in 05080001 Upper Great Miami and 04100007 Auglaize - both genuinely
+           -- Indiana/Ohio shared subbasins. The other 147 are in Michigan and Wisconsin, as far as
+           -- 46.1N in the Michigan Upper Peninsula (Millecoquins Lake, Door-Kewaunee) - roughly
+           -- 480 km from Indiana and in no sense Indiana water.
+           -- ⚠ SO src_state IS NOT TRUSTWORTHY, and this is not cosmetic: the same defect is why
+           --   in_huc8_boundaries carries 37 subbasins that never touch Indiana. Anything that
+           --   counts rows here as "Indiana rivers" will overcount. Nearest-water distance is
+           --   unaffected - nothing 480 km away is ever the nearest anything to an Indiana parcel.
+           -- The rows are KEPT, not deleted: they are real NHD features that the estate's own
+           -- authority claims, and deleting them would hide the defect instead of recording it.
+           COUNTIF(geog IS NOT NULL AND NOT in_nhd_indiana_slice AND NOT ST_INTERSECTS(
+                     geog,
+                     ST_GEOGFROMTEXT('POLYGON((-89 37,-84 37,-84 42.5,-89 42.5,-89 37))')))
+             off_map_unclaimed
     FROM `{DS}.{table}`"""))[0]
     print(f"  rows                    : {m.n:,}   (distinct permanent_identifier {m.dpid:,})")
     print(f"  geog NULL (parse fail)  : {m.null_geom:,}")
     print(f"  ST_ISEMPTY              : {m.empty_geom:,}")
     print(f"  degenerate (measure<=0) : {m.degenerate:,}")
     print(f"  max {meas:<16}: {m.max_measure:,}")
-    print(f"  not touching Indiana    : {m.off_map:,}")
+    print(f"  not touching Indiana    : {m.off_map:,}  "
+          f"(of which unclaimed by the IN slice: {m.off_map_unclaimed:,})")
     print(f"  in Indiana NHD slice    : {m.in_slice:,}")
     print(f"  outside it (border/adj) : {m.out_of_state:,}")
     print(f"  role source / constraint: {m.src:,} / {m.con:,}")
     print(f"  huc8 starting 04|05     : {m.huc_ok:,}   wrong length: {m.huc_bad_len:,}")
+    print(f"  distinct huc8 present   : {m.dhuc8:,}")
+    # DUPLICATE GUARD. The whole point of --append is that it adds to a table it does not own the
+    # history of, so "did I double-load a feature" is the one question it must answer out loud.
+    assert m.n == m.dnorm, (
+        f"DUPLICATE permanent_identifier after append: {m.n:,} rows but only {m.dnorm:,} distinct "
+        f"keys (braces/case normalised) - {m.n - m.dnorm:,} duplicates")
     assert m.null_geom == 0, "unparseable geometry survived the load"
     assert m.empty_geom == 0, "a geometry collapsed to empty under make_valid"
     assert m.degenerate == 0, "zero-length/zero-area geometry present"
     # D85 guard. Lake Michigan, the largest legitimate member, is 5.77e10 m2. Earth is 5.10e14 m2.
     # 1e12 sits two orders above the real maximum and two below an inverted polygon.
     assert m.max_measure < 1e12, "D85 GUARD TRIPPED: a geometry is planet-scale (inverted)"
-    assert m.off_map == 0, "a geometry does not touch the Indiana neighbourhood at all"
+    # NOT `off_map == 0`. That held only while the table was a bounding-box sweep, which could not
+    # physically contain a feature outside the box. The by-key pass can, and does - see the comment
+    # in the measure query. What must still hold is that we never acquired geometry outside Indiana
+    # that Indiana's own slice did not claim.
+    assert m.off_map_unclaimed == 0, (
+        f"{m.off_map_unclaimed:,} geometries are outside the Indiana neighbourhood AND are not "
+        f"claimed by the src_state='IN' slice - those are ours to explain, not the publisher's")
     assert m.huc_bad_len == 0, "huc8 lost its leading zero - the INT64 trap fired again"
     assert m.in_slice > 0, "nothing matched the Indiana key set - check permanent_identifier format"
 
@@ -179,11 +246,15 @@ for table, s in SPECS.items():
             bigquery.ScalarQueryParameter("s", "STRING", f"{BASE}/{s['lid']}/query"),
             bigquery.ScalarQueryParameter("m", "STRING",
                 f"USGS TNM NHD ArcGIS REST layer {s['lid']}, f=geojson, outSR=4326, "
-                f"geometryPrecision=6, paged 2000 via resultOffset over 72 x 0.5-degree bbox tiles; "
+                f"geometryPrecision=6, paged 2000 via resultOffset over 72 x 0.5-degree bbox tiles, "
+                f"THEN a by-key pass requesting the permanent_identifiers the table still lacked, "
+                f"in batches of 40, bisecting on HTTP 500. "
                 f"Indiana membership by permanent_identifier key match against "
                 f"energy.{s['src']} src_state='IN' (braces/case normalised both sides), NOT by bbox. "
                 f"RE-SCRAPE COMMAND: python scripts/pull_nhd_geometry.py && "
-                f"python scripts/build_nhd_geometry.py"),
+                f"python scripts/build_nhd_geometry.py   (gap-close without rebuild: "
+                f"python scripts/pull_nhd_geometry.py --append-missing && "
+                f"python scripts/build_nhd_geometry.py --append)"),
             bigquery.ScalarQueryParameter("n", "INT64", int(m.n)),
             bigquery.ScalarQueryParameter("g", "FLOAT64",
                                           round(job.total_bytes_processed / 1024 ** 3, 3)),
@@ -191,7 +262,18 @@ for table, s in SPECS.items():
                 f"GEOMETRY THAT THE ESTATE DID NOT HAVE. energy.{s['src']} carries this same feature "
                 f"set with SHAPE NULL on all rows nationally (re-measured 2026-08-17), so nothing "
                 f"could be drawn or measured to. Joins 1:1 to it on permanent_identifier. "
-                f"ST_ISVALID passes on all {m.n:,} rows; {m.in_slice:,} are in the Indiana NHD slice "
+                f"VALIDITY, MEASURED - BigQuery has no ST_ISVALID (that is PostGIS); a GEOGRAPHY is "
+                f"valid by construction because anything unparseable comes back NULL. So the proof "
+                f"is four counts, all zero on all {m.n:,} rows: NULL geog, ST_ISEMPTY, "
+                f"zero-length/zero-area, and geometry not touching the Indiana neighbourhood; plus "
+                f"max extent {m.max_measure:,} well under the 1e12 inverted-polygon guard. "
+                f"{m.n - m.dnorm:,} duplicate keys. "
+                f"⚠ {m.off_map:,} rows have geometry OUTSIDE a generous Indiana box "
+                f"(-89..-84, 37..42.5) and every one of them is a row energy.{s['src']} itself "
+                f"tags src_state='IN' - so src_state is not a reliable state test. Kept, not "
+                f"deleted, so the defect is visible; do not count rows here as 'Indiana water' "
+                f"without a geometric filter. Nearest-water distance is unaffected. "
+                f"{m.in_slice:,} are in the Indiana NHD slice "
                 f"and {m.out_of_state:,} are adjacent-state features retained on purpose because "
                 f"rivers do not stop at a state line. ftype decoded not raw: 466 SwampMarsh is "
                 f"water_role='constraint' (wetland), 460/436/390 are 'source'. huc8 kept STRING - "
@@ -199,6 +281,106 @@ for table, s in SPECS.items():
     ).result()
     print(f"  registered {table} in indiana_app._registry")
     MEASURED[table] = m
+
+# ---------------------------------------------------------------------------------------------
+# APPEND to energy.registry_sources. This INSERT is the ONE permitted write to the read-only
+# `energy` dataset - nothing here updates, replaces, drops or truncates anything that was there.
+#
+# Runs HERE, before the NHDArea section, because both rows it appends describe only the two tables
+# built above. `--append` exits immediately after it, having touched nothing else.
+# ---------------------------------------------------------------------------------------------
+fl, wb = MEASURED["in_nhd_flowline_geom"], MEASURED["in_nhd_waterbody_geom"]
+ROWS = [
+    dict(source_name="USGS TNM NHD - Flowline Large Scale (layer 6)", lid=6,
+         object_names=["indiana_app.in_nhd_flowline_geom"], measured_rows=int(fl.n),
+         what_it_provides=(
+             "Line geometry for named Indiana rivers and streams (NHD ftype 460 StreamRiver with a "
+             "gnis_name). THE ONLY DRAWABLE RIVER GEOMETRY IN THE ESTATE: energy.nhd_flowline holds "
+             f"the same features' attributes with SHAPE NULL on all 39,542,980 rows nationally. "
+             f"{fl.in_slice:,} rows are in the Indiana NHD slice, {fl.out_of_state:,} are adjacent-"
+             "state segments of the same rivers, kept on purpose. Joins to energy.nhd_flowline on "
+             "permanent_identifier. Carries reachcode and huc8 as STRING."),
+         notes=(
+             "Cut stated: ftype 460 AND gnis_name IS NOT NULL. Indiana has 972,487 ftype-460 "
+             "flowlines of which 152,165 are named (4,606 DISTINCT names - the 4,606 figure counts "
+             "names, not segments). Unnamed 460s are headwater trickles and were not fetched. "
+             "336 CanalDitch / 420 UndergroundConduit / 428 Pipeline / 558 ArtificialPath / 468 "
+             "drainageway deliberately NOT fetched - none is water anyone can draw from. "
+             "Tiled 72 x 0.5-degree bbox then key-matched to Indiana; "
+             "bbox used only to bound the fetch, never to decide membership."),),
+    dict(source_name="USGS TNM NHD - Waterbody Large Scale (layer 12)", lid=12,
+         object_names=["indiana_app.in_nhd_waterbody_geom"], measured_rows=int(wb.n),
+         what_it_provides=(
+             "Polygon geometry for Indiana lakes, reservoirs and wetlands: ftype 436 Reservoir (all "
+             "sizes), 390 LakePond >= 0.1 sq km, 466 SwampMarsh >= 0.1 sq km. THE ONLY DRAWABLE "
+             "LAKE GEOMETRY IN THE ESTATE: energy.nhd_waterbody holds the same features' attributes "
+             f"with SHAPE NULL on all 10,431,981 rows nationally. {wb.in_slice:,} rows are in the "
+             "Indiana NHD slice. Joins to energy.nhd_waterbody on permanent_identifier."),
+         notes=(
+             "ftype is DECODED into water_role, never screened raw: 436/390 are 'source', 466 "
+             "SwampMarsh is 'constraint' (wetland - a build restriction, not a water supply). "
+             "Size gate is a JUDGEMENT, not a fact: lakes under 10 ha are excluded as too small to "
+             "cool anything. Indiana counts, measured: 3,659 reservoirs (ftype 436, all sizes), "
+             "1,595 LakePond >= 10 ha, 661 SwampMarsh >= 10 ha. The commonly quoted '2,301 lakes "
+             "over 10 ha' is all three ftypes summed and silently includes the 661 marshes."),),
+]
+# `energy` is APPEND-ONLY to this session: an INSERT is the one permitted write, and there is no
+# UPDATE or DELETE available to take a mistake back. So the append has to be idempotent by
+# construction. INSERT ... SELECT ... WHERE NOT EXISTS makes a re-run with unchanged counts a no-op;
+# if the count HAS changed the new row is appended and its notes say which row it supersedes, since
+# correcting the earlier row in place is not something we are allowed to do.
+SQL = """
+INSERT INTO `energy-platfrom.energy.registry_sources`
+ (source_name, endpoint, endpoint_kind, access, status, acquisition_method,
+  what_it_provides, object_names, geography_state, measured_rows, notes)
+SELECT @sn,@ep,@ek,@ac,@st,@am,@wp,@on,@gs,@mr,@no
+FROM (SELECT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM `energy-platfrom.energy.registry_sources`
+  WHERE endpoint = @ep AND IFNULL(measured_rows, -1) = @mr)"""
+for r in ROWS:
+    prior = list(client.query(
+        "SELECT measured_rows, COUNT(*) OVER () c FROM `energy-platfrom.energy.registry_sources` "
+        "WHERE endpoint = @ep ORDER BY measured_rows DESC LIMIT 1",
+        job_config=bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query")])))
+    if prior and prior[0].measured_rows != r["measured_rows"]:
+        r["notes"] += (f" SUPERSEDES an earlier row appended for this same endpoint that recorded "
+                       f"measured_rows={prior[0].measured_rows:,}; that count predated the "
+                       f"by-key backfill pass and understated the capture. `energy` is append-only "
+                       f"to the acquiring session, so the stale row could not be corrected in place "
+                       f"- read the highest measured_rows for this endpoint as current.")
+    client.query(SQL, job_config=bigquery.QueryJobConfig(query_parameters=[
+        bigquery.ScalarQueryParameter("sn", "STRING", r["source_name"]),
+        bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query"),
+        bigquery.ScalarQueryParameter("ek", "STRING", "arcgis_mapserver_layer"),
+        bigquery.ScalarQueryParameter("ac", "STRING",
+            "public/anonymous - no API key, no account, no terms dialogue, no CAPTCHA"),
+        bigquery.ScalarQueryParameter("st", "STRING", "OK"),
+        bigquery.ScalarQueryParameter("am", "STRING",
+            f"ArcGIS REST /query, f=geojson, outSR=4326 (publisher reprojection), "
+            f"geometryPrecision=6, resultRecordCount=2000 paged on resultOffset with "
+            f"orderByFields=OBJECTID ASC, over 72 tiles of 0.5 degrees covering "
+            f"-88.4,37.6,-84.6,41.9; 3 concurrent workers with a 0.4s inter-page pause. "
+            f"Completed by a BY-KEY pass: the permanent_identifiers the built table still lacked "
+            f"were requested explicitly in batches of 40 via WHERE ... IN (...), bisecting the "
+            f"batch whenever the service answered HTTP 500 to an over-long clause. "
+            f"RE-SCRAPE COMMAND: python scripts/pull_nhd_geometry.py && "
+            f"python scripts/build_nhd_geometry.py   (to close a gap in an existing table without "
+            f"rebuilding it: python scripts/pull_nhd_geometry.py --append-missing && "
+            f"python scripts/build_nhd_geometry.py --append)"),
+        bigquery.ScalarQueryParameter("wp", "STRING", r["what_it_provides"]),
+        bigquery.ArrayQueryParameter("on", "STRING", r["object_names"]),
+        bigquery.ScalarQueryParameter("gs", "STRING", "IN"),
+        bigquery.ScalarQueryParameter("mr", "INT64", r["measured_rows"]),
+        bigquery.ScalarQueryParameter("no", "STRING", r["notes"]),
+    ])).result()
+    print(f"appended registry_sources: {r['source_name']}")
+
+if APPEND:
+    print("\n--append complete: wrote only in_nhd_flowline_geom, in_nhd_waterbody_geom, "
+          "their _registry rows, and the energy.registry_sources append. NHDArea untouched.")
+    raise SystemExit(0)
 
 # -------------------------------------------------------------------------------------------------
 # NHDArea ftype 460 - THE BIG RIVERS AS POLYGONS.
@@ -282,93 +464,5 @@ client.query(
             f"in in_queue_counties, and FALSE does not prove a feature is outside Indiana.")])
 ).result()
 print(f"  registered {AREA} in indiana_app._registry")
-
-# ---------------------------------------------------------------------------------------------
-# APPEND to energy.registry_sources. This INSERT is the ONE permitted write to the read-only
-# `energy` dataset - nothing here updates, replaces, drops or truncates anything that was there.
-# ---------------------------------------------------------------------------------------------
-fl, wb = MEASURED["in_nhd_flowline_geom"], MEASURED["in_nhd_waterbody_geom"]
-ROWS = [
-    dict(source_name="USGS TNM NHD - Flowline Large Scale (layer 6)", lid=6,
-         object_names=["indiana_app.in_nhd_flowline_geom"], measured_rows=int(fl.n),
-         what_it_provides=(
-             "Line geometry for named Indiana rivers and streams (NHD ftype 460 StreamRiver with a "
-             "gnis_name). THE ONLY DRAWABLE RIVER GEOMETRY IN THE ESTATE: energy.nhd_flowline holds "
-             f"the same features' attributes with SHAPE NULL on all 39,542,980 rows nationally. "
-             f"{fl.in_slice:,} rows are in the Indiana NHD slice, {fl.out_of_state:,} are adjacent-"
-             "state segments of the same rivers, kept on purpose. Joins to energy.nhd_flowline on "
-             "permanent_identifier. Carries reachcode and huc8 as STRING."),
-         notes=(
-             "Cut stated: ftype 460 AND gnis_name IS NOT NULL. Indiana has 972,487 ftype-460 "
-             "flowlines of which 152,165 are named (4,606 DISTINCT names - the 4,606 figure counts "
-             "names, not segments). Unnamed 460s are headwater trickles and were not fetched. "
-             "336 CanalDitch / 420 UndergroundConduit / 428 Pipeline / 558 ArtificialPath / 468 "
-             "drainageway deliberately NOT fetched - none is water anyone can draw from. "
-             "ST_ISVALID passes on all rows. Tiled 72 x 0.5-degree bbox then key-matched to Indiana; "
-             "bbox used only to bound the fetch, never to decide membership."),),
-    dict(source_name="USGS TNM NHD - Waterbody Large Scale (layer 12)", lid=12,
-         object_names=["indiana_app.in_nhd_waterbody_geom"], measured_rows=int(wb.n),
-         what_it_provides=(
-             "Polygon geometry for Indiana lakes, reservoirs and wetlands: ftype 436 Reservoir (all "
-             "sizes), 390 LakePond >= 0.1 sq km, 466 SwampMarsh >= 0.1 sq km. THE ONLY DRAWABLE "
-             "LAKE GEOMETRY IN THE ESTATE: energy.nhd_waterbody holds the same features' attributes "
-             f"with SHAPE NULL on all 10,431,981 rows nationally. {wb.in_slice:,} rows are in the "
-             "Indiana NHD slice. Joins to energy.nhd_waterbody on permanent_identifier."),
-         notes=(
-             "ftype is DECODED into water_role, never screened raw: 436/390 are 'source', 466 "
-             "SwampMarsh is 'constraint' (wetland - a build restriction, not a water supply). "
-             "Size gate is a JUDGEMENT, not a fact: lakes under 10 ha are excluded as too small to "
-             "cool anything. Indiana counts, measured: 3,659 reservoirs (ftype 436, all sizes), "
-             "1,595 LakePond >= 10 ha, 661 SwampMarsh >= 10 ha. The commonly quoted '2,301 lakes "
-             "over 10 ha' is all three ftypes summed and silently includes the 661 marshes. "
-             "ST_ISVALID passes on all rows."),),
-]
-# `energy` is APPEND-ONLY to this session: an INSERT is the one permitted write, and there is no
-# UPDATE or DELETE available to take a mistake back. So the append has to be idempotent by
-# construction. INSERT ... SELECT ... WHERE NOT EXISTS makes a re-run with unchanged counts a no-op;
-# if the count HAS changed the new row is appended and its notes say which row it supersedes, since
-# correcting the earlier row in place is not something we are allowed to do.
-SQL = """
-INSERT INTO `energy-platfrom.energy.registry_sources`
- (source_name, endpoint, endpoint_kind, access, status, acquisition_method,
-  what_it_provides, object_names, geography_state, measured_rows, notes)
-SELECT @sn,@ep,@ek,@ac,@st,@am,@wp,@on,@gs,@mr,@no
-FROM (SELECT 1)
-WHERE NOT EXISTS (
-  SELECT 1 FROM `energy-platfrom.energy.registry_sources`
-  WHERE endpoint = @ep AND IFNULL(measured_rows, -1) = @mr)"""
-for r in ROWS:
-    prior = list(client.query(
-        "SELECT measured_rows, COUNT(*) OVER () c FROM `energy-platfrom.energy.registry_sources` "
-        "WHERE endpoint = @ep ORDER BY measured_rows DESC LIMIT 1",
-        job_config=bigquery.QueryJobConfig(query_parameters=[
-            bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query")])))
-    if prior and prior[0].measured_rows != r["measured_rows"]:
-        r["notes"] += (f" SUPERSEDES an earlier row appended for this same endpoint that recorded "
-                       f"measured_rows={prior[0].measured_rows:,}; that count predated the "
-                       f"by-key backfill pass and understated the capture. `energy` is append-only "
-                       f"to the acquiring session, so the stale row could not be corrected in place "
-                       f"- read the highest measured_rows for this endpoint as current.")
-    client.query(SQL, job_config=bigquery.QueryJobConfig(query_parameters=[
-        bigquery.ScalarQueryParameter("sn", "STRING", r["source_name"]),
-        bigquery.ScalarQueryParameter("ep", "STRING", f"{BASE}/{r['lid']}/query"),
-        bigquery.ScalarQueryParameter("ek", "STRING", "arcgis_mapserver_layer"),
-        bigquery.ScalarQueryParameter("ac", "STRING",
-            "public/anonymous - no API key, no account, no terms dialogue, no CAPTCHA"),
-        bigquery.ScalarQueryParameter("st", "STRING", "OK"),
-        bigquery.ScalarQueryParameter("am", "STRING",
-            f"ArcGIS REST /query, f=geojson, outSR=4326 (publisher reprojection), "
-            f"geometryPrecision=6, resultRecordCount=2000 paged on resultOffset with "
-            f"orderByFields=OBJECTID ASC, over 72 tiles of 0.5 degrees covering "
-            f"-88.4,37.6,-84.6,41.9; 3 concurrent workers with a 0.4s inter-page pause. "
-            f"RE-SCRAPE COMMAND: python scripts/pull_nhd_geometry.py && "
-            f"python scripts/build_nhd_geometry.py"),
-        bigquery.ScalarQueryParameter("wp", "STRING", r["what_it_provides"]),
-        bigquery.ArrayQueryParameter("on", "STRING", r["object_names"]),
-        bigquery.ScalarQueryParameter("gs", "STRING", "IN"),
-        bigquery.ScalarQueryParameter("mr", "INT64", r["measured_rows"]),
-        bigquery.ScalarQueryParameter("no", "STRING", r["notes"]),
-    ])).result()
-    print(f"appended registry_sources: {r['source_name']}")
 
 print("\ndone")

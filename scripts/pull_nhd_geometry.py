@@ -335,8 +335,133 @@ def backfill(layer):
     return got
 
 
+# -------------------------------------------------------------------------------------------------
+# APPEND-MISSING. Closes the gap in an ALREADY-BUILT table without rebuilding it.
+#
+# `backfill()` above measures what is missing against the local NDJSON, which is only correct while
+# the NDJSON and the built table are in step. They are not always: a session can stop between the
+# fetch and the build, and then the NDJSON is ahead of - or behind - what BigQuery actually holds.
+# Measured 2026-08-17 on the live tables, which is what prompted this function:
+#
+#     in_nhd_flowline_geom   148,317 of 152,165 of the Indiana cut =  97.47%   3,848 with no geometry
+#     in_nhd_waterbody_geom    4,900 of   5,915 of the Indiana cut =  82.84%   1,015 with no geometry
+#
+# Those are exactly the bbox-sweep-only figures quoted at the head of build_nhd_geometry.py, so the
+# by-key pass had not landed at all. The finished tables are the authority here, not the NDJSON, so
+# this asks BigQuery which keys the TABLE is missing and requests precisely those.
+#
+# ⛔ It APPENDS. `CREATE OR REPLACE` would discard 160,128 rows that are already verified - zero null
+#    geography, no planet-scale polygon, every feature touching Indiana - and re-earning that costs a
+#    full multi-hour sweep against a public federal service we do not own.
+# -------------------------------------------------------------------------------------------------
+MISSING_AGAINST_TABLE_SQL = """
+WITH want AS (
+  SELECT DISTINCT permanent_identifier AS pid,
+         LOWER(REPLACE(REPLACE(permanent_identifier,'{{','' ),'}}','')) AS k
+  FROM `energy-platfrom.energy.{src}`
+  WHERE UPPER(IFNULL(src_state,'')) = 'IN' AND ({cut})
+),
+got AS (
+  SELECT DISTINCT LOWER(REPLACE(REPLACE(permanent_identifier,'{{',''),'}}','')) AS k
+  FROM `energy-platfrom.indiana_app.{tbl}`
+)
+SELECT w.pid FROM want w LEFT JOIN got g USING (k) WHERE g.k IS NULL
+"""
+TARGET = {"flowline": "in_nhd_flowline_geom", "waterbody": "in_nhd_waterbody_geom"}
+SRCTBL = {"flowline": "nhd_flowline", "waterbody": "nhd_waterbody"}
+CUT = {
+    "flowline": "ftype = 460 AND gnis_name IS NOT NULL",
+    "waterbody": "ftype = 436 OR (ftype = 390 AND areasqkm >= 0.1) "
+                 "OR (ftype = 466 AND areasqkm >= 0.1)",
+}
+
+
+def append_missing(layer):
+    """Fetch the keys the BUILT table lacks and stage them for an APPEND. Never replaces anything."""
+    client = bigquery.Client(project="energy-platfrom")
+    name = layer["name"]
+    sql = MISSING_AGAINST_TABLE_SQL.format(src=SRCTBL[name], cut=CUT[name], tbl=TARGET[name])
+    missing = sorted({r.pid for r in client.query(sql)})
+    print(f"  [{name}] {TARGET[name]} is missing {len(missing):,} keys of the Indiana cut")
+    path = os.path.join(OUT, f"{name}_backfill.ndjson")
+
+    # RESUME, because this pass is SLOW BY DESIGN. One key costs about a second against a public
+    # federal service we do not own, so 3,848 of them run for an hour - longer than some shells will
+    # hold a process. Measured 2026-08-17: a first run was killed at 3,600s having written 3,827
+    # features to disk and loaded NONE of them. Re-requesting all 3,848 to recover 21 would be an
+    # hour of someone else's bandwidth spent on data already sitting in the file, so whatever the
+    # NDJSON already holds is kept, its keys come off the request list, and the file is APPENDED to.
+    done = set()
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            pid = json.loads(line).get("permanent_identifier")
+            if pid:
+                done.add(pid.strip("{}").lower())
+        missing = [p for p in missing if p.strip("{}").lower() not in done]
+        print(f"  [{name}] resuming: {len(done):,} already on disk, {len(missing):,} still to ask for")
+
+    got, t0, nogeom = 0, time.time(), 0
+    if missing:
+        with open(path, "a", encoding="utf-8") as fh:
+            for i in range(0, len(missing), BATCH):
+                chunk = missing[i:i + BATCH]
+                for f in fetch_by_keys(layer["lid"], KEYFIELD[name], layer["fields"], chunk):
+                    g = f.get("geometry")
+                    if not g:                   # the publisher holds the attribute but no shape
+                        nogeom += 1
+                        continue
+                    props = {k.lower(): v for k, v in (f.get("properties") or {}).items()}
+                    props["_geom"] = json.dumps(g, separators=(",", ":"))
+                    fh.write(json.dumps(props, separators=(",", ":")) + "\n")
+                    got += 1
+                if (i // BATCH) % 10 == 0:
+                    print(f"    ...{i + len(chunk):,}/{len(missing):,} requested, {got:,} returned "
+                          f"({time.time() - t0:.0f}s)", flush=True)
+                time.sleep(0.4)
+        print(f"  [{name}] publisher returned {got:,} of {len(missing):,} requested this pass "
+              f"({nogeom:,} had attributes but no geometry)")
+    staged = sum(1 for _ in open(path, encoding="utf-8")) if os.path.exists(path) else 0
+    if not staged:
+        print(f"  [{name}] nothing staged - the publisher returned no geometry for any key")
+        return 0
+    # Staged in its OWN table. The append into the finished table is build_nhd_geometry.py --append,
+    # which is where the ftype decode and the huc8 STRING cut live - kept in one place on purpose.
+    stage = f"{DS}._raw_nhd_{name}_backfill"
+    with open(path, "rb") as fh:
+        client.load_table_from_file(
+            fh, stage, job_config=bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+                schema=SCHEMAS[name], write_disposition="WRITE_TRUNCATE")).result()
+    # And APPENDED to the raw sweep table, so a future full rebuild reproduces this capture rather
+    # than silently regressing to the bbox-only result.
+    with open(path, "rb") as fh:
+        client.load_table_from_file(
+            fh, f"{DS}._raw_nhd_{name}", job_config=bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+                schema=SCHEMAS[name], write_disposition="WRITE_APPEND")).result()
+    print(f"  [{name}] staged {staged:,} rows in {stage} and appended them to {DS}._raw_nhd_{name}")
+    # The keys the publisher has NO geometry for. Recorded, not silently dropped: a gap you can name
+    # is a finding, a gap you cannot is a hole in the table nobody will ever notice.
+    have = {(json.loads(l).get("permanent_identifier") or "").strip("{}").lower()
+            for l in open(path, encoding="utf-8")}
+    still = [p for p in missing if p.strip("{}").lower() not in have]
+    if still:
+        print(f"  [{name}] PUBLISHER RETURNED NOTHING for {len(still):,} keys, e.g. {still[:5]}")
+    return staged
+
+
 if __name__ == "__main__":
-    only = _sys.argv[1] if len(_sys.argv) > 1 else None
+    if "--append-missing" in _sys.argv:
+        sel = [a for a in _sys.argv[1:] if not a.startswith("--")]
+        for layer in LAYERS:
+            if layer["name"] not in TARGET or (sel and layer["name"] not in sel):
+                continue
+            print(f"=== append-missing {layer['name']} (layer {layer['lid']})")
+            append_missing(layer)
+        print(f"totals: {_stats['req']} requests, {_stats['bytes']/1e6:.0f} MB transferred")
+        raise SystemExit(0)
+
+    only = _sys.argv[1] if len(_sys.argv) > 1 and not _sys.argv[1].startswith("--") else None
     for layer in LAYERS:
         if only and layer["name"] != only:
             continue

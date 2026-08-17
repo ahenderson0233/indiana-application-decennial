@@ -503,7 +503,77 @@ public load-side equivalent may simply not exist.
 load-side bus within 25 miles**, while 515,932 (97%) have an injection bus. For three fifths of the
 candidate set, *the direction a data centre actually needs is unavailable.*
 
-#### G7d — 🟢 MISO BUS HEADROOM: A ROUTE EXISTS, AND IT IS ALREADY CATALOGUED
+#### ⭐ G7h — THE PJM STUDY THE BENCHMARK USES IS AVAILABLE. WE ASKED FOR THE WRONG CASE.
+
+Operator, 2026-08-17: *"If we have RTEP 2027, why are we not able to get RTEP 2028?"* **We can. It is
+case 23.**
+
+`ingest/load_pjm_queuescope_bq.py --list` enumerates **17 study cases**. We had harvested **case 4,
+"2027 RTEP Base Case (Summer Peak)"**. The benchmark's PJM rows carry
+`Final_2024 Series RTEP 2028 SUM_BD_02052026_TC2_PHII_Final` — which is
+
+| case | label |
+|---:|---|
+| **23** | **2028 TC2 Phase II Case (Summer Peak)** ← theirs |
+| 24 / 25 | 2028 TC2 Phase II (Light Load / Winter Peak) |
+| 7 / 8 / 9 | 2028 RTEP Base Case (Summer / Light / Winter) |
+| 4 | 2027 RTEP Base Case (Summer Peak) ← **what we had** |
+
+⭐ **PROVEN, not assumed.** A 2-batch smoke test on case 23 returned **11,191 constraint rows over 50
+buses**, and the row's own `case_label` reads *"2028 TC2 Phase II Case (Summer Peak)"*. **AEP has
+1,826 buses in this case against 1,524 in case 4** — so the newer case is also 302 buses wider.
+
+⛔ **THE TRAP THAT MAKES THIS FAIL SILENTLY: OWNER IDS ARE RENUMBERED PER CASE.**
+AEP is **739** in case 4 and **1568** in case 23. Passing 739 to case 23 returns
+`unknown owner id(s): ['739']`, loads **0 rows**, and exits **successfully**. A harvest that reports
+success and writes nothing is the exact failure shape this project keeps hitting — **always
+`--list --case <n>` first and take the owner id from THAT case.**
+
+Two defects fixed in our own wrapper while doing this (`scripts/pull_pjm_injection.py` — `ingest/`
+is not editable, and the wrapper pattern exists precisely for that):
+1. **The checkpoint directory was pinned to the injection run.** Running a different case would have
+   reused those checkpoints and skipped batches it had never done. Now keyed per (case, mode).
+2. **The `_registry` method string hardcoded "case 4, mode INJECTION"** regardless of the actual
+   arguments — a G16 violation, since the row could not re-run the work it described. Now built from
+   the real arguments and carries a `RE-SCRAPE COMMAND`.
+
+#### ⛔ G7d IS DEAD AS WRITTEN — CARTOVISTA IS BLOCKED, RE-TESTED 2026-08-17
+
+**The backlog promoted G7d to "the single highest-value unbuilt item" on the strength of a registry
+row reading `access: public`. That is the CATALOGUE row. The PROBE rows beside it record the
+measurement, and rule 11 says re-test rather than inherit — so I did:**
+
+| route | result |
+|---|---|
+| `ferc.cartovista.com/api/settings/miso/ferc` | **200** |
+| `cloud.cartovista.com/.../Layer/{id}/mvt/8/12/5.pbf` | **200** — locations only, x/y, **no attributes** |
+| `cloud.cartovista.com/.../Layer/{id}/geojson` | **403 — the wall reproduces** |
+
+The registry's own probe rows already record `geojson 403, DataRows 403, dataQueryExecute 403,
+joined-aggregate 403`, measured **with the full join contract in hand**. **The 691,523-row transfer
+study and the 19,223-bus universe are not obtainable by any known route.** ⛔ Do not re-promote G7d
+on the strength of the catalogue row again.
+
+#### ⚠ G7i — NEITHER OF OUR BUS DATASETS IS THE FERC ORDER 2023 STUDY (operator was right)
+
+Operator: *"We do have PJM datasets, but they were NOT derived from the FERC 2023 study, which
+Orennia leverages."* **Correct, and it extends to MISO as well.** Measured from our own columns:
+
+| | ours | theirs |
+|---|---|---|
+| **MISO** | `giqueue.../POI/api/poi_mf`, **`DPP-2021-Cycle`** — MISO's *legacy* POI Analysis viewer | `DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final`, MTEP-2025 upgrades as of Jan 2026 |
+| **PJM** | QueueScope **"2027 RTEP Base Case (Summer Peak)"** | **"2028 … TC2 Phase II"** → ✅ **now obtainable, case 23 (G7h)** |
+
+So the PJM half of the vintage gap is **closable today**. The MISO half is not, because the DPP-2025
+mitigated case lives only behind the CartoVista wall above.
+
+⚠ **The MISO POI API returns AES-ENCRYPTED payloads** — the response body begins `U2FsdGVkX1…`,
+CryptoJS's `Salted__` marker, decrypted client-side. **Column completeness therefore cannot be
+tested by fetching the endpoint**; it has to be tested through the loader that decrypts it. This is
+why a naive key-diff against the live payload returns nothing and must not be read as "we hold
+everything."
+
+#### G7d (original) — MISO BUS HEADROOM: A ROUTE EXISTS, AND IT IS ALREADY CATALOGUED
 
 Operator, 2026-08-17: *"Is there any other methodology we can use to obtain MISO bus headroom? That
 is a crucial necessity of our tool."* **Yes — three, and the best one is public, catalogued and

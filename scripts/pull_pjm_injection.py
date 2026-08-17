@@ -40,7 +40,7 @@ DS = "energy-platfrom.indiana_app"
 TABLE = "in_pjm_queuescope_injection"
 
 
-def registry(client, table, n_rows, note):
+def registry(client, table, n_rows, note, method=None):
     """A _registry row in the SAME run that writes the table (checkpoint requires it)."""
     client.query(
         f"""DELETE FROM `{DS}._registry` WHERE table_name=@t""",
@@ -56,10 +56,9 @@ def registry(client, table, n_rows, note):
                 "s", "STRING",
                 "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf"),
             bigquery.ScalarQueryParameter(
-                "m", "STRING",
+                "m", "STRING", method or
                 "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py "
-                "(wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app); "
-                "case 4, mode INJECTION, desired_mw 100, owner 739 AEP; 25-POI cap per submission"),
+                "(wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)"),
             bigquery.ScalarQueryParameter("n", "INT64", int(n_rows)),
             bigquery.ScalarQueryParameter("notes", "STRING", note)])).result()
     print(f"_registry row written for {table}: n_rows={n_rows:,}")
@@ -93,7 +92,7 @@ def main():
             f"loader sink changed under us: {qs.PROJECT}.{qs.DATASET}.{qs.TABLE} -- "
             "re-read it before trusting this wrapper")
         qs.DATASET, qs.TABLE = "indiana_app", table
-        qs.CKPT = REPO / "data" / "_ckpt_pjm_queuescope_injection"
+        qs.CKPT = REPO / "data" / f"_ckpt_pjm_qs_case{a.case}_{a.mode.lower()}"
         print(f"sink rebound to {qs.PROJECT}.{qs.DATASET}.{qs.TABLE}")
         print(f"checkpoints -> {qs.CKPT}")
 
@@ -126,11 +125,18 @@ def main():
     if st.n == 0:
         print("ZERO ROWS -- not writing a registry row for an empty table")
         return 1
+    method_str = (
+        f"playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py "
+        f"(wraps ingest/load_pjm_queuescope_bq.py, DATASET rebound to indiana_app); "
+        f"case {a.case}, mode {a.mode}, desired_mw {a.mw}, owner {a.owner}; "
+        f"25-POI cap per submission. "
+        f"RE-SCRAPE COMMAND: python scripts/pull_pjm_injection.py --case {a.case} "
+        f"--mode {a.mode} --mw {a.mw} --owner {a.owner} --table {table}")
     registry(client, table, st.n,
              f"PJM QueueScope {st.modes} direction. "
              f"{st.buses} buses, owners={st.owners}, case={st.cases}. "
-             f"OBSERVED VINTAGE: case label is the publisher's own study-case name (2027 RTEP "
-             f"Base Case, Summer Peak); PJM publishes no separate file date on this tool. "
+             f"OBSERVED VINTAGE: case label above is the publisher's own study-case name; "
+             f"PJM publishes no separate file date on this tool. "
              f"PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or "
              f"short-circuit) and 'results are not reflective of current PJM system "
              f"conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured "
