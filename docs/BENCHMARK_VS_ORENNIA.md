@@ -6,7 +6,7 @@
 > should calculate/measure our assets within our tool."* This report writes nothing to
 > BigQuery and nothing to `data/` — by design there is no path from here to a rendered page.
 
-Generated 2026-08-17 15:15 UTC by `scripts/benchmark_vs_orennia.py`. Vendor extract dated 2026-06-23.
+Generated 2026-08-17 15:18 UTC by `scripts/benchmark_vs_orennia.py`. Vendor extract dated 2026-06-23.
 
 ## ⚠ 0. READ THIS BEFORE TRUSTING ANY AGREEMENT FIGURE BELOW
 
@@ -15,6 +15,23 @@ Generated 2026-08-17 15:15 UTC by `scripts/benchmark_vs_orennia.py`. Vendor extr
 **Consequence: this comparison does NOT independently validate our substation locations or voltages.** A 99%+ voltage agreement between two copies of one source is arithmetic, not corroboration, and quoting it as accuracy would be the two-instrument fallacy in reverse — agreement is only evidence when the instruments are actually independent.
 
 What the vendor extract IS independent on, and therefore worth benchmarking against, is its **derived analytics** — interconnection capacity by direction, upgrade tiers, lead times, cost and risk level. Those are modelled outputs we do not hold and cannot trivially reproduce. The asset layers are not.
+
+### So the question this report actually answers is COMPLETENESS, not accuracy
+
+Operator, 2026-08-17: *"Orennia uses some of the same sources as we use to derive their tables, so it would make sense if much of it is the same — however, we should strive to have AT LEAST the same completeness as them for our application, so we may need to rescope how close we are to complete visibility based on their numbers."* Agreed, and that is the right frame: shared provenance makes value-agreement uninformative and makes **coverage** the real test.
+
+**Substation completeness, measured footprint-aware:**
+
+| | count | share of theirs |
+|---|---:|---:|
+| their Indiana substations | 2,751 | 100% |
+| no POINT of ours within 1000 m | 538 | 19.6% |
+| …but falling in/near one of our 933 footprint-only polygons | 496 | |
+| **genuinely absent from our data** | **42** | **1.5%** |
+
+**We hold 98.5% of their substation coverage.** The naive figure is 538 missing, and it is wrong: 933 of our substations carry a footprint POLYGON instead of a point (they are the OSM-only contributions), and excluding them from a match makes our coverage look a fifth worse than it is. Any completeness claim that ignores the footprint rows is measuring our schema, not our data.
+
+The genuinely-absent ones skew small: <100 kV 25, 100-344 kV 5, unknown 11, >=345 kV 1 by voltage. For a 300 MW campus a sub-100 kV omission is close to irrelevant, so **the high-voltage absences are the only ones worth chasing** — everything else is noise against this application's purpose.
 
 ## 1. Coverage — do we hold the same substations?
 

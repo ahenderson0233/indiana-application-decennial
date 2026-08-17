@@ -73,7 +73,9 @@ be actionable and insightful to the user, and in a simple, easy to digest manner
 | **G5** | **Rail → P1–P7 accordions** | 🔴 OPEN | Operator, 2026-08-17: the rail shows every filter at once. Make Land/Grid/Environment/Sentiment **and more** into dropdowns that open the dashboard with their own filters. ⚠ **Design constraint: collapsing filters HIDES ACTIVE STATE** — needs a persistent active-filter summary or a user will not know why results vanished |
 | **G6** | **Polish / professionalism pass** | 🔴 OPEN | Reduce clunk. Every table earns its place with an actionable insight or comes out |
 | **G8** | **Plain language — kill the internal jargon everywhere** | 🔴 OPEN | Operator, 2026-08-17: *"the user won't know what P1–P7 are... and there are other similar examples throughout the app."* **Our codenames are invisible to the reader.** See the translation table below — it is binding on every new page and is a rename pass on every existing one |
-| **G7** | **Both directions from BOTH RTOs** | 🟡 AGENT IN FLIGHT | Opus agent dispatched 2026-08-17. See the finding below — this one is not cosmetic |
+| **G7** | **Both directions from BOTH RTOs** | 🟢 **MOSTLY LANDED** | Agent interim report 2026-08-17 — see G7c. Three tables landed with the full 6-rung ladder; MISO withdrawal **BLOCKED with verbatim publisher wording**, as anticipated. **NOT YET WIRED to any page** — that is the open half |
+| **G18** | **Charts must be labelled and explained** | 🔴 OPEN | `svgLine()` draws a bare polyline: no axes, no scale, no date range. And it plots `slice(-120)` while the caption says 228 months — the chart contradicts its own caption |
+| **G19** | **De-duplicate substations** | 🔴 OPEN | 848 located rows share a coordinate with another row; 2,925 located rows are only 2,077 distinct substations. Counts overstate by ~41%; distances are unaffected |
 
 ### G7 — the finding that makes this urgent
 
@@ -100,6 +102,26 @@ public load-side equivalent may simply not exist.
 load-side bus within 25 miles**, while 515,932 (97%) have an injection bus. For three fifths of the
 candidate set, *the direction a data centre actually needs is unavailable.*
 
+#### G7c — AGENT INTERIM REPORT, 2026-08-17 (verify before building on it)
+
+| deliverable | state |
+|---|---|
+| `in_miso_poi_ladder` | **230,286 rows** — MISO injection, **all six rungs** |
+| `in_bus_headroom_miso_ladder` | **3,852 rows** — per-bus rollup of the above |
+| `in_pjm_queuescope_injection` | **47,700 rows** — PJM injection, all six rungs on 25 AEP buses; **full-footprint harvest still running** (checkpointed and resumable) |
+| **MISO withdrawal** | ⛔ **BLOCKED, recorded with verbatim publisher wording** — as anticipated: `poi_mf` is a *generator* tool and no public load-side equivalent surfaced |
+| `docs/RTO_DIRECTIONS.md` | written, with the LANDED/BLOCKED matrix |
+| `_registry` | rich rows written for all three tables (G16 compliant) |
+| boundary | clean — no `energy.*` table touched |
+
+⚠ **These are NOT yet wired to any page**, which is why the checkpoint reads *270 of 273 objects
+reaching a surface*. That failure is the check doing its job, not a regression. **Do not wire a
+table whose harvest is still in flight** — a half-loaded table on a UI is worse than one nobody can
+see. Wire after the agent's final report confirms the AEP footprint is complete.
+
+⚠ And per the standing rule: **verify, do not inherit.** Re-measure row counts and the direction/
+`request_mw` columns directly before the screener or dossier depends on them.
+
 #### G7b — the request-size ladder (operator, 2026-08-17)
 
 **Headroom is a FUNCTION of the request size, and we harvested exactly one rung per direction:**
@@ -113,6 +135,31 @@ Ladder to acquire: **100 / 300 / 500 / 1000 / 2500 / 5000 MW**, for BOTH directi
 in `docs/RTO_DIRECTIONS.md`; partial coverage is expected and fine. Request size must be a COLUMN
 (`request_mw`), never one table per size, so the existing 300 and 100 rungs fold in rather than
 duplicate. Sent to the in-flight agent as a scope extension.
+
+### G18 — every chart must be labelled and explained (operator, 2026-08-17)
+
+*"If we are intending to use charts like the ones attached, they should be labeled and explained
+fully."* Supplied screenshot: the **Market & cost** page's two charts.
+
+**The charts are `svgLine()` in `common.js`, and it draws a bare polyline — nothing else.** No axes,
+no tick labels, no y-scale, no date range, no units on the plot, no gridlines. A reader can see that
+something oscillates and cannot tell whether the range is 2 GWh or 20 GWh, or what period is
+covered. The titles then compound it with unexplained acronyms — **FERC-714** and **CEMS** — which
+is the same G8 failure that sent the operator to look up OAC.
+
+Minimum bar for any chart we ship:
+1. **Y axis with real values and its unit**, and an explicit statement of whether it is zero-based
+   (`svgLine` currently scales to `max` with no zero, which visually exaggerates variation).
+2. **X axis with the actual date range**, not an implied one — `svgLine` silently plots only
+   `series.slice(-120)`, so a chart captioned "228 months" is **showing 120 of them**. That is a
+   silent truncation on screen, and the caption actively contradicts the picture.
+3. **A one-line plain-English reading** — what the reader should take from it.
+4. **Acronyms expanded** on first use via the shared `GLOSSARY` (`FERC-714` = the federal hourly
+   demand filing; `CEMS` = EPA's Continuous Emissions Monitoring System).
+5. Source, row count and build date — ✅ these are already there and are good.
+
+⚠ The `slice(-120)` truncation is the priority: it is not a styling issue, it is the chart showing
+a different dataset from the one its own caption claims.
 
 ### G17 — TARIFF COST MODEL: §13(8) is no longer "impossible", it is ACQUIRABLE
 

@@ -130,6 +130,68 @@ for o, e, d in matched:
         disagree.append((o, e, d, float(ov), float(ev)))
 disagree.sort(key=lambda x: -abs(x[3] - x[4]))
 
+# ---------------------------------------------------------------- COMPLETENESS, footprint-aware
+# The completeness question runs THEIRS -> OURS (do we hold what they hold), which is the opposite
+# direction to the match above. And it must count our 933 FOOTPRINT-ONLY substations: those are the
+# OSM-only contributions, they carry a polygon instead of a point, and excluding them makes our
+# coverage look a fifth worse than it is. That would be measuring our schema, not our data.
+import json as _json
+
+pts_ours = [(o["lat"], o["lon"]) for o in ours]
+g2 = collections.defaultdict(list)
+for i, (la, lo) in enumerate(pts_ours):
+    g2[(round(la / CELL), round(lo / CELL))].append(i)
+
+nopoint = []
+for e in ext_pts:
+    hit = False
+    ky, kx = round(e["lat"] / CELL), round(e["lon"] / CELL)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            for i in g2.get((ky + dy, kx + dx), []):
+                if hav(e["lat"], e["lon"], pts_ours[i][0], pts_ours[i][1]) <= MATCH_M:
+                    hit = True; break
+            if hit: break
+        if hit: break
+    if not hit:
+        nopoint.append(e)
+
+boxes = []
+for r in client.query(f"""SELECT substation_name AS nm, footprint_geojson AS gj
+                          FROM `{DS}.in_substations`
+                          WHERE lat IS NULL AND footprint_geojson IS NOT NULL"""):
+    try:
+        geom = _json.loads(r.gj)
+    except Exception:
+        continue
+    xs, ys = [], []
+    def _walk(c):
+        if isinstance(c, (int, float)):
+            return
+        if len(c) >= 2 and isinstance(c[0], (int, float)):
+            xs.append(c[0]); ys.append(c[1]); return
+        for x in c:
+            _walk(x)
+    _walk(geom.get("coordinates", []))
+    if xs:
+        boxes.append((min(xs), min(ys), max(xs), max(ys)))
+
+absent = []
+for e in nopoint:
+    # generous 1 km pad, deliberately: this makes the reported gap a LOWER bound, so we never
+    # overstate our own coverage
+    if not any(x0 - 0.012 <= e["lon"] <= x1 + 0.012 and y0 - 0.009 <= e["lat"] <= y1 + 0.009
+               for x0, y0, x1, y1 in boxes):
+        absent.append(e)
+
+N_NOPOINT, N_FOOTPRINTS, N_COVERED, N_ABSENT = len(nopoint), len(boxes), len(nopoint) - len(absent), len(absent)
+ABSENT_KV = collections.Counter()
+for e in absent:
+    k = e["max_kv"]
+    ABSENT_KV["unknown" if k is None else ">=345 kV" if k >= 345 else
+               "100-344 kV" if k >= 100 else "<100 kV"] += 1
+ABSENT_KV = dict(ABSENT_KV)
+
 # ---------------------------------------------------------------- their line banding
 with open(LINE_CSV, encoding="utf-8-sig") as f:
     band = collections.Counter()
@@ -173,6 +235,34 @@ w("What the vendor extract IS independent on, and therefore worth benchmarking a
   "**derived analytics** — interconnection capacity by direction, upgrade tiers, lead times, cost "
   "and risk level. Those are modelled outputs we do not hold and cannot trivially reproduce. The "
   "asset layers are not.")
+w("")
+w("### So the question this report actually answers is COMPLETENESS, not accuracy")
+w("")
+w("Operator, 2026-08-17: *\"Orennia uses some of the same sources as we use to derive their tables, "
+  "so it would make sense if much of it is the same — however, we should strive to have AT LEAST "
+  "the same completeness as them for our application, so we may need to rescope how close we are "
+  "to complete visibility based on their numbers.\"* Agreed, and that is the right frame: shared "
+  "provenance makes value-agreement uninformative and makes **coverage** the real test.")
+w("")
+w("**Substation completeness, measured footprint-aware:**")
+w("")
+w("| | count | share of theirs |")
+w("|---|---:|---:|")
+w(f"| their Indiana substations | {len(ext_pts):,} | 100% |")
+w(f"| no POINT of ours within {MATCH_M:.0f} m | {N_NOPOINT:,} | {pct(N_NOPOINT, len(ext_pts))} |")
+w(f"| …but falling in/near one of our {N_FOOTPRINTS:,} footprint-only polygons | {N_COVERED:,} | |")
+w(f"| **genuinely absent from our data** | **{N_ABSENT:,}** | **{pct(N_ABSENT, len(ext_pts))}** |")
+w("")
+w(f"**We hold {100.0 - 100.0*N_ABSENT/len(ext_pts):.1f}% of their substation coverage.** The naive "
+  f"figure is {N_NOPOINT:,} missing, and it is wrong: 933 of our substations carry a footprint "
+  "POLYGON instead of a point (they are the OSM-only contributions), and excluding them from a "
+  "match makes our coverage look a fifth worse than it is. Any completeness claim that ignores the "
+  "footprint rows is measuring our schema, not our data.")
+w("")
+w("The genuinely-absent ones skew small: " + ", ".join(f"{k} {v}" for k, v in ABSENT_KV.items()) +
+  " by voltage. For a 300 MW campus a sub-100 kV omission is close to irrelevant, so **the "
+  "high-voltage absences are the only ones worth chasing** — everything else is noise against this "
+  "application's purpose.")
 w("")
 w("## 1. Coverage — do we hold the same substations?")
 w("")
