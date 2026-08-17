@@ -1020,7 +1020,38 @@ rivers and lakes can be inventoried per watershed from attributes alone. The mis
 boundary polygon to place parcels in — **we hold none**; that is a smaller acquisition than
 re-loading 39.5M NHD geometries.
 
-#### ⛔ G12b — DISTANCE-TO-WATER REMAINS BLOCKED: **NHD HAS NO GEOMETRY, NATIONALLY**
+#### ✅ G12d — DISTANCE-TO-WATER IS **UNBLOCKED AND BUILT**. Agent landed real NHD geometry.
+
+`in_water_distance_parcel` — **532,868 parcels, fan-out 1.000, 100% with a water source within
+10 miles.**
+
+| | |
+|---|---:|
+| ⭐ **water physically ON the parcel (0.0 mi)** | **79,168** |
+| within 1 mile | 430,928 |
+| median distance | **0.38 mi** |
+| nearest is a river / reservoir | 454,628 / 16,622 |
+| nearest is a Great Lake (Lake & Porter) | 371 |
+
+**This quantifies G29 exactly: 79,168 parcels have water on them, and the map's client-side
+first-vertex method reports ~0.55 mi for every one of them.**
+
+Sources: `in_nhd_flowline_geom` (160,128 named rivers) and `in_nhd_waterbody_geom` (6,415), both
+with real `geog`. **Filtered on `water_role='source'`**, which drops 679 SwampMarsh polygons — a
+wetland is something to permit *around*, not draw *from*, and counting it as supply would be the
+opposite of the truth on the same parcel.
+
+⚠ **Lake Michigan (57,743 km²) is a legitimate member** and dominates nearest-lake in Lake and
+Porter counties. That is correct, not a bug — but it carries its own withdrawal compact, so
+`nearest_is_great_lake` flags those 371 rather than letting a 0.2 mi distance imply an ordinary
+permit.
+
+⛔ **Written to a NEW table.** `in_water_parcel` holds water-STRESS scores and is consumed by the
+front end; the earlier version of this script would have **overwritten it with an all-NULL distance
+table** — it measured against `energy.nhd_*.SHAPE`, which is NULL on all 50M rows, so it matched
+nothing and *failed without erroring*.
+
+#### ⛔ G12b (historical) — why distance was blocked: **NHD HAD NO GEOMETRY**
 
 Attempted 2026-08-17 on the operator's request. Built, ran, and returned a **confident zero** —
 532,868 parcels, **not one within 10 miles of water**, in a state with 972,487 river segments. That
