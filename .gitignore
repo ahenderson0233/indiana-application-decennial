@@ -30,3 +30,6 @@ scrapers/**/*.xml
 # scraper backups and rotated artifacts (the .json rule above misses these)
 scrapers/**/*.bak
 scrapers/**/*.orig
+
+# scraper checkpoint dirs - resumable state, not deliverables
+data/_ckpt_*/
