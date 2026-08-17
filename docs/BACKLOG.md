@@ -64,6 +64,57 @@ should be able to easily pick up what each function does"* — plus *"every tabl
 a feature, but that doesn't mean we need irrelevant tables scattered throughout; everything should
 be actionable and insightful to the user, and in a simple, easy to digest manner."*
 
+### ⛔ STANDING RULE G25 — CHECK THE WAREHOUSE BEFORE YOU EXPLORE OR SCRAPE ANYTHING
+
+Operator, 2026-08-17: *"always look at what we have in BQ (either in indiana_app or energy) before
+completing any exploration or scraping tasks — this is a rule that should be followed through this
+project's duration."*
+
+**Binding for the life of the project.** Before proposing an acquisition, a loader, a trial, or an
+agent: enumerate `energy.__TABLES__` and `indiana_app._registry` for the subject. It costs one query.
+
+**It has already paid twice in one session:**
+- I recommended building a CartoVista loader as the top grid priority. **We already hold the
+  CartoVista MISO data** — `cartovista_miso_poi_locations` (8,219), `miso_poi_capacity_surface_geotiff`
+  (3,390,912), `miso_poi_monitored_facilities` (904,486), `miso_poi_headroom` (12,845),
+  `miso_poi_attributes` (12,845), `miso_poi_location_crosswalk` (8,219).
+- F1/F2 were queued as open work that had already been done.
+
+The failure mode is always the same shape: **a plan built on what we remember instead of what we
+hold.**
+
+#### G25a — 🔴 WHAT THE HELD CAPACITY SURFACE SAYS, AND HOW IT DENTS MY OWN DIAGNOSIS
+
+`energy.miso_poi_capacity_surface_geotiff` is MISO's published capacity heat map **rasterised** —
+3,390,912 pixels at 1,247 m carrying `value_mw`, coordinates and an explicit
+`is_publisher_nodata` flag, from `giqueue.misoenergy.org/poi/api/gridLayer/mainGeoTiff`,
+**pulled 2026-08-02**. That is a fundamentally better instrument than 642 points: it answers
+*"what capacity exists at THIS parcel"* with no bus matching at all.
+
+Indiana slice — 86,850 pixels in the bounding box, 84,174 carrying data:
+
+| | value_mw |
+|---|---|
+| p10 | **−12,052** |
+| **median** | **−7,873** |
+| p90 | **−4,001** |
+| pixels ≥ 300 MW available | **0 of 84,174** |
+
+⚠ **This complicates the vintage story I gave the operator.** I attributed our 641-of-642 zeros to
+our DPP-2021 case being four cycles behind the DPP-2025 baseline. But this surface was pulled
+**2026-08-02** and is *also* deeply negative across Indiana — so the near-zero picture is
+corroborated by a recent MISO publication, not merely an artifact of our stale case.
+
+**Do not over-read it either.** Pull date is not study vintage, and the semantics of a negative
+`value_mw` (a deficit? an over-subscription margin? against what request size?) are **not yet
+established.** Establish them before this raster is used in scoring or shown to a user.
+**What it does justify right now:** treating "Indiana MISO injection is genuinely constrained" as
+the working assumption, and demoting "our number is only stale" from explanation to hypothesis.
+
+The open question becomes the interesting one: **why does the vendor extract show 39.3% of buses
+with tier-0 injection headroom when two separate MISO publications say otherwise?** Answer that
+before tuning anything toward their numbers.
+
 ### ⚠ THE INDEX IS THE CONTRACT. Every operator request in this session has a row here.
 
 An item that exists only in prose further down this file **is invisible in practice** — the operator

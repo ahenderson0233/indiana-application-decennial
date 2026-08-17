@@ -47,6 +47,15 @@ the slice**, the **publisher's own vintage** rather than your pull timestamp, an
 excluded and why**. Test: *could a stranger refresh this table from the registry row alone?*
 `in_grid_plans` fails this today — its registry row says 7 rows while the table holds 618.
 
+**⛔ CHECK THE WAREHOUSE BEFORE YOU EXPLORE OR SCRAPE ANYTHING.** Operator rule, 2026-08-17,
+binding for the project's duration: before proposing an acquisition, a loader, a paid trial or an
+agent, enumerate `energy.__TABLES__` and `indiana_app._registry` for the subject. It costs one
+query. On 2026-08-17 a CartoVista loader was recommended as the top grid priority while the estate
+**already held** `cartovista_miso_poi_locations`, `miso_poi_capacity_surface_geotiff` (3.4M pixels),
+`miso_poi_monitored_facilities` and `miso_poi_headroom`. The same session queued F1/F2 as open work
+that had already been done. The failure is always the same shape: **a plan built on what you
+remember instead of on what you hold.**
+
 **Never quote a count from a document, including this one.** Run the checkpoint and use what it
 prints. "199 of 199 wired" was stale within the hour; `SI_COVERAGE.md` asserted D4 was NOT HELD
 while 17,617 delinquent rows sat in the warehouse.
