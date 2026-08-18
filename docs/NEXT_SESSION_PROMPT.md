@@ -1,162 +1,259 @@
-# NEXT SESSION — paste this as your first message
+# NEXT SESSION — paste everything below this line as your first message
 
-Continue the Indiana siting-intelligence application. Repo:
-`C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial`
-(GitHub: `ahenderson0233/indiana-application-decennial`, branch `main`)
+Continue the Indiana siting-intelligence application.
+Repo: `C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial`
+(GitHub `ahenderson0233/indiana-application-decennial`, branch `main`)
 
 ---
 
-## STEP 0 — read these IN THIS ORDER, then tell me what you read
+## FIRST, IN THIS ORDER. Do not propose anything before you have.
 
-| # | document | why, and how to read it |
-|---|---|---|
-| **1** | **`docs/PATH_TO_COMPLETE.md`** | **START HERE.** Every remaining task, why it is not done, what closes it. Read §0 (three commands to run first) and §2 (the finish line) in full |
-| 2 | `docs/HANDOFF.md` | the RECORD. Read the **top checkpoint block in full** — it holds the session's lessons, the gaps, and the agents that were in flight |
-| 3 | `docs/GAMEPLAN.md` | the PLAN. Read the state table at the top and the backlog; items 27–34 are the newest |
-| 4 | `docs/CODE_CATALOG.md` | **GENERATED.** Every script, endpoint and the literal command that re-runs it. Never hand-edit — regenerate with `scripts/build_code_catalog.py` |
-| 5 | `docs/SI_COVERAGE.md` | **GENERATED.** Per-signal coverage as FOUR separate numbers (held / reached / admitted / dated). Conflating them is how the D5 error happened |
-| 6 | `docs/NATIONAL_HANDOVER.md` | **GENERATED.** The twelve errors this build made and the transferable rule each teaches. Read the error table even if you skip the rest |
-| 7 | `docs/ACCEPTANCE_RUN.json` · `docs/HONESTY_AUDIT.json` | **GENERATED.** Current §13 acceptance state and the 12 honesty checks |
-| 8 | `docs/GAP_REGISTER.md` · `docs/PLOTTABILITY.md` · `docs/SIGNAL_ENDPOINTS.md` | the measured evidence behind current state |
-| 9 | `scrapers/lane_*/…FINDINGS.md` | acquisition results and **every wall quoted verbatim**. `ORDINANCE_FINDINGS.md`, `ORDINANCE_AMLEGAL_FINDINGS.md`, `COLO_ADDRESS_FINDINGS.md` are the newest |
-
-Platform docs (another session owns them — READ ONLY): `energy-platform/CLAUDE.md`,
-`REBUILD_PLANNING/METHODS.md`, `2_TECHNICAL_BUILD_SPEC.md` §11 + §13,
-**`ANALYSIS_METHODOLOGY.md` — required before computing ANY siting or rate number**,
-`FABLE5_PREAMBLE.md` (paste above any ad-hoc scrape brief).
-
-Then run, and tell me what they print:
 ```bash
-python scripts/audit_honesty.py && python scripts/audit_wiring_census.py && git log --oneline -25
+python scripts/checkpoint.py
 ```
 
----
+Tell me what it printed. **Expect it to FAIL on 2–3 checks and expect that to be correct:**
 
-## ⛔ THE WRITE BOUNDARY — the rule most at risk from agents
-
-**`energy-platfrom.energy` is READ-ONLY.** It is the shared warehouse another session owns.
-
-- **Never** create, drop, truncate or overwrite a table in `energy`.
-- The **ONE** permitted write is **APPEND-only rows to `energy.registry_sources`**, tagged with a
-  distinctive `updated_by`.
-- **Everything we build goes to `energy-platfrom.indiana_app`.** Everything we write to disk goes
-  to this repo. Nothing else.
-- **Every table gets a `_registry` row IN THE SAME RUN that writes it.** An unregistered table
-  blocks the other session's checkpoint invariant 3.
-
-**Verified 2026-08-16: this project is compliant.** `indiana_app` holds 253 objects; **zero new
-tables were created in `energy` by this project**, and our only `energy` writes are 86 append-only
-`registry_sources` rows (`indiana-app-session-*`, `indiana-app-ordinances-agent`,
-`lane_d8_d22`, `lane_f_b4_colo_resolution`). Re-verify with
-`scratchpad/bq_compliance.py`-style checks if an agent run makes you unsure.
-
-**When briefing ANY agent, restate this boundary in the brief itself.** Agents do not inherit it.
-Today's agents complied because every brief carried it explicitly.
-
-*Note: `energy.amlegal_dc_ordinances` (2,494 rows, created 2026-07-06) is a PRE-EXISTING
-platform-side table, not ours — but it may be directly useful for the ordinance work. Read it,
-never write it.*
-
----
-
-## THE OTHER NON-NEGOTIABLE RULES — each earned by getting it wrong
-
-- **A clean, perfect or alarming number is a claim about your INSTRUMENT first.** Check the join,
-  then the filter, then the data. Nine of this session's findings came from doing exactly this.
-- **NEVER guess a column name — read the schema first.** The most repeated failure in this project.
-- **Unpublished is NULL, never 0.** And check your own code against the rule you just quoted — the
-  rate engine flagged 95 "violations" that were absent rates treated as zero.
-- **Assert the window you GOT, not the one you asked for.** A 12-month LMP filter returned 39 days.
-- **Read the value vocabulary before trusting a count.** 95% of one "code enforcement" source is
-  litter and weeds.
-- **Never read a category off a mutually-exclusive ladder.** "0 high-priority violators" when 95
-  exist.
-- **A dead end in the tables you HOLD is not a dead end in the publisher's catalogue.**
-- **Scrape only what a source PERMITS.** No CAPTCHA bypass, no UA/TLS spoofing, no account
-  creation, no paywall circumvention. **A gated source recorded BLOCKED with its wall quoted
-  verbatim is a SUCCESSFUL outcome.**
-- **Indiana only, clipped at the border.** Cannot-assess renders as itself, never as 0 or blank.
-  Estimates never style as published. **No centroid in distance math.**
-- ⚠ **EXCLUDE `parcels_in/080500000047000018` from EVERY spatial join** — D85, an inverted
-  whole-Earth polygon (196,936,707 sq mi) that silently matches everything. Live and unrepaired
-  upstream. Prove your guard by measuring fan-out (~1.0, not ~2.0).
-- **Public-data-only:** `orennia_*`, `be_ustest_*`, `*_vs_orennia`, `hifld_bus_features_v3` never
-  render and never export.
-- **Never `git add -A`.** Stage explicit paths, every time.
-- **After ANY build touching `in_si_sites_flags_v2`: re-export sites, THEN re-run the honesty
-  audit.** This failed once — the map shipped 11,117 while the warehouse held 23,140.
-- Reserved words that have bitten: `rows`, `no`, `FULL`, `ROWS`. A doubled `''` in a BigQuery
-  literal parses as two adjacent strings; **adjacent string literals in JS are a SyntaxError that
-  once took the whole map down.**
-- Python's `SimpleHTTP` sends no `Cache-Control`: `await fetch(f, {cache:"reload"})` then navigate.
-- **Cost-flag anything above $25–50 before running it.** ⛔ NEVER run `ingest/build_hc_auto_adapters.py`.
-- The project name misspelling **`energy-platfrom` is INTENTIONAL and permanent**.
-
----
-
-## WHERE WE ARE, BY PHASE
-
-| phase | state |
+| failing check | why it is expected |
 |---|---|
-| **A — wire every object to a surface** | ✅ complete. The census is a SCRIPT; the denominator moved 226→242→252 in one day |
-| **B — data-integrity debts** | ✅ complete. B2 flag, B3 acreage, B4 colo, B5 retired, D22, D85 guard, WARN dedupe, Lane D columns |
-| **C — functionality** | C1 dossier ✅ · C2 rate engine ✅ · C3 RTEP→bus ✅ · **C4 workspaces NOT built** (front-end) · **C5 PMTiles BLOCKED** on a WSL/Docker install |
-| **D — acquisition** | D22 ✅ · Marion + Indy crosswalks ✅ · Evansville Land Bank ✅ · **DLGF owner pull is the top remaining item** |
-| **E — hardening** | E1 audit ✅ (12/12) · E2 cadence ✅ · E3 handover ✅ · E4 acceptance ✅ run: **4 PASS, 3 PARTIAL, 0 FAIL, 2 N/A** |
+| `wiring census: 282 of 299` | new tables not yet on a surface. Standing state. |
+| `honesty audit: 1 failure` + `1 unregistered` | **a PJM harvest table registers only when its run completes.** Registering it early would assert 0 rows. |
 
-**Headline numbers — re-measure, do not quote:** SI flag **23,140** parcels (7,183 fit ≥5 MW BESS,
-3,015 fit ≥25 MW DC); 253 objects in `indiana_app`; 92 counties, 1.2M parcels rendered.
+⛔ **Anything else failing is real.** In particular `shipped payload agrees with the warehouse`,
+the five `D85` guards, `no shipped payload is older than the table it reads` and `no payload has
+lost a key a surface depends on` must all PASS — they exist because each one already broke once.
 
----
+Then read, in this order, and no further:
 
-## OPERATOR RULINGS ALREADY MADE — binding, do not re-litigate
-
-1. SI is admitted at the **NON-RESIDENTIAL** level only.
-2. **Severity gates every signal** — only distress that would plausibly move an owner to sell.
-3. **Capability is separate from signal.** 69% of flagged parcels cannot host 5 MW; that is an
-   expected, useful filter, not a defect.
-4. Where two measures disagree beyond threshold, **take the SMALLER** and label it disputed.
-5. **Vacancy is two things** — footprint absence is a land state, not intent. Vacant land stays in
-   the app for BESS siting.
-6. **Union-and-dedupe every duplicated subject.** Never two partial layers of one thing.
-7. County active-queue MW counts as **SUPPLY**, not competing demand.
-8. Hyperscale DC = **whole parcel**; BESS = **outdoor space**.
-9. Municode's generic `Allow: /` governs — its 153-row corpus stands.
-10. Schools and weather stations are **removed** from the app.
-
-## AWAITING YOU — do not chase, just flag if relevant
-
-**American Legal licence** (robots grants `*`, terms forbid robots — unlocks **17 counties**,
-`license@iccsafe.org`) · **robots-vs-terms standing policy** (30+ hosts disallow `ClaudeBot` by
-name) · **a WSL/Docker install** (C5 is fully scripted the moment it exists) · D10 procurement
-($600/yr) · the IRS ALS FOIA fax · an IEDC email for A1 · the refresh-cadence venue.
+| # | file | what it is |
+|---|---|---|
+| 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
+| 2 | `docs/HANDOFF_2026-08-18.md` | **the session that just ended.** Its §1 lists what is still RUNNING |
+| 3 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row at the top of the index is the fastest orientation; then the G-index |
+| 4 | `docs/RESUME_HARVESTS.md` | ⚠ **before touching ANY PJM table** |
+| 5 | `scripts/tariff_adapters.py` | each utility's tariff conventions, in its own words — read before any tariff work |
 
 ---
 
-## IN FLIGHT AT SESSION CLOSE — check before duplicating
+## ⚠ RUNNING RIGHT NOW — CHECK BEFORE YOU START ANYTHING GRID-RELATED
 
-A **county DC-action sweep** was merging seven regional batches (`batch_A…G.json` in the session
-scratchpad) into `in_dc_actions_county_v2` + `scrapers/lane_f/COUNTY_DC_ACTION_FINDINGS.md`.
+```
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*pull_pjm_injection*' }
+```
 
-**Two warnings were relayed to it and MUST be verified in its output:**
-1. A stale **`batch_MINE.json`** in the same folder — if the merge globbed `batch_*.json`,
-   counties may be **DOUBLE-COUNTED**.
-2. Its sub-agents could not reply to it (it identified by agent TYPE, not ID).
+A **PJM case-23 WITHDRAWAL re-harvest** (`in_pjm_qs_c23sens_wd`) may still be running, with
+INJECTION chained behind a poll-for-absence guard and a ≥1,500-bus landing check.
 
-Per-batch counts if you need to rebuild: **A 20/13 · B 18/12 · C 12/13 · D 13/13 · E 20/12 ·
-F 8/13 · G 13/14**.
-
-**The finding that sweep exists to capture:** codified ordinance search CANNOT answer the county
-posture question. Verified moratoria and bans sit on county websites — Marshall and Cass have
-**permanent bans**; Grant has a 24-month moratorium; Indianapolis passed one 23-1 through
-2027-12-31. **Jefferson County approved a 7.1M sq ft datacentre by administrative interpretation
-under a code that never mentions data centres** — a plain-text search finds nothing. And **Fulton
-County's moratorium is recorded as triggered by a 500 MW / 300-acre Decennial Group proposal.**
+⛔ **NEVER start a second QueueScope process.** That rule was broken on 2026-08-18 by a chained job
+whose `Wait-Process` failed open and launched injection 7 minutes into the withdrawal run.
+⛔ **NEVER delete `data/`.** Checkpoint markers are keyed by **case+mode, not target table**, so a
+re-run against existing markers resumes and harvests almost nothing. Archive, never delete.
+⛔ Owner id for case 23 is **1568**, not 739. The wrong id loads 0 rows and **exits successfully**.
 
 ---
 
-## START BY
+## ⭐ YOUR FIRST ACTION ITEM — fix the tariff rates that are still wrong
 
-Confirming what you read, what the three commands printed, whether the county-sweep agent landed
-its table (and whether the double-count warning was handled), and your plan for the first item in
-`PATH_TO_COMPLETE.md` §2a.
+The Market page prices each rate schedule at a user-set MW and load factor, folds in every
+applicable rider, prices **every service voltage separately**, and checks each figure against what
+that utility's **industrial** customers actually pay (EIA-861). It works for most of the five IOUs.
+**It is still wrong in specific, named places, and that is your first job.**
+
+Reproduce the audit before changing anything — run it **through the shipped renderer in a browser**,
+not by reimplementing the maths:
+
+1. `python scripts/export_tariffs.py`
+2. serve the repo and open `market.html`
+3. iterate every IOU in the `#tf-util` selector, read each schedule's per-voltage rows, and compare
+   the `vs actual` column against the benchmark in `#tf-count`
+
+### A. Rows showing **$0 for an entire column** — these are the highest priority
+
+A priced row whose **demand** or **energy** column is `$0` means a whole billing leg failed to match
+that service class. Every costing bug found so far had this signature. The page now refuses to show
+an effective rate for these (`not costable`) — **that guard is working; the underlying gap is not
+fixed.**
+
+| utility | schedule | symptom |
+|---|---|---|
+| **AES Indiana** | **PH** | demand `$0` — energy-only, so no rate is shown |
+| **I&M** | **GS** (transmission) | demand `$0` |
+
+Find which component *should* have matched and why it did not. It will almost certainly be a
+class-key mismatch — the same family of defect as the nine already fixed.
+
+### B. Schedules whose totals are wildly off
+
+| utility | schedule | reads | benchmark | likely cause |
+|---|---|---|---|---|
+| **NIPSCO** | **631** | +52% / +69% | 6.10¢ | ⭐ Its **Tier 2 is day-ahead LMP** and **Tier 3 is MISO Asset Owner settlement** — market-indexed, not firm. We cost everything as all-firm, which overstates it. The firm/non-firm election moves a NIPSCO bill more than any rider. |
+| **SIGECO** | LP, HLF | −36% / −34% | 9.02¢ | demand billed in **kVA**; PF 1.0 is assumed. Also HLF is demand-only with no base energy charge. |
+| **I&M** | IP | −34% | 8.04¢ | may be legitimate — see the tolerance note below |
+| **Duke** | **HLF** | **never verified** | 8.83¢ | excluded by a ceiling, so the multi-class fix that was supposed to repair its +402% error is **unproven, not proven** |
+
+### C. The tolerance band itself is the wrong instrument
+
+A flat ±20% flags correct answers as failures. A **300 MW customer at 85% load factor should sit
+below** an average that includes small industrials — so I&M IP at −34% may be right. **Make the
+tolerance scale with load** relative to the average customer, rather than tuning rates to hit a
+fixed band. ⛔ Never tune a rate to match the benchmark; match the **method**, then let the number
+land where it lands.
+
+---
+
+## HOW TO MAKE TARIFF CHANGES — this is the part that matters
+
+⭐ **Per-utility adapters, never a generic rule.** `scripts/tariff_adapters.py` holds one
+declarative adapter per utility. **Nine costing defects were found on 2026-08-18 and every single
+one was a generic rule meeting a house convention**, and several fixes for one utility broke
+another:
+
+- **I&M** writes `Tariff I.P.` **with periods** → tokenised to `I` and `P`, never `IP`, so **all
+  eight of its riders (~+8.6 $/kW-month) silently failed to attach**
+- **AES** publishes a separate **low-load-factor transmission** service → summed with plain
+  transmission it read **20.64¢, dearer than secondary**, and an inverted price ladder is always
+  the tell
+- **Duke** splits transmission into two **kV bands**, splits primary into `direct`/not, writes
+  multi-class strings like `transmission and primary`, and states a **floor** in a basis containing
+  the word **"maximum"** — read as a ceiling it excluded the schedule and **hid** its +402% error
+- **NIPSCO** joins classes with a **slash** (`transmission/subtransmission`) → a $35.74/kW-month
+  demand charge bound to sub-transmission alone and the transmission row showed **DEMAND $0**
+- **SIGECO** bills demand in **kVA**
+
+**So: put a utility's quirk in that utility's adapter.** If you find yourself editing shared logic
+to satisfy one publisher, stop — that is how the previous nine defects were introduced and
+re-introduced.
+
+⭐ **Keep the leg guard.** A row missing a whole billing leg must never show an effective rate. It
+is the only reason those defects were findable.
+
+**Other invariants in the costing, all learned the hard way:**
+- `fuel_base` is **embedded in the energy charge** — never add it as a line; the billable item is
+  the FAC difference
+- **block ladders are alternatives**, allocated across slices — summing them put NIPSCO at 57.94¢
+- **TOU is costable** for a flat 24/7 load: energy splits by the tariff's own stated period hours,
+  and **every** time-differentiated demand charge bills full kW because a constant load peaks in
+  every period
+- **eligibility has a ceiling as well as a floor.** NIPSCO 624 is named "General Service — **Large**"
+  and carries a **25,000 kW maximum** — a data centre cannot take it. The name is never the
+  eligibility; only the numbers are
+- **a large-load framework rides on a parent** (I&M `IP-LL` → `IP`) and inherits its legs *and* its
+  riders
+
+---
+
+## ⚠ THE TARIFF WORK IS NOT FINISHED — the 19 municipals are loaded but NEVER VALIDATED
+
+`in_utility_tariff_riders` holds **668 rows across 73 utilities**: the five IOUs (334 rows) plus
+**252 municipal / co-op rows across 19 utilities**. Zero `not_held`-with-a-rate violations.
+
+⛔ **Not one of those 252 rows has been through the costing audit.** They are **19 separate
+publishers** against five, **none has an adapter**, so all fall back to the generic path that
+produced nine defects on five utilities — and **most have no EIA-861 industrial benchmark at all**,
+so the reconciliation gate that caught every IOU error **does not exist for them**. A different
+check has to be designed. This is **BACKLOG G55**, the largest remaining tariff item.
+
+⚠ **Operational dependency, carried in both registries: if the IURC loader is re-run,
+`scripts/load_tariff_books_munis_coops.py` MUST be re-run after it** — the IURC loader's
+utility-scoped DELETE would remove those 252 rows.
+
+---
+
+## ⛔ THE RULES, and the failure that earned each one
+
+**Write boundary.** `energy-platfrom.energy` is **READ-ONLY**. Everything we build goes to
+`energy-platfrom.indiana_app`. The one permitted write to `energy` is an **APPEND** to
+`energy.registry_sources`. **Restate this in every agent brief — agents do not inherit it.**
+
+**Every table gets a `_registry` row in the same run that writes it**, and that row **must carry
+both `source` AND `method`** — an incomplete row failed the honesty audit's provenance check on
+2026-08-18. Per G16 it must be enough for a stranger to **re-run** the work: exact parameterised
+URL, endpoint kind, the loader command verbatim as `RE-SCRAPE COMMAND: …`, the publisher's own
+vintage (never your pull timestamp), and what was excluded and why.
+
+**⛔ CHECK THE WAREHOUSE BEFORE YOU EXPLORE OR SCRAPE.** Enumerate `energy.__TABLES__` and
+`indiana_app._registry` for the subject first. It costs one query and has now paid five times.
+
+**Never quote a count from a document, including this one.** Run the checkpoint and use what it
+prints.
+
+**A clean, perfect or alarming number is a claim about your INSTRUMENT first.** Check the join, then
+the filter, then the data. *Transmission dearer than secondary* was the tell that found a real bug;
+*13.77¢/kWh* was the tell that found three more.
+
+**Read the schema. Never guess a column name or type.** `registry_sources` has `what_it_provides`
+(not `provides`) and its `object_names` is `ARRAY<STRING>`; `nulls` and `rows` are reserved words in
+BigQuery. Guessing cost four zero-result queries in one session.
+
+**⚠ NEVER write a regex through a shell heredoc.** Twice on 2026-08-18 a `\b` word boundary reached
+disk as a literal **backspace byte (0x08)**, matched nothing silently, and **`grep` displayed the
+line as clean** because the terminal ate the control character. Compile patterns at module level
+with **import-time self-tests**.
+
+**Unpublished is NULL, never 0.** Treating absent rates as zero produced 95 false "below floor"
+violations. **Assert the window you GOT, not the one you asked for.**
+
+**⚠ EXCLUDE `parcels_in/080500000047000018` from EVERY spatial join** — D85, an inverted
+whole-Earth polygon, live and unrepaired upstream. Prove the guard by measuring fan-out (~1.0).
+
+**Indiana only, clipped at the border. Cannot-assess renders as itself. Estimates never style as
+published.** `row(k, v, absent)` has **three** states: a value, measured-empty (caller passes
+`absent`), and not-measurable (the default, "not measured here"). Never let silence become a claim.
+
+**Vendor data is a YARDSTICK, not a source** — with one operator-authorised exception:
+`in_bus_headroom_miso_vendor` (MISO headroom only), isolated, stamped
+`provenance_class='vendor_licensed_proxy'`, and removable in one commit. The licence lapses late
+2027. `benchmark_vs_orennia.py` still writes markdown only.
+
+**Never `git add -A`.** Stage explicit paths. **Use a commit-message FILE** — backticks and quotes
+in `-m` get eaten by the shell.
+
+**After ANY front-end change:** `python scripts/stamp_assets.py`, then `python
+scripts/audit_frontend.py`, then verify in a real browser, then **audit the deployed site** at
+`https://ahenderson0233.github.io/indiana-application-decennial/index.html` (allow ~1 min for Pages;
+a false negative is usually cache — re-fetch with no-cache).
+
+⚠ **`app.js` is boot-critical** — a top-level throw kills the entire map console, and this repo has
+a recorded instance. **Parse-verify it in a browser BEFORE pushing.** The map does **not** boot in a
+headless sandbox (environmental, confirmed twice); `map` exists but `getStyle()` throws. Test what
+you can without it — `PRESET_GAPS`, `METRIC_LEGEND`, `row()` — and say plainly what you could not.
+
+---
+
+## WHERE THE OTHER WORKSTREAMS STAND — do not re-litigate these
+
+**Bus parity (G40/G45/G46).** PJM case 23 is the vendor's exact case. The old "we overshoot the
+vendor 88–98% vs 39.3%" alarm was **a mismatched population**, not a rule error — like-for-like the
+vendor's PJM tier-0 withdrawal is 93.9%, median 220 MW. **The real blocker is placement:** only ~227
+of 1,826 AEP buses can be placed. **Nobody has PJM coordinates, including the vendor** — 0 of 298
+PJM buses are ISO-sourced and they estimate 91.9%. MISO placement is **borrowed, not solved**: 9,608
+buses come from MISO's own published POI data, and the 0.0 mi agreement with the vendor proves
+**shared provenance, not competence**. G46 has the method to build, ordered by trustworthiness:
+queue-generator coincidence (a join), breaker-branch topology, then gated string matching.
+
+**MISO parity is not reachable** — DPP-2025 is CEII and four independent sweeps proved no public
+route. Do **not** re-probe CartoVista or giqueue, and do not buy a trial.
+
+**Open UI items:** G39 (screener → map deep-link and dossier dropdown), G43 (layers not clipped at
+the border), G48 (an existing data centre should read green — groundwork measured: opposition is 0
+in 61 of 92 counties), G50 (the MISO bus data reaches no surface; the dossier still says "not
+resolved" for the serving utility), G52 (map legend), G53 (withdrawn queue as a seller-intent
+signal).
+
+---
+
+## HOW I WANT YOU TO WORK
+
+- **Verify, do not inherit.** The 2026-08-18 session disproved several inherited claims *and two of
+  its own*: "Duke HLF is correctly excluded on its ceiling" (a floor misread as a ceiling, which
+  hid a real error) and "IP-LL is the best-behaved schedule" (its energy leg was $0).
+- **Measure before you change, and re-measure after.** Report the numbers, not the intention.
+- **Say what you could not verify.** An honest gap beats a confident guess every time.
+- **Commit in small, described steps**, and update `docs/BACKLOG.md` in the same commit — the index
+  is the contract, and an item that exists only in prose is invisible in practice.
+- **Checkpoint after each completed item**, and push.
+- If you find a defect in something I asked for, **tell me the measurement**, not just the
+  conclusion.
+
+**Start by** telling me what the checkpoint printed, what you read, and your plan for action item A
+— the schedules showing `$0` for an entire column.
