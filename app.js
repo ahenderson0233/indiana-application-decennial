@@ -1123,6 +1123,48 @@ function prov(t) {
   const p = state.provenance[t];
   return p ? `source: indiana_app.${t} · rows ${fmt(p.n_rows)} · built ${String(p.built_at).slice(0, 16)}Z` : `source: ${t}`;
 }
+/* G21 + G27 -- the severity BAND is what changes a decision, not the yes/no flag. "You are in a
+   nonattainment area" is a fact; "you are in a SERIOUS ozone nonattainment area" is a permitting
+   cost and a schedule. Ranked so the bad end is obvious without parsing EPA's vocabulary. The band
+   is EPA's own published finding (citation + URL carried per row since the G27 re-clip); the
+   consequence text is the statutory regime that band triggers, never our estimate. */
+const NAA_RANK = { "Extreme": 6, "Severe-17": 5, "Severe-15": 5, "Serious": 4, "Moderate": 3,
+  "Subpart 2/Moderate": 3, "Marginal": 2, "Subpart 2/Marginal": 2, "Transitional": 1,
+  "Not Classified": 1, "Former Subpart 1": 1, "Incomplete Data": 0 };
+function naaSoWhat(p) {
+  const cls = p.classification;
+  const rank = Object.prototype.hasOwnProperty.call(NAA_RANK, cls) ? NAA_RANK[cls] : null;
+  let sev;
+  if (!cls) {
+    sev = p.current_status === "Maintenance"
+      ? `<b>No classification applies &mdash; this area is in maintenance.</b> EPA redesignated it to
+         attainment and it runs on a maintenance plan, so new combustion is reviewed under PSD rather
+         than the stricter nonattainment route. This is the <i>lighter</i> of the two regimes.`
+      : `<b>No classification published.</b> Cannot assess the band from EPA's own record &mdash;
+         confirm with IDEM before sizing any combustion here.`;
+  } else if (rank === null) {
+    sev = `<b>${cls}</b> is a classification this app has no band for. Read EPA's finding before
+           relying on it either way.`;
+  } else if (rank >= 4) {
+    sev = `<b>${cls} sits at the strict end.</b> The band sets both the size at which a new source
+           counts as <i>major</i> and the ratio of emission offsets it must buy &mdash; the worse the
+           band, the smaller the plant that is captured and the more offsets it owes. A generator
+           fleet that is routine in an attainment county can here trigger LAER plus purchased
+           offsets: real dollars, and months added to the schedule.`;
+  } else if (rank >= 2) {
+    sev = `<b>${cls} is a middle band.</b> Nonattainment New Source Review still reaches a major new
+           source &mdash; LAER and offsets &mdash; but at a higher major-source threshold and a lower
+           offset ratio than a Serious or Severe area.`;
+  } else {
+    sev = `<b>${cls}</b> is a legacy or unresolved designation, usually attached to a revoked standard
+           or an area EPA could not classify. Treat it as a prompt to ask IDEM, not a live constraint.`;
+  }
+  const src = p.classification_url
+    ? `<br><a href="${p.classification_url}" target="_blank" rel="noopener">EPA's published finding</a>`
+    : "";
+  return `<div class="sowhat">${sev}<br><b>Solar or battery-only? Largely moot.</b> The burden lands
+    on combustion &mdash; it bites a gas-fired or diesel-backed data centre, not a BESS.${src}</div>`;
+}
 function row(k, v) {
   const val = (v === null || v === undefined || v === "") ? `<span class="cannot">cannot assess</span>`
     : (typeof v === "number" ? fmt(v) : String(v));
@@ -1845,7 +1887,9 @@ function miscEv(p) {
   } else if (p.layer === "nonattainment") {
     show(`Nonattainment: ${p.area_name || ""}`, `
       <table>${row("pollutant", p.pollutant_name)}${row("classification", p.classification)}
-      ${row("current status", p.current_status)}${row("designation effective", p.designation_effective_date)}</table>
+      ${row("current status", p.current_status)}${row("designation effective", p.designation_effective_date)}
+      ${row("classification effective", p.classification_effective_date)}</table>
+      ${naaSoWhat(p)}
       <div class="prov">${prov("in_nonattainment")} · air-permitting gate for on-site generation</div>`);
   } else {
     show(`Bonus geography: ${p.kind}`, `

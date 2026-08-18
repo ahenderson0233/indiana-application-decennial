@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-17T13:17:11+00:00",
+ "built_at_utc": "2026-08-18T00:27:54+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -41,6 +41,12 @@
    "built_at": "2026-08-15 06:03:33.930384+00"
   },
   {
+   "table_name": "in_asset_distance_parcel",
+   "source": "energy-platfrom.indiana_app.in_screener_candidates x energy-platfrom.indiana_app.in_sites x energy-platfrom.indiana_app.in_transmission_union + energy-platfrom.indiana_app.in_substations_dedup",
+   "n_rows": 532868,
+   "built_at": "2026-08-17 18:10:40.875851+00"
+  },
+  {
    "table_name": "in_balancing_authority_areas",
    "source": "energy.balancing_authority_areas",
    "n_rows": 1,
@@ -48,9 +54,15 @@
   },
   {
    "table_name": "in_bonus_geo",
-   "source": "energy.incentive_qct",
+   "source": "energy.coal_closure_communities",
    "n_rows": 1394,
-   "built_at": "2026-08-15 06:03:59.786735+00"
+   "built_at": "2026-08-18 00:26:21.538981+00"
+  },
+  {
+   "table_name": "in_bus_capacity_tier0",
+   "source": "energy.miso_poi_headroom + energy.miso_poi_monitored_facilities (MISO giqueue FERC Order 2023) + indiana_app.in_pjm_bus_withdrawal (PJM QueueScope)",
+   "n_rows": 2117,
+   "built_at": "2026-08-17 19:17:26.063902+00"
   },
   {
    "table_name": "in_bus_headroom_300",
@@ -63,6 +75,12 @@
    "source": "energy.miso_poi_monitored_facilities x indiana_app.in_miso_poi_identity",
    "n_rows": 11820,
    "built_at": "2026-08-15 05:48:53.737236+00"
+  },
+  {
+   "table_name": "in_bus_headroom_miso_ladder",
+   "source": "rollup of indiana_app.in_miso_poi_ladder | endpoint_kind=bq_clip | upstream https://giqueue.misoenergy.org/POI/api/poi_mf?poiName={poi_name}&pMaxValue=99999   [paging: one GET per POI; 642 Indiana POIs enumerated from indiana_app.in_bus_headroom_miso WHERE location_status='indiana']",
+   "n_rows": 3852,
+   "built_at": "2026-08-17 15:35:02.515025+00"
   },
   {
    "table_name": "in_candidate_sites_colleges",
@@ -296,7 +314,7 @@
    "table_name": "in_eia861_reliability",
    "source": "energy.eia861_reliability",
    "n_rows": 36,
-   "built_at": "2026-08-15 05:01:22.392424+00"
+   "built_at": "2026-08-18 00:26:26.155489+00"
   },
   {
    "table_name": "in_eia861_sales",
@@ -569,6 +587,12 @@
    "built_at": "2026-08-15 06:18:33.155511+00"
   },
   {
+   "table_name": "in_huc8_boundaries",
+   "source": "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4/query",
+   "n_rows": 76,
+   "built_at": "2026-08-17 17:01:50.985622+00"
+  },
+  {
    "table_name": "in_iocs_county_context",
    "source": "indiana_app.in_si_refresh_iocs_eviction x energy.county_boundaries",
    "n_rows": 92,
@@ -611,6 +635,30 @@
    "built_at": "2026-08-16 04:37:32.880989+00"
   },
   {
+   "table_name": "in_miso_dpp2025_counties",
+   "source": "cloud.cartovista.com/miso/api/v2/DataTable/98af4e3b-1772-4cf7-b15f-c5899120dbb8/DataRows (FERC Order 2023 MISO POI Analysis Map, study DPP2025)",
+   "n_rows": 1000,
+   "built_at": "2026-08-17 20:11:33.614375+00"
+  },
+  {
+   "table_name": "in_miso_dpp2025_footprint",
+   "source": "cloud.cartovista.com/miso/api/v2/DataTable/421ee8c5-939e-4266-8bb2-f2b84fd8ed17/DataRows (FERC Order 2023 MISO POI Analysis Map, study DPP2025)",
+   "n_rows": 1,
+   "built_at": "2026-08-17 20:11:52.531928+00"
+  },
+  {
+   "table_name": "in_miso_dpp2025_ph1_project_costs",
+   "source": "https://cdn.misoenergy.org/GI-DPP-2025-ALL_SIS_Ph1_FINAL_v1.0_PUBLIC_20260324748615.zip",
+   "n_rows": 202,
+   "built_at": "2026-08-17 20:44:11.421763+00"
+  },
+  {
+   "table_name": "in_miso_facility_detail",
+   "source": "energy.miso_poi_headroom / energy.miso_poi_monitored_facilities, Indiana POIs",
+   "n_rows": 40007,
+   "built_at": "2026-08-17 17:19:19.140995+00"
+  },
+  {
    "table_name": "in_miso_poi",
    "source": "energy.miso_poi_monitored_facilities (points in IN polygon)",
    "n_rows": 0,
@@ -627,6 +675,18 @@
    "source": "MISO giqueue legacy POI viewer https://giqueue.misoenergy.org/POI/api/pois (via held energy.miso_poi_attributes, pulled 2026-08-02; AES blob the viewer decrypts client-side for every visitor, key ships in the public JS bundle)",
    "n_rows": 12845,
    "built_at": "2026-08-14 22:39:42.260106+00"
+  },
+  {
+   "table_name": "in_miso_poi_ladder",
+   "source": "MISO giqueue POI transfer analysis | endpoint_kind=json_api | https://giqueue.misoenergy.org/POI/api/poi_mf?poiName={poi_name}&pMaxValue=99999   [paging: one GET per POI; 642 Indiana POIs enumerated from indiana_app.in_bus_headroom_miso WHERE location_status='indiana'] || materialised in this repo from the read-only clip energy.miso_poi_monitored_facilities (pMaxValue=99999 harvest)",
+   "n_rows": 230286,
+   "built_at": "2026-08-17 15:34:52.179613+00"
+  },
+  {
+   "table_name": "in_miso_poi_state",
+   "source": "energy.miso_poi_headroom / energy.miso_poi_monitored_facilities, Indiana POIs",
+   "n_rows": 642,
+   "built_at": "2026-08-17 17:19:16.265967+00"
   },
   {
    "table_name": "in_news_dc",
@@ -725,16 +785,28 @@
    "built_at": "2026-08-15 23:09:09.759084+00"
   },
   {
+   "table_name": "in_nhd_flowline_geom",
+   "source": "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/6/query",
+   "n_rows": 163976,
+   "built_at": "2026-08-17 19:20:50.828732+00"
+  },
+  {
    "table_name": "in_nhd_waterbody",
    "source": "energy.nhd_waterbody",
    "n_rows": 186667,
    "built_at": "2026-08-15 05:57:04.425363+00"
   },
   {
+   "table_name": "in_nhd_waterbody_geom",
+   "source": "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/12/query",
+   "n_rows": 7430,
+   "built_at": "2026-08-17 19:21:13.866359+00"
+  },
+  {
    "table_name": "in_nonattainment",
    "source": "energy.nonattainment_areas",
    "n_rows": 62,
-   "built_at": "2026-08-15 05:02:02.992883+00"
+   "built_at": "2026-08-18 00:27:17.338211+00"
   },
   {
    "table_name": "in_nrc_reactors",
@@ -905,6 +977,12 @@
    "built_at": "2026-08-15 06:17:51.317115+00"
   },
   {
+   "table_name": "in_pjm_bus_injection",
+   "source": "rollup of indiana_app.in_pjm_queuescope_injection | endpoint_kind=bq_clip | upstream https://queuescope.pjm.com/queuescope/pages/public/evaluator.jsf  [form params: selStudyCase=4 (2027 RTEP Base Case, Summer Peak); selBusArea=739 (AEP); selOperatingMode=INJECTION; desiredMW=<request_mw>; availablePoiBuses paged 25 POIs per submission]",
+   "n_rows": 200,
+   "built_at": "2026-08-17 15:34:43.424029+00"
+  },
+  {
    "table_name": "in_pjm_bus_locations_candidate",
    "source": "DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-published points), energy.nat_substations_hifld + energy.osm_power_substations (AEP-footprint states), indiana_app.in_pjm_rtep_upgrades (name bridge); universe = energy.pjm_queuescope_results owner_label='AEP'",
    "n_rows": 1475,
@@ -929,10 +1007,34 @@
    "built_at": "2026-08-14 23:15:01.505719+00"
   },
   {
+   "table_name": "in_pjm_qs_tc2phii_inj",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "n_rows": 393475,
+   "built_at": "2026-08-17 21:21:01.141810+00"
+  },
+  {
+   "table_name": "in_pjm_qs_tc2phii_wd",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "n_rows": 11191,
+   "built_at": "2026-08-17 19:27:54.175068+00"
+  },
+  {
+   "table_name": "in_pjm_qs_withdrawal_rungcheck",
+   "source": "PJM Queue Scope | endpoint_kind=html_page | https://queuescope.pjm.com/queuescope/pages/public/evaluator.jsf  [form params: selStudyCase=4 (2027 RTEP Base Case, Summer Peak); selBusArea=739 (AEP); selOperatingMode=WITHDRAWAL; desiredMW=<request_mw>; availablePoiBuses paged 25 POIs per submission]",
+   "n_rows": 4686,
+   "built_at": "2026-08-17 15:34:47.913387+00"
+  },
+  {
    "table_name": "in_pjm_queuescope_aep",
    "source": "energy.pjm_queuescope_results (AEP = the I&M sliver)",
    "n_rows": 303671,
    "built_at": "2026-08-14 22:19:36.870082+00"
+  },
+  {
+   "table_name": "in_pjm_queuescope_injection",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "n_rows": 475098,
+   "built_at": "2026-08-17 17:17:37.929145+00"
   },
   {
    "table_name": "in_pjm_rtep_cost_allocations",
@@ -1065,6 +1167,12 @@
    "source": "energy.sba_foia_loans",
    "n_rows": 5135,
    "built_at": "2026-08-15 06:03:29.695206+00"
+  },
+  {
+   "table_name": "in_screener_candidates",
+   "source": "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x in_bus_headroom_miso(injection) x vw_pjm_bus_withdrawal_located(withdrawal) x in_substations",
+   "n_rows": 532868,
+   "built_at": "2026-08-17 15:27:12.898210+00"
   },
   {
    "table_name": "in_sec_cik_registrant_state",
@@ -1445,6 +1553,12 @@
    "built_at": "2026-08-14 22:19:05.190261+00"
   },
   {
+   "table_name": "in_substations_dedup",
+   "source": "energy-platfrom.indiana_app.in_substations",
+   "n_rows": 3010,
+   "built_at": "2026-08-17 15:53:32.240203+00"
+  },
+  {
    "table_name": "in_territories",
    "source": "energy.vw_grid_territories",
    "n_rows": 145,
@@ -1461,6 +1575,12 @@
    "source": "indiana_app.in_transmission_lines + in_osm_power_lines (>=100 kV)",
    "n_rows": 3737,
    "built_at": "2026-08-15 22:39:54.742149+00"
+  },
+  {
+   "table_name": "in_transmission_voltage",
+   "source": "energy-platfrom.indiana_app.in_transmission_union",
+   "n_rows": 3737,
+   "built_at": "2026-08-17 17:12:03.344397+00"
   },
   {
    "table_name": "in_tribal_land",
@@ -1511,16 +1631,58 @@
    "built_at": "2026-08-15 06:28:57.652145+00"
   },
   {
+   "table_name": "in_water_county",
+   "source": "energy.water_use (USGS 2015) x energy.water_cwns_2022 (EPA CWNS 2022)",
+   "n_rows": 92,
+   "built_at": "2026-08-17 16:48:41.047727+00"
+  },
+  {
    "table_name": "in_water_cwns_2022",
    "source": "energy.water_cwns_2022",
    "n_rows": 404,
    "built_at": "2026-08-15 06:03:16.352787+00"
   },
   {
+   "table_name": "in_water_distance_parcel",
+   "source": "energy-platfrom.indiana_app.in_screener_candidates x energy-platfrom.indiana_app.in_nhd_flowline_geom + energy-platfrom.indiana_app.in_nhd_waterbody_geom",
+   "n_rows": 532868,
+   "built_at": "2026-08-17 19:32:41.035633+00"
+  },
+  {
+   "table_name": "in_water_parcel",
+   "source": "in_screener_candidates x energy.water_aqueduct (geometry_geojson)",
+   "n_rows": 532868,
+   "built_at": "2026-08-17 16:54:36.571752+00"
+  },
+  {
+   "table_name": "in_water_stress_basin",
+   "source": "energy.water_aqueduct (WRI Aqueduct 3.0)",
+   "n_rows": 34,
+   "built_at": "2026-08-17 16:48:44.254657+00"
+  },
+  {
+   "table_name": "in_water_stress_basin_geo",
+   "source": "energy.water_aqueduct (geometry_geojson, name_1 LIKE Indiana)",
+   "n_rows": 34,
+   "built_at": "2026-08-17 17:23:12.235460+00"
+  },
+  {
+   "table_name": "in_water_surface_inventory",
+   "source": "energy.nhd_waterbody + energy.nhd_flowline (src_state=IN)",
+   "n_rows": 1,
+   "built_at": "2026-08-17 16:49:11.027258+00"
+  },
+  {
    "table_name": "in_water_use",
    "source": "energy.water_use",
    "n_rows": 92,
    "built_at": "2026-08-15 06:07:42.988746+00"
+  },
+  {
+   "table_name": "in_watershed_inventory",
+   "source": "in_huc8_boundaries x energy.nhd_flowline + energy.nhd_waterbody (reachcode HUC8 rollup)",
+   "n_rows": 76,
+   "built_at": "2026-08-17 17:22:39.482269+00"
   },
   {
    "table_name": "in_weather_stations",
@@ -1599,6 +1761,12 @@
    "source": "indiana_app.in_nfirs_basicincident_2024",
    "n_rows": 49713,
    "built_at": "2026-08-15 23:55:13.226368+00"
+  },
+  {
+   "table_name": "vw_pjm_bus_injection_ladder",
+   "source": "energy-platfrom.indiana_app.in_pjm_queuescope_injection",
+   "n_rows": 1200,
+   "built_at": "2026-08-17 16:13:28.169329+00"
   },
   {
    "table_name": "vw_pjm_bus_withdrawal_located",

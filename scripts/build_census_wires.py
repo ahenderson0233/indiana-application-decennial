@@ -57,18 +57,42 @@ reg("in_eia861_reliability", "energy.eia861_reliability", "state=IN", n2, "SAIDI
 print(f"in_eia861_reliability: {n2}")
 
 # 3) nonattainment -> in_nonattainment (spatial clip; small)
+# STOP: this block used to read `[:12]` of the parent schema. `classification` is column 16, so the
+# clip stopped four columns short of the ONE field a reader actually needs -- the severity band that
+# decides the air-permitting burden. Nothing was mis-mapped; a SLICE INDEX silently truncated the
+# meaning, and the map popup rendered an empty "classification" row for months. That is the G27
+# under-clip defect in its purest form. The same idiom still sits in build_gas_facilities.py [:10],
+# build_gas_market.py [:14] and export_full_wiring.py [:12] -- audit those before trusting them.
+# Columns are NAMED here so a parent-schema reorder can never truncate this table again, and the
+# build now FAILS LOUDLY if the parent stops carrying one instead of quietly shipping less.
+# NOTE ON DATES: every date column here is the Esri convention -- FLOAT64 epoch MILLISECONDS
+# (1083283200000.0 = 2004-04-30), measured on all five. They are DECODED, never ISO-parsed (an ISO
+# parse returns NULL on every row). Shipped raw, app.js printed "1,087,300,800,000" at the reader.
 nt = client.get_table("energy-platfrom.energy.nonattainment_areas")
 ncols = [s.name for s in nt.schema]
 gcol = next((c0 for c0 in ncols if c0.lower() in ("geog", "geom")), None)
 gjson = next((c0 for c0 in ncols if "geojson" in c0.lower()), None)
 geo = gcol if gcol else f"SAFE.ST_GEOGFROMGEOJSON({gjson})"
-keep = [c0 for c0 in ncols if c0 not in (gcol, gjson) and not c0.startswith("_")][:12]
+KEEP = ["pollutant_name", "area_name", "state_name", "epa_region", "epa_region_office",
+        "designation_citation", "designation_url", "current_status",
+        "classification", "classification_citation", "classification_url"]
+EPOCH_MS = ["designation_pub_date", "designation_effective_date", "statutory_attainment_date",
+            "classification_pub_date", "classification_effective_date"]
+lost = [c0 for c0 in KEEP + EPOCH_MS if c0 not in ncols]
+if lost:
+    raise SystemExit(f"nonattainment: parent no longer carries {lost} -- read the schema, never guess")
+sel = ", ".join(KEEP + [f"DATE(TIMESTAMP_MILLIS(SAFE_CAST({c0} AS INT64))) AS {c0}" for c0 in EPOCH_MS])
 client.query(f"""CREATE OR REPLACE TABLE `{DS}.in_nonattainment` AS
-  SELECT {', '.join(keep)}, g AS geog FROM (SELECT *, {geo} AS g FROM {E}.nonattainment_areas`)
+  SELECT {sel}, g AS geog FROM (SELECT *, {geo} AS g FROM {E}.nonattainment_areas`)
   WHERE g IS NOT NULL AND ST_INTERSECTS(g, {ST})""").result()
-n3 = list(client.query(f"SELECT COUNT(*) n FROM `{DS}.in_nonattainment`"))[0].n
-reg("in_nonattainment", "energy.nonattainment_areas", "spatial clip to IN", n3, "air-permitting gate for on-site generation")
-print(f"in_nonattainment: {n3}")
+n3, ncls = list(client.query(f"""SELECT COUNT(*) n, COUNTIF(classification IS NOT NULL) c
+  FROM `{DS}.in_nonattainment`"""))[0]
+reg("in_nonattainment", "energy.nonattainment_areas",
+    "spatial clip to IN; 16 NAMED cols incl classification; epoch-ms dates decoded", n3,
+    f"air-permitting gate for on-site generation; severity band present on {ncls} of {n3} rows -- "
+    f"the remainder are Maintenance areas where no classification applies. "
+    f"RE-RUN: python scripts/build_census_wires.py")
+print(f"in_nonattainment: {n3} rows, classification on {ncls}")
 
 # exports: refresh overlays (bonus incl. coal), add reliability to county ctx via utility-county map? (state-grain: goes to market)
 feats = []
