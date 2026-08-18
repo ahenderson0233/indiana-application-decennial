@@ -27,7 +27,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
 | `in_pjm_qs_tc2phii_inj` | 393475 | `—` |
-| `in_pjm_qs_tc2phii_wd` | 11191 | `—` |
+| `in_pjm_qs_tc2phii_wd` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
