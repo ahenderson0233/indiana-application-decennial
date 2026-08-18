@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-18T01:16:53.549086+00:00",
+ "run_at": "2026-08-18T01:26:30.375814+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -48,7 +48,7 @@
    "criterion": 7,
    "name": "adjustables are config-driven",
    "state": "PASS",
-   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 15 literal MW mentions remain in prose/labels, which are copy not thresholds"
+   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 16 literal MW mentions remain in prose/labels, which are copy not thresholds"
   },
   {
    "criterion": 8,
