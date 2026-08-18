@@ -48,17 +48,64 @@ from google.cloud import bigquery
 
 DS = "energy-platfrom.indiana_app"
 TABLE = f"{DS}.in_bus_headroom_miso_vendor"
-SRC = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Bus Analysis\Data Input Files"
-       r"\Greenfield Interconnection Capacity, Buses-2026-06-23T16-58-00.csv")
+# 2026-08-18 refreshed export. The MISO powerflow case is UNCHANGED between the June and August
+# extracts (DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final), so this is more rows of the same study, not
+# a new vintage. The PJM case DID change in that same refresh - see docs/BUS_PARITY_2026-08-18.md.
+SRC = (r"C:\Users\ahend\Downloads"
+       r"\Greenfield Interconnection Capacity, Buses-2026-08-18T13-54-02.csv")
 
-# COLUMN INDICES, NOT NAMES. That file has TWO columns both called "Bus ID" (0 and 41), so
-# csv.DictReader silently keeps the second one - which is how an earlier join reported 0 overlap
-# between their bus set and ours when the true overlap is 282 of 297. Read it positionally.
-I_BUSID, I_BUSNAME, I_KV, I_DESC_CASE = 0, 1, 2, 3
-I_DIR, I_MW, I_TIER, I_CONSTRAINT = 5, 6, 7, 8
-I_CONTINGENCY, I_SHIFT, I_OVERLOAD = 10, 11, 29
-I_LTC, I_CASE, I_CUTOFF, I_YEAR = 33, 34, 36, 38
-I_COUNTY, I_ISO, I_LAT, I_LON, I_LOCSRC, I_OWNER, I_STATE = 43, 44, 45, 47, 46, 48, 50
+# RESOLVE COLUMNS BY NAME FROM THE HEADER, THEN USE POSITIONS. Both halves matter:
+#
+#   * NOT csv.DictReader, because the file has TWO columns both called "Bus ID". DictReader keeps
+#     the LAST one silently, which is how an earlier join reported 0 overlap between their bus set
+#     and ours when the true overlap is 282 of 297.
+#   * NOT hardcoded positions either. The 2026-08-18 export RESHUFFLED EVERY COLUMN and the
+#     hardcoded map from the June file parsed 0 MISO rows out of 17,146 - it did not error, it just
+#     silently found nothing. Same partial-enumeration failure as the [:12] clip.
+#
+# So: take the FIRST index of each wanted name, tolerate the renames the vendor has already made,
+# and ABORT if a required column is missing rather than loading a column of NULLs.
+ALIASES = {
+    "bus_id": ["Bus ID"],
+    "bus_name": ["Bus Name"],
+    "bus_kv": ["Bus Voltage (kV)"],
+    "direction": ["Interconnection Type"],
+    "capacity_mw": ["Bus Interconnection Capacity (MW)"],
+    # renamed between the June and August exports
+    "tier": ["Number of Upgrades Assumed", "Number of Upgrades Assumed (Upgrades)"],
+    "constraint": ["Primary Limiting Constraint"],
+    "contingency": ["Contingency Name"],
+    "shift": ["Shift Factor (Number)"],
+    "cutoff": ["Shift Factor Cutoff Ratio"],
+    "overload": ["Existing Overload Flag"],
+    "ltc": ["Local Transfer Capacity (MW)"],
+    "case": ["Powerflow Case"],
+    "year": ["Study Year"],
+    "county": ["County"],
+    "iso": ["ISO"],
+    "lat": ["Latitude (Degrees)"],
+    "lon": ["Longitude (Degrees)"],
+    "locsrc": ["Location Source"],
+    "owner": ["Owner"],
+}
+# 'State' was present in June and DROPPED in August. Optional, never required - and its absence is
+# why the loader must not assume a fixed shape.
+OPTIONAL = {"state": ["State"]}
+REQUIRED = set(ALIASES)
+
+
+def resolve(header):
+    idx = {}
+    for key, names in {**ALIASES, **OPTIONAL}.items():
+        for nm in names:
+            if nm in header:
+                idx[key] = header.index(nm)  # FIRST occurrence - handles the duplicate Bus ID
+                break
+    missing = REQUIRED - set(idx)
+    if missing:
+        sys.exit(f"FAILED: export is missing required column(s): {sorted(missing)}\n"
+                 f"        The vendor has changed the schema again - update ALIASES.")
+    return idx
 
 SCHEMA = [
     bigquery.SchemaField("bus_id", "STRING"),
@@ -106,37 +153,43 @@ def read_rows():
         sys.exit(f"FAILED: source not found: {SRC}")
     sha = hashlib.sha256(open(SRC, "rb").read()).hexdigest()
     rd = csv.reader(open(SRC, encoding="utf-8-sig", newline=""))
-    next(rd)
+    ix = resolve(next(rd))
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    def g(row, key):
+        i = ix.get(key)
+        return row[i] if i is not None and i < len(row) else ""
+
     out = []
     for r in rd:
-        if r[I_ISO] != "MISO":
+        if g(r, "iso") != "MISO":
             continue
-        bid = r[I_BUSID]
+        bid = g(r, "bus_id")
+        tier = g(r, "tier")
         out.append({
             "bus_id": bid,
             "bus_number": int(bid.split("_", 1)[-1]) if bid.split("_", 1)[-1].isdigit() else None,
-            "bus_name": r[I_BUSNAME] or None,
-            "bus_kv": fnum(r[I_KV]),
-            "operating_mode": r[I_DIR] or None,
-            "upgrade_tier": int(r[I_TIER]) if r[I_TIER].isdigit() else None,
-            "capacity_mw": fnum(r[I_MW]),
-            "primary_limiting_constraint": r[I_CONSTRAINT] or None,
-            "contingency_name": r[I_CONTINGENCY] or None,
-            "shift_factor": fnum(r[I_SHIFT]),
-            "shift_factor_cutoff": fnum(r[I_CUTOFF]),
+            "bus_name": g(r, "bus_name") or None,
+            "bus_kv": fnum(g(r, "bus_kv")),
+            "operating_mode": g(r, "direction") or None,
+            "upgrade_tier": int(tier) if tier.isdigit() else None,
+            "capacity_mw": fnum(g(r, "capacity_mw")),
+            "primary_limiting_constraint": g(r, "constraint") or None,
+            "contingency_name": g(r, "contingency") or None,
+            "shift_factor": fnum(g(r, "shift")),
+            "shift_factor_cutoff": fnum(g(r, "cutoff")),
             # never coerce a blank to False - an unstated flag is unknown
-            "existing_overload_flag": (None if not r[I_OVERLOAD].strip()
-                                       else r[I_OVERLOAD].strip().lower() == "true"),
-            "local_transfer_capacity_mw": fnum(r[I_LTC]),
-            "powerflow_case": r[I_CASE] or None,
-            "study_year": r[I_YEAR] or None,
-            "county": r[I_COUNTY] or None,
-            "state": r[I_STATE] or None,
-            "lat": fnum(r[I_LAT]),
-            "lon": fnum(r[I_LON]),
-            "location_source": r[I_LOCSRC] or None,
-            "owner": r[I_OWNER] or None,
+            "existing_overload_flag": (None if not g(r, "overload").strip()
+                                       else g(r, "overload").strip().lower() == "true"),
+            "local_transfer_capacity_mw": fnum(g(r, "ltc")),
+            "powerflow_case": g(r, "case") or None,
+            "study_year": g(r, "year") or None,
+            "county": g(r, "county") or None,
+            "state": g(r, "state") or None,
+            "lat": fnum(g(r, "lat")),
+            "lon": fnum(g(r, "lon")),
+            "location_source": g(r, "locsrc") or None,
+            "owner": g(r, "owner") or None,
             "provenance_class": "vendor_licensed_proxy",
             "licence_expires_note": LICENCE_NOTE,
             "_source_file": os.path.basename(SRC),
