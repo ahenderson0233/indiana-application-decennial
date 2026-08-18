@@ -152,7 +152,7 @@
  "Duke Energy Indiana Inc": {
   "is_iou": true,
   "schedules": 4,
-  "sha": "5a247a5065331c10"
+  "sha": "71f6c514ede7eb50"
  },
  "Hoosier Energy Rural Electric Cooperative, Inc.": {
   "is_iou": false,
@@ -162,7 +162,7 @@
  "Indiana Michigan Power Co (Indiana)": {
   "is_iou": true,
   "schedules": 3,
-  "sha": "39f2a4b8effa41f7"
+  "sha": "33a4fe8d66688f9a"
  },
  "Indiana Municipal Power Agency": {
   "is_iou": false,

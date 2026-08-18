@@ -519,6 +519,15 @@ for util, rs in by_util.items():
             components = [c for c in components
                           if (c.get("applies_to") or "").strip().lower() not in _closed]
 
+        # A class the schedule lists but never prices ENERGY at is an extraction gap, not a
+        # service on offer. I&M's G.S. carries demand charges at primary and sub-transmission
+        # while pricing energy only at transmission and secondary; showing those two as options
+        # with ENERGY $0 presents a hole as a choice.
+        _unpriced = [x.lower() for x in TA.classes_not_priced(util, code)]
+        if _unpriced:
+            components = [c for c in components
+                          if (c.get("applies_to") or "").strip().lower() not in _unpriced]
+
         # ---- decide, PER FAMILY, whether the publisher is drawing a real sub-class ----------
         # Two failure modes pull in opposite directions and both produced wrong bills:
         #
@@ -623,11 +632,17 @@ for util, rs in by_util.items():
                 # "IP" once its periods are stripped, and that is an I&M fact, not a global rule
                 toks = set(re.findall(r"[A-Za-z]{1,4}\d{0,2}|\d{3}",
                                       TA.norm_applies_to(util, a).upper().replace(".", "")))
+                # A rider names the rate in the PUBLISHER's words, not always the schedule's
+                # code. Duke files every tracker against "Rate HLF" / "Rate LLF" while its
+                # time-of-use schedule is coded "HLF/LLF-TOU" - matching neither, so it carried
+                # NO riders and rendered as Duke's cheapest option at 7.45c. One scope, never a
+                # union: HLF and LLF are the same tracker on different billing determinants.
                 c_up = code.upper()
-                exact = c_up in toks
+                aliases = [a.upper() for a in TA.rider_alias(util, code)]
+                exact = c_up in toks or any(a in toks for a in aliases)
                 # "HL1" is a tier OF "HL" - same class, one of several alternatives
-                tier = any(t != c_up and t.startswith(c_up) and t[len(c_up):].isdigit()
-                           for t in toks)
+                tier = any(t != stem and t.startswith(stem) and t[len(stem):].isdigit()
+                           for t in toks for stem in ([c_up] + aliases))
                 # a genuine blanket says "all classes"/"all rate schedules" with NO class list
                 blanket = (re.search(r"all (classes|rate schedules|listed schedules|tiers)", a, re.I)
                            is not None and not re.search(r"\b(HL|PL|SL|PH|LLF|HLF)\b", a))
@@ -699,6 +714,10 @@ for util, rs in by_util.items():
             "has_energy_leg": has_energy_leg,
             # negotiated rather than published (AES CSC) - a process, not a price
             "by_contract": TA.is_by_contract(util, code),
+            # the book says riders apply here but we hold no factor - a $0 riders column would
+            # assert "no riders", which the tariff contradicts. The page must say NOT HELD and
+            # treat the total as a floor.
+            "riders_not_held": TA.riders_not_held(util, code),
             # a LOW-load-factor schedule, which a 24/7 load cannot take (Duke LLF / LLF-B)
             "low_load_factor": TA.is_low_load_factor(util, code),
             # ONLY the schedule's own components define the service classes. A rider's
@@ -800,6 +819,7 @@ for util, rs in by_util.items():
                          "costable": sc.get("costable"), "tou": sc.get("tou"),
                          "large_load": sc.get("large_load"),
                          "by_contract": sc.get("by_contract"),
+                         "riders_not_held": sc.get("riders_not_held"),
                          "low_load_factor": sc.get("low_load_factor"),
                          "inherits_from": sc.get("inherits_from")}
                         for sc in scheds],

@@ -737,11 +737,21 @@ function mmbtuToCents(v) {
                 : `${o >= BAND_LO && o <= BAND_HI ? "&#10003;" : "&#9888;"} ${o > 0 ? "+" : ""}${o.toFixed(0)}%`;
               return `<tr><td><b>${esc(vlabel(vc))}</b></td>
               <td>${usd(r.legs.fixed)}</td><td>${usd(r.legs.demand)}</td><td>${usd(r.legs.energy)}</td>
-              <td>${usd(r.riders.fixed + r.riders.demand + r.riders.energy)}</td>
-              <td><b>${usd(r.total)}</b></td><td>${thinRow ? '<span class="cannot">not costable</span>' : `<b>${r.cents.toFixed(2)}&cent;</b>`}</td>
+              <td>${sch.riders_not_held
+                ? '<span class="cannot" title="the tariff says riders apply here, but we hold no factor for this schedule">not held</span>'
+                : usd(r.riders.fixed + r.riders.demand + r.riders.energy)}</td>
+              <td><b>${usd(r.total)}</b></td><td>${thinRow ? '<span class="cannot">not costable</span>'
+                : `<b>${sch.riders_not_held ? "&ge;" : ""}${r.cents.toFixed(2)}&cent;</b>`}</td>
               <td class="hint">${mark}</td></tr>`;
             }).join("")}
           </table></div>
+          ${sch.riders_not_held ? `<div class="sowhat"><b>&#9888; The rider stack for this schedule
+            is NOT HELD, so every figure below is a FLOOR.</b> This utility's own roster sheet states
+            that riders apply to it, but every rider factor we extracted is scoped to its other
+            schedules &mdash; and riders are filed per schedule with different factors, so borrowing
+            another schedule's numbers would be inventing them. On the schedules where we DO hold
+            them, the stack adds roughly <b>1.5&ndash;2&cent;/kWh</b>. Treat these totals as
+            <b>understated by about that much</b>, not as a cheaper option.</div>` : ""}
           <div class="sowhat">${check}${runs.length > 1 ? (spread < 1
             /* A $0 spread must not be narrated as "cheapest on X, dearest on Y". NIPSCO 631 prices
              * transmission and sub-transmission identically - its demand charge is written across

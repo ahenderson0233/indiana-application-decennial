@@ -65,7 +65,24 @@ ADAPTERS = {
             "and an 80% ratchet but NO energy leg of its own, because it rides on I.P. Costing it "
             "alone returned an impossible 1.77 c/kWh."),
         "applies_to_norm": lambda s: (s or "").replace(".", ""),
+        # It joins classes with a SLASH as well, exactly as NIPSCO does:
+        # "primary/subtransmission/transmission" on G.S.'s $210/month service charge. Unrecognised,
+        # volt_base() matched "subtransmission" first, bound the charge to that class alone, and
+        # in doing so INVENTED a sub-transmission service that G.S. prices no energy at.
+        "class_separators": ["/"],
         "schedule_alias": {"IP": "IP", "CS-IRP2": None, "GS": "GS"},
+        # ⛔ G.S. GETS NO RIDERS, AND THAT IS AN EXTRACTION GAP, NOT A FACT ABOUT THE TARIFF.
+        # Every extracted I&M rider factor is scoped "Tariff I.P. and CS-IRP2" - the I.P. column -
+        # while I&M's own Sheet 44 roster states that eight riders apply to ALL standard-service
+        # schedules, G.S. among them. Riders are filed per schedule with different factors, so
+        # borrowing I.P.'s numbers would be inventing them.
+        # A $0 riders column asserts "this schedule has no riders", which the book contradicts.
+        # Declared here so the page says NOT HELD and treats the total as a FLOOR.
+        "riders_not_held": ["GS"],
+        # G.S. prices energy only at transmission and secondary, yet carries demand charges at
+        # primary and sub-transmission too. A tariff cannot serve a class it never prices energy
+        # at, so those two are extraction gaps rather than services on offer.
+        "classes_not_priced": {"GS": ["primary", "subtransmission"]},
         "parent": {"IP-LL": "IP"},
         "large_load": ["IP-LL"],
         "merge_classes": ["transmission", "subtransmission", "primary", "secondary"],
@@ -125,6 +142,19 @@ ADAPTERS = {
                                 "transmission (69/138/230/345 kv)"],
         "bounds_from_name_only": True,   # its basis text mixes floor and ceiling wording
         "large_load": ["HLF"],
+        # ⛔ ITS TOU SCHEDULE WAS GETTING NO RIDERS AT ALL, and that made it look like the best
+        # deal Duke offers. Every Duke rider is filed TWICE - once for Rate HLF in $/kW-month and
+        # once for Rate LLF in $/kWh - because HLF is demand-led and LLF is energy-led, so the
+        # same tracker is recovered through a different billing determinant. The riders name
+        # "Rate HLF" / "Rate LLF"; the schedule code is "HLF/LLF-TOU", which matches neither, so
+        # its stack came to $0 and it rendered at 7.45c (-16%), the CHEAPEST Duke row on the page.
+        #
+        # ⚠ The obvious fix is wrong: aliasing it to BOTH would attach the $/kW-month AND the
+        # $/kWh version of all ten trackers and double-recover them. HLF/LLF-TOU is one schedule
+        # serving two customer types, and a customer is one or the other. At 85% load factor ours
+        # is an HLF customer, so the HLF set applies and the LLF set does not. Stated on the page.
+        "rider_alias": {"HLF/LLF-TOU": ["HLF"],     # a 24/7 load takes TOU as an HLF customer
+                        "LLF-B": ["LLF"]},          # Tariff 10-B is the secondary LLF variant
         # grandfathered - present in the book, not available to a new load
         "closed_classes": ["secondary (closed class)"],
         # LOW load factor services: LLF/LLF-B are the counterpart to HLF, not alternatives to it
@@ -257,6 +287,35 @@ assert not is_multi_class("Duke Energy Indiana Inc",
 assert not is_multi_class("Duke Energy Indiana Inc", "transmission (69,000 V)")
 assert is_multi_class("Duke Energy Indiana Inc", "primary and primary direct (2,400-34,500 V)")
 assert is_multi_class("Northern Indiana Pub Serv Co", "transmission/subtransmission")
+
+
+def rider_alias(utility, code):
+    """Extra names a rider may use for THIS schedule.
+
+    A rider names the rate it belongs to in the publisher's words, which is not always the
+    schedule's code. Duke files every tracker against "Rate HLF" and "Rate LLF" while its
+    time-of-use schedule is coded "HLF/LLF-TOU" and matched neither, so it carried no riders and
+    read as Duke's cheapest option.
+
+    ⚠ This maps to ONE scope, never a union. Duke's HLF and LLF factors are the same tracker on
+    different billing determinants ($/kW-month against $/kWh), so attaching both double-recovers.
+    """
+    return adapter(utility).get("rider_alias", {}).get(code, [])
+
+
+def riders_not_held(utility, code):
+    """True when the book says riders apply to this schedule but we hold no factor for it.
+
+    Different from "this schedule has no riders", and the page must not render the two the same
+    way. I&M's Sheet 44 roster names eight riders applying to all standard-service schedules while
+    every extracted factor is scoped to I.P./CS-IRP2 - so G.S.'s stack is unknown, not zero.
+    """
+    return code in adapter(utility).get("riders_not_held", [])
+
+
+def classes_not_priced(utility, code):
+    """Service classes this schedule lists but never prices - an extraction gap, not an option."""
+    return adapter(utility).get("classes_not_priced", {}).get(code, [])
 
 
 def closed_classes(utility):
