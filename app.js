@@ -613,6 +613,14 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
 // for a separate Illinois experiment, and a GHCN station location is not something a siter acts
 // on. Both are recorded as waivers on the Data page rather than silently dropped.
 const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
+/* G34 -- ONE REGISTRY, ONE SYNC PATH. Two registries for one concept let "off means hidden" be
+   enforced for some layers and not others. It is the same defect class as the [:12] clip in
+   build_census_wires.py: a PARTIAL ENUMERATION that silently leaves the remainder in a stale
+   state -- except here the remainder was visible map geometry. `grid` set "L-fac": 1 and no other
+   preset mentioned L-fac at all, so wind and solar kept drawing after switching to Environmental,
+   which is exactly what the operator reported. Every preset now states every layer, unstated boxes
+   default to OFF rather than persisting, and a gap is reported loudly at boot. */
+const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS), "L-parcels"];
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
   if (state.ctxLoaded) return true;
@@ -680,6 +688,11 @@ function syncLayers() {
   for (const [box, ids] of Object.entries(LAYER_MAP))
     for (const id of ids) if (map.getLayer(id))
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
+  // G34: context layers go through the SAME path. They load lazily, so a layer that is not on the
+  // map yet is skipped -- it will be created with visibility "none" and synced on its next toggle.
+  for (const [box, id] of Object.entries(CONTEXT_LAYERS))
+    if (map.getLayer(id) && $(box))
+      map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
   const showP = $("L-parcels").checked;
   for (const fips of state.loaded.keys())
     for (const suf of ["fill", "line"])
@@ -695,22 +708,39 @@ for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListene
 const PRESETS = {
   land: { metric: "class_union",
     layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
+              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
+              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
+              "L-ghgrp": 0, "L-frpp": 0 } },
   grid: { metric: "queue_active_mw",
     layers: { "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1,
-              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0, "L-dc": 1, "L-fac": 1 } },
+              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0, "L-dc": 1, "L-fac": 1,
+              "L-watershed": 0, "L-waterstress": 0, "L-log": 0, "L-ghgrp": 0, "L-frpp": 0 } },
   env: { metric: "class_union",
     layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1 } },
+              "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1,
+              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
+              "L-ghgrp": 0, "L-frpp": 0 } },
   sentiment: { metric: "opposition_intensity",
     layers: { "L-parcels": 0, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0 } },
+              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
+              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
+              "L-ghgrp": 0, "L-frpp": 0 } },
 };
+/* Loud on a gap, rather than silently persisting a layer the way the bug did. A layer added to
+   LAYER_MAP or CONTEXT_LAYERS but forgotten in a preset shows up here the moment the page loads. */
+const PRESET_GAPS = Object.entries(PRESETS)
+  .map(([k, pr]) => [k, ALL_LAYER_BOXES.filter((b) => !(b in pr.layers))])
+  .filter(([, miss]) => miss.length);
+if (PRESET_GAPS.length)
+  console.error("G34: preset(s) do not state every layer -", JSON.stringify(PRESET_GAPS));
 document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => {
   const pr = PRESETS[b.dataset.p]; if (!pr) return;
   document.querySelectorAll("#presets button").forEach((x) => x.classList.toggle("active", x === b));
-  for (const [id, v] of Object.entries(pr.layers)) {
-    const el = $(id); if (el) el.checked = !!v;
+  // G34: iterate the REGISTRY, not the preset. Iterating pr.layers was the bug -- a box the preset
+  // did not mention kept whatever the previous preset left it as, and syncLayers then faithfully
+  // redrew it. Unstated now means OFF.
+  for (const id of ALL_LAYER_BOXES) {
+    const el = $(id); if (el) el.checked = !!pr.layers[id];
   }
   $("county-metric").value = pr.metric;
   if (map.getLayer("county-fill"))
