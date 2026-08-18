@@ -10,6 +10,11 @@
   <h1>Community &amp; Regulatory</h1>
   <div class="sub">County posture with receipts, IURC dockets, and the Indiana legislative preview (the scope-limited P7). Grey = no receipts held — <b>cannot assess, not calm</b>.</div>
   <div class="card"><h2>Receipts browser — all 882 county-taggable items</h2>
+    <div class="sowhat"><b>So what:</b> this is the <b>evidence behind every county colour on the
+      map</b>. Before you trust a posture, read what produced it — a single news article and an
+      adopted ordinance are not the same weight, and the difference decides whether you walk away
+      or send a lawyer. When you do file, this is where the specific docket number or ordinance to
+      cite comes from. <b>Audit trail, not a site test.</b></div>
     <div style="margin-bottom:8px">
       <select id="f-kind"><option value="">all kinds</option><option>iurc_docket</option><option>news</option><option>dc_action</option><option>ordinance</option></select>
       <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
@@ -17,9 +22,20 @@
     <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
     <div class="prov" id="p-rec"></div></div>
   <div class="card"><h2>County posture (from held receipts)</h2>
+    <div class="sowhat"><b>So what:</b> the county-level go / think-hard / no-go read, and the fastest
+      way to cut a target list before you look at a single parcel. ⚠ <b>A restriction outranks a
+      development</b> — a county that has approved a data centre AND holds a moratorium is still
+      governed by the moratorium. <b>Grey is “cannot assess”, never “calm”</b>: it means we hold no
+      receipts for that county, and Indiana’s rules are mostly county moratoria that no code library
+      carries — so grey is a phone call, not a green light.</div>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
   <div class="card"><h2>County data-centre actions — the layer no code library carries</h2>
+    <div class="sowhat"><b>So what:</b> this is <b>the only thing on any page that can stop a project
+      outright</b>, and it is measured in council calendar — months, not design weeks. Everything else
+      in this application changes cost or schedule; a ban changes whether the site exists for you.
+      Read the expiry where one is shown: a moratorium with a date is a timing problem, while a ban
+      with none is a siting decision.</div>
     <div class="hint" id="cda-lead"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="cda-restrict">…</div><div class="hint">VERIFIED restrictive postures — moratorium, ban, or adopted uncodified ordinance</div></div>
@@ -61,6 +77,12 @@
       merged. Publisher's own dates throughout; the pull timestamp is a separate column.</div></div>
 
   <div class="card"><h2>Local data-centre ordinances — what is codified, and what is not</h2>
+    <div class="sowhat"><b>So what — codified and uncodified are different risks, not different
+      wordings.</b> A <b>codified</b> ordinance is a known quantity: you can read the setbacks, noise
+      limits and district table and design to them. An <b>uncodified</b> moratorium or resolution is a
+      moving target that can be extended, tightened or replaced at a single meeting, so it needs a
+      diary entry rather than a design response. ⚠ A district table with <b>every cell blank</b> means
+      permitted nowhere — that is a prohibition written as silence.</div>
     <div class="hint" id="ord-caveat"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="ord-named">…</div><div class="hint">code sections that actually NAME a data centre</div></div>
@@ -80,6 +102,11 @@
       exported by scripts/export_ordinances.py</div></div>
 
   <div class="card"><h2>Indiana legislature — energy &amp; data-centre bills <span class="hint">(the P7 preview)</span></h2>
+    <div class="sowhat"><b>So what:</b> state law is the one thing that can move every county at once —
+      it can pre-empt local restrictions, or hand counties new powers to impose them, and it sets the
+      sales-tax treatment that changes a build’s economics outright. <b>But a bill is not law.</b> Use
+      this to see what could change inside your development timeline, not as a fact about today’s
+      rules — the county tables above are what governs right now.</div>
     <div id="leg-stats" class="hint" style="margin-bottom:8px"></div>
     <div style="margin-bottom:8px">
       session <select id="leg-session"><option value="">all</option></select> ·
@@ -109,15 +136,28 @@
 
   <div class="gridcards">
     <div class="card"><h2>Federal disaster declarations — Indiana history</h2>
+      <div class="sowhat"><b>So what:</b> repeated federal declarations of the same hazard in a county
+        are what an insurer and a structural engineer price. It shows up as <b>premium, design
+        standard and expected downtime</b> — not as a reason to reject a site, but as a cost you should
+        carry in the model rather than discover later. <b>County-grain context.</b></div>
       <div class="scroll" style="max-height:260px"><table id="t-dis"><tr><th>incident</th><th>declarations</th><th>counties</th><th>first</th><th>latest</th></tr></table></div>
       <div class="prov" id="p-dis">source: <code>in_fema_disaster_declarations</code></div></div>
     <div class="card"><h2>Severe weather events by type (NOAA storm events)</h2>
+      <div class="sowhat"><b>So what:</b> the hazard mix matters more than the count. Tornado and hail
+        frequency drive the structural and roof spec on a very large single-storey building, and wind
+        events drive how much you spend hardening the interconnection you just paid for. Pair it with
+        the flood and wetland gates on the map. <b>County-grain context, not a site test.</b></div>
       <div class="scroll" style="max-height:260px"><table id="t-storm"><tr><th>event type</th><th>events</th><th>years</th><th>direct injuries</th></tr></table></div>
       <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
         physical-risk complement to the flood and wetland gates on the map</div></div>
   </div>
 
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
+    <div class="sowhat"><b>So what:</b> a read on <b>local economic distress</b>, which is what makes land
+      loose and prices negotiable — useful for choosing which county to shop in. ⛔ <b>It can never
+      identify a building</b>, and must not be read as one: the source counts cases per court, so a high
+      number tells you about a county’s economy, never about the parcel you are looking at. The
+      parcel-level version of this question is the Owner-motivation feed.</div>
     <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
       court-statistics workbook: one row per court, with each case-type code as a COLUMN of counts. There are
       no per-address events here, so this can never become a parcel-level signal — it tells you what a county's
