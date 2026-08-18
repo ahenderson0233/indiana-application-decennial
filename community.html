@@ -52,13 +52,6 @@
       in a second pass — these were news leads until an official source confirmed them.</div>
     <div class="scroll" style="max-height:320px"><table id="t-cdaver"><tr><th>county</th><th>action</th><th>instrument</th><th>effective</th><th>expires</th><th>source</th></tr></table></div>
 
-    <div class="card" id="cda-corrections" style="margin:14px 0;border-color:#b91c1c">
-      <h3 style="margin:0 0 6px">⚠ Corrections — leads that were NOT Indiana</h3>
-      <div class="hint" style="margin-bottom:6px">These were live in this application as Indiana
-        county postures. Official-source checks found the underlying events belong to
-        <b>other states entirely</b>. They are shown rather than silently deleted, because a row
-        that quietly disappears teaches nobody why it was wrong.</div>
-      <div class="scroll"><table id="t-cdafix"><tr><th>county</th><th>what was claimed</th><th>what it actually is</th></tr></table></div></div>
 
     <div class="hint" style="margin:12px 0 6px"><b class="cannot">CHECKED AND NOT CONFIRMED — a
       worklist, not a posture.</b> An official source was sought for each of these and not found,
@@ -302,7 +295,14 @@
   // NOT `VER` -- that name is already taken at the top of this block by the sweep's own verified
   // set, and a second `const VER` in the same scope is a redeclaration SyntaxError that would
   // abort the entire page script.
-  const VER2 = O.verified_postures || [], FIX = O.corrections || [], UNRES = O.unresolved_leads || [];
+  /* G47 (operator, 2026-08-18): the Corrections panel was REMOVED from this page. It listed
+     leads we had correctly discarded as belonging to other states - a record of OUR filtering
+     having worked, which is not what a developer opens this page to read.
+     ⛔ THE DATA IS NOT DELETED. `O.corrections` is still in the payload and still built
+     upstream; only the reader-facing surface is gone. Provenance material like this is what
+     catches a bad claim, so it belongs behind the 'How this was built and checked' pattern or
+     on the internal-by-design Data & sources page - never in the bin. */
+  const VER2 = O.verified_postures || [], UNRES = O.unresolved_leads || [];
 
   // the headline now counts BOTH passes: the sweep's own verified rows plus these
   const RESTRICT2 = new Set(["moratorium", "ban-prohibition", "adopted-uncodified-ordinance"]);
@@ -324,11 +324,6 @@
             : `<span class="cannot">no end date stated</span>`)}</td>
      <td>${a.official_url ? `<a href="${esc(a.official_url)}" target="_blank" rel="noopener">official</a>` : `<span class="cannot">—</span>`}</td></tr>`).join(""));
 
-  document.getElementById("t-cdafix").insertAdjacentHTML("beforeend", FIX.map(a =>
-    `<tr><td><b>${esc(a.county)} County</b></td>
-     <td>${esc(a.lead_action_type)} — ${esc(a.lead_instrument).slice(0, 100)}</td>
-     <td><b>${esc(a.date_note)}</b><div class="hint">${esc(a.verification_note).slice(0, 240)}</div></td></tr>`).join(""));
-  if (!FIX.length) document.getElementById("cda-corrections").classList.add("hidden");
 
   document.getElementById("t-cdalead").insertAdjacentHTML("beforeend", UNRES.map(a =>
     `<tr><td>${esc(a.county)}<div class="hint">${esc(a.jurisdiction)}</div></td>
