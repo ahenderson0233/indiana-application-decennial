@@ -356,6 +356,11 @@ function countyPaint(metric) {
 }
 /* A shaded map with no legend is a colouring-in exercise (the governing principle: everything on
    screen must say what it means for a decision). Each metric states its own scale AND its caveat. */
+/* G21 -- a legend is a colour key; it is not a "so what". Each metric below now states what a
+   developer should DO with the shading, in their decision unit, and says plainly whether it can
+   disqualify a site or is context only. The operator's test case was "what does opposition
+   intensity 4 mean for a decision?" -- the honest answer is that it is an unbounded relative count
+   that changes your SCHEDULE, never the site's buildability, and that is now what it says. */
 const METRIC_LEGEND = {
   action_tone: `<span class="swatch" style="background:#b91c1c"></span> ban or live moratorium ·
     <span class="swatch" style="background:#f59e0b"></span> proposed / denied / uncodified ·
@@ -367,18 +372,41 @@ const METRIC_LEGEND = {
     <b>6 of them are still amber or red</b> — Lake County has an approval <i>and</i> a moratorium.
     An existing project does not erase a ban, so the colour shows the restriction. The approval is
     still worth knowing: a county that has said yes before may be readier to say yes again, which
-    is why it is kept as its own fact rather than averaged away.`,
+    is why it is kept as its own fact rather than averaged away.
+    <br><b>So what:</b> this is the one shading that can <b>stop a project outright</b>, and it is
+    measured in council calendar — months, not design weeks. Treat red as a schedule you cannot
+    engineer around, amber as <i>ask before you option the land</i>, and grey as <b>unknown, so
+    call the county</b> — never as permission.`,
   opposition_intensity: `Low <span class="swatch" style="background:#eef6ee"></span>
     <span class="swatch" style="background:#fde68a"></span>
     <span class="swatch" style="background:#f59e0b"></span>
     <span class="swatch" style="background:#b91c1c"></span> high.
     ⚠ Partly tracks <b>news volume</b>, so large metros read higher for reasons that are not
-    posture. Compare counties of similar size only.`,
-  queue_active_mw: `Active interconnection queue megawatts. Counts as future <b>supply</b> nearby,
-    not as competing demand.`,
+    posture. Compare counties of similar size only.
+    <br><b>There is no unit here.</b> It is a relative count of recorded objection activity, not a
+    score out of ten and not a probability of refusal — so a 4 in Marion and a 4 in a rural county
+    are not the same quantity and must not be compared.
+    <br><b>So what:</b> it changes your <b>schedule and outreach budget</b>, not whether the site is
+    buildable. A high reading says start community engagement before you file, and plan for a longer
+    hearing process. <b>Context only — it never disqualifies a parcel</b>; for something that can,
+    switch to <i>what the county has DONE</i>.`,
+  queue_active_mw: `Active interconnection queue megawatts, summed per county.
+    <br><b>So what:</b> it reads two ways at once, and both matter. Queued generation is future
+    <b>supply</b> being built near you. But every project in that queue is also <b>competition</b>
+    for the same study slots, the same upgrade dollars and the same substation capacity. A high
+    number beside a high withdrawal rate is a congested queue, not a healthy one — open a parcel's
+    evidence panel to see that county's queue attrition before reading this as good news.`,
   class_union: `How many parcels passed the screen. A dense county is not a better county — it is a
-    bigger one.`,
-  ge25mw: `Parcels large enough for 25 MW at your density assumption.`,
+    bigger one.
+    <br><b>So what:</b> use this to choose <b>where to look</b>, never to rank. A county with 4,000
+    passing parcels and no headroom is worse than one with 40 beside a 345 kV line. Pick a search
+    area here, then rank actual sites in the <b>screener</b>, which measures grid distance exactly.
+    Context, not a ranking.`,
+  ge25mw: `Parcels large enough for 25 MW at your density assumption.
+    <br><b>So what:</b> this is an <b>upper bound on the land</b>, not a capacity you can build. It
+    counts gross acreage at the density you set above — it says nothing about whether the grid can
+    <i>deliver</i> 25 MW there, and nothing about how much of the parcel is actually buildable once
+    setbacks, wetlands and floodplain come out. Pair it with the grid layers before shortlisting.`,
   none: `No shading.`,
 };
 function setCountyMetric(metric) {
