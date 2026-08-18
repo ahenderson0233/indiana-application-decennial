@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-18T16:11:07.638119+00:00",
+ "run_at": "2026-08-18T17:15:33.472595+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,7 +12,7 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 282 of 298 registered objects reach a surface \u00b7 16 unwired: ['in_bus_capacity_tier0', 'in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail']"
+   "detail": "MEASURED this run: 282 of 299 registered objects reach a surface \u00b7 17 unwired: ['in_bus_capacity_tier0', 'in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail']"
   },
   {
    "criterion": 2,

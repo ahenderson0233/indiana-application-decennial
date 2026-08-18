@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 282 of 298 registered objects reach a surface
+## 282 of 299 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -27,6 +27,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nhd_flowline_geom` | 163976 | `—` |
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
+| `in_pjm_qs_c23sens_wd` | 462654 | `—` |
 | `in_pjm_qs_tc2phii_inj` | 655404 | `—` |
 | `in_pjm_qs_tc2phii_wd` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
@@ -212,6 +213,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_bus_withdrawal` | direct | `app.js`, `grid.html` |
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
+| `in_pjm_qs_c23sens_wd` | **none** | — |
 | `in_pjm_qs_tc2phii_inj` | **none** | — |
 | `in_pjm_qs_tc2phii_wd` | **none** | — |
 | `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
