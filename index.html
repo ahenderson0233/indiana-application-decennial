@@ -63,7 +63,7 @@
         <div class="hint">at <input type="number" id="f-density" value="4" min="1" max="20" step="0.5">
           MW per acre &mdash; 4 for a data centre, 10 for batteries. <b>Your assumption</b>, not
           something we measured.</div>
-        <div class="hint" style="margin-top:5px"><b>So what:</b> this is the first cut. A motivated
+        <div class="hint" style="margin-top:5px">this is the first cut. A motivated
           owner on a two-acre lot is not a site.</div>
       </div>
     </details>
@@ -83,7 +83,7 @@
         <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
         <label><input type="checkbox" id="L-log"> Rail and major roads</label>
         <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
-        <div class="hint"><b>So what:</b> rail and highway access decide how construction loads and
+        <div class="sowhat">Rail and highway access decide how construction loads and
           transformers reach the site. Federal surplus is land a government body has already declared
           it does not need &mdash; a rare case where the seller is publicly committed to disposing.</div>
       </div>
@@ -97,7 +97,7 @@
           <input type="number" id="f-dsub-kv" value="69" min="0"> kV</label>
         <label><input type="checkbox" id="f-dline"> Within
           <input type="number" id="f-dline-mi" value="1" min="0.1" step="0.1"> mi of a transmission line</label>
-        <div class="hint"><b>So what:</b> these measure <i>distance to a wire</i>, which is not the
+        <div class="sowhat">These measure <i>distance to a wire</i>, which is not the
           same as capacity to spare. A parcel beside a full substation is worse than one three miles
           from a connection point with headroom. For capacity, use the
           <a href="screener.html">Site screener</a>.</div>
@@ -123,7 +123,7 @@
         <label><input type="checkbox" id="L-fac"> Power plants &middot; solar &middot; wind</label>
         <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
           <span class="hint">(neighbours already holding air permits)</span></label>
-        <div class="hint"><b>So what:</b> voltage class is the fastest read on the map &mdash; a
+        <div class="sowhat">Voltage class is the fastest read on the map &mdash; a
           765&nbsp;kV backbone and a sub-100&nbsp;kV lateral look the same on a plain map and are not
           remotely the same siting fact. <b>Unknown voltage has its own colour</b> and is never drawn
           as low voltage. Gas matters if you intend on-site generation; a 300&nbsp;MW plant needs
@@ -141,7 +141,7 @@
         <label><input type="checkbox" id="f-cand"> Include candidate signals not yet admitted</label>
         <label><input type="checkbox" id="f-keepundated" checked> Keep records where we never got a
           date <span class="hint">(recency cannot be judged for them)</span></label>
-        <div class="hint"><b>So what:</b> public records &mdash; unpaid taxes, a foreclosure, a
+        <div class="sowhat">Public records &mdash; unpaid taxes, a foreclosure, a
           demolition order &mdash; suggesting an owner may transact. Non-residential only, and only
           trouble serious enough to plausibly move someone to sell.<br>
           <b>Undated is not old.</b> 90% of our largest signal (unpaid taxes) carries no date, so a
@@ -157,7 +157,7 @@
         <label><input type="checkbox" id="f-nowet"> Exclude wetland on the parcel</label>
         <label><input type="checkbox" id="f-noprot"> Exclude protected-land overlap</label>
         <label><input type="checkbox" id="f-bonus"> Only federal energy-community tax-credit areas</label>
-        <div class="hint"><b>So what:</b> the first three are hard constraints that can stop a
+        <div class="sowhat">The first three are hard constraints that can stop a
           project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
           larger federal tax credit.</div>
         <div class="subhead">Shown on the map</div>
@@ -168,7 +168,7 @@
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
           <span class="hint">(34 basins)</span></label>
-        <div class="hint"><b>So what:</b> a watershed is the unit water is actually allocated and
+        <div class="sowhat">A watershed is the unit water is actually allocated and
           argued over in &mdash; two parcels a mile apart in different subbasins can face different
           objections and different permitting bodies. Click one to see the rivers, reservoirs and
           lakes it holds. Power generation is already Indiana&rsquo;s largest water user
@@ -183,7 +183,7 @@
         <label><input type="checkbox" id="f-sent"> Opposition intensity at most
           <input type="number" id="f-sent-max" value="2" min="0" step="1"></label>
         <label><input type="checkbox" id="f-norestrict"> Exclude counties with a local restriction</label>
-        <div class="hint"><b>So what:</b> county-level, not parcel-level. Opposition intensity partly
+        <div class="sowhat">County-level, not parcel-level. Opposition intensity partly
           tracks <i>news volume</i>, so large metros read higher for reasons that are not posture.
           <b>Absence of a recorded rule is not evidence there is no rule</b> &mdash; Indiana's
           data-centre regulation is mostly county moratoria that no code library carries.</div>
@@ -202,7 +202,7 @@
           <option value="none">no shading</option>
         </select>
         <div class="hint" id="metric-legend" style="margin-top:5px"></div>
-        <div class="hint"><b>So what:</b> existing data centres are both competition for the same
+        <div class="sowhat">Existing data centres are both competition for the same
           power and evidence a county has already accepted one. ⚠ <b>An approval never cancels a
           ban:</b> where a county has both, the restriction still governs.</div>
       </div>
@@ -291,6 +291,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=66daa5bd"></script>
-<script src="app.js?v=f83ae512"></script>
+<script src="app.js?v=6869f399"></script>
 </body>
 </html>

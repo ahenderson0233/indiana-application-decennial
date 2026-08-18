@@ -11,7 +11,7 @@
   <div class="sub">Generation, demand, reliability, tariffs, and gas — Indiana grain. The per-site cost model (tariff-structure proxy for a DC of your size) is the flagged rate-engine milestone.</div>
   <div class="gridcards">
     <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2>
-      <p class="hint"><b>Why this matters:</b> this is the whole state's appetite, and it is the
+      <p class="sowhat">This is the whole state's appetite, and it is the
         denominator your project lands in. <b>A 300&nbsp;MW campus at an 85% load factor draws about
         2.2&nbsp;TWh a year</b> &mdash; put that against the trace below and you can see immediately
         whether you are a rounding error or a visible share of Indiana's load. It decides which
@@ -20,7 +20,7 @@
         site test.</b></p>
       <div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
     <div class="card"><h2>CEMS gross generation (monthly)</h2>
-      <p class="hint"><b>Why this matters:</b> the chart above is what Indiana <i>uses</i>; this is
+      <p class="sowhat">The chart above is what Indiana <i>uses</i>; this is
         what its emissions-monitored plants actually <i>burn</i> &mdash; the supply half of the same
         picture. <b>Read the two together:</b> generation falling while demand holds flat means
         retirements are outrunning replacement, and that is precisely what tightens the
@@ -31,7 +31,7 @@
   </div>
   <div class="gridcards">
     <div class="card"><h2>How reliable is each utility?</h2>
-      <p class="hint"><b>Why this matters:</b> the figure below is <b>how many minutes a typical
+      <p class="sowhat">The figure below is <b>how many minutes a typical
         customer is without power each year</b>. A data centre targeting high availability has to
         cover that gap with its own generation and batteries, so a poor utility is not a
         dealbreaker &mdash; it is a capital cost. <b>525 minutes is roughly 8.75 hours a year.</b></p>
@@ -39,7 +39,7 @@
         <th>Outages per year</th><th>What it means</th><th>Customers</th></tr></table></div>
       <div class="prov" id="p-rel"></div></div>
     <div class="card"><h2>Could you run your own generation here?</h2>
-      <p class="hint"><b>Why this matters:</b> if the grid cannot serve you soon enough, on-site gas
+      <p class="sowhat">If the grid cannot serve you soon enough, on-site gas
         generation is the usual fallback. A rough rule is <b>~8&nbsp;MMcf/d of gas per 100&nbsp;MW</b>
         of gas-fired generation, so a 300&nbsp;MW campus needs on the order of
         <b>25&ndash;50&nbsp;MMcf/d</b>. The figures below are <b>pipeline design capacity at
@@ -49,14 +49,14 @@
       <div class="prov" id="p-gas"></div></div>
   </div>
   <div class="card"><h2>Gas — how much is actually free on a given day</h2>
-    <p class="hint"><b>Why this matters:</b> the table above is the size of the pipe. This one is
+    <p class="sowhat">The table above is the size of the pipe. This one is
       <b>operationally-available capacity</b> — what the pipeline reports as unsold and deliverable
       on a given day, published on each pipeline’s electronic bulletin board. This is the number
       that decides whether on-site generation is actually feasible at your site.</p>
     <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
     <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
-    <div class="sowhat"><b>So what:</b> a first-pass power bill for your load, good enough to
+    <div class="sowhat">A first-pass power bill for your load, good enough to
       <b>rank utilities and rule out obviously expensive service</b> before you spend anything.
       Change the MW and load factor above and the ordering is the useful output &mdash; not the
       absolute figure.
@@ -80,7 +80,7 @@
     Indiana utility. The right anchor for a bundled rate is the <b>EIA-861 realized average</b> for
     that utility and sector — what comparable customers actually paid, riders included. The itemised rate engine is the full milestone.</div></div>
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
-    <div class="sowhat"><b>So what:</b> this is the only gas number at a grain you can site
+    <div class="sowhat">This is the only gas number at a grain you can site
       against — a named delivery point, in a named county, with what the pipeline says is unsold
       <i>today</i>. The last column turns that into <b>the generation it could actually
       support</b>. Roughly <b>50 MMcf/d feeds a 300 MW plant</b>, so a point posting a few
@@ -104,7 +104,7 @@
       capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
   <div class="gridcards">
     <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
-      <div class="sowhat"><b>So what:</b> this is the <b>floor under your power price</b> — what
+      <div class="sowhat">This is the <b>floor under your power price</b> — what
         Indiana generators actually paid for fuel, before any margin, delivery or rider. The
         &cent;/kWh column converts it at a combined-cycle heat rate so you can hold it against a
         retail tariff: a bundled quote sitting near this number is a modelling error, not a
@@ -114,7 +114,7 @@
       <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
         actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
     <div class="card"><h2>Demand response — load the utilities can already shed</h2>
-      <div class="sowhat"><b>So what:</b> two readings. It measures how much peak the utility can
+      <div class="sowhat">Two readings. It measures how much peak the utility can
         already remove <i>without building anything</i>, so a utility with deep demand response has
         more room for a new large load than its headline capacity suggests. It also signals whether
         an <b>interruptible or curtailable tariff</b> is likely to be offered to you — those trade a
@@ -124,7 +124,7 @@
       <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
   </div>
   <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
-    <div class="sowhat"><b>So what:</b> these are <b>counterparties, not sites</b> — companies
+    <div class="sowhat">These are <b>counterparties, not sites</b> — companies
       already selling wholesale power that list an Indiana contact address, which makes this a
       starting call-list for a PPA or a block purchase rather than anything about land. Quarters
       filed is a crude liveness check: a filer that stopped years ago is not a counterparty today.
@@ -137,7 +137,7 @@
       elsewhere.</div></div>
 
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
-    <div class="sowhat"><b>So what:</b> use this to see <b>which utility territory is worth being
+    <div class="sowhat">Use this to see <b>which utility territory is worth being
       in</b>, and whether a large-load tariff exists at all — not to price a deal. These rates are
       <b>flattened</b>: no riders, no fixed charges, no seasonal blocks, so the energy column is a
       <b>lower bound</b> on what you would actually pay. A large-load tariff also carries a <b>MW
