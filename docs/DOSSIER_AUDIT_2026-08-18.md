@@ -19,6 +19,22 @@ findings below are about inputs and logic rather than layout.
 
 ---
 
+## STATUS — 2026-08-18, after the fix pass
+
+**D-1, D-3, D-4, D-5, D-6, D-7, D-8, D-9 and D-11 are CLOSED and verified on the deployed build.**
+**D-2 is HALF closed** — the dossier now discloses when its withdrawal study is superseded; the
+real fix is rebuilding `in_bus_capacity_tier0` on case 23 and is blocked on the G26 headroom
+method, which belongs to the bus work. **D-10 remains open** pending an acceptance re-run.
+
+⭐ **D-11 was added mid-pass by the operator and turned out to be the most consequential of all:**
+*"we should already have the service territory footprints within this application ... we really
+shouldn't ever be using centroids."* Right, and it had become load-bearing the moment D-1 landed.
+
+⚠ **Two bugs were introduced during the fix pass and caught by RENDERING the document**, not by
+reading it. Both are recorded at the bottom, because the way they were caught is the lesson.
+
+---
+
 ## SUMMARY
 
 | # | finding | severity |
@@ -258,3 +274,68 @@ re-evaluated rather than left recorded as not-achievable.
 4. **D-7, D-9** — correctness fixes in two helpers.
 5. **D-10** — re-run acceptance once D-1 lands.
 6. **D-8** — decide, then either derive or say we do not track it.
+
+
+---
+
+# WHAT THE FIX PASS CHANGED, AND WHAT IT COST
+
+## D-11 — the footprint, not a point
+
+`p.lat` / `p.lon` is a **representative interior point**: measured against the geometry it sits
+**2–332 m** from the true centroid and always inside the parcel. Good enough to *name* a utility.
+Not good enough once that name **selects a tariff book** — a parcel straddling a territory
+boundary would attach a dollar figure to the wrong company under this parcel's address.
+
+`territoryForParcel()` now tests up to 64 ring vertices of the parcel's own polygon and **reports a
+straddle rather than picking a side**.
+
+⭐ **It was not only more correct, it was more complete.** On two of four counties sampled the
+POINT resolved **nothing**, while the footprint resolved **Hendricks County REMC** and **Southern
+Indiana Gas & Elec** — so the old method printed *"utility not resolved"* for parcels whose
+footprint plainly sits inside a territory, and would now have printed *"no tariff can be looked
+up"* for them.
+
+A bounding-box pre-filter keeps it inside a click handler: **435 ms → 194 ms worst case, 4–48 ms
+typical**, with identical answers — a point outside a bounding box cannot be inside the polygon.
+
+The Figure 2 claim is now **precise instead of absolute**. It read *"No centroid is used anywhere
+in this document"*; it now states that acreage, the asset distances and the service territory are
+measured against the polygon, and names the one place a point is still used — the nearest grid
+connection point, because **the bus locations we hold are themselves points**.
+
+## D-1 — measured on real parcels, on the deployed build
+
+| county | utility, resolved from the footprint | priced from its own book |
+|---|---|---|
+| Vanderburgh | Southern Indiana Gas & Elec Co | **8.03¢** HLF (large load) at transmission |
+| Marion | Indianapolis Power & Light Co | **10.51¢** HL (large load) at transmission |
+| Morgan | South Central Indiana REMC | **6.61¢** LI |
+| LaPorte | Northern Indiana Pub Serv Co | **11.10¢** 631 |
+
+The costing engine moved to `common.js` so the Market page and the dossier share **one** copy —
+the eligibility vocabulary already drifted once when two copies were maintained separately.
+`scripts/utility_names.py` enumerates the territory→tariff map (68 derived pairs, reviewed, plus
+one added by hand) because the two vocabularies match **zero** times out of 145, and fuzzy-matching
+a utility name would price the wrong company's book.
+
+## ⚠ THE TWO BUGS THE FIX PASS INTRODUCED
+
+**1. `esc is not defined` — the Dossier button would have done nothing.** `app.js` has no HTML
+escaper; market.html's is local to that page. An `esc(...)` added to the straddle disclosure threw
+at **open** time. **A parse check passed it.** Only rendering the document caught it. `common.js`
+now carries `escHtml`, deliberately *not* named `esc`, because market.html declares its own at
+module scope and a duplicate top-level declaration would take that page down — its own comment
+warns of exactly this.
+
+**2. The same spread printed as `$2M` in one line and `$2.3M` in another.** Two figures for one
+fact in one document is how a reader stops trusting both. One helper now formats it, and it names
+the right cause: where the cheapest and dearest rows are different **schedules**, telling the
+reader to check their **service voltage** sends them after the wrong thing.
+
+## ⚠ A CLAIM OF MINE THAT WAS WRONG
+
+Mid-audit I reported that the county parcel files drop the SI detail fields, and that the dossier's
+owner-motivation block therefore reads fields no real parcel has. **That was wrong.** I had
+inspected an unflagged parcel and the writer omits nulls; on a parcel that carries a signal,
+`si_signals`, `si_keying` and `si_date_basis` are all present and the block renders correctly.
