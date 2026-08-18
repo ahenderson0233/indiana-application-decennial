@@ -10,8 +10,24 @@
   <h1>Market &amp; Rates</h1>
   <div class="sub">Generation, demand, reliability, tariffs, and gas — Indiana grain. The per-site cost model (tariff-structure proxy for a DC of your size) is the flagged rate-engine milestone.</div>
   <div class="gridcards">
-    <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2><div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
-    <div class="card"><h2>CEMS gross generation (monthly)</h2><div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
+    <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2>
+      <p class="hint"><b>Why this matters:</b> this is the whole state's appetite, and it is the
+        denominator your project lands in. <b>A 300&nbsp;MW campus at an 85% load factor draws about
+        2.2&nbsp;TWh a year</b> &mdash; put that against the trace below and you can see immediately
+        whether you are a rounding error or a visible share of Indiana's load. It decides which
+        conversation you are in: a visible share is what triggers a <b>large-load tariff</b>, a
+        longer interconnection study, and political attention. <b>Context for positioning, not a
+        site test.</b></p>
+      <div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
+    <div class="card"><h2>CEMS gross generation (monthly)</h2>
+      <p class="hint"><b>Why this matters:</b> the chart above is what Indiana <i>uses</i>; this is
+        what its emissions-monitored plants actually <i>burn</i> &mdash; the supply half of the same
+        picture. <b>Read the two together:</b> generation falling while demand holds flat means
+        retirements are outrunning replacement, and that is precisely what tightens the
+        interconnection queue and lifts capacity prices in the years you would be energising. It
+        changes your <b>timing and your contingency plan</b>, not your site choice. <b>Context
+        only.</b></p>
+      <div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
   </div>
   <div class="gridcards">
     <div class="card"><h2>How reliable is each utility?</h2>
@@ -40,6 +56,16 @@
     <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
     <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
+    <div class="sowhat"><b>So what:</b> a first-pass power bill for your load, good enough to
+      <b>rank utilities and rule out obviously expensive service</b> before you spend anything.
+      Change the MW and load factor above and the ordering is the useful output &mdash; not the
+      absolute figure.
+      <br>⚠ <b>It will UNDERSTATE, and by a lot.</b> This is built from URDB, which is flattened:
+      no riders, no fixed charges, no seasonal blocks. From the tariff books we now hold, the rider
+      stack alone adds about <b>+8.6&nbsp;$/kW-month</b> of demand-side charges at I&amp;M, and the
+      voltage you take service at moves the bill by <b>$9.30/kW-month at AES Indiana</b> &mdash;
+      roughly <b>$3.9M a year on 35&nbsp;MW</b>, from one line in the tariff. For a number you could
+      put in a board paper, use the rate engine below.</div>
     <div style="margin-bottom:8px">
       Load: <input id="rp-mw" type="number" value="300" min="1" style="width:70px"> MW ·
       load factor <input id="rp-lf" type="number" value="0.85" min="0.1" max="1" step="0.05" style="width:60px"> ·
