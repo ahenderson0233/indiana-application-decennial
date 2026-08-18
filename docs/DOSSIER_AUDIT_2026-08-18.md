@@ -11,11 +11,17 @@ Figure 5 evidence held, scoring detail, and a stakeholder-meeting appendix.
 **It is the only artefact a developer physically carries to a utility**, so a wrong figure here
 costs more than a wrong figure anywhere else in the app. Every claim below was measured, not read.
 
-⚠ **The map console does not boot in a headless sandbox** (environmental, confirmed three times —
-`map` exists but `getStyle()` throws). So this audit reads the code and the data it consumes, and
-verifies every checkable claim against the warehouse. **What it could NOT do is render the dossier
-in a browser and read the output.** That gap is stated rather than papered over, and it is why the
-findings below are about inputs and logic rather than layout.
+⚠ **The map console does not boot in a headless sandbox** (environmental, now confirmed FOUR
+times, including against the live deployed site — `map` exists but never finishes loading, so the
+`map.on("load")` handler that fetches every payload never fires). The audit below was therefore
+written from the code and the data it consumes, with every checkable claim measured against the
+warehouse.
+
+✅ **UPDATE — the gap was closed during the fix pass.** Rather than accept it, the dossier was
+rendered by populating `state` by hand and calling `openDossier()` directly with **real parcels
+from real county files** (`data/sites/{fips}.geojson.gz`), first locally and then against the
+**deployed build**. That is what caught the two bugs the fix pass introduced — one of which a
+parse check had passed. **What remains unverified is print layout and pagination only.**
 
 ---
 
