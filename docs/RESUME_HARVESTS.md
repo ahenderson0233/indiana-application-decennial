@@ -1,4 +1,56 @@
-# RESUME THE PJM CASE-23 HARVESTS — after the 2026-08-17 reboot
+# PJM CASE-23 HARVESTS
+
+> ## ⚠⚠ LIVE RIGHT NOW — 2026-08-18 09:11, A RE-HARVEST IS RUNNING
+>
+> **`in_pjm_qs_c23sens_wd` — WITHDRAWAL, case 23, owner 1568, 100 MW. Started 09:11.**
+> Expect roughly 4-5 hours. Injection follows AFTER it, never alongside.
+>
+> ⛔ **DO NOT START A SECOND QUEUESCOPE PROCESS.** Check first:
+> ```
+> Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*pull_pjm_injection*' }
+> ```
+> Log: `data/_harvest_c23sens_wd.log`
+>
+> ### Why a re-harvest, and why into a NEW table
+>
+> **PJM refreshed the powerflow file inside case 23, and it was proven by measurement, not
+> assumed.** The vendor's 2026-06-23 export carries powerflow case
+> `Final_2024 Series RTEP 2028 SUM_BD_02052026_TC2_PHII_Final`; their 2026-08-18 export carries
+> `Final_2024 Series RTEP 2028 SUM_BD_05282026_TC2_PHII_SENS_Topo`. The QueueScope **case number is
+> unchanged** — 23 is still "2028 TC2 Phase II Case (Summer Peak)" — so this is PJM swapping the
+> underlying study inside the same slot, not a new case.
+>
+> ⭐ **Confirmed with a 1-batch probe before committing to a multi-hour run:** re-harvesting 25 buses
+> returned the same constraints but **1,094 rows with a CHANGED `available_mw`**. Our existing
+> `in_pjm_qs_tc2phii_wd` / `_inj` are therefore a *superseded study*, not merely an older pull.
+>
+> ⚠ **Our harvest schema records `case_label` only — the QueueScope case NAME — and NOT the
+> underlying powerflow filename.** That is why the refresh was invisible to us and had to be found by
+> diffing values. **Add the powerflow-case string to the harvest schema**, or the next refresh will
+> be just as silent.
+>
+> ### Two traps that were hit and handled; hit them and you lose hours
+>
+> 1. **The checkpoint markers are keyed by case+mode, not by target table.** Re-running case 23
+>    against the existing markers resumes and harvests almost nothing. They were **archived, never
+>    deleted** — `data/_ARCHIVED_*_ckpt_pjm_qs_case23_*`. Deleting `data/` forces a duplicating
+>    re-harvest; renaming is reversible.
+> 2. **The probe itself consumed checkpoint entries for its 25 buses.** Its marker was archived too,
+>    otherwise the full run would have silently skipped those buses and produced a table quietly
+>    missing 25 of 1,826.
+>
+> ### Landing sequence when it finishes
+>
+> 1. Verify: 1,826 buses, 0 null `available_mw`, one `case_label`.
+> 2. Then `--mode INJECTION --table in_pjm_qs_c23sens_inj`. **One at a time.**
+> 3. Only after BOTH land, retire `in_pjm_qs_tc2phii_wd` / `_inj` as the superseded study.
+>    Do not delete them until the replacements are verified.
+> 4. Owner id is **1568** for case 23. **739 is AEP in the default case and loads 0 rows while
+>    exiting successfully** — the `--list` output shows 739 because it lists the default case.
+
+---
+
+# (historical) RESUME THE PJM CASE-23 HARVESTS — after the 2026-08-17 reboot
 
 Both harvests were interrupted by a network drop (not a code fault). **Both are cleanly resumable.**
 The data is safe in BigQuery; the on-disk checkpoint markers track which batches are done.
