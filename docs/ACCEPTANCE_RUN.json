@@ -1,12 +1,12 @@
 {
- "run_at": "2026-08-18T21:22:08.403347+00:00",
+ "run_at": "2026-08-18T21:58:25.746556+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "FAIL",
-   "detail": "scanned 121 payloads + pages \u00b7 1 leaks: ['app.js']"
+   "detail": "scanned 121 payloads + pages \u00b7 4 leaks: ['app.js', 'data.html', 'grid.html']"
   },
   {
    "criterion": 1,

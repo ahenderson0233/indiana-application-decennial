@@ -71,12 +71,33 @@ for r in client.query(f"""
     d = dict(r); gj = d.pop("gj")
     d["layer"] = "line"
     feats.append({"type": "Feature", "properties": d, "geometry": rc(json.loads(gj))})
-# MISO bus POIs (publisher coordinates only)
+# ---------------------------------------------------------------------------------------------
+# BUS POIs ON THE MAP. ⛔ This read `in_bus_headroom_miso` - DPP-2021, INJECTION ONLY, 642 POIs -
+# and shipped worst/median/best as three rival numbers. Operator, 2026-08-18: "our bus headroom
+# numbers still show our old numbers (on the map) for MISO, so this needs to be changed
+# immediately", and separately: stop showing "our current median and best scenarios (especially
+# since our values are clearly wrong)".
+#
+# Both are the same defect. The map was the last surface still reading the superseded build after
+# in_bus_capacity_tier0 was rebuilt, because it goes through grid.geojson.gz rather than
+# gridsiting.json.gz - a second path nobody repointed.
+#
+# Now: ONE binding figure per bus per direction, from tier0 - MISO on the licensed Orennia
+# DPP-2025 study (both directions, the load side included, which MISO publishes nowhere), PJM on
+# our own case-23 harvest. `provenance` rides on every feature so the popup can say which is which,
+# and the worst/median/best triple is gone: three numbers let a reader pick the flattering one.
 for r in client.query(f"""
-  SELECT poi_name, bus_number, bus_name, kv, area_name, headroom_mw, worst_mw, best_mw,
-         median_mw, facilities_at_zero, monitored_facilities, worst_binding_facility,
-         vintage, lat, lon
-  FROM `{DS}.in_bus_headroom_miso` WHERE location_status='indiana'"""):
+  SELECT bus_id AS bus_number, bus_name, bus_name AS poi_name,
+         bus_voltage_kv AS kv, bus_area AS area_name,
+         iso, interconnection_type AS direction,
+         bus_interconnection_capacity_mw AS headroom_mw,
+         primary_limiting_constraint AS worst_binding_facility,
+         n_facilities_overloaded_base AS facilities_at_zero,
+         n_monitored_facilities AS monitored_facilities,
+         existing_overload_flag, provenance_class AS provenance, probe_mw,
+         powerflow_case AS vintage, latitude AS lat, longitude AS lon
+  FROM `{DS}.in_bus_capacity_tier0`
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""):
     d = dict(r); lat, lon = d.pop("lat"), d.pop("lon")
     d["layer"] = "bus_poi"
     feats.append({"type": "Feature", "properties": d,
@@ -213,3 +234,31 @@ with gzip.open(os.path.join(REPO, "data", "receipts.json.gz"), "wt", encoding="u
     json.dump(rec, f, separators=(",", ":"), default=jd)
 print(f"receipts.json.gz: {len(rec)} rows")
 print("GRID+SENTIMENT EXPORT COMPLETE")
+
+# =============================================================================================
+# ⛔ THIS SCRIPT REWRITES county_context.json AND DROPS THE IOCS BLOCK, which
+# export_signoff_payloads.py merges on afterwards. That ordering has now bitten TWICE - the
+# checkpoint's own source comments on it - and each time the Community page's court-activity
+# table silently rendered EMPTY, because a payload that is present but missing one key looks fine
+# until someone opens that tab.
+#
+# Remembering an ordering rule is not a control. Running it is. If the enrichment is missing after
+# this script writes, restore it here rather than leaving the next person to discover it.
+# =============================================================================================
+import json as _json
+import subprocess as _sp
+import sys as _sys
+_ctx = os.path.join(REPO, "data", "county_context.json")
+try:
+    _d = _json.load(open(_ctx, encoding="utf-8"))
+    _has = sum(1 for v in _d.get("by_fips", {}).values() if isinstance(v, dict) and v.get("iocs"))
+except Exception:
+    _has = 0
+if not _has:
+    print("county_context.json has no IOCS block after this rewrite - re-running the enricher")
+    _rc = _sp.call([_sys.executable, os.path.join(REPO, "scripts", "export_signoff_payloads.py")])
+    _d = _json.load(open(_ctx, encoding="utf-8"))
+    _has = sum(1 for v in _d.get("by_fips", {}).values() if isinstance(v, dict) and v.get("iocs"))
+    print(f"  restored: {_has}/92 counties carry iocs (enricher exit {_rc})")
+assert _has, ("county_context.json still has no IOCS block. The Community court-activity table "
+              "would render empty. Run scripts/export_signoff_payloads.py.")

@@ -118,7 +118,10 @@ map.on("load", async () => {
       walk(f.geometry.coordinates);
     } else if (p.layer === "bus_poi") {
       const [lon, lat] = f.geometry.coordinates;
-      state.poiList.push({ lon, lat, name: p.poi_name, median: p.median_mw, best: p.best_mw });
+      /* ONE figure per bus per direction now. The old median/best pair let a parcel be
+         described by whichever of three numbers flattered it; tier0 carries the binding value. */
+      state.poiList.push({ lon, lat, name: p.poi_name, mw: p.headroom_mw,
+                           direction: p.direction, iso: p.iso });
     }
   }
   map.addSource("grid", { type: "geojson", data: state.grid });
@@ -160,11 +163,16 @@ map.on("load", async () => {
     paint: { "fill-color": "#334155", "fill-opacity": 0.45, "fill-outline-color": "#0f172a" } });
   map.addLayer({ id: "grid-bus", type: "circle", source: "grid",
     filter: ["==", ["get", "layer"], "bus_poi"],
-    paint: { "circle-radius": ["interpolate", ["linear"], ["to-number", ["get", "median_mw"], 0], 0, 4, 2000, 9, 8000, 13],
+    /* sized by the BINDING headroom, and only the load direction is drawn by default - a data
+       centre asks the withdrawal question, and drawing both stacked two dots on every station */
+    filter: ["all", ["==", ["get", "layer"], "bus_poi"],
+                    ["==", ["get", "direction"], "Withdrawal"]],
+    paint: { "circle-radius": ["interpolate", ["linear"], ["to-number", ["get", "headroom_mw"], 0], 0, 4, 2000, 9, 8000, 13],
              "circle-color": "#d97706", "circle-stroke-color": "#7c2d12", "circle-stroke-width": 1.2, "circle-opacity": 0.9 } });
   map.addLayer({ id: "grid-bus-label", type: "symbol", source: "grid", minzoom: 8,
-    filter: ["==", ["get", "layer"], "bus_poi"],
-    layout: { "text-field": ["concat", ["to-string", ["round", ["to-number", ["get", "median_mw"], 0]]], " MW"],
+    filter: ["all", ["==", ["get", "layer"], "bus_poi"],
+                    ["==", ["get", "direction"], "Withdrawal"]],
+    layout: { "text-field": ["concat", ["to-string", ["round", ["to-number", ["get", "headroom_mw"], 0]]], " MW"],
               "text-size": 10, "text-offset": [0, 1.4], "text-font": ["Noto Sans Regular"] },
     paint: { "text-color": "#7c2d12", "text-halo-color": "#fff", "text-halo-width": 1 } });
 
@@ -936,7 +944,7 @@ function enrichDistances(feats) {
       const d = havM(lat, lon, q.lat, q.lon);
       if (!bp || d < bp.d) bp = { d, q };
     }
-    if (bp) { p._dpoi_mi = +(bp.d / MI).toFixed(1); p._dpoi_name = bp.q.name; p._dpoi_median = bp.q.median; }
+    if (bp) { p._dpoi_mi = +(bp.d / MI).toFixed(1); p._dpoi_name = bp.q.name; p._dpoi_mw = bp.q.mw; }
   }
 }
 function addCountyLayers(fips, fc) {
@@ -1080,7 +1088,9 @@ function tipText(p) {
   // "land supports up to", never "fits": acres x MW/acre is an upper bound on GROSS land, and the
   // tooltip is the one surface a user reads without any surrounding caveat (G28).
   if (p.parcel_key) return `${p.occ_group || ""} · ${Number(p.parcel_acres || 0).toFixed(1)} ac · land supports up to ${Math.floor(acreageOf(p).acres * V("f-density"))} MW${p.has_si_signal ? " · SI" : ""}${p._dsub_mi != null ? ` · sub ${p._dsub_mi} mi` : ""}`;
-  if (p.layer === "bus_poi") return `${p.poi_name} · median ${fmt(p.median_mw)} MW / best ${fmt(p.best_mw)} MW`;
+  if (p.layer === "bus_poi")
+    return `${p.bus_name || p.poi_name} · ${p.iso} ${String(p.direction || "").toLowerCase()} · `
+         + `${fmt(p.headroom_mw)} MW`;
   if (p.layer === "substation") return `${p.substation_name || "substation"} · ${p.min_kv ?? "?"}–${p.max_kv ?? "?"} kV`;
   if (p.layer === "line") return `${p.voltage || "?"} kV line · ${p.owner || ""}`;
   if (p.layer === "queue_point") return "PJM queue point (published coords)";
@@ -2151,7 +2161,7 @@ function openParcelEvidence(p, fips) {
       ${row("nearest transmission line", p._dline_mi != null
           ? `${p._dline_kv ? `${p._dline_kv} kV` : "voltage not published"} · ${p._dline_on ? "<b>runs across this parcel</b>" : `${p._dline_mi} mi`}`
           : null)}
-      ${row("nearest connection point", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
+      ${row("nearest connection point", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · ${fmt(p._dpoi_mw)} MW load headroom` : null)}</table>
     ${p._dline_mi != null ? `<div class="sowhat">${
       p._dline_on
         ? "A transmission line already crosses this parcel, so there is <b>no greenfield line to build</b> — but expect an easement and conductor-clearance constraint that shapes where you can put steel."
@@ -2258,9 +2268,17 @@ function gridEv(p) {
       ${row("binding facility @300MW", p.binding_300)}</table>
       <div class="prov">${prov("in_bus_capacity_tier0")} · ⚠ MISO's PUBLIC viewer is INJECTION-only (generators) and cannot answer the data-centre LOAD question; the load-side figures here come from our licensed Orennia DPP-2025 subscription. Formerly this panel could only question — PJM buses carry the withdrawal number; a MISO load-direction source is an open lane</div>
       <h3>Transfer capability at infinite request (study detail)</h3><table>
-      ${row("worst across facilities (MW)", p.worst_mw)}${row("median (MW)", p.median_mw)}${row("best (MW)", p.best_mw)}
+      ${row(`${p.iso === "PJM" ? "Load" : "Interconnection"} headroom (MW)`, p.headroom_mw,
+             "no capacity published at this bus")}
+      ${row("direction", p.direction)}
+      ${row("study case", p.vintage)}
+      ${row("source", p.provenance === "vendor_licensed_proxy"
+             ? "licensed Orennia DPP-2025 proxy — MISO publishes no load-side figure, and this licence lapses late 2027"
+             : `our own PJM QueueScope harvest${p.probe_mw ? ` at a ${fmt(p.probe_mw)} MW probe` : ""}`)}
       ${row("monitored facilities", p.monitored_facilities)}${row("at zero", p.facilities_at_zero)}
-      ${row("worst binding facility", p.worst_binding_facility)}${row("vintage", p.vintage)}</table>
+      ${row("first constraint to bind", p.worst_binding_facility)}
+      ${row("facilities already over their rating", p.facilities_at_zero,
+             "not counted for this bus")}</table>
       <div class="prov">${prov("in_bus_headroom_miso")} · probe ran at an effectively infinite request — read the three numbers together</div>`);
   } else if (p.layer === "substation") {
     const S = { "HIFLD+OSM": "both HIFLD and OpenStreetMap describe this substation, matched to each other at 0.5 m on average (2,354 of 3,858)",
@@ -2689,7 +2707,7 @@ $("upload").addEventListener("change", async (e) => {
       // legacy aliases kept so the enriched-CSV export keeps its old headers
       _sub_mi: row_._dsub_mi ?? null, _sub_name: row_._dsub_name ?? null,
       _sub_kv: row_._dsub_kv ?? null,
-      _poi_mi: row_._dpoi_mi ?? null, _poi_median_mw: row_._dpoi_median ?? null,
+      _poi_mi: row_._dpoi_mi ?? null, _poi_headroom_mw: row_._dpoi_mw ?? null,
       _county_opposition: c.posture?.opposition_intensity ?? null,
       _county_restriction: c.posture?.has_local_restriction ?? null,
       _county_seismic: c.seismic?.sdc ?? null,

@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-18T02:45:28+00:00",
+ "built_at_utc": "2026-08-18T21:57:13+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -72,11 +72,11 @@
   },
   {
    "table_name": "in_bus_capacity_tier0",
-   "source": "energy.miso_poi_headroom + energy.miso_poi_monitored_facilities (MISO giqueue FERC Order 2023) + indiana_app.in_pjm_bus_withdrawal (PJM QueueScope)",
-   "method": "Reproduces the vendor extract's COLUMN SET and GRAIN (bus x interconnection type x upgrade tier) from our own FERC Order 2023 sources. NO vendor data is read. Binding constraint = MIN(mw_available) per POI, so headroom is a minimum over binding constraints and never a median. Pre-existing overloads are FLAGGED, not dropped - the vendor flags 41.5% of their Indiana rows the same way. RE-SCRAPE COMMAND: python scripts/build_bus_capacity_ferc2023.py",
-   "n_rows": 2117,
-   "built_at": "2026-08-17 19:17:26.063902+00",
-   "notes": "TIER 0 ONLY (upgrade_tiers_available=1) - tiers 1-4 need the per-upgrade cost/rating study, unavailable on every public route we hold. VINTAGE GAP RIDES ON EVERY ROW: ours is an unmitigated DPP-2021 case, theirs DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final with MTEP-2025 upgrades as of Jan 2026 - the mechanism behind their 39.3% vs our 0.2%. CartoVista is NOT a route: re-tested 2026-08-17, geojson 403 reproduces, MVT serves locations only with no attributes, so the 691,523-row transfer study stays unreachable."
+   "source": "PJM: indiana_app.in_pjm_qs_c23sens_wd/_inj (our QueueScope harvest, case 23, owner 1568, 100 MW). MISO: indiana_app.in_bus_headroom_miso_vendor (Orennia licensed proxy, DPP-2025, operator-authorised).",
+   "method": "One row per (bus, direction). Binding constraint = tightest facility with |dfax| >= 0.05 that is NOT already over its rating; pre-existing overloads are counted and flagged but excluded from the choice of what binds, which is the vendor method verified against their export on bus 243209. PJM capacity is headroom at a 100 MW PROBE and is NOT a bus maximum - measured against the vendor on 283 shared buses: 0 exact, 12 within 20%, Spearman +0.15/+0.25. MISO rows carry provenance_class and are removable when the licence lapses (late 2027). RE-SCRAPE COMMAND: python scripts/build_bus_capacity_tier0_v2.py",
+   "n_rows": 7102,
+   "built_at": "2026-08-18 21:32:55.556998+00",
+   "notes": "Replaces the 2027-RTEP/DPP-2021 build: PJM moves to the current case and gains the injection direction; MISO gains the WITHDRAWAL direction, which MISO publishes nowhere."
   },
   {
    "table_name": "in_bus_headroom_300",
@@ -101,6 +101,14 @@
    "n_rows": 3852,
    "built_at": "2026-08-17 15:35:02.515025+00",
    "notes": "Per-POI MISO INJECTION headroom at each request size. MIN(min(true_i,X)) == min(MIN(true_i),X), so the rollup is exact at every rung. || OBSERVED VINTAGE: DPP-2021-Cycle. || MEASURED HEADLINE: 641 of 642 Indiana POIs read ZERO injection headroom at EVERY rung including 100 MW. Exactly one POI is non-zero (~815 MW true), so it fits a 100, 300 or 500 MW ask but not 1000 MW. The ladder does not rescue Indiana MISO injection; it confirms the constraint is structural, not an artifact of the 300 MW probe. || EXCLUDED: nothing - zero-headroom POIs are RETAINED, because a zero that means 'a facility is already at its rating' is a real answer and must not be confused with 'not evaluated'. facilities_at_zero is carried per POI. || WITHDRAWAL IS BLOCKED, NOT MISSING: MISO publishes no load/withdrawal direction. Measured: negative pMaxValue floors at 0; eight candidate direction parameters (direction/type/studyType/transferType/isLoad/loadFlag/dcType/pMinValue) are all silently ignored with byte-identical output; only /POI/api/pois and /POI/api/poi_mf exist (poi_lf, poi_load, swagger all 404). MISO's Large Load framework is still being designed - see docs/RTO_DIRECTIONS.md for the verbatim publisher wall."
+  },
+  {
+   "table_name": "in_bus_headroom_miso_vendor",
+   "source": "Orennia 'Greenfield Interconnection Capacity, Buses' extract 2026-06-23 (licensed vendor CSV), MISO rows only",
+   "method": "Direct load of the vendor's per-bus tier-0..4 capacity, ISO='MISO' slice, read POSITIONALLY because the file has two columns named 'Bus ID'. LICENSED PROXY under operator ruling 2026-08-18: MISO parity has no public route (DPP-2025 is CEII). Not publicly derived; must be removed when the subscription lapses late 2027.",
+   "n_rows": 17146,
+   "built_at": "2026-08-18 14:02:18.669951+00",
+   "notes": "MISO bus interconnection capacity - LICENSED VENDOR PROXY (Orennia extract), loaded under operator ruling 2026-08-18 because MISO parity has no public route. PROVENANCE: every row provenance_class='vendor_licensed_proxy'. NOT publicly derived. SUBSCRIPTION-BOUND: licence lapses late 2027; remove then. WHY: our DPP-2021 rule ladder brackets their value 0.2%-100% against their 40.8%; the gap is which pre-existing overloads their ERIS-mitigated DPP-2025 case removed, and four sweeps proved that study has no public route (CartoVista 403 ProtectedData, giqueue structurally DPP-2021, MISO API queue-endpoint only, FERC ER24-2046 interactive-only). SOURCE FILE: Greenfield Interconnection Capacity, Buses-2026-08-18T13-54-02.csv sha256=e63c96aa21b29beb70aa908ed0194f45eba470e82a9e4b0915dc1b416db401c3. PUBLISHER VINTAGE: powerflow case DPP-2025-Cycle_SUM_D_ERIS-mitigated_Final. EXCLUDED: PJM and SERC rows (we derive PJM ourselves from QueueScope case 23). RE-SCRAPE COMMAND: python scripts/load_miso_vendor_proxy.py --load"
   },
   {
    "table_name": "in_candidate_sites_colleges",
@@ -1335,6 +1343,22 @@
    "notes": "THE public machine-readable queue-project -> network-upgrade-cost mapping: network upgrade id -> allocated queue project ids -> cost -> TO -> state. 55 rows all-states, 1 name Indiana. Costs in $M per the page's conventions (same family as RTEP export). PLOTTABILITY: JOINABLE_IDENTITY (upgrade id joins in_pjm_rtep_upgrades/held txexp_pjm_tcic_upgrade_info; queue project ids join the PJM queue/queuescope universe; no coords served). Per-upgrade drilldowns exist at /m/ProjectTransition/NucraProjectDetails|UpgradeProjectsWithCostAlloc?upgradeId={id} (not crawled this run)."
   },
   {
+   "table_name": "in_pjm_qs_c23sens_inj",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 655404,
+   "built_at": "2026-08-18 19:10:17.931432+00",
+   "notes": "PJM QueueScope INJECTION direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23sens_wd",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 462654,
+   "built_at": "2026-08-18 16:34:31.604066+00",
+   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
    "table_name": "in_pjm_qs_tc2phii_inj",
    "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
    "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
@@ -2144,11 +2168,11 @@
   },
   {
    "table_name": "in_utility_tariff_riders",
-   "source": "energy.utility_tariff_riders",
-   "method": "census-keyed clip (state:state)",
-   "n_rows": 3,
-   "built_at": "2026-08-15 05:57:20.972941+00",
-   "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
+   "source": "THREE harvests share this table. (1) utility-site books: AES/NIPSCO/CenterPoint (scripts/load_tariff_books_aes_nipsco_centerpoint.py). (2) IURC commission route: Duke + I&M + jurisdictional-muni trackers + jurisdiction census (scripts/load_tariff_books_iurc_duke_im_munis.py; docs/TARIFF_HARVEST_IURC_ALL_UTILITIES.md). (3) THIS RUN - ordinance/board route for munis, REMCs and wholesalers (scripts/load_tariff_books_munis_coops.py; docs/TARIFF_HARVEST_MUNIS_COOPS.md): Anderson Ord 9-22 via 30-day 50507 (approved 2022-06-08) + pending Cause 46397; Auburn 50523 (2022-06-28) on Cause 45102 structure; Frankfort 50549 (2022-06-28, incl. NEW 10 MW Rate IP); Richmond 50559/Ord 26-2022 Phase 3 (eff 2023-01-20, Cause 45361 lineage) + Q3-2026 ECA ad; Logansport Ordinance 2025-02 / LMU Rate Guide 2026 step; Mishawaka city tariff pages eff 2025-01-01 (Ord 5954 2026 Exhibit A NOT posted - records-location); Peru rate pages eff 2026-06-01; Jasper Municipal Code ch. 11.08 (Ord 2022-8) via Municode; Lebanon rates page (50535-adjusted 44142 book) + Q3-2026 tracker; Crawfordsville CEL&P compiled tariff 50561/45420 (pending 2026 rate ordinance); Columbia City Ordinance 2026-5 Exhibit A (Phase I-2026, image scan visually transcribed); Tell City 2022 booklet (Res R220615A / Ord 1190) + Q3-2026 tracker (image, visually transcribed); SEI REMC board sheets eff 2025-10-01/-20 (UIPS-1 supersedes URDB-era IPS-2) + PCT Q3-2026; Southern Indiana Power page (C&I schedules NOT published - records-location, co-op office Tell City); SCI REMC sheets eff 2024-02-01; Paulding-Putnam 2026.02 book via Wayback 20260515080132 (live URL dead); Hoosier Energy (FERC 171 FERC 61,143 + 2023 IRP + member/DC-policy pages); WVPA FY2025 audited statements + member/rate-options pages; IMPA FY2025 statements + 2025 Annual Report.",
+   "method": "RE-SCRAPE COMMAND: python scripts/load_tariff_books_munis_coops.py --fetch   (idempotent: DELETE WHERE utility IN (this harvest's munis/REMCs/G&Ts) AND code IN (this loader's codes + superseded placeholders) - IOU rows, jurisdictional-muni tracker rows and NONJURIS finding rows are untouchable by construction; then load-job APPEND; sentinel-verifies every document before any write; --verify-only for a no-write check). || RE-RUN ORDER: if load_tariff_books_iurc_duke_im_munis.py re-runs, re-run THIS loader afterwards - its utility-scoped DELETE removes this harvest's rows for the shared munis/REMCs/G&Ts, then reinstates its placeholders. || WHY THE ORDINANCE/BOARD ROUTE: per the FY2025 IURC Annual Report only Anderson/Auburn/Frankfort remain rate-jurisdictional; no REMC is; Hoosier/WVPA/IMPA have no retail-rate jurisdiction - these rates are set by council ordinance and co-op/agency boards and published on utility sites, municipal codes, or not at all. || OBSERVED PUBLISHER VINTAGES (never pull dates): A/A/F + Richmond + Lebanon + CEL&P + Tell City books all trace to the June-2022 HEA-1002 URT-repeal 30-day filings (50507/50523/50549/50559/50535/50561/Ord 1190) on 2014-2021 rate-case bases; Logansport Ord 2025-02 (annual steps 2025-2029, 2026 column loaded); Mishawaka 2025-01-01 step (2026 step exists, unpublished); Peru 2026-06-01; Columbia City Ord 2026-5 (2026-05-01 cycle, phases to 2028); SEI 2025-10; SCI 2024-02-01; PPEC 2026-02-01; trackers all Q3-2026 where quarterly. || VERIFICATION: sentinel strings asserted against every text-bearing document; image-only scans (Richmond book, Columbia City 2026-5, Tell City tracker, Logansport ordinance) are sha256-PINNED and were transcribed by HUMAN-VISUAL page reads 2026-08-18 (Richmond pages 11/15/19/23/27 read individually); OCR artifacts cached beside the scans. || PENDING AT HARVEST: Anderson Cause 46397 (settlement hearing 2026-09-21); Auburn IURC-withdrawal Ordinances 2026-12/-13 (first reading April 2026); CEL&P amending rate ordinance (hearing 2026-08-10); Mishawaka Ord 5954 2026 Exhibit A unpublished. || EXCLUDED AND WHY: lighting/EV/net-metering detail (not siting-relevant); COIN OCR-only figures carried in a status row, not rate columns; Columbia City ECA example value (image-only, unverified) named in basis only; 44 tiny munis keep census rows only (no large-load class exists to transcribe).",
+   "n_rows": 668,
+   "built_at": "2026-08-18 16:25:26.872076+00",
+   "notes": "Ordinance/board-route harvest added 252 rows across 19 utilities (incl. Crawfordsville, previously absent from URDB entirely); replaced 3 not_held BASE placeholders (Anderson/Auburn/Frankfort); jurisdiction finding rows kept. Data-centre-grade classes measured: Anderson IP/ISTP (10 MVA, IMPA-CP billing + wholesale passthrough), Frankfort IP (10 MW, 69 kV), Richmond TS (10 MW, >=69 kV), Crawfordsville IP (10 MW, 138 kV), Tell City E2 (10 MVA, IMPA Rate-B passthrough), Auburn EHV (30 MVA floor, 100% ratchet), SEI REMC UIPS-1 (5 MW, MISO-CP 4-part demand), Logansport Industrial Substation ($32,500/mo flat). Wholesalers: Hoosier board-set (201(f), >50 MW loads leave tariffs per Consumer Directed Resource Policy), WVPA board formula rate (left FERC 2025-01-01; published large-load menu to 35 MW+), IMPA board/Bond-Resolution (8.45 c/kWh accrued 2025; +2.7% approved for 2026). UNPUBLISHED IS NULL, NEVER 0: zero not_held-with-a-rate violations table-wide (checked post-load). Do not overwrite in_rate_component_gaps."
   },
   {
    "table_name": "in_water",
@@ -2503,6 +2527,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 321,
+ "registry_rows_total": 327,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

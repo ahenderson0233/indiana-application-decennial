@@ -55,7 +55,7 @@ headline can be audited rather than taken on trust:
 | `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
-| `in_bus_capacity_tier0` | direct | `app.js`, `scripts/export_grid_siting.py` |
+| `in_bus_capacity_tier0` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
@@ -211,7 +211,7 @@ headline can be audited rather than taken on trust:
 | `in_peeringdb_facilities` | direct | `app.js`, `scripts/investigate_cloudscene_gap.py` |
 | `in_pjm_bus_injection` | **none** | — |
 | `in_pjm_bus_locations_candidate` | direct | `app.js`, `scripts/export_full_wiring.py` |
-| `in_pjm_bus_withdrawal` | direct | `app.js`, `grid.html` |
+| `in_pjm_bus_withdrawal` | direct | `app.js` |
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_qs_c23sens_inj` | **none** | — |
