@@ -324,6 +324,10 @@ map.on("load", async () => {
   map.on("moveend", maybeLoadCounties);
 
   syncLayers(); maybeLoadCounties();
+  /* G39: a ?fips=&parcel= link resolves AFTER the county machinery exists, because it has to
+     drive it - fetch that county's parcels itself rather than waiting for the viewport to
+     wander over them. Failures are reported to the reader, not swallowed. */
+  handleDeepLink().catch((e) => console.error("deep link failed", e));
   document.body.dataset.ready = "1";
 });
 
@@ -641,6 +645,80 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
 // for a separate Illinois experiment, and a GHCN station location is not something a siter acts
 // on. Both are recorded as waivers on the Data page rather than silently dropped.
 const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
+
+/* ---------- G39: THE SCREENER, ON THE MAP ----------------------------------------------------
+   Operator, 2026-08-18: *"we essentially need to wire the Site Screener to the map, since we
+   would like to visibly see those sites geographically around the map layers."*
+
+   The screener ranked sites in a table with no geographic expression, so a reader could not see
+   whether the top sites CLUSTER, or how they sit against transmission, water and county posture -
+   which is most of what makes a shortlist believable.
+
+   ⚠ MEASURED FIRST, AND THE COVERAGE IS PARTIAL: of 51,493 screener sites, **20,040 (38.9%)
+   carry a lat/lon**. The rest are real sites we simply hold no point for. The layer says so on
+   the control rather than quietly drawing a subset, because "the screener's sites" and "the
+   screener's sites we can plot" are different claims and only one of them is true here.
+
+   3.7 MB of payload, so it is fetched on FIRST TOGGLE, never at boot - the same rule the context
+   layers follow. Sized by what the parcel can host, because on a map the useful question is
+   "where are the BIG ones", not "where are there any". */
+state.scrLoaded = false; state.scrLoading = null;
+async function ensureScreenerLayer() {
+  if (state.scrLoaded) return true;
+  if (state.scrLoading) return state.scrLoading;
+  state.scrLoading = (async () => {
+    /* ⚠ NOT `d`. audit_frontend binds the fetchGz variable name and then scans every `<var>.key`
+       in the file to check it against the payload's real keys - so a one-letter name in a
+       2,500-line file collides with every other `d.something` and reports keys this code never
+       read. The audit was right to complain: a one-letter name for a payload is bad here. */
+    const scr = await fetchGz("data/screener.json.gz");
+    const sites = (scr.sites || []).filter((x) => x.lat != null && x.lon != null);
+    state.scrTotal = (scr.sites || []).length;
+    state.scrPlotted = sites.length;
+    map.addSource("scr", { type: "geojson", data: { type: "FeatureCollection",
+      features: sites.map((x) => ({ type: "Feature",
+        geometry: { type: "Point", coordinates: [Number(x.lon), Number(x.lat)] },
+        properties: { parcel_key: x.parcel_key, fips: x.county_fips, county: x.county_name,
+                      mw_dc: Number(x.mw_dc) || 0, acres: Number(x.parcel_acres) || 0,
+                      sig: x.has_signal ? 1 : 0, wd_mw: x.wd_mw == null ? -1 : Number(x.wd_mw) } })) } });
+    map.addLayer({ id: "scr-pts", type: "circle", source: "scr", layout: { visibility: "none" },
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["get", "mw_dc"], 0, 3, 100, 5, 500, 8, 2000, 12],
+        /* Amber where the owner shows a public reason to sell, slate where not. That is the one
+           distinction a siter acts on differently - a cold approach versus a warm one. */
+        "circle-color": ["case", ["==", ["get", "sig"], 1], "#d97706", "#475569"],
+        "circle-opacity": 0.75,
+        "circle-stroke-width": 1, "circle-stroke-color": "#ffffff" } });
+    map.on("click", "scr-pts", (e) => {
+      if (state.measure.on) return;
+      const q = e.features[0].properties;
+      openScreenerSite(String(q.fips), String(q.parcel_key), q);
+    });
+    state.scrLoaded = true;
+    return true;
+  })();
+  return state.scrLoading;
+}
+
+/* A screener point is a POINTER to a parcel, not a copy of it. Clicking one loads that county and
+   opens the real parcel panel, so there is exactly one place a parcel is described. */
+async function openScreenerSite(fips, key, fallback) {
+  const ok = await ensureCountyLoaded(fips);
+  const feats = ok ? (state.loaded.get(fips) || []) : [];
+  const ft = feats.find((f) => f.properties && f.properties.parcel_key === key);
+  if (ft) return openParcelEvidence(ft.properties, fips);
+  show("Screener site", `<div class="sowhat">This site is in the screener's list, but its parcel
+    record did not load for county ${escHtml(fips)}, so the full evidence panel cannot be shown.
+    What the screener holds:</div>
+    <table class="ev">
+      ${row("County", fallback && fallback.county)}
+      ${row("Parcel", key)}
+      ${row("Fits (MW, data centre)", fallback && fallback.mw_dc)}
+      ${row("Acres", fallback && fallback.acres)}
+      ${row("Owner shows a reason to sell", fallback && fallback.sig ? "yes" : "no",
+            "measured — no signal on this parcel")}
+    </table>`, `${fips}|${key}`);
+}
 /* G34 -- ONE REGISTRY, ONE SYNC PATH. Two registries for one concept let "off means hidden" be
    enforced for some layers and not others. It is the same defect class as the [:12] clip in
    build_census_wires.py: a PARTIAL ENUMERATION that silently leaves the remainder in a stale
@@ -648,7 +726,8 @@ const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
    preset mentioned L-fac at all, so wind and solar kept drawing after switching to Environmental,
    which is exactly what the operator reported. Every preset now states every layer, unstated boxes
    default to OFF rather than persisting, and a gap is reported loudly at boot. */
-const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS), "L-parcels"];
+const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS),
+                         "L-parcels", "L-screener"];
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
   if (state.ctxLoaded) return true;
@@ -699,6 +778,22 @@ function ctxEvidence(p) {
   show(ctxTip(p), `<table>${rows_}</table>
     <div class="prov">${prov(tbl)}<br>${note}</div>`);
 }
+$("L-screener").addEventListener("change", async (e) => {
+  if (e.target.checked) {
+    $("L-screener-note").textContent = "loading the screener's sites…";
+    try { await ensureScreenerLayer(); } catch (err) {
+      $("L-screener-note").textContent = "could not load the screener payload";
+      e.target.checked = false; return;
+    }
+    /* Say what is on screen and what is NOT. 38.9% coverage silently drawn would read as "these
+       are the screener's sites" when it is a subset of them. */
+    $("L-screener-note").innerHTML = `${fmt(state.scrPlotted)} of ${fmt(state.scrTotal)} screener
+      sites carry a location and are drawn (${(100 * state.scrPlotted / state.scrTotal).toFixed(0)}%).
+      <b>Amber = the owner shows a public reason to sell.</b> Size is what the parcel could host.`;
+  }
+  syncLayers();
+});
+
 for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
   $(box).addEventListener("change", async (e) => {
     if (e.target.checked) {
@@ -718,6 +813,8 @@ function syncLayers() {
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
   // G34: context layers go through the SAME path. They load lazily, so a layer that is not on the
   // map yet is skipped -- it will be created with visibility "none" and synced on its next toggle.
+  if (state.scrLoaded && map.getLayer("scr-pts"))
+    map.setLayoutProperty("scr-pts", "visibility", $("L-screener").checked ? "visible" : "none");
   for (const [box, id] of Object.entries(CONTEXT_LAYERS))
     if (map.getLayer(id) && $(box))
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
@@ -738,21 +835,21 @@ const PRESETS = {
     layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
               "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
               "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0 } },
+              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
   grid: { metric: "queue_active_mw",
     layers: { "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1,
               "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0, "L-dc": 1, "L-fac": 1,
-              "L-watershed": 0, "L-waterstress": 0, "L-log": 0, "L-ghgrp": 0, "L-frpp": 0 } },
+              "L-watershed": 0, "L-waterstress": 0, "L-log": 0, "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
   env: { metric: "class_union",
     layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
               "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1,
               "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0 } },
+              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
   sentiment: { metric: "opposition_intensity",
     layers: { "L-parcels": 0, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
               "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
               "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0 } },
+              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
 };
 /* Loud on a gap, rather than silently persisting a layer the way the bug did. A layer added to
    LAYER_MAP or CONTEXT_LAYERS but forgotten in a preset shows up here the moment the page loads. */
@@ -862,6 +959,71 @@ function countiesInView() {
     .filter(([, [w, s, e, n]]) => b.getWest() < e && b.getEast() > w && b.getSouth() < n && b.getNorth() > s)
     .map(([f]) => f);
 }
+/* ---------- G39: DEEP LINK FROM THE SCREENER ------------------------------------------------
+   Operator, 2026-08-17: *"when we click on a screener observation (or a map link), we get directed
+   to where the site is on the map console."*
+
+   ⚠ The console loads parcels PER COUNTY ON DEMAND, and only for counties in view above zoom 10 -
+   so a deep link cannot just fly somewhere and hope. It has to fetch that county's file itself,
+   wait for it, then select the parcel. This is the trap the backlog flagged. */
+async function ensureCountyLoaded(fips) {
+  if (state.loaded.has(fips)) return true;
+  if (state.loading.has(fips)) {
+    for (let i = 0; i < 100 && state.loading.has(fips); i++)
+      await new Promise((r) => setTimeout(r, 100));
+    return state.loaded.has(fips);
+  }
+  state.loading.add(fips);
+  try {
+    const fc = await fetchGz(`data/sites/${fips}.geojson.gz`);
+    /* ⛔ DATA FIRST, PRESENTATION SECOND, AND THEY FAIL SEPARATELY. The first version did
+       enrichDistances -> set -> addCountyLayers inside one try, so a throw in EITHER map step
+       lost the parcels and the deep link reported "that link did not resolve" - blaming the link
+       for a rendering failure. The parcels are what the deep link and the dossier need; the map
+       layer is decoration. Register the data, then attempt each map step on its own. */
+    state.loaded.set(fips, fc.features);
+    try { enrichDistances(fc.features); }
+    catch (e) { console.warn("deep link: distance enrichment skipped for " + fips, e); }
+    try { addCountyLayers(fips, fc); applyFilters(); }
+    catch (e) { console.warn("deep link: county layers not added for " + fips, e); }
+    return true;
+  } catch (e) {
+    console.error("deep link: county " + fips + " failed to load", e);
+    return false;
+  } finally { state.loading.delete(fips); }
+}
+
+/* ?fips=18163&parcel=8206...&open=dossier
+   `open=dossier` goes straight to the Power Plan; anything else opens the evidence panel. */
+async function handleDeepLink() {
+  const q = new URLSearchParams(location.search);
+  const fips = (q.get("fips") || "").trim(), key = (q.get("parcel") || "").trim();
+  if (!fips || !key) return;
+  show("Opening site…", `<div class="hint">Loading county ${escHtml(fips)} and locating parcel
+    ${escHtml(key)}…</div>`);
+  const ok = await ensureCountyLoaded(fips);
+  const ft = (state.loaded.get(fips) || []).find((f) => f.properties
+    && f.properties.parcel_key === key);
+  if (!ok || !ft) {
+    show("Site not found", `<div class="sowhat"><b>That link did not resolve.</b> Parcel
+      <code>${escHtml(key)}</code> is not in county <code>${escHtml(fips)}</code>'s file. The link
+      may be from an older build, or the parcel may have dropped out of the render set.</div>`);
+    return;
+  }
+  /* Fly to the parcel's own geometry, not a point: fit its bounds so the whole property is on
+     screen at a zoom that keeps the county's parcels loaded. */
+  const pts = [];
+  (function walk(c) { if (typeof c[0] === "number") { pts.push(c); return; }
+                      for (const x of c) walk(x); })(ft.geometry.coordinates);
+  if (pts.length) {
+    const xs = pts.map((v) => v[0]), ys = pts.map((v) => v[1]);
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+                  { padding: 220, maxZoom: 15, duration: 900 });
+  }
+  if (q.get("open") === "dossier") await openDossier(ft.properties, fips);
+  else openParcelEvidence(ft.properties, fips);
+}
+
 async function maybeLoadCounties() {
   if (!state.counties) return;
   if (map.getZoom() < PARCEL_ZOOM) { renderDenominator(); return; }

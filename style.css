@@ -267,3 +267,23 @@ abbr[title] { text-decoration: underline dotted #94a3b8; cursor: help; text-unde
 ::-webkit-scrollbar { width: 9px; }
 ::-webkit-scrollbar-thumb { background: #c7ced9; border-radius: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- G39 per-site depth on the screener -------------------------------------------------- */
+tr.detailrow { display: none; }
+tr.detailrow.open { display: table-row; }
+td.exp { cursor: pointer; color: #64748b; user-select: none; text-align: center; width: 18px; }
+tr.siterow:hover td.exp { color: #0f172a; }
+.detail { padding: 10px 12px 12px; background: #f8fafc; border-top: 1px solid #e3e6ec; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.detail h4 { margin: 0 0 5px; font-size: 12px; text-transform: uppercase;
+             letter-spacing: .04em; color: #475569; }
+table.dtable { width: 100%; border-collapse: collapse; }
+table.dtable td { padding: 3px 6px 3px 0; vertical-align: top; font-size: 12px;
+                  border-bottom: 1px solid #eef1f5; }
+table.dtable td.dk { color: #475569; width: 38%; }
+table.dtable td.dv { width: 26%; }
+.dlinks { margin-top: 11px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dlinks .btn { display: inline-block; padding: 5px 11px; border: 1px solid #ccd3de;
+               border-radius: 5px; background: #fff; text-decoration: none; color: #0f172a;
+               font-size: 12px; }
+.dlinks .btn:hover { background: #eef2f7; }

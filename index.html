@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=8e59321e">
+<link rel="stylesheet" href="style.css?v=8ca4da1c">
 </head>
 <body>
 <header id="topbar">
@@ -81,6 +81,11 @@
           vacant or abandoned <i>building</i> is an owner-motivation signal &mdash; section 4.</div>
         <div class="subhead">Shown on the map</div>
         <label><input type="checkbox" id="L-parcels" checked> Parcels that passed your filters</label>
+        <label><input type="checkbox" id="L-screener"> &#128269; Site Screener results
+          <span class="hint">(the ranked shortlist, on the map)</span></label>
+        <div class="hint" id="L-screener-note" style="margin:-2px 0 6px 18px">Loads on first use
+          &mdash; 3.7&nbsp;MB. Not every screener site carries a location; the count is stated
+          once it loads.</div>
         <label><input type="checkbox" id="L-log"> Rail and major roads</label>
         <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
         <div class="sowhat">Rail and highway access decide how construction loads and
@@ -291,6 +296,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=849a4bcf"></script>
-<script src="app.js?v=f1dcfbf9"></script>
+<script src="app.js?v=9287199c"></script>
 </body>
 </html>

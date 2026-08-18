@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=8e59321e">
+<link rel="stylesheet" href="style.css?v=8ca4da1c">
 </head>
 <body>
 <header id="topbar">
@@ -351,6 +351,122 @@ function sectionCounts() {
   $("c-env").textContent = `${fmt(n((s) => !s.sfha_flood && !s.wetland_on_parcel && !s.protected_land))} unconstrained`;
 }
 
+/* ---------- G39: PER-SITE DEPTH ---------------------------------------------------------------
+   Operator, 2026-08-17: *"we need to add more information on each site within the screener, since
+   we are currently limited"* and *"there should be a dropdown for the site to see more
+   information, including the dossier."*
+
+   ⚠ MEASURED BEFORE BUILDING: the payload already ships far more than the table showed. Across
+   51,493 sites it carries the injection side on 50,333 (97.7%), the owner-signal block on 24,275
+   (47.1%), tax-credit zones on 22,819, flood on 11,824, protected land on 3,405. The six-column
+   table exposed almost none of it. So this is a RENDERING gap, not an acquisition one - nothing
+   new is fetched.
+
+   ⭐ Governing principle, applied per field: every row below states what it CHANGES, not just what
+   it is. A field that cannot earn that line does not appear.
+
+   ⛔ The dossier is NOT duplicated here. It needs the parcel's geometry and the map console's
+   state, and a second implementation would drift from the first the way the eligibility
+   vocabulary did. The dropdown LINKS to it. */
+function detailRow(label, value, absentWhy, sowhat) {
+  const v = (value === null || value === undefined || value === "" )
+    ? `<span class="cannot">${absentWhy || "not measured here"}</span>` : value;
+  return `<tr><td class="dk">${label}</td><td class="dv">${v}</td>
+          <td class="hint">${sowhat || ""}</td></tr>`;
+}
+
+function siteDetail(s) {
+  const a = acresOf(s);
+  const mi = (x) => x == null ? null : `${Number(x).toFixed(1)} mi`;
+  const mw = (x) => x == null ? null : `<b>${fmt(Math.round(Number(x)))} MW</b>`;
+  const link = `index.html?fips=${encodeURIComponent(s.county_fips)}` +
+               `&parcel=${encodeURIComponent(s.parcel_key)}`;
+  const both = [];
+  if (s.wd_mw != null) both.push("getting");
+  if (s.inj_mw != null) both.push("sending");
+
+  return `<tr class="detailrow"><td colspan="7"><div class="detail">
+    <div class="dgrid">
+      <div>
+        <h4>Getting power &mdash; what a data centre needs</h4>
+        <table class="dtable">
+          ${detailRow("Nearest connection point", s.wd_bus, "no withdrawal point within 25 miles",
+            "This is the direction a load draws. It is a published screening figure; only the utility's own study binds.")}
+          ${detailRow("Published capacity", mw(s.wd_mw), "not published for this location",
+            "How much load could connect there today, before upgrades.")}
+          ${detailRow("Distance", mi(s.wd_mi), null, "Further means more line to build, at your cost.")}
+          ${detailRow("Voltage", s.wd_kv ? `${fmt(s.wd_kv)} kV` : null, null,
+            "Higher voltage usually means a cheaper tariff and a bigger interconnection bill.")}
+          ${detailRow("First constraint to bind", s.wd_binding, null,
+            "The specific facility that limits you — the thing an upgrade study would price.")}
+          ${detailRow("Placement confidence", s.wd_conf, null,
+            "How sure we are the bus is where we think it is.")}
+        </table>
+      </div>
+      <div>
+        <h4>Sending power &mdash; only if you co-locate generation</h4>
+        <table class="dtable">
+          ${detailRow("Nearest injection point", s.inj_bus, "no injection point within 25 miles",
+            "Relevant for BESS or on-site generation, not for a load.")}
+          ${detailRow("Injection headroom", mw(s.inj_mw), null,
+            "⚠ Not a substitute for the getting-power figure — measured across 1,826 PJM buses, the two directions agree on none.")}
+          ${detailRow("Range across the study", (s.inj_mw_worst != null || s.inj_mw_best != null)
+            ? `${fmt(Math.round(s.inj_mw_worst ?? 0))}–${fmt(Math.round(s.inj_mw_best ?? 0))} MW` : null,
+            null, "Worst to best case at the same point. A wide spread means the answer depends on which contingency binds.")}
+          ${detailRow("Distance", mi(s.inj_mi), null, "")}
+        </table>
+      </div>
+      <div>
+        <h4>The land</h4>
+        <table class="dtable">
+          ${detailRow("Acres used", `${a.acres.toFixed(2)} ac`, null,
+            a.disputed ? "⚠ Recorded and measured acreage disagree — the SMALLER is used, never the larger."
+                       : "Recorded and measured acreage agree.")}
+          ${detailRow("Fits a data centre", s.mw_dc != null ? mw(s.mw_dc) : null, null,
+            "At 4 MW/acre. Below 25 MW a hyperscale search will not look at it.")}
+          ${detailRow("Fits a battery", s.mw_bess != null ? mw(s.mw_bess) : null, null,
+            "At 10 MW/acre. A BESS clears at a far smaller size than a data centre.")}
+          ${detailRow("What is on it", landPlain(s.occ_group, s.structure_count), null,
+            "Nothing built is a BUILD advantage — no demolition, no tenants — but it is not a signal the owner will sell.")}
+          ${detailRow("Nearest substation", s.sub_name
+            ? `${s.sub_name}${s.sub_kv ? ` · ${fmt(s.sub_kv)} kV` : ""}${s.sub_mi != null ? ` · ${Number(s.sub_mi).toFixed(1)} mi` : ""}` : null,
+            null, "Distinct from the connection point above: a substation is where you physically land.")}
+        </table>
+      </div>
+      <div>
+        <h4>Owner motivation, and what could stop you</h4>
+        <table class="dtable">
+          ${detailRow("Signals on record", s.has_signal ? signalsPlain(s.signals) : null,
+            "none admitted on this parcel — measured, not missing",
+            "A public reason the owner might transact. Absence means a cold approach, not a bad site.")}
+          ${detailRow("Events (3 / 5 / 10 yr)", s.signal_events != null
+            ? `${s.events_3y ?? 0} / ${s.events_5y ?? 0} / ${s.events_10y ?? 0}` : null, null,
+            "Recent and repeated beats old and isolated.")}
+          ${detailRow("First / last event", [s.first_event, s.last_event].filter(Boolean).join(" → ") || null,
+            "undated — the publisher records no date", "An undated record is kept and disclosed, never dropped.")}
+          ${detailRow("How it reached this parcel", s.keying, null,
+            "Whether it was matched by parcel key or by location. Spatial matches are weaker.")}
+          ${detailRow("Flood zone", s.sfha_flood === undefined ? null : (s.sfha_flood ? "YES — mapped hazard" : "clear (measured)"),
+            null, "A mapped hazard raises insurance and can rule out a build outright.")}
+          ${detailRow("Wetland on parcel", s.wetland_on_parcel === undefined ? null : (s.wetland_on_parcel ? "YES" : "clear (measured)"),
+            null, "Wetland means federal permitting and a longer clock.")}
+          ${detailRow("Protected land", s.protected_land === undefined ? null : (s.protected_land ? "YES" : "clear (measured)"),
+            null, "Overlap usually ends the conversation.")}
+          ${detailRow("Federal tax-credit zone", s.bonus_kinds, "none — this parcel is in no bonus zone",
+            "An energy-community or low-income bonus can be worth 10 percentage points of ITC.")}
+        </table>
+      </div>
+    </div>
+    <div class="dlinks">
+      <a class="btn" href="${link}">&#128205; Show this site on the map</a>
+      <a class="btn" href="${link}&open=dossier">&#128196; Open the full Power Plan dossier</a>
+      <span class="hint">Both open the map console, load this county's parcels and select this
+        parcel. The dossier is the printable four-page pack &mdash; it is built there, not here,
+        so there is only ever one version of it.</span>
+    </div>
+  </div></td></tr>`;
+}
+
 function render() {
   activeChips();
   sectionCounts();
@@ -377,15 +493,17 @@ function render() {
   const dirLabel = $("s-dir").value === "inj" ? "Can send (MW)" : "Can get (MW)";
   const head = [["county", "County"], ["acres", "Acres"], ["mw", "Fits (MW)"],
     ["grid", dirLabel], ["gridmi", "Distance"], ["sig", "Owner signal"]];
+  const NCOL = head.length + 1;   // + the expander
   const badge = (st) => st.label === "standing"
       ? `<span class="bdg bdg-st" title="${st.why}">standing condition</span> `
     : st.label === "undated"
       ? `<span class="bdg bdg-un" title="${st.why}">date unknown</span> `
     : st.label === "stale"
       ? `<span class="bdg bdg-ol" title="${st.why}">older than your cutoff</span> ` : "";
-  const rows = VIEW.slice(0, 500).map((s) => {
+  const rows = VIEW.slice(0, 500).map((s, i) => {
     const g = gridOf(s), a = acresOf(s), sst = signalState(s);
-    return `<tr>
+    return `<tr class="siterow" data-i="${i}">
+      <td class="exp" title="show everything we hold for this site">&#9656;</td>
       <td>${s.county_name || "&mdash;"}<div class="sub2">${landPlain(s.occ_group, s.structure_count)}</div></td>
       <td>${a.acres.toFixed(1)}${a.disputed ? ' <span class="warn" title="the recorded and measured acreage disagree; the smaller is used">±</span>' : ""}</td>
       <td class="num"><b>${fmt(capacityMW(s))}</b></td>
@@ -395,7 +513,7 @@ function render() {
       <td>${s.has_signal ? `${signalsPlain(s.signals)}<div class="sub2">${badge(sst)}${
         plural(s.signal_events || 0, "record")}${s.last_event ? ` · latest ${s.last_event}`
         : " · date unknown"}</div>` : '<span class="hint">none</span>'}</td>
-    </tr>`;
+    </tr>${siteDetail(s)}`;
   }).join("");
 
   $("s-results").innerHTML = `
@@ -404,12 +522,21 @@ function render() {
       ${VIEW.length > 500 ? `<p class="hint">Showing the first 500 of ${fmt(VIEW.length)} matches,
         sorted by the column you picked. Download the CSV for all of them.</p>` : ""}
       <table class="rtable">
-        <tr>${head.map(([k2, l]) => `<th data-k="${k2}" class="sortable${SORT.key === k2 ? " on" : ""}">${l}${
+        <tr><th style="width:18px"></th>${head.map(([k2, l]) => `<th data-k="${k2}" class="sortable${SORT.key === k2 ? " on" : ""}">${l}${
           SORT.key === k2 ? (SORT.dir < 0 ? " ▼" : " ▲") : ""}</th>`).join("")}</tr>
-        ${rows || `<tr><td colspan="6" class="cannot">Nothing matches. Loosen a filter above —
+        ${rows || `<tr><td colspan="${NCOL}" class="cannot">Nothing matches. Loosen a filter above —
           the chips at the top of the page show everything currently applied.</td></tr>`}
       </table>
     </div>`;
+  /* One handler on the table, not 500 on the rows. */
+  for (const tr of document.querySelectorAll("#s-results tr.siterow")) {
+    tr.querySelector("td.exp").onclick = () => {
+      const d = tr.nextElementSibling;
+      if (!d || !d.classList.contains("detailrow")) return;
+      const open = d.classList.toggle("open");
+      tr.querySelector("td.exp").innerHTML = open ? "&#9662;" : "&#9656;";
+    };
+  }
   for (const th of document.querySelectorAll("#s-results th.sortable")) {
     th.onclick = () => { const k2 = th.dataset.k;
       SORT = { key: k2, dir: SORT.key === k2 ? -SORT.dir : -1 }; render(); };
