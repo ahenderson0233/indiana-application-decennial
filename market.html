@@ -136,20 +136,23 @@
       its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
       elsewhere.</div></div>
 
-  <div class="card"><h2>Tariff schedules and riders &mdash; the itemised build-up</h2>
-    <div class="sowhat">The cost proxy above is <b>URDB flattened</b>: no riders, no fixed charge, no
-      seasonal split. <b>This is the actual book</b> &mdash; read from each utility's own tariff and
-      from the IURC's commission-stamped copies, component by component, in the order a bill is
-      built: fixed charge, then demand, then energy, then the fuel base embedded in rates, then the
-      rider stack, then the ratchet and the eligibility terms that decide whether you qualify at all.
-      <br><b>The three numbers that move a large bill most</b> are in here and are invisible in a
-      flattened rate: <b>service voltage</b> (a $9.30/kW-month spread at AES Indiana, about
-      <b>$3.9M a year on 35&nbsp;MW</b>), the <b>rider stack</b> (roughly +8.6&nbsp;$/kW-month at
-      I&amp;M), and the <b>ratchet</b>, which sets the demand you pay for in the months you are not
-      running. &#11088; Look for a <b>large-load schedule</b> where one exists &mdash; NIPSCO Rate
-      631 is purpose-built for &ge;10&nbsp;MW at transmission voltage and prices firm, non-firm and
-      market tiers differently, and that election moves the bill more than any rider.</div>
-    <div style="margin:8px 0">
+  <div class="card"><h2>Tariff schedules, with every rider that attaches to them</h2>
+    <div class="sowhat">Each utility's rate schedules, read from its own tariff book and the IURC's
+      commission-stamped copies &mdash; and with each schedule, <b>the riders that actually bill on
+      it</b>. Riders are not a separate topic: they are charges on your bill, and at I&amp;M the
+      stack alone is worth roughly <b>+8.6&nbsp;$/kW-month</b>.
+      <br><b>Read the service-voltage rows.</b> Taking service at transmission rather than primary
+      distribution is usually the largest controllable line on a large bill &mdash; a
+      <b>$9.30/kW-month</b> spread at AES Indiana, about <b>$3.9M a year on 35&nbsp;MW</b>.
+      <br>&#11088; <b>If you are large, look for a large-load schedule.</b> NIPSCO Rate 631 is
+      purpose-built for &ge;10&nbsp;MW at transmission voltage and prices firm, non-firm and
+      market-indexed tiers separately; that election moves the bill more than any rider.
+      <br>⚠ <b>An annual total is deliberately NOT shown yet.</b> Several of these schedules price
+      in <b>blocks</b> &mdash; successive slices of usage, sometimes inverted specifically to price
+      high-load-factor customers out &mdash; and a first pass that summed them returned figures that
+      did not reconcile against what these utilities' industrial customers actually pay. <b>The
+      components below are measured; a bill built from them is not, until it reconciles.</b></div>
+    <div style="margin:10px 0">
       Utility: <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:280px"></select>
       <span class="hint" id="tf-count" style="margin-left:8px"></span>
     </div>
@@ -405,49 +408,111 @@ function mmbtuToCents(v) {
      could take that page down. Consolidating the two copies is a separate, deliberate change. */
   const esc = (x) => String(x ?? "").replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
 
-  /* ---- tariff schedules & riders (operator 2026-08-18: the complete breakdown) ------------
-   * A NULL rate is rendered as "not published in the tariff", never as 0 and never as a blank.
-   * The books genuinely omit components - a two-part rate has no customer charge line - and
-   * showing that as zero is what would make a modelled bill look cheaper than reality. */
+  /* ---- what would power cost here (operator 2026-08-18) --------------------------------
+   * The first version listed components and called rider codes "schedules". Both were wrong:
+   * a rider is an adder ON a schedule, not a peer of one, and a component list is not a price.
+   * This costs each schedule at every service voltage it offers, riders included.
+   *
+   * ⛔ Only components that BILL enter a total. "2,000 kW" is a qualifying floor and "5 years" is
+   * a contract term; adding either to a dollar figure would be inventing money. Reactive
+   * ($/kVAr) charges depend on a power factor the siter has not chosen, so they are excluded and
+   * SAID to be excluded rather than assumed to zero. */
   const TF = await fetchGz("data/tariffs.json.gz");
-  const tfSel = document.getElementById("tf-util");
-  tfSel.innerHTML = TF.utilities.map((u, i) =>
-    `<option value="${i}">${u.is_iou ? "" : "\u00b7 "}${esc(u.utility)} — ${u.n_schedules} schedule${u.n_schedules === 1 ? "" : "s"}, ${u.n_components} component${u.n_components === 1 ? "" : "s"}</option>`).join("");
-  const tfCell = (c) => {
-    if (c.rate === null || c.rate === undefined)
-      return `<span class="cannot">not published in the tariff</span>`;
-    const n = Math.abs(c.rate) >= 1000 ? fmt(c.rate)
-            : (Math.abs(c.rate) < 0.01 ? c.rate.toPrecision(3) : String(c.rate));
-    return `<b>${n}</b>${c.unit ? ` <span class="hint">${esc(c.unit)}</span>` : ""}`;
+  const VOLT_PLAIN = {
+    transmission:    "Transmission (138 kV and above)",
+    subtransmission: "Sub-transmission (around 34 kV)",
+    primary:         "Primary distribution (4-13 kV)",
+    secondary:       "Secondary (below 4 kV)",
+    any:             "Any service voltage",
   };
-  function tfRender(i) {
-    const u = TF.utilities[+i];
-    document.getElementById("tf-count").textContent =
-      `${u.n_schedules} schedules · ${u.n_components} components held`;
-    document.getElementById("tf-body").innerHTML = u.schedules.map((s, k) => `
-      <details class="acc"${k === 0 ? " open" : ""}>
-        <summary><b>${esc(s.code)}</b>${s.name ? ` — ${esc(s.name)}` : ""}
-          <span class="hint">(${s.components.length} component${s.components.length === 1 ? "" : "s"}, ${s.n_priced} priced)</span></summary>
-        <div class="accbody"><div class="scroll"><table>
-          <tr><th style="width:20%">group</th><th style="width:34%">component</th>
-              <th style="width:18%">rate</th><th>applies to</th></tr>
-          ${s.components.map((c) => `<tr>
-            <td class="hint">${esc(c.group)}</td>
-            <td>${esc(c.name || c.code || "")}</td>
-            <td>${tfCell(c)}</td>
-            <td class="hint">${esc(c.applies_to || "")}${c.season ? ` · ${esc(c.season)}` : ""}</td></tr>`).join("")}
-        </table></div></div></details>`).join("");
+  const usd = (n) => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${fmt(Math.round(n))}`;
+
+  function costAt(sch, volt, kW, kWh) {
+    const legs = { fixed: 0, demand: 0, energy: 0 };
+    const riders = { fixed: 0, demand: 0, energy: 0 };
+    const lines = [];
+    let reactive = 0;
+    for (const c of sch.components) {
+      if (c.reactive) { reactive++; continue; }
+      if (!c.bill) continue;
+      if (c.volt && c.volt !== volt) continue;      // wrong voltage for this run
+      let amt = 0;
+      if (c.bill === "energy") amt = c.rate * kWh;
+      else if (c.bill === "demand") amt = c.rate * kW * 12;
+      else if (c.bill === "demand_day") amt = c.rate * kW * 365;
+      else if (c.bill === "demand_kva") amt = c.rate * kW * 12;   // PF 1.0, stated below
+      else if (c.bill === "fixed") amt = c.rate * 12;
+      const leg = c.bill === "energy" ? "energy" : (c.bill === "fixed" ? "fixed" : "demand");
+      (c.origin === "schedule" ? legs : riders)[leg] += amt;
+      lines.push({ ...c, amt, leg });
+    }
+    const total = legs.fixed + legs.demand + legs.energy + riders.fixed + riders.demand + riders.energy;
+    return { legs, riders, lines, reactive, total, cents: kWh ? (total / kWh) * 100 : null };
   }
-  tfSel.addEventListener("change", (e) => tfRender(e.target.value));
-  tfRender(0);
+
+  function tfRender() {
+    const u = TF.utilities[+document.getElementById("tf-util").value];
+    document.getElementById("tf-count").textContent =
+      `${u.n_schedules} rate schedule${u.n_schedules === 1 ? "" : "s"} · ${u.n_riders} riders applied`;
+
+    if (!u.schedules.length) {
+      document.getElementById("tf-body").innerHTML =
+        `<div class="sowhat">No rate schedule is held for this utility. What we hold is recorded on the
+         Data page; for most municipals and co-ops the rates are set by city ordinance or a co-op
+         board and never reach the Commission.</div>`;
+      return;
+    }
+
+    document.getElementById("tf-body").innerHTML = u.schedules.map((sch, i) => {
+      const byGroup = {};
+      for (const c of sch.components) (byGroup[c.group || c.type] ||= []).push(c);
+      const order = ["Fixed charge", "Demand (capacity)", "Energy", "Fuel base embedded in rates",
+                     "Riders", "Ratchet", "Eligibility & terms"];
+      const groups = Object.keys(byGroup).sort((a, b) => {
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
+      const rateCell = (c) => c.rate === null || c.rate === undefined
+        ? `<span class="cannot">not published in the tariff</span>`
+        : `<b>${c.rate}</b> <span class="hint">${esc(c.unit || "")}</span>`;
+      return `<details class="acc"${i === 0 ? " open" : ""}>
+        <summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
+          <span class="hint">· ${sch.n_components} components · ${sch.n_riders_attached} rider${sch.n_riders_attached === 1 ? "" : "s"} applied${sch.blocked ? " · block-rated" : ""}</span></summary>
+        <div class="accbody">
+          ${sch.blocked ? `<div class="sowhat"><b>This schedule prices in BLOCKS.</b> The rates below
+             apply to successive slices of your usage, not all at once, and an inverted ladder is
+             sometimes used deliberately to price high-load-factor customers out. Read the
+             <i>applies to</i> column: it carries the slice each rate covers.</div>` : ""}
+          ${groups.map((g) => `<div class="subhead">${esc(g)}</div>
+            <div class="scroll"><table>
+              <tr><th style="width:34%">component</th><th style="width:16%">from</th>
+                  <th style="width:20%">rate</th><th>applies to</th></tr>
+              ${byGroup[g].map((c) => `<tr>
+                <td>${esc(c.name || "")}</td>
+                <td class="hint">${c.origin === "schedule" ? "schedule" : esc(c.origin)}</td>
+                <td>${rateCell(c)}</td>
+                <td class="hint">${esc(c.basis || c.applies_to || "")}${c.season ? ` · ${esc(c.season)}` : ""}</td></tr>`).join("")}
+            </table></div>`).join("")}
+        </div></details>`;
+    }).join("");
+  }
+
+  const tfSel = document.getElementById("tf-util");
+  tfSel.innerHTML = TF.utilities.filter((u) => u.n_schedules > 0).map((u) =>
+    `<option value="${TF.utilities.indexOf(u)}">${esc(u.utility)}</option>`).join("");
+  document.getElementById("tf-util").addEventListener("change", tfRender);
+  tfRender();
   document.getElementById("tf-prov").innerHTML =
-    `<code>in_utility_tariff_riders</code> — ${TF.summary.components} components across ` +
-    `${TF.summary.schedules} schedules and ${TF.summary.utilities} utilities ` +
-    `(${TF.summary.iou} investor-owned), ${TF.summary.priced} carrying a published rate. ` +
-    `Read from each utility's own tariff book and the IURC's commission-stamped copies; built by ` +
-    `<code>scripts/export_tariffs.py</code>. <b>${TF.summary.not_held} components are recorded as ` +
-    `not published rather than as zero</b> — including utilities whose rates are set by city ` +
-    `ordinance or a co-op board and therefore never reach the Commission at all.`;
+    `<code>in_utility_tariff_riders</code> — <b>${TF.summary.schedules} rate schedules</b> across ` +
+    `${TF.summary.iou} investor-owned utilities, with <b>${TF.summary.riders} riders</b> attached to ` +
+    `the schedules they bill on, from ${TF.summary.components} components read out of each utility's ` +
+    `own tariff book and the IURC's commission-stamped copies. Built by ` +
+    `<code>scripts/export_tariffs.py</code>. <b>${TF.summary.schedules - TF.summary.costable} of ` +
+    `${TF.summary.schedules} schedules price in blocks.</b> ` +
+    `<b>What this is:</b> the measured components of each tariff. <b>What it is not:</b> a bill — ` +
+    `that needs the block ladders applied slice by slice, a power factor for the reactive charges, ` +
+    `and a firm/non-firm election on the tiered schedules, and it must reconcile against what these ` +
+    `utilities' industrial customers actually pay before it is worth showing.`;
 
 })();
 </script>

@@ -1,8 +1,8 @@
 # TABLE INVENTORY — `energy-platfrom.indiana_app`
 
-**GENERATED 2026-08-16 by `scripts/build_table_inventory.py`. Do not hand-edit.**
+**GENERATED 2026-08-18 by `scripts/build_table_inventory.py`. Do not hand-edit.**
 
-256 objects. This exists because this project has repeatedly asserted it did not hold data that was sitting in the warehouse. It lists not just what each object IS but what it CARRIES — owner fields, real dates, status vocabularies, coordinates and parcel keys — because every one of those misses was a column nobody looked at.
+304 objects. This exists because this project has repeatedly asserted it did not hold data that was sitting in the warehouse. It lists not just what each object IS but what it CARRIES — owner fields, real dates, status vocabularies, coordinates and parcel keys — because every one of those misses was a column nobody looked at.
 
 **How to read the flags:** `OWNER` = carries owner name or mailing address (D9/D18 input). `GEO` = placeable without a bridge. `KEY` = can join to the parcel spine. `DATE` = has a date-bearing column. `STATUS` = low-cardinality vocabulary, i.e. **a possible hidden signal split** — this is how D4 was found hiding inside D1.
 
@@ -11,12 +11,12 @@
 | object | rows | flags | what it is |
 |---|---:|---|---|
 | `in_si_signals` | 1,818,158 | **OWNER** KEY DATE | energy.si_signals |
-| `in_si_parcel_signals_v2` | 116,660 | KEY DATE **STATUS** | indiana_app.in_si_signals + in_si_signals_parcel_dated + in_si_southbend_* + in_si_evansville_*  |
-| `in_si_sites_flags_v2` | 102,444 | KEY DATE **STATUS** | indiana_app.in_si_parcel_signals_v2 |
+| `in_si_parcel_signals_v2` | 135,590 | KEY DATE **STATUS** | indiana_app.in_si_signals + in_si_signals_parcel_dated + in_si_southbend_* + in_si_evansville_*  |
+| `in_si_sites_flags_v2` | 106,659 | KEY DATE **STATUS** | indiana_app.in_si_parcel_signals_v2 |
 | `in_si_signals_parcel_dated` | 46,790 | KEY DATE | energy-platfrom.indiana_app.in_si_signals + energy-platfrom.indiana_app.in_si_address_parcel_bri |
 | `in_si_owner_signals` | 2,174 | KEY DATE | indiana_app.in_si_d11_admitted + in_si_d27_admitted + in_si_signals(D19_warn) |
 | `in_si_owner_signals_county` | 67 | DATE | indiana_app.in_si_owner_signals |
-| `in_si_signal_coverage` | 23 | KEY DATE | indiana_app.in_si_signals + in_si_parcel_signals_v2 |
+| `in_si_signal_coverage` | 25 | KEY DATE | indiana_app.in_si_signals + in_si_parcel_signals_v2 |
 
 ## SELLER-INTENT: acquired source corpora
 
@@ -24,6 +24,8 @@
 |---|---:|---|---|
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | 945,896 | KEY | indiana_app.in_si_signals WHERE source_id='si_d5_vacancy_derived' |
 | `in_si_refresh_indy_code_enforcement` | 910,483 | **OWNER** DATE **STATUS** | gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indianapolis/Marion County code enforcement) |
+| `in_si_d9_absentee_marion` | 340,765 | **OWNER** GEO KEY DATE **STATUS** | energy-platfrom.indiana_app.in_marion_parcel_crosswalk (gis.indy.gov sde_Parcel MapServer/5) x i |
+| `in_si_indy_code_widened` | 88,576 | **OWNER** KEY DATE **STATUS** | indiana_app.in_si_refresh_indy_code_enforcement x in_marion_address_crosswalk (gis.indy.gov sde_ |
 | `in_si_refresh_sri_taxsale_in` | 83,547 | GEO KEY DATE **STATUS** | sriservicesusermgmtprod.azurewebsites.net (SRI Services tax-sale platform, IN slice only) |
 | `in_si_indy_taxsale_parcels` | 62,368 | KEY DATE **STATUS** | https://gis.indy.gov/server/rest/services/TaxSaleViewer/TaxSaleParcels_BuildingBlocks/MapServer/ |
 | `in_si_d22_echo_facilities` | 58,021 | GEO DATE **STATUS** | https://echo.epa.gov/files/echodownloads/echo_exporter.zip |
@@ -32,6 +34,7 @@
 | `in_si_indy_code_placed` | 46,411 | **OWNER** KEY DATE **STATUS** | indiana_app.in_si_refresh_indy_code_enforcement + in_marion_address_crosswalk |
 | `in_si_d22_parcel_join` | 34,116 | GEO KEY DATE **STATUS** | indiana_app.in_si_d22_echo_indiana + in_sites |
 | `in_si_sri_placed` | 31,228 | GEO KEY DATE **STATUS** | energy-platfrom.indiana_app.in_si_refresh_sri_taxsale_in + in_sites |
+| `in_si_d22_idem_dated` | 22,565 | DATE **STATUS** | https://oe.idem.in.gov/idem_oe_order search form (380 month windows, 1995-01 to 2026-08) + per-c |
 | `in_si_d22_idem_enforcement` | 22,565 | DATE **STATUS** | https://oe.idem.in.gov/idem_oe_order |
 | `in_si_southbend_code_enforcement` | 20,414 | KEY DATE **STATUS** | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Code_Enforcement_Cases/Featur |
 | `in_si_refresh_ibtr_appeals` | 10,152 | KEY DATE **STATUS** | www.in.gov IBTR DevExtreme determinations API |
@@ -63,6 +66,7 @@
 | `in_si_southbend_demolition_orders` | 80 | DATE | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Active_Demolition_Orders/Feat |
 | `in_si_southbend_vacant_abandoned` | 47 | KEY DATE **STATUS** | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/AllVacantandAbandonedProperti |
 | `in_si_southbend_chronic_problem` | 7 | DATE | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/services/Chronic_Problem_Properties_Li |
+| `in_si_plottability` | 4 | DATE **STATUS** | energy-platfrom.energy.mat_si_plottable WHERE state='IN' (READ-ONLY clip) |
 
 ## PARCEL SPINE & capability gates
 
@@ -87,13 +91,20 @@
 | `in_data_centers_datacentermap` | 157 |  | energy.data_centers_datacentermap |
 | `in_dc_actions_county_v2` | 107 | DATE **STATUS** | Indiana county/municipal government websites via web-search index + robots-checked official fetc |
 | `in_dc_actions_coverage_v2` | 92 | DATE **STATUS** | web-search-engine layer over all 92 Indiana county websites |
+| `in_dc_actions_resolved` | 86 | DATE **STATUS** | Indiana county/municipal government websites — official-source verification of the sweep's REPOR |
 | `in_dc_actions` | 79 | DATE **STATUS** | CORRECTION note (no data change) |
+| `in_dc_actions_nw_reconciled` | 24 | DATE **STATUS** | indiana_app.in_dc_actions_nw_first_pass x in_dc_actions_county_v2 (batch A) x in_dc_actions_reso |
 | `in_data_centers_peeringdb` | 20 | GEO | energy.data_centers_peeringdb |
 | `in_peeringdb_facilities` | 19 | GEO | energy.peeringdb_facilities |
+| `in_dc_actions_resweep_coverage` | 18 | DATE **STATUS** | the 18 counties recorded SEARCHED_NONE_FOUND without their official site ever being fetched |
 | `in_dc_actions_nw_first_pass` | 17 | DATE **STATUS** | NW Indiana county websites, first sweep pass — recovered from the agent transcript |
 | `in_data_centers` | 13 | GEO **STATUS** | energy.data_centers |
+| `in_dc_actions_verify_walls` | 13 | DATE | robots.txt and HTTP refusals encountered during official-source verification |
 | `in_dc_colo_resolved` | 8 | GEO KEY DATE **STATUS** | operator sites (live + Wayback) + PeeringDB public API + operator press releases + baxtel pages  |
+| `in_dc_operator_aliases` | 8 | DATE **STATUS** | operator press releases and their own sites (databank.com, 365datacenters.com via Wayback, globe |
 | `in_dc_eei_tariffs` | 5 | **STATUS** | energy.dc_eei_tariffs |
+| `in_dc_actions_resweep` | 3 | DATE **STATUS** | Indiana county government websites, second pass over the counties whose official site was never  |
+| `in_dc_actions_resweep_walls` | 1 | DATE | robots.txt and HTTP refusals during the re-sweep |
 | `in_dc_docket_tracker` | 1 | DATE | energy.dc_docket_tracker |
 | `in_data_centers_cloudscene` | 0 |  | energy.data_centers_cloudscene |
 
@@ -105,8 +116,11 @@
 | `in_ordinances_amlegal_v3` | 230 | DATE **STATUS** | https://codelibrary.amlegal.com + https://www.iccsafe.org/about/terms-of-use/ |
 | `in_ordinances_dc_v2` | 153 | DATE **STATUS** | https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/ |
 | `in_ordinances_dc_v2_triage` | 115 | DATE **STATUS** | energy-platfrom.indiana_app.in_ordinances_dc_v2 (not modified) |
+| `in_ordinances_county_codified` | 55 | DATE **STATUS** | the 55 Indiana counties' OWN websites — the counties no code publisher could reach |
 | `in_ordinances_dc_coverage_v2` | 45 | **STATUS** | https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/ |
+| `in_ordinances_county_codified_provisions` | 16 | DATE | county websites — the codified sections that actually name a data centre |
 | `in_ordinances_amlegal_v3_probes` | 11 | DATE **STATUS** | https://codelibrary.amlegal.com, https://www.amlegal.com, https://www.iccsafe.org/about/terms-of |
+| `in_ordinances_county_codified_walls` | 8 | DATE | robots.txt and HTTP refusals during the 55-county codified sweep |
 | `in_ordinances_dc_county_sites_v2` | 6 | DATE **STATUS** | Indiana county government websites |
 | `in_ordinances_dc` | 4 | DATE | https://api.municode.com/search (public JSON API of library.municode.com) |
 | `in_ordinances_publisher_inventory_v2` | 3 | DATE **STATUS** | https://api.municode.com/search ; https://codelibrary.amlegal.com/api/clients-search/ |
@@ -116,32 +130,49 @@
 
 | object | rows | flags | what it is |
 |---|---:|---|---|
+| `in_pjm_qs_tc2phii_inj` | 655,404 | **OWNER** DATE **STATUS** | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_queuescope_injection` | 475,098 | **OWNER** DATE **STATUS** | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_tc2phii_wd` | 462,654 | **OWNER** DATE **STATUS** | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_queuescope_aep` | 303,671 | **OWNER** DATE **STATUS** | energy.pjm_queuescope_results (AEP = the I&M sliver) |
+| `in_miso_poi_ladder` | 230,286 | DATE | MISO giqueue POI transfer analysis | endpoint_kind=json_api | https://giqueue.misoenergy.org/POI |
+| `in_pjm_qs_c23sens_wd` | 201,480 | **OWNER** DATE **STATUS** |  |
+| `in_miso_facility_detail` | 40,007 | DATE | energy.miso_poi_headroom / energy.miso_poi_monitored_facilities, Indiana POIs |
 | `in_miso_poi_300mw` | 40,007 | GEO | giqueue.misoenergy.org POI/api/poi_mf?pMaxValue=300 |
+| `in_bus_headroom_miso_vendor` | 17,146 | **OWNER** GEO DATE **STATUS** | Orennia 'Greenfield Interconnection Capacity, Buses' extract 2026-06-23 (licensed vendor CSV), M |
 | `in_pjm_rtep_upgrades` | 15,443 | **OWNER** DATE **STATUS** | PJM Project Status & Cost Allocation (RTEP upgrades) - public grid export at https://www.pjm.com |
 | `in_miso_poi_identity` | 12,845 | GEO DATE | MISO giqueue legacy POI viewer https://giqueue.misoenergy.org/POI/api/pois (via held energy.miso |
 | `in_bus_headroom_miso` | 11,820 | GEO DATE **STATUS** | energy.miso_poi_monitored_facilities x indiana_app.in_miso_poi_identity |
 | `in_pjm_gis_queues` | 6,923 | GEO DATE | PJM public GIS queue-point layer https://gis.pjm.com/arcgis/rest/services/Renewables/Queue/MapSe |
+| `in_pjm_qs_withdrawal_rungcheck` | 4,686 | **OWNER** DATE **STATUS** | PJM Queue Scope | endpoint_kind=html_page | https://queuescope.pjm.com/queuescope/pages/public/e |
 | `in_substations` | 3,858 | GEO DATE **STATUS** | energy.mat_grid_substations (HIFLD+OSM deduped) |
+| `in_bus_headroom_miso_ladder` | 3,852 | DATE | rollup of indiana_app.in_miso_poi_ladder | endpoint_kind=bq_clip | upstream https://giqueue.miso |
 | `in_transmission_union` | 3,737 | **OWNER** GEO **STATUS** | indiana_app.in_transmission_lines + in_osm_power_lines (>=100 kV) |
+| `in_transmission_voltage` | 3,737 | **OWNER** GEO DATE **STATUS** | energy-platfrom.indiana_app.in_transmission_union |
+| `in_substations_dedup` | 3,010 | GEO DATE **STATUS** | energy-platfrom.indiana_app.in_substations |
 | `in_transmission_lines` | 2,623 | **OWNER** GEO DATE **STATUS** | energy.transmission_lines (HIFLD), spatial clip |
+| `in_bus_capacity_tier0` | 2,117 | GEO DATE **STATUS** | energy.miso_poi_headroom + energy.miso_poi_monitored_facilities (MISO giqueue FERC Order 2023) + |
 | `in_rto_expansion` | 2,034 | **OWNER** DATE **STATUS** | MISO MTEP (held energy.txexp_miso_mtep_appendix_a_in_service/_status/_under_evaluation, cdn.miso |
 | `in_pjm_bus_locations_candidate` | 1,475 | GEO DATE | DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-published points), energy.nat_substation |
 | `in_pjm_bus_withdrawal` | 1,475 |  | in_pjm_queuescope_aep |
 | `in_rtep_bus_join` | 1,229 | GEO DATE **STATUS** | energy-platfrom.indiana_app.in_pjm_rtep_upgrade_details + in_substations + in_pjm_bus_locations_ |
+| `in_miso_dpp2025_counties` | 1,000 | DATE | cloud.cartovista.com/miso/api/v2/DataTable/98af4e3b-1772-4cf7-b15f-c5899120dbb8/DataRows (FERC O |
 | `in_queue` | 948 | DATE **STATUS** | energy.interconnection_queue |
 | `in_pjm_rtep_upgrade_details` | 932 | DATE **STATUS** | PJM RTEP upgrade detail fragments (public GET, no login) https://www.pjm.com/m/ProjectConst/Upgr |
 | `in_bus_headroom_300` | 642 |  | in_miso_poi_300mw |
+| `in_miso_poi_state` | 642 | DATE | energy.miso_poi_headroom / energy.miso_poi_monitored_facilities, Indiana POIs |
 | `in_grid_plans` | 618 | DATE **STATUS** | IURC IRP page (filtered) + TDSIC dockets 45894/45647/45557 pass-2 PDFs |
 | `in_iurc_dockets` | 516 | DATE **STATUS** | https://iurc.portal.in.gov/advanced-search/ via companion API https://zus1iurcprodd365companiona |
 | `in_queue_miso` | 456 | **OWNER** DATE **STATUS** | energy.queue_miso |
 | `in_queue_miso_extras` | 456 | **OWNER** DATE **STATUS** | energy.queue_miso |
 | `in_pjm_rtep_cost_allocations` | 375 | DATE **STATUS** | PJM RTEP per-upgrade cost-allocation splits (public GET, no login) https://www.pjm.com/m/Project |
 | `in_txexp_miso_mtep_appendix_a_status` | 328 | **OWNER** DATE **STATUS** | energy.txexp_miso_mtep_appendix_a_status |
+| `in_miso_dpp2025_ph1_project_costs` | 202 | DATE **STATUS** | https://cdn.misoenergy.org/GI-DPP-2025-ALL_SIS_Ph1_FINAL_v1.0_PUBLIC_20260324748615.zip |
+| `in_pjm_bus_injection` | 200 |  | rollup of indiana_app.in_pjm_queuescope_injection | endpoint_kind=bq_clip | upstream https://que |
 | `in_territories` | 145 | GEO DATE **STATUS** | energy.vw_grid_territories |
 | `in_queue_counties` | 87 | GEO **STATUS** | energy.vw_grid_queue_counties |
 | `in_rtep_bus_summary` | 79 | GEO DATE **STATUS** | energy-platfrom.indiana_app.in_rtep_bus_join |
 | `in_pjm_nucra_costs` | 55 | **OWNER** DATE **STATUS** | PJM NUCRA (Network Upgrade Cost Responsibility Allocation) - public XLSX export of the cycle-ser |
+| `in_miso_dpp2025_footprint` | 1 | DATE | cloud.cartovista.com/miso/api/v2/DataTable/421ee8c5-939e-4266-8bb2-f2b84fd8ed17/DataRows (FERC O |
 | `in_miso_poi` | 0 | DATE | energy.miso_poi_monitored_facilities (points in IN polygon) |
 
 ## GENERATION & emissions
@@ -198,10 +229,10 @@
 | `in_ferc714_state_demand` | 166,554 | KEY DATE | energy.ferc714_state_demand |
 | `in_eqr_identity` | 2,635 | DATE **STATUS** | energy.eqr_identity |
 | `in_urdb_rates` | 969 | DATE **STATUS** | energy.urdb_rates |
+| `in_utility_tariff_riders` | 419 | DATE **STATUS** | IURC docketed-case and 30-day filing systems (companion API https://zus1iurcprodd365companionapp |
 | `in_news_dc` | 283 | DATE | CORRECTION note (no data change) |
 | `in_rate_proxies` | 132 | DATE | energy-platfrom.indiana_app.in_urdb_rates + in_eia861_sales + in_rate_wholesale_floor + energy-p |
 | `in_econ_gjf_megadeals` | 26 | DATE | energy.econ_gjf_megadeals |
-| `in_utility_tariff_riders` | 3 | DATE **STATUS** | energy.utility_tariff_riders |
 | `in_rate_component_gaps` | 2 | DATE **STATUS** | energy-platfrom.indiana_app.in_utility_tariff_riders |
 | `in_rate_wholesale_floor` | 2 | DATE | energy-platfrom.energy.iso_lmp (MISO + PJM day-ahead, trailing 12 months) |
 | `in_rate_eligibility` | 1 | DATE | energy-platfrom.indiana_app.in_utility_tariff_riders WHERE component_type='eligibility' |
@@ -211,23 +242,32 @@
 | object | rows | flags | what it is |
 |---|---:|---|---|
 | `in_water` | 2,415,369 | GEO DATE **STATUS** | energy.nhd_flowline |
+| `in_water_distance_parcel` | 532,868 | KEY DATE **STATUS** | energy-platfrom.indiana_app.in_screener_candidates x energy-platfrom.indiana_app.in_nhd_flowline |
+| `in_water_parcel` | 532,868 | KEY DATE | in_screener_candidates x energy.water_aqueduct (geometry_geojson) |
 | `in_wetlands` | 453,995 | GEO **STATUS** | energy.nwi_wetlands |
 | `in_nhd_waterbody` | 186,667 | GEO DATE **STATUS** | energy.nhd_waterbody |
+| `in_nhd_flowline_geom` | 163,976 | GEO DATE | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/6/query |
 | `in_flood` | 66,140 | GEO | energy.nfhl_flood_zones |
 | `in_spc_severe_events` | 24,716 | DATE | energy.spc_severe_events |
 | `in_echo_cwa_facilities` | 13,209 | KEY DATE | energy.echo_cwa_facilities |
 | `in_storm_events` | 12,460 | GEO DATE **STATUS** | energy.storm_events |
+| `in_nhd_waterbody_geom` | 7,430 | GEO DATE **STATUS** | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/12/query |
 | `in_padus` | 4,736 | GEO DATE **STATUS** | energy.padus |
 | `in_fema_disaster_declarations` | 1,442 | DATE **STATUS** | energy.fema_disaster_declarations |
 | `in_water_cwns_2022` | 404 | GEO DATE | energy.water_cwns_2022 |
 | `in_drought_by_state` | 105 | DATE | energy.drought_by_state |
 | `in_fema_nri_counties` | 92 |  | energy.fema_nri_counties |
+| `in_water_county` | 92 | DATE | energy.water_use (USGS 2015) x energy.water_cwns_2022 (EPA CWNS 2022) |
 | `in_water_use` | 92 | DATE | energy.water_use |
 | `in_seismic` | 88 | GEO | energy.seismic_design |
+| `in_watershed_inventory` | 76 | DATE | in_huc8_boundaries x energy.nhd_flowline + energy.nhd_waterbody (reachcode HUC8 rollup) |
 | `in_nonattainment` | 62 | GEO DATE **STATUS** | energy.nonattainment_areas |
 | `in_water_aqueduct` | 56 | GEO DATE **STATUS** | energy.water_aqueduct |
+| `in_water_stress_basin` | 34 | DATE | energy.water_aqueduct (WRI Aqueduct 3.0) |
+| `in_water_stress_basin_geo` | 34 | GEO DATE | energy.water_aqueduct (geometry_geojson, name_1 LIKE Indiana) |
 | `in_land_faa_sua` | 19 | GEO DATE **STATUS** | energy.land_faa_sua |
 | `in_land_military_bases` | 13 | GEO DATE **STATUS** | energy.land_military_bases |
+| `in_water_surface_inventory` | 1 | DATE | energy.nhd_waterbody + energy.nhd_flowline (src_state=IN) |
 
 ## COMMUNITY, LABOUR, LEGISLATURE
 
@@ -298,6 +338,7 @@
 | `vw_nfirs_2022_located` | 0 | DATE _view_ | indiana_app.in_nfirs_basicincident_2022 |
 | `vw_nfirs_2023_located` | 0 | DATE _view_ | indiana_app.in_nfirs_basicincident_2023 |
 | `vw_nfirs_2024_located` | 0 | DATE _view_ | indiana_app.in_nfirs_basicincident_2024 |
+| `vw_pjm_bus_injection_ladder` | 0 | _view_ | energy-platfrom.indiana_app.in_pjm_queuescope_injection |
 | `vw_pjm_bus_withdrawal_located` | 0 | GEO _view_ | indiana_app.in_pjm_bus_withdrawal |
 | `vw_pjm_queuescope_located` | 0 | GEO DATE _view_ | indiana_app.in_pjm_queuescope_aep |
 | `vw_pjm_rtep_upgrades_located` | 0 | DATE _view_ | indiana_app.in_pjm_rtep_upgrades |
@@ -309,8 +350,12 @@
 
 | object | rows | flags | what it is |
 |---|---:|---|---|
+| `_raw_nhd_flowline` | 163,976 |  |  |
+| `_raw_nhd_waterbody` | 8,445 | **STATUS** |  |
+| `_raw_nhd_flowline_backfill` | 3,848 |  |  |
+| `_raw_nhd_waterbody_backfill` | 1,015 | **STATUS** |  |
 | `_indiana_census` | 773 | DATE | energy.INFORMATION_SCHEMA + per-table Indiana counts |
-| `_registry` | 276 | DATE |  |
+| `_registry` | 325 | DATE |  |
 
 ## ⚠ Objects carrying OWNER data — the D9/D18 inputs we already hold
 
@@ -319,17 +364,34 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 | object | column | populated |
 |---|---|---:|
 | `in_si_refresh_indy_code_enforcement` | `OWNER` | 893,878 |
+| `in_pjm_qs_tc2phii_inj` | `owner_id` | 655,404 |
+| `in_pjm_qs_tc2phii_inj` | `owner_label` | 655,404 |
+| `in_asset_distance_parcel` | `line_owner` | 530,877 |
+| `in_pjm_queuescope_injection` | `owner_id` | 475,098 |
+| `in_pjm_queuescope_injection` | `owner_label` | 475,098 |
+| `in_pjm_qs_tc2phii_wd` | `owner_id` | 462,654 |
+| `in_pjm_qs_tc2phii_wd` | `owner_label` | 462,654 |
 | `in_marion_parcel_crosswalk` | `FULLOWNERNAME` | 347,049 |
 | `in_marion_parcel_crosswalk` | `OWNERCITY` | 347,026 |
 | `in_marion_parcel_crosswalk` | `OWNERADDRESS` | 346,781 |
+| `in_si_d9_absentee_marion` | `owner_name` | 340,765 |
+| `in_si_d9_absentee_marion` | `owner_city` | 340,742 |
+| `in_si_d9_absentee_marion` | `owner_state` | 340,637 |
 | `in_pjm_queuescope_aep` | `owner_id` | 303,671 |
 | `in_pjm_queuescope_aep` | `owner_label` | 303,671 |
+| `in_pjm_qs_c23sens_wd` | `owner_id` | 243,169 |
+| `in_pjm_qs_c23sens_wd` | `owner_label` | 243,169 |
+| `in_si_indy_code_widened` | `owner_name` | 88,546 |
 | `in_si_indy_code_placed` | `owner_name` | 46,387 |
+| `in_bus_headroom_miso_vendor` | `owner` | 17,146 |
 | `in_pjm_rtep_upgrades` | `transmission_owner` | 15,398 |
 | `in_si_signals` | `owner_name` | 6,725 |
+| `in_pjm_qs_withdrawal_rungcheck` | `owner_id` | 4,686 |
+| `in_pjm_qs_withdrawal_rungcheck` | `owner_label` | 4,686 |
 | `in_si_evansville_demolition_permits` | `USER_Owner` | 4,190 |
 | `in_si_candidates` | `owner` | 4,170 |
 | `in_transmission_union` | `owner` | 3,025 |
+| `in_transmission_voltage` | `owner` | 3,025 |
 | `in_eia_plants` | `transmission_distribution_owner_id` | 2,675 |
 | `in_eia_plants` | `transmission_distribution_owner_name` | 2,675 |
 | `in_eia_plants` | `transmission_distribution_owner_state` | 2,675 |
@@ -363,8 +425,13 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 
 `saleStatusDescription` hid **D4 tax delinquency** inside D1_tax_sale for a whole session. `CASE_TYPE` hid unsafe-building and vacant-board-order inside D12. Read the vocabulary before trusting any count taken over one of these.
 
+- **`_raw_nhd_waterbody`.`ftype`** — 436 5,650 · 390 2,074 · 466 721
+- **`_raw_nhd_waterbody_backfill`.`ftype`** — 436 687 · 390 307 · 466 21
+- **`in_asset_distance_parcel`.`line_volt_class`** — 100-161 165,461 · UNDER 100 141,829 · 345 102,510 · NOT AVAILABLE 48,853 · 735 AND ABOVE 36,279 · 220-287 35,839 · None 2,097
 - **`in_bonus_geo`.`kind`** — low_income_tract 662 · qct 337 · coal_closure 221 · opportunity_zone 156 · critical_habitat 10 · energy_community 8
+- **`in_bus_capacity_tier0`.`interconnection_type`** — Withdrawal 1,475 · Injection 642
 - **`in_bus_headroom_miso`.`location_status`** — outside_indiana 8,966 · joinable_no_coords 2,212 · indiana 642
+- **`in_bus_headroom_miso_vendor`.`upgrade_tier`** — 0 3,462 · 2 3,421 · 4 3,421 · 3 3,421 · 1 3,421
 - **`in_candidate_sites_colleges`.`CBSATYPE`** — 1 124 · 2 24 · 0 3
 - **`in_candidate_sites_private_schools`.`CBSATYPE`** — 1 414 · 2 128 · N 48
 - **`in_candidate_sites_schools`.`CBSATYPE`** — 1 1,390 · 2 356 · 0 182
@@ -380,9 +447,19 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_dc_actions_nw_first_pass`.`action_type`** — moratorium 5 · approval-permissive 3 · adopted-uncodified-ordinan 3 · proposed 2 · withdrawn 2 · petition-pending 1 · denied 1
 - **`in_dc_actions_nw_first_pass`.`doc_type`** — news article 5 · minutes 4 · ordinance PDF 3 · county webpage 3 · agenda 1 · aggregator 1
 - **`in_dc_actions_nw_first_pass`.`evidence_grade`** — VERIFIED_AT_OFFICIAL_SOURC 11 · REPORTED_NEEDS_VERIFICATIO 6
+- **`in_dc_actions_nw_reconciled`.`action_type`** — approval-permissive 6 · adopted-uncodified-ordinan 5 · moratorium 5 · withdrawn 2 · petition-pending 2 · proposed 2 · denied 1
+- **`in_dc_actions_nw_reconciled`.`grade_first`** — VERIFIED_AT_OFFICIAL_SOURC 13 · REPORTED_NEEDS_VERIFICATIO 7 · None 4
+- **`in_dc_actions_nw_reconciled`.`grade_resweep`** — REPORTED_NEEDS_VERIFICATIO 13 · VERIFIED_AT_OFFICIAL_SOURC 9 · None 2
+- **`in_dc_actions_resolved`.`lead_action_type`** — proposed 24 · approval-permissive 21 · moratorium 17 · denied 7 · withdrawn 5 · petition-pending 4 · adopted-uncodified-ordinan 3
+- **`in_dc_actions_resolved`.`verdict`** — VERIFIED_AT_OFFICIAL_SOURC 50 · NOT_FOUND_AT_OFFICIAL_SOUR 30 · BLOCKED 4 · CONTRADICTED 2
+- **`in_dc_actions_resolved`.`confirmed_action_type`** — None 30 · proposed 18 · approval-permissive 15 · moratorium 9 · denied 4 · withdrawn 3 · adopted-uncodified-ordinan 3
+- **`in_dc_actions_resweep`.`action_type`** — approval-permissive 2 · proposed 1
+- **`in_dc_actions_resweep`.`evidence_grade`** — VERIFIED_AT_OFFICIAL_SOURC 2 · REPORTED_NEEDS_VERIFICATIO 1
+- **`in_dc_actions_resweep_coverage`.`status`** — SEARCHED_NONE_FOUND 15 · ACTION_FOUND 3
 - **`in_dc_colo_resolved`.`verdict`** — RESOLVED 5 · SAME_BUILDING_AS 2 · NOT_FOUND 1
 - **`in_dc_colo_resolved`.`source_type`** — operator site + PeeringDB 2 · directories + PeeringDB AP 1 · operator site (archived) + 1 · operator site + PeeringDB  1 · operator site (archived +  1 · directories (baxtel page f 1 · directories (baxtel page f 1
 - **`in_dc_eei_tariffs`.`customer_type`** — Google / Data Center 2 · AWS / Data Center 1 · Meta / Data Center 1 · Microsoft / Data Center 1
+- **`in_dc_operator_aliases`.`alias_kind`** — acquisition 4 · acquisition_then_rename 3 · rename 1
 - **`in_eia860_generators`.`operational_status`** — existing 9,055 · proposed 1,966 · retired 1,453 · None 5
 - **`in_eia860_generators`.`fuel_type_code_pudl`** — gas 4,762 · coal 2,191 · oil 1,676 · waste 1,430 · solar 1,286 · hydro 555 · wind 429
 - **`in_eia860_generators`.`fuel_type_count`** — 1 9,134 · 2 2,503 · 3 804 · 4 26 · 0 12
@@ -436,6 +513,9 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_marion_parcel_crosswalk`.`PROPERTY_CLASS`** — RESIDENTIAL 317,315 · COMMERCIAL 17,052 · EXEMPT 7,213 · INDUSTRIAL 3,804 · AGRICULTURAL 874 · UTILITIES-REAL 783 · MINERAL 8
 - **`in_marion_parcel_crosswalk`.`PROPERTY_SUB_CLASS`** — 510 248,177 · 500 19,186 · 550 18,969 · 511 16,032 · 520 9,120 · 501 2,448 · 599 2,396
 - **`in_marion_parcel_crosswalk`.`PROPERTY_SUB_CLASS_DESCRIPTION`** — RES ONE FAMILY PLATTED LOT 248,177 · VACANT PLATTED LOT-500 19,186 · CONDO PLATTED-550 18,969 · RES ONE FAMILY UNPLAT 0-9. 16,032 · RES TWO FAMILY PLATTED LOT 9,120 · RES VAC 0-9.99 UNPLATTED-5 2,448 · OTHER RES STRUCTURE-599 2,396
+- **`in_miso_dpp2025_ph1_project_costs`.`fuel_type`** — Solar 87 · Battery Storage 35 · Wind 33 · Gas 24 · Hybrid 20 · Nuclear 2 · Hydro 1
+- **`in_miso_dpp2025_ph1_project_costs`.`total_dpp_2025_phase_1_network_upgrade_cost`** — 132158533.64195265 2 · 57977856.5236084 2 · 20162527.440801095 2 · 82624.34 2 · 50486167.643958 1 · 532344814.95528191 1 · 20899729.444151871 1
+- **`in_miso_dpp2025_ph1_project_costs`.`service_type`** — NRIS 195 · ERIS 6 · E-NRIS 1
 - **`in_nfirs_basicincident_2020`.`INC_TYPE`** — 111 5,130 · 412 3,821 · 444 3,163 · 151 2,167 · 561 2,162 · 424 1,797 · 131 1,719
 - **`in_nfirs_basicincident_2021`.`INC_TYPE`** — 111 5,336 · 412 4,647 · 444 3,564 · 151 2,163 · 131 1,744 · 424 1,736 · 561 1,536
 - **`in_nfirs_basicincident_2022`.`INC_TYPE`** — 111 5,893 · 412 4,848 · 444 3,341 · 131 1,985 · 151 1,979 · 142 1,830 · 424 1,695
@@ -466,8 +546,11 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_nfirs_structure_fires`.`inc_type`** — 111 10,466 · 113 2,231 · 118 2,063 · 112 614 · 114 444 · 121 154 · 122 84
 - **`in_nfirs_structure_fires`.`property_class`** — residential 8,890 · unknown 4,292 · non-residential 3,082
 - **`in_nhd_waterbody`.`ftype`** — 390 163,469 · 466 19,539 · 436 3,659
+- **`in_nhd_waterbody_geom`.`ftype`** — 436 4,963 · 390 1,767 · 466 700
+- **`in_nhd_waterbody_geom`.`ftype_label`** — Reservoir 4,963 · LakePond 1,767 · SwampMarsh 700
 - **`in_nonattainment`.`current_status`** — Maintenance (NAAQS revoked 40 · Maintenance 18 · Nonattainment 3 · Nonattainment (NAAQS revok 1
-- **`in_nonattainment`.`classification_pub_date`** — None 32 · 1083326400000 16 · 1104926400000 7 · 1337601600000 5 · 1401710400000 2
+- **`in_nonattainment`.`classification`** — Former Subpart 1 21 · Moderate 9 · Marginal 8 · None 6 · Serious 5 · Incomplete Data 5 · Not Classified 2
+- **`in_nonattainment`.`classification_citation`** — None 30 · 69 FR 23858 16 · 70 FR 944 7 · 77 FR 30088 5 · 69 FR 56697 2 · 79 FR 31566 2
 - **`in_openstates_energy_bill_actions`.`classification`** — [] 282 · ['amendment-failure', 'fai 109 · ['reading-1', 'referral-co 88 · ['passage'] 60 · ['committee-passage'] 46 · ['passage', 'reading-3', ' 43 · ['reading-2'] 43
 - **`in_openstates_energy_bill_sponsorships`.`classification`** — coauthor 120 · author 93 · cosponsor 53 · sponsor 34
 - **`in_openstates_energy_bill_versions`.`link_media_types`** — application/pdf 131 · application/pdf|applicatio 8 · application/pdf|applicatio 1
@@ -477,6 +560,7 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_ordinances_amlegal_coverage_v2`.`status`** — NOT_ATTEMPTED_RATE_LIMITED 197 · NOT_ATTEMPTED_RUN_ABORTED 17 · TOC_SCANNED_NO_NAMED_CHAPT 9 · BLOCKED 7
 - **`in_ordinances_amlegal_v3`.`prior_run_status`** — NOT_ATTEMPTED_RATE_LIMITED 197 · NOT_ATTEMPTED_RUN_ABORTED 17 · TOC_SCANNED_NO_NAMED_CHAPT 9 · BLOCKED 7
 - **`in_ordinances_amlegal_v3_probes`.`http_status`** — 200 7 · 404 2 · 403 2
+- **`in_ordinances_county_codified`.`status`** — SEARCHED_NONE_FOUND 35 · BLOCKED 11 · NOT_REACHABLE 6 · FOUND_NAMES_DATA_CENTRE 3
 - **`in_ordinances_dc_county_sites_v2`.`evidence_grade`** — REPORTED_NEEDS_VERIFICATIO 4 · VERIFIED_AT_OFFICIAL_SOURC 2
 - **`in_ordinances_dc_coverage_v2`.`status`** — FOUND 24 · SEARCHED_NONE_FOUND 14 · NOT_REACHABLE_NO_SEARCHABL 7
 - **`in_ordinances_dc_v2`.`client_classification_id`** — 2 98 · 4 29 · 6 14 · 3 12
@@ -489,7 +573,12 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_pjm_nucra_costs`.`upgrade_id`** — n6260.1 1 · n6249 1 · n6605 1 · n6639.2 1 · n6872 1 · n6639.4 1 · n7553 1
 - **`in_pjm_nucra_costs`.`upgrade_name`** — Replace the Pontiac 345 kV 1 · Replace the wave trap on t 1 · Wreck and rebuild 0.99 mil 1 · Replace existing 345kV lin 1 · Wreck and rebuild 15.09 mi 1 · 1)_x0009_Upgrade 345kV sta 1 · Replace Northern Neck 115/ 1
 - **`in_pjm_nucra_costs`.`status`** — EP 38 · Pending 10 · UC 6 · IS 1
+- **`in_pjm_qs_c23sens_wd`.`contingency_type`** — Single 96,167 · Breaker 73,197 · Tower 41,252 · Bus 32,553
+- **`in_pjm_qs_tc2phii_inj`.`contingency_type`** — Single 281,612 · Breaker 192,660 · Tower 93,676 · Bus 87,456
+- **`in_pjm_qs_tc2phii_wd`.`contingency_type`** — Single 182,060 · Breaker 138,973 · Tower 79,390 · Bus 62,231
+- **`in_pjm_qs_withdrawal_rungcheck`.`contingency_type`** — Single 1,899 · Breaker 1,784 · Tower 529 · Bus 474
 - **`in_pjm_queuescope_aep`.`contingency_type`** — Single 121,286 · Breaker 114,483 · Tower 36,145 · Bus 31,757
+- **`in_pjm_queuescope_injection`.`contingency_type`** — Single 194,257 · Breaker 157,804 · Tower 65,755 · Bus 57,282
 - **`in_pjm_rtep_cost_allocations`.`share_type`** — Load Ratio Share 189 · Non-Load Ratio Share 186
 - **`in_pjm_rtep_cost_allocations`.`upgrade_id`** — b1659.14 25 · b4068.2 24 · b4068.1 24 · b3847.3 24 · b1659.13 23 · b2973 22 · b2971 22
 - **`in_pjm_rtep_upgrade_details`.`upgrade_id`** — b0117 1 · TOI427 1 · b0839 1 · b0840 1 · b1039 1 · b0840.1 1 · b1039.1 1
@@ -519,6 +608,9 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_rto_expansion`.`status`** — M4 - Project in Service 699 · IS 549 · M2 - Appendix A Approved 333 · EP 244 · Active 79 · M1 - Proposed 56 · On Hold 26
 - **`in_sba_foia_loans`.`businesstype`** — CORPORATION 4,576 · None 273 · INDIVIDUAL 225 · PARTNERSHIP 61
 - **`in_sba_foia_loans`.`loanstatus`** — PIF 2,609 · EXEMPT 1,388 · CANCLD 695 · CHGOFF 276 · NOT FUNDED 158 · CLOSED 9
+- **`in_screener_candidates`.`site_kind`** — no_structure 318,529 · building 214,339
+- **`in_screener_candidates`.`signal_types`** — None 505,168 · 1 21,873 · 0 3,425 · 2 1,766 · 3 348 · 4 194 · 5 79
+- **`in_screener_candidates`.`bonus_kinds`** — None 308,405 · coal_closure 85,983 · low_income_tract 33,818 · energy_community 18,253 · critical_habitat 12,889 · energy_community,coal_clos 8,891 · coal_closure,energy_commun 8,754
 - **`in_si_d11_admitted`.`raw_status`** — Voluntarily Dissolved 348 · Revoked 293 · INACTIVE   / Automatically 95 · Cancelled 63 · INACTIVE   / Automatically 59 · Dissolved 22 · Administratively Dissolved 21
 - **`in_si_d11_admitted`.`status_family`** — dissolved 493 · revoked 470 · forfeited 19 · void 1
 - **`in_si_d11_entity_dissolution`.`raw_status`** — Withdrawn 1,019 · Voluntarily Dissolved 348 · Revoked 293 · INACTIVE   / Automatically 95 · INACTIVE   / Withdrawn - C 69 · Cancelled 63 · INACTIVE   / Automatically 59
@@ -529,6 +621,9 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_si_d22_echo_indiana`.`FAC_DATE_LAST_INFORMAL_ACTION`** — None 45,207 · 03/10/1995 208 · 03/08/1996 116 · 04/18/1994 100 · 04/05/1994 73 · 04/26/2010 70 · 01/06/2026 63
 - **`in_si_d22_echo_indiana`.`FAC_FORMAL_ACTION_COUNT`** — 0 57,041 · 1 484 · 2 317 · 3 95 · 4 30 · 6 11 · 5 8
 - **`in_si_d22_echo_indiana`.`FAC_DATE_LAST_FORMAL_ACTION`** — None 52,577 · 07/19/2006 157 · 04/17/2006 75 · 07/14/1997 54 · 08/07/2006 46 · 06/02/1997 40 · 10/17/2022 20
+- **`in_si_d22_idem_dated`.`type_of_action_order`** — NOTICE OF VIOLATION SIGNED 10,951 · AGREED ORDER (AO) ADOPTED  10,747 · COMMISSIONER'S ORDER ISSUE 542 · AMENDED AO ADOPTED (Signed 170 · AMENDED NOV SIGNED 141 · EMERGENCY ORDER ISSUED (Si 13 · AMENDED EMERGENCY ORDER IS 1
+- **`in_si_d22_idem_dated`.`date_kind`** — None 18,640 · signed 3,894 · staff_signature 22 · adopted 5 · dated 4
+- **`in_si_d22_idem_dated`.`action_month`** — 2002-10 171 · 1998-12 139 · 1998-03 125 · 2006-11 123 · 1999-01 123 · 1998-11 118 · 1999-03 115
 - **`in_si_d22_idem_enforcement`.`type_of_action_order`** — NOTICE OF VIOLATION SIGNED 10,951 · AGREED ORDER (AO) ADOPTED  10,747 · COMMISSIONER'S ORDER ISSUE 542 · AMENDED AO ADOPTED (Signed 170 · AMENDED NOV SIGNED 141 · EMERGENCY ORDER ISSUED (Si 13 · AMENDED EMERGENCY ORDER IS 1
 - **`in_si_d22_parcel_join`.`distress_class`** — no_distress_marker 27,248 · facility_inactive 5,584 · violation 768 · significant_violation 262 · penalised 254
 - **`in_si_d22_parcel_join`.`formal_action_count`** — 0 33,546 · 1 300 · 2 170 · 3 59 · 4 18 · 6 7 · 5 5
@@ -538,6 +633,9 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_si_d27_admitted`.`raw_filing_type`** — UCC financing statement 146 · ORIG FIN STMT 10
 - **`in_si_d27_ucc_lapse_v2`.`raw_filing_type`** — UCC financing statement 146 · ORIG FIN STMT 10
 - **`in_si_d5_abandoned_buildings`.`status`** — Abandoned 5,709 · Vacant 1,411 · Vacant/Abandoned 47 · Chronic problem property 7
+- **`in_si_d9_absentee_marion`.`property_class`** — RESIDENTIAL 311,553 · COMMERCIAL 16,733 · EXEMPT 7,128 · INDUSTRIAL 3,728 · AGRICULTURAL 845 · UTILITIES-REAL 770 · MINERAL 8
+- **`in_si_d9_absentee_marion`.`property_class_desc`** — RES ONE FAMILY PLATTED LOT 245,013 · CONDO PLATTED-550 18,667 · VACANT PLATTED LOT-500 16,998 · RES ONE FAMILY UNPLAT 0-9. 16,013 · RES TWO FAMILY PLATTED LOT 9,067 · RES VAC 0-9.99 UNPLATTED-5 2,435 · OTHER RES STRUCTURE-599 2,376
+- **`in_si_d9_absentee_marion`.`absentee_class`** — local_owner_occupied 194,345 · same_city_different_addres 79,129 · out_of_county_in_state 38,403 · out_of_state 28,763 · foreign_country 117 · unknown 8
 - **`in_si_evansville_demolition_permits`.`USER_App_Status`** — ACTIVE 1,988 · COMPLETE 1,745 · EXPIRED 437 · WITHDRAWN 12 · ENTERED IN ERROR 8
 - **`in_si_evansville_demolition_permits`.`USER_User_Status`** — ACTIVE 3,095 · CLOSED 659 · EXPIRED 436
 - **`in_si_evansville_foreclosures`.`Current_Parcels_SUBTYPE`** — None 5,385 · 1 373
@@ -557,12 +655,15 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_si_indy_abandoned_vacant`.`STATUS`** — Abandoned 5,709 · Vacant 1,411
 - **`in_si_indy_abandoned_vacant_spatial`.`STATUS`** — Abandoned 5,709 · Vacant 1,411
 - **`in_si_indy_code_placed`.`case_status`** — Closed 23,088 · Closed - Fees Due 13,260 · Closed, VBO 4,931 · Closed, RNH 2,670 · Closed, RWH 1,258 · Closed, DEM 574 · Void 488
+- **`in_si_indy_code_widened`.`case_type`** — Enforcement/Investigation/ 24,655 · Enforcement/Violation/Buil 23,467 · Enforcement/Violation/Vaca 21,069 · Enforcement/Violation/Repa 11,677 · Enforcement/Violation/Repa 3,667 · Enforcement/Violation/Envi 2,056 · Enforcement/Violation/Demo 1,963
+- **`in_si_indy_code_widened`.`case_status`** — Closed 33,074 · Closed - Fees Due 21,297 · Violation(s) Corrected 15,396 · VIO-Closed 5,419 · Closed, VBO 4,911 · Closed, RNH 2,659 · Closed, RWH 1,257
 - **`in_si_indy_taxsale_parcels`.`RECORDTYPE`** — A 61,440 · C 919 · B 9
 - **`in_si_indy_taxsale_parcels`.`STATUSID`** — 8 23,767 · 15 13,298 · 4 12,660 · 6 2,239 · 0 2,209 · 24 2,186 · 14 1,859
 - **`in_si_indy_taxsale_parcels`.`STATUSNAME`** — Satisfied 23,767 · Deed Issued 13,298 · Owner Redeemed 12,660 · On List 2,239 · Unknown 2,209 · Payment Plan 2,186 · Removed - Treasurer 1,859
 - **`in_si_marion_route_check`.`status`** — Abandoned 5,709 · Vacant 1,411
 - **`in_si_marion_route_check`.`verdict`** — AGREE 7,104 · DISAGREE 9 · crosswalk only 7
-- **`in_si_parcel_signals_v2`.`admit_status`** — excluded_residential 85,800 · admitted 24,629 · excluded_low_severity 6,231
+- **`in_si_parcel_signals_v2`.`admit_status`** — excluded_residential 101,646 · admitted 27,713 · excluded_low_severity 6,231
+- **`in_si_plottability`.`geom_kind`** — building_in_parcel 1 · rooftop_geocode 1 · none 1 · parcel_polygon 1
 - **`in_si_refresh_brownfield_epa_in`.`TLStatus`** — IN SERVICE 1,438 · NOT AVAILABLE 45
 - **`in_si_refresh_ibtr_appeals`.`appealTypeName`** — Form 131 7,282 · Form 133 1,871 · Form 132 977 · Form 139 22
 - **`in_si_refresh_ibtr_appeals`.`statusName`** — Closed 10,118 · Closed - appeal pending 34
@@ -573,7 +674,7 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_si_refresh_sri_taxsale_in`.`saleTypeDescription`** — Foreclosure 62,760 · Tax Sale 15,860 · Certificate Sale 4,851 · Deed Sale 76
 - **`in_si_refresh_sri_taxsale_in`.`saleStatusCode`** — FR-SPF 26,860 · FR-C 25,829 · D 15,860 · FR-STY 8,314 · C 4,927 · FR-SP 1,757
 - **`in_si_refresh_warn_notices`.`Notice_Type`** — CL 564 · LO 415 · N/A 204 · Potential Closure 22 · RH 4 · TR 4 · CL -Relocating 1
-- **`in_si_sites_flags_v2`.`si_signal_types`** — 0 79,304 · 1 21,922 · 2 959 · 3 248 · 4 10 · 5 1
+- **`in_si_sites_flags_v2`.`si_signal_types`** — 0 82,382 · 1 21,875 · 2 1,766 · 3 348 · 4 194 · 5 79 · 6 14
 - **`in_si_southbend_code_enforcement`.`Record_Type`** — Litter 9,382 · Grass and Weeds 7,710 · Vegetation 2,293 · Sub-standard Housing 619 · Secure Property 252 · Sub-standard Housing (lega 107 · Graffiti 51
 - **`in_si_southbend_code_enforcement`.`Status`** — Closed 13,555 · Review Case for Collection 3,558 · Billed 1,268 · Notice Sent to Owner 1,009 · Abatement Pending 159 · None 107 · In Violation 100
 - **`in_si_southbend_code_enforcement`.`Record_Status_Date`** — 1593388800000 487 · 1592784000000 369 · 1592870400000 365 · 1592179200000 353 · 1591056000000 330 · 1591660800000 324 · 1592265600000 302
@@ -593,24 +694,31 @@ Absentee ownership is *owner mailing state/zip ≠ situs*. Every input below is 
 - **`in_storm_events`.`magnitude_type`** — None 7,071 · EG 4,708 · MG 680 · ES 1
 - **`in_substations`.`substation_type`** — SUBSTATION 2,394 · None 738 · TAP 497 · industrial 76 · distribution 31 · DEAD END 29 · traction 21
 - **`in_substations`.`status`** — IN SERVICE 2,890 · Status not published 968
+- **`in_substations_dedup`.`substation_type`** — SUBSTATION 1,551 · None 738 · TAP 494 · industrial 76 · distribution 31 · DEAD END 27 · traction 21
+- **`in_substations_dedup`.`status`** — IN SERVICE 2,045 · Status not published 965
+- **`in_substations_dedup`.`geom_kind`** — point 2,077 · footprint 933
 - **`in_territories`.`utility_type`** — NOT AVAILABLE 74 · COOPERATIVE 40 · INVESTOR OWNED 17 · MUNICIPAL 14
 - **`in_transmission_lines`.`volt_class`** — UNDER 100 1,124 · 100-161 982 · NOT AVAILABLE 270 · 345 190 · 220-287 47 · 735 AND ABOVE 10
 - **`in_transmission_lines`.`type`** — AC; OVERHEAD 2,081 · OVERHEAD 510 · NOT AVAILABLE 30 · UNDERGROUND 1 · AC; UNDERGROUND 1
 - **`in_transmission_lines`.`status`** — IN SERVICE 2,379 · NOT AVAILABLE 244
 - **`in_transmission_union`.`volt_class`** — UNDER 100 1,124 · None 1,114 · 100-161 982 · NOT AVAILABLE 270 · 345 190 · 220-287 47 · 735 AND ABOVE 10
 - **`in_transmission_union`.`status`** — IN SERVICE 2,379 · None 1,114 · NOT AVAILABLE 244
+- **`in_transmission_voltage`.`volt_class`** — UNDER 100 1,124 · None 1,114 · 100-161 982 · NOT AVAILABLE 270 · 345 190 · 220-287 47 · 735 AND ABOVE 10
+- **`in_transmission_voltage`.`status`** — IN SERVICE 2,379 · None 1,114 · NOT AVAILABLE 244
+- **`in_transmission_voltage`.`volt_class_clean`** — 100-199 1,741 · under 100 1,124 · 300-499 543 · unknown 270 · 200-299 47 · 735 and above 12
 - **`in_tribal_land`.`classfp`** — D8 5 · D5 5 · D2 4
 - **`in_txexp_miso_mtep_appendix_a_status`.`project_type`** — Other 170 · MVP 85 · BRP 49 · GIP 24
 - **`in_txexp_miso_mtep_appendix_a_status`.`planning_status`** — M2 - Appendix A Approved 314 · M3 - Under Construction 14
 - **`in_txexp_miso_mtep_appendix_a_status`.`facility_type`** — Substation 142 · Line Upgrade 86 · Line New 48 · Transformer 37 · Misc. 11 · Voltage Device 4
 - **`in_urdb_rates`.`voltagecategory`** — None 561 · Secondary 172 · Primary 159 · Transmission 77
 - **`in_urdb_rates`.`rate_type`** — flat 452 · tiered 329 · TOU 188
-- **`in_utility_tariff_riders`.`component_type`** — eligibility 1 · rider 1 · base_charge 1
-- **`in_utility_tariff_riders`.`value_status`** — not_held 2 · published 1
+- **`in_utility_tariff_riders`.`component_type`** — rider 149 · eligibility 109 · energy 61 · demand 50 · base_charge 26 · ratchet 18 · fuel_base 6
+- **`in_utility_tariff_riders`.`value_status`** — published 345 · not_held 74
 - **`in_water`.`ftype`** — 460 972,487 · 468 906,321 · 558 273,871 · 336 160,191 · 334 47,914 · 428 43,633 · 420 10,008
 - **`in_water_aqueduct`.`w_awr_def_tot_weight_fraction`** — 0.836734693877551 54 · 0.9999999999999999 2
 - **`in_water_aqueduct`.`w_awr_agr_tot_weight_fraction`** — 0.865546218487395 54 · 1 2
 - **`in_water_aqueduct`.`w_awr_che_tot_weight_fraction`** — 0.9238095238095239 54 · 1 2
+- **`in_water_distance_parcel`.`water_kind`** — River/Stream 454,608 · LakePond 61,637 · Reservoir 16,623
 - **`in_wetlands`.`WETLAND_TYPE`** — Freshwater Pond 167,362 · Freshwater Forested/Shrub  108,313 · Riverine 89,906 · Freshwater Emergent Wetlan 84,364 · Lake 2,471 · Other 1,579
 - **`in_workforce_ipeds_directory`.`inst_status`** — 1 102 · 5 8 · 8 1 · 4 1
 - **`in_workforce_ipeds_directory`.`inst_category`** — 2 51 · 6 34 · -2 9 · 4 9 · 1 5 · 3 4
