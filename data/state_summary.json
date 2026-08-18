@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-18T00:27:54+00:00",
+ "built_at_utc": "2026-08-18T01:09:25+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -1803,6 +1803,110 @@
    "source": "indiana_app.in_si_refresh_warn_notices + in_si_state_warn_notices",
    "n_rows": 1194,
    "built_at": "2026-08-16 16:44:45.830615+00"
+  }
+ ],
+ "si_by_signal": [
+  {
+   "signal": "D5_vacancy",
+   "n": 947592,
+   "counties": 92,
+   "latest": "2024-01-01"
+  },
+  {
+   "signal": "D12_code_violation",
+   "n": 747211,
+   "counties": 0,
+   "latest": "2024-02-27"
+  },
+  {
+   "signal": "D2_foreclosure",
+   "n": 62451,
+   "counties": 0,
+   "latest": "2026-10-20"
+  },
+  {
+   "signal": "D16_structure_fire",
+   "n": 28581,
+   "counties": 0,
+   "latest": "2024-12-31"
+  },
+  {
+   "signal": "D1_tax_sale",
+   "n": 17605,
+   "counties": 0,
+   "latest": "2026-09-28"
+  },
+  {
+   "signal": "D26_assessment_appeal",
+   "n": 6953,
+   "counties": 0,
+   "latest": "2026-08-05"
+  },
+  {
+   "signal": "D14_sba_chargeoff",
+   "n": 3774,
+   "counties": 0,
+   "latest": "2026-06-23"
+  },
+  {
+   "signal": "D7_brownfield",
+   "n": 1378,
+   "counties": 0,
+   "latest": null
+  },
+  {
+   "signal": "D19_warn",
+   "n": 1039,
+   "counties": 0,
+   "latest": "2026-07-21"
+  },
+  {
+   "signal": "D20_loan_maturity",
+   "n": 419,
+   "counties": 0,
+   "latest": "2036-03-01"
+  },
+  {
+   "signal": "D6_bankruptcy",
+   "n": 393,
+   "counties": 0,
+   "latest": "2026-08-06"
+  },
+  {
+   "signal": "D17_commercial_eviction",
+   "n": 370,
+   "counties": 92,
+   "latest": "2025-01-01"
+  },
+  {
+   "signal": "D25_rail_abandonment",
+   "n": 215,
+   "counties": 0,
+   "latest": "2026-07-01"
+  },
+  {
+   "signal": "D8_exit_intent",
+   "n": 142,
+   "counties": 0,
+   "latest": "2008-09-01"
+  },
+  {
+   "signal": "A2_gov_surplus",
+   "n": 20,
+   "counties": 0,
+   "latest": "2024-09-30"
+  },
+  {
+   "signal": "D24_plant_delisting",
+   "n": 13,
+   "counties": 0,
+   "latest": "2026-03-11"
+  },
+  {
+   "signal": "D3_seized_auction",
+   "n": 2,
+   "counties": 0,
+   "latest": "2026-06-05"
   }
  ]
 }

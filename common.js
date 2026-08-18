@@ -74,6 +74,16 @@ const SIGNAL_PLAIN = {
   D24_plant_delisting: ["Plant delisted", "the site came off a register of operating plants", "state"],
   D26_assessment_appeal: ["Owner appealed their tax assessment", "the owner is disputing the property's assessed value", "event"],
   A2_gov_surplus: ["Government surplus property", "a public body has declared the property surplus to its needs", "state"],
+ /* The corpus carries six more codes than the flag set does. They were unlabelled, so the SI Feed's
+     signal inventory printed RAW CODENAMES at the reader (G8: an internal codename is never a name).
+     Five of them are real observations that cannot reach a parcel -- they are recorded against a
+     debtor, a court case, a rail corridor or a county -- and the sixth is not a signal at all. */
+  D6_bankruptcy: ["Bankruptcy filing", "the owner or occupying business filed for bankruptcy - recorded against a debtor, not against a parcel", "event"],
+  D17_commercial_eviction: ["Commercial eviction case", "an eviction action in the county courts - held at county grain, so it is context rather than parcel evidence", "event"],
+  D25_rail_abandonment: ["Rail line abandonment", "a carrier filed to abandon a rail line - a line is not a parcel, so this flags a corridor rather than a site", "event"],
+  D8_exit_intent: ["Stated intent to exit", "a filing or public statement that the operator plans to leave the site", "event"],
+  D3_seized_auction: ["Seized-property auction", "the property was seized and scheduled for public auction", "event"],
+  D5_vacancy: ["Undeveloped land - NOT a signal", "a parcel with no building on it. The operator ruled that the absence of a structure is not evidence an owner wants to sell, so this is never admitted as a signal - it is kept only as sizing context", "state"],
 };
 const signalKind = (code) => (SIGNAL_PLAIN[String(code).trim()] || [, , "event"])[2];
 /* does this parcel carry at least one signal that never goes stale? */
