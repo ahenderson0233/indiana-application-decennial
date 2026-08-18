@@ -1152,7 +1152,7 @@ function openScoreEvidence(r) {
   const rows_ = Object.keys(PART_NAME).map((k) => {
     const s = r.parts[k];
     if (!s) return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td>
-      <td colspan="2" class="cannot">cannot assess — left out of the denominator</td></tr>`;
+      <td colspan="2" class="cannot">not measured here — left out of the denominator</td></tr>`;
     return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td><td class="sc">${Math.round(s.score)}</td>
       <td><div class="scorebar"><i style="width:${Math.round(s.score)}%"></i></div>
       <span class="hint">${s.basis}</span></td></tr>`;
@@ -1223,8 +1223,23 @@ function naaSoWhat(p) {
   return `<div class="sowhat">${sev}<br><b>Solar or battery-only? Largely moot.</b> The burden lands
     on combustion &mdash; it bites a gas-fired or diesel-backed data centre, not a BESS.${src}</div>`;
 }
-function row(k, v) {
-  const val = (v === null || v === undefined || v === "") ? `<span class="cannot">cannot assess</span>`
+/* THREE states, not two (operator, 2026-08-18: "say something that is more truthful to the user").
+ *
+ *   a value            -> show it
+ *   measured, empty    -> caller passes `absent`, e.g. "none within 25 miles". This is a FINDING,
+ *                         and a useful one: we looked and there is nothing there.
+ *   not measurable     -> "not measured here" (the G8 wording), because we have no source, no
+ *                         coverage, or the join did not resolve.
+ *
+ * ⛔ The two must never collapse into one phrase. Printing "none" for something we never measured
+ * invents a negative finding the reader cannot detect - the same defect as treating an unpublished
+ * rate as zero, which once produced 95 false "below floor" violations. Printing "cannot assess"
+ * where we DID look and found nothing understates what we know, which is the complaint that
+ * prompted this. The default stays the honest one, so a caller that says nothing is never taken to
+ * be asserting emptiness. */
+function row(k, v, absent) {
+  const val = (v === null || v === undefined || v === "")
+    ? `<span class="cannot">${absent || "not measured here"}</span>`
     : (typeof v === "number" ? fmt(v) : String(v));
   return `<tr><td>${k}</td><td>${val}</td></tr>`;
 }
@@ -1443,7 +1458,7 @@ function renderPowerPlan(p, fips) {
 
   const partRows = Object.keys(PART_NAME).map((k) => {
     const s = r.parts[k];
-    if (!s) return `<tr><td>${PART_NAME[k]}</td><td class="cannot">cannot assess</td>
+    if (!s) return `<tr><td>${PART_NAME[k]}</td><td class="cannot">not measured here</td>
       <td class="hint">left out of the denominator, not scored zero</td></tr>`;
     return `<tr><td>${PART_NAME[k]} <span class="hint">w${w[k]}</span></td>
       <td class="sc">${Math.round(s.score)}</td><td class="hint">${s.basis}</td></tr>`;
