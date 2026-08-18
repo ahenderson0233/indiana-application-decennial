@@ -1333,6 +1333,81 @@ function openWaterEvidence(p) {
 
 /* which service territory contains the parcel - Figure 1 needs the utility, and the utility is a
    polygon question, not a county question */
+/* ⛔ WE HOLD THE FOOTPRINT, SO DO NOT ASK A POINT. Operator, 2026-08-18: *"we should already
+   have the service territory footprints within this application, so that should be used if you
+   are using parcels to tariff rates. As such, we really shouldn't ever be using centroids ... We
+   only use it when we absolutely must, and this should not be one of those times."*
+
+   `p.lat`/`p.lon` is a representative interior point - measured 2-332 m from the true centroid and
+   always inside the parcel - but it is still ONE point standing in for a polygon. Resolving the
+   serving utility from it means a parcel straddling a territory boundary is silently assigned to
+   whichever territory happens to contain that point. That was survivable when the dossier only
+   NAMED the utility. It is not survivable now that the same name selects a tariff book: a wrong
+   territory attaches a dollar figure to the wrong company under this parcel's address.
+
+   So test the parcel's own ring vertices. If they all land in one territory, that is the answer
+   and it is now a polygon answer. If they do not, the parcel STRADDLES a boundary - which is a
+   real finding about the site, not a defect - and the dossier says so instead of picking one.
+   Returns { T, all, straddles, basis }. (dossier audit D-11) */
+function territoryForParcel(fips, key, lat, lon) {
+  const feats = state.loaded.get(fips) || [];
+  const ft = feats.find((f) => f.properties && f.properties.parcel_key === key);
+  const pts = [];
+  if (ft && ft.geometry) {
+    (function walk(c) {
+      if (typeof c[0] === "number") { pts.push(c); return; }
+      for (const x of c) walk(x);
+    })(ft.geometry.coordinates);
+  }
+  if (!pts.length) {
+    /* geometry not loaded (the county has not been opened). Fall back to the interior point and
+       SAY that is what happened, rather than presenting it as a footprint answer. */
+    const T = territoryAt(lat, lon);
+    return { T, all: T ? [T] : [], straddles: false, basis: "interior point (parcel outline not loaded)" };
+  }
+  /* Sample the whole ring but cap the work - a parcel can carry thousands of vertices and this
+     runs inside a click handler. Every vertex is a real boundary point of the parcel, so an even
+     stride across them is a fair test of whether the parcel crosses a territory line. */
+  const stride = Math.max(1, Math.floor(pts.length / 64));
+  const seen = new Map();
+  for (let i = 0; i < pts.length; i += stride) {
+    const T = territoryAt(pts[i][1], pts[i][0]);
+    if (T && T.utility) seen.set(T.utility, T);
+  }
+  const all = [...seen.values()];
+  if (!all.length) {
+    const T = territoryAt(lat, lon);
+    return { T, all: T ? [T] : [], straddles: false, basis: "interior point (no vertex resolved)" };
+  }
+  return { T: all[0], all, straddles: all.length > 1,
+           basis: `parcel footprint, ${Math.ceil(pts.length / stride)} boundary points tested` };
+}
+
+
+/* Bounding boxes, computed once and cached. territoryForParcel tests up to 64 ring vertices, and
+   each test used to walk all 145 territories' full rings - 435 ms on a 70-acre parcel, inside a
+   click handler. A bbox reject is four comparisons and changes NO answer: a point outside a
+   polygon's bounding box cannot be inside the polygon. */
+function terrBoxes() {
+  if (state._terrBox) return state._terrBox;
+  const boxes = [];
+  for (const f of (state.terr ? state.terr.features : [])) {
+    const g = f.geometry; if (!g) continue;
+    const polys = g.type === "Polygon" ? [g.coordinates]
+                : g.type === "MultiPolygon" ? g.coordinates : [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const poly of polys) for (const q of (poly[0] || [])) {
+      if (q[0] < x0) x0 = q[0];
+      if (q[0] > x1) x1 = q[0];
+      if (q[1] < y0) y0 = q[1];
+      if (q[1] > y1) y1 = q[1];
+    }
+    boxes.push({ f, polys, x0, y0, x1, y1 });
+  }
+  state._terrBox = boxes;
+  return boxes;
+}
+
 function territoryAt(lat, lon) {
   if (!state.terr || lat == null || lon == null) return null;
   const inRing = (ring) => {
@@ -1343,10 +1418,20 @@ function territoryAt(lat, lon) {
     }
     return hit;
   };
-  for (const f of state.terr.features) {
-    const g = f.geometry; if (!g) continue;
-    const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
-    for (const poly of polys) if (poly.length && inRing(poly[0])) return f.properties;
+  for (const b of terrBoxes()) {
+    if (lon < b.x0 || lon > b.x1 || lat < b.y0 || lat > b.y1) continue;   // bbox reject
+    const f = b.f, polys = b.polys;
+    /* ⛔ RINGS AFTER THE FIRST ARE HOLES, and only poly[0] was tested. A parcel inside a
+       territory's donut hole - a municipal utility enclosed by an IOU, the common Indiana case -
+       resolved to the ENCLOSING utility. That decides all four rows of the dossier's Figure 1,
+       the regulated/market wording and next step 1, so it names the wrong company to call.
+       Naming the wrong utility is worse than naming none. (dossier audit D-7) */
+    for (const poly of polys) {
+      if (!poly.length || !inRing(poly[0])) continue;
+      let inHole = false;
+      for (let h = 1; h < poly.length; h++) if (inRing(poly[h])) { inHole = true; break; }
+      if (!inHole) return f.properties;
+    }
   }
   return null;
 }
@@ -1428,6 +1513,14 @@ async function openDossier(p, fips) {
     try { state.gridsiting = await fetchGz("data/gridsiting.json.gz"); }
     catch { state.gridsiting = { buses: [], mtep: [], utilities: [] }; }
   }
+  /* ⛔ THE DOSSIER USED TO CARRY NO TARIFF DATA AT ALL, and said so in print - while the payload
+     existed and the Market page priced every utility in it. Loaded lazily, on the same
+     fetch-or-empty pattern as gridsiting, so a missing file degrades to "not held" instead of
+     taking the map console down. (dossier audit D-1) */
+  if (!state.tariffs) {
+    try { state.tariffs = await fetchGz("data/tariffs.json.gz"); }
+    catch { state.tariffs = { utilities: [] }; }
+  }
   return renderPowerPlan(p, fips);
 }
 
@@ -1465,28 +1558,50 @@ function renderPowerPlan(p, fips) {
   }).join("");
 
   const siDetail = p.has_si_signal === true ? `
-      ${row("Owner-motivation signals", signalsPlain(p.si_signals))}
-      ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null)}
+      ${row("Owner-motivation signals", signalsPlain(p.si_signals),
+             "signal recorded but its type is not named")}
+      ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null,
+             "undated — the source publishes no date for this record")}
       ${row("events in 3 / 5 / 10 yrs", p.si_events_3y != null ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
       ${row("how it reached this parcel", p.si_keying)}
       ${row("where the date came from", p.si_date_basis)}`
     : `<tr><td>seller-intent signal</td><td>none admitted on this parcel</td>
        <td class="hint">measured, not missing</td></tr>`;
 
-  const tables = ["in_sites", "in_si_sites_flags_v2", "in_site_gates", "in_substations",
-                  "in_transmission_union", "in_si_d22_echo_indiana"];
+  /* ⛔ THIS LIST CITED TWO TABLES THE DOSSIER NEVER READS (in_substations,
+     in_transmission_union) AND OMITTED FOUR IT DOES - the bus capacities behind the headline
+     withdrawal figure, the queue, the county posture and the tariffs. G16's test is "could a
+     stranger re-run this from what the document states", and it could not. Now it names what
+     actually produced the numbers above. (dossier audit D-4) */
+  const tables = ["in_sites", "in_si_sites_flags_v2", "in_site_gates", "in_si_d22_echo_indiana",
+                  "in_territories", "in_bus_capacity_tier0", "in_queue", "in_dc_actions_resolved",
+                  "in_utility_tariff_riders", "in_urdb_rates"];
 
   /* ---- the Power Plan's own inputs ---- */
   const lat = Number(p.lat), lon = Number(p.lon);
-  const T = territoryAt(lat, lon) || {};
+  /* footprint, not a point - see territoryForParcel */
+  const terr = territoryForParcel(fips, p.parcel_key, lat, lon);
+  const T = terr.T || {};
   const ba = (T.control_area || "").toUpperCase();
   // both constrained to the site's OWN balancing authority - see nearestBus()
   const wdBus = nearestBus(lat, lon, "withdrawal", ba);   // load side - what a data centre needs
   const injBus = nearestBus(lat, lon, "injection", ba);   // generator side
   const target = uc === "dc" ? Math.min(mw, 300) : Math.min(mw, 5);
   const G = state.gridsiting || { mtep: [], utilities: [] };
-  const mtepNear = (G.mtep || []).filter((m) =>
-    wdBus && String(m.from_sub || "").toUpperCase().includes(String(wdBus.name || "~~").toUpperCase().slice(0, 6)));
+  /* ⛔ THIS WAS A 6-CHARACTER SUBSTRING MATCH on a station name, which both over-matches (any
+     station sharing six leading characters) and under-matches (any naming variation inside them),
+     and silently degraded to matching "~~" when there was no bus. There is no shared key between
+     MTEP's `from_sub` and our bus names, so rather than dress a string guess up as a join, the
+     row below reports the statewide count only and the near-station clause is withheld.
+     Re-enable it when a real key exists. (dossier audit D-9) */
+  const mtepNear = [];
+
+  /* The parcel's own utility, priced through the SAME engine the Market page uses (common.js).
+     85% is the load factor a 24/7 data centre runs at and is stated wherever the figure appears;
+     the dossier has no load-factor control of its own. */
+  const TARIFF_LF = 0.85;
+  const quote = tariffQuote(state.tariffs, T.utility, target, TARIFF_LF);
+  const [tariffHeld, tariffMeans] = tariffCells(quote, target, TARIFF_LF);
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const regulated = String(T.regulated || "").toUpperCase().startsWith("Y") || T.utility_type === "INVESTOR OWNED";
@@ -1496,7 +1611,11 @@ function renderPowerPlan(p, fips) {
     <table class="pp">
       <tr><th>#</th><th>Role</th><th>Who</th><th>What it means for you</th></tr>
       <tr><td>1</td><td><b>Electric service utility</b></td>
-        <td>${T.utility || '<span class="cannot">not resolved at this point</span>'}</td>
+        <td>${T.utility || '<span class="cannot">no territory polygon covers this parcel</span>'}
+          ${terr.straddles ? `<div class="hint"><b>⚠ This parcel STRADDLES ${terr.all.length}
+            service territories</b> — ${terr.all.map((x) => escHtml(x.utility)).join(", ")}. Which one
+            serves you is decided at the meter, not by us, and the rate below is priced for the
+            first. Confirm with both before relying on either.</div>` : ""}</td>
         <td class="hint">The company that would actually serve the site. They run the load study and
           set your rate schedule.</td></tr>
       <tr><td>2</td><td><b>Generation provider</b></td>
@@ -1575,9 +1694,34 @@ function renderPowerPlan(p, fips) {
          the only route to that number.`
       : `Ask for a QueueScope-equivalent withdrawal study at the nearest bus and confirm the
          published figure against the utility's own model.`,
-    `Establish the rate schedule that applies at ~${fmt(target)} MW and at your expected service
-      voltage. <b>Service voltage materially changes the bill</b> — on a worked 35 MW example,
-      transmission-level service was about $210,000/yr cheaper than distribution primary.`,
+    /* ⛔ THIS USED TO PRINT A HARDCODED $210,000/yr FROM A WORKED 35 MW EXAMPLE AT ONE UTILITY,
+       unconditionally, for every parcel in Indiana. The advice was right and the number was
+       somebody else's. It is now this utility's own spread at this parcel's load. (audit D-3) */
+    (quote && !quote.none && !quote.urdbOnly && quote.rows.length > 1)
+      /* ⚠ ONE NUMBER, ONE FORMAT. This line and the Figure 3 tariff cell describe the same spread,
+         and rounding it to whole millions here while the cell showed one decimal printed "$2M" and
+         "$2.3M" in the same document. Two figures for one fact is how a reader stops trusting
+         both. It also has to name the right CAUSE: where the cheapest and dearest rows are
+         different SCHEDULES, telling the reader to go and check their service voltage sends them
+         after the wrong thing. */
+      ? (() => {
+          const lo = quote.rows[0], hi = quote.rows[quote.rows.length - 1];
+          const d = hi.total - lo.total;
+          const amt = Math.abs(d) >= 1e6 ? `$${(d / 1e6).toFixed(1)}M` : `$${fmt(Math.round(d))}`;
+          const sameSched = lo.code === hi.code;
+          return `Establish the rate schedule that applies at ~${fmt(target)} MW${sameSched
+            ? " and at your expected service voltage" : ""}. At <b>${quote.utility}</b> the options
+            you qualify for span <b>${lo.cents.toFixed(2)}–${hi.cents.toFixed(2)}¢/kWh</b> at
+            ${(TARIFF_LF * 100).toFixed(0)}% load factor — <b>${amt} a year</b> — ${sameSched
+            ? `and the difference is the <b>service voltage</b>, so confirm which one you can
+               physically reach before assuming the cheapest.`
+            : `and the difference is <b>which schedule you qualify for</b> (${lo.code} against
+               ${hi.code}), which turns on contract demand and load factor — confirm your
+               eligibility with them, not just the voltage.`}`;
+        })()
+      : `Establish the rate schedule that applies at ~${fmt(target)} MW and at your expected service
+         voltage. <b>Service voltage materially changes the bill</b>, and we hold no priced
+         schedule for this utility, so ask them for the applicable schedule and its riders.`,
     po.has_local_restriction
       ? `⚠ Local restrictions are recorded in this county — confirm current zoning status and any
          moratorium expiry before spending on diligence.`
@@ -1616,13 +1760,18 @@ function renderPowerPlan(p, fips) {
 
     <h3>Figure 1 · Electric stakeholder roles and responsibilities</h3>
     ${fig1}
-    <div class="prov">${prov("in_territories")} · service territory resolved by point-in-polygon
-      against the published territory boundary, not by county.</div>
+    <div class="prov">${prov("in_territories")} · resolved by ${escHtml(terr.basis)} against the
+      published territory boundary — <b>not by county, and not from a centroid</b>. Ring
+      vertices are tested individually so a parcel crossing a territory line is reported as
+      crossing it rather than silently assigned to one side.</div>
 
     <h3>Figure 2 · Parcel diagram</h3>
     ${parcelDiagram(fips, p.parcel_key)}
-    <div class="prov">The parcel's own recorded boundary, drawn to scale. No centroid is used
-      anywhere in this document.</div>
+    <div class="prov">The parcel's own recorded boundary, drawn to scale. <b>Acreage, the
+      distances to transmission, substations and water, and the service territory above are all
+      measured against this polygon</b>, never a centroid. ⚠ The one exception is stated rather
+      than hidden: the <b>nearest grid connection point</b> in Figure 3 is measured from the
+      parcel's interior point, because the bus locations we hold are themselves points.</div>
 
     <!-- ============================ PAGE 2 ============================ -->
     <div class="pp-break"></div>
@@ -1635,7 +1784,11 @@ function renderPowerPlan(p, fips) {
           ? `<b>${wdBus.name}</b> · ${fmt(wdBus.kv)} kV · ${wdBus.mi} mi<br>
              <b>${fmt(wdBus.mw)} MW</b> published withdrawal capacity
              ${wdBus.binding ? `<div class="hint">first constraint to bind: ${bindingPlain(wdBus.binding)}</div>` : ""}
-             <div class="hint">vintage: ${wdBus.vintage || "per publisher"}</div>`
+             <div class="hint">vintage: ${wdBus.vintage || "per publisher"}</div>
+             ${/2027 RTEP/i.test(String(wdBus.vintage || "")) ? `<div class="hint"><b>⚠ This is a
+               SUPERSEDED study.</b> We hold the current case (2028 TC2 Phase II, 1,826 buses) but
+               it is not yet wired into this figure — treat the number as indicative and ask the
+               utility.</div>` : ""}`
           : `<span class="cannot">Not published for this location.</span>`}</td>
         <td class="hint">${wdBus
           ? `This is the direction a data centre needs. It is a published screening figure, not a
@@ -1650,8 +1803,9 @@ function renderPowerPlan(p, fips) {
              <div class="hint">study case: DPP-2021 cycle</div>`
           : `<span class="cannot">No connection point within 25 miles.</span>`}</td>
         <td class="hint">Only relevant if you intend to co-locate generation or export.
-          <b>It is not a substitute for the withdrawal figure</b> — measured on 200 buses, the two
-          directions agreed on <b>none</b> of them.</td></tr>
+          <b>It is not a substitute for the withdrawal figure</b> — re-measured on the current
+          PJM case across <b>1,826 buses</b>, the two directions agree on <b>none</b> of the 407
+          where either is non-zero, and every non-zero one is on the generation side.</td></tr>
 
       <tr><td><b>Generation capacity</b></td>
         <td>${q.active_mw != null
@@ -1664,19 +1818,16 @@ function renderPowerPlan(p, fips) {
 
       <tr><td><b>Planned transmission</b></td>
         <td>${(G.mtep || []).length
-          ? `${fmt((G.mtep || []).length)} MISO expansion projects recorded statewide${mtepNear.length
-              ? `, ${mtepNear.length} referencing the nearest station` : ""}`
+          ? `${fmt((G.mtep || []).length)} MISO expansion projects recorded statewide
+             <div class="hint">not filtered to this site — MTEP names stations in its own
+               vocabulary and we hold no key that joins it to our buses</div>`
           : `<span class="cannot">none recorded</span>`}</td>
         <td class="hint">Where capacity is <i>going</i> to appear. A site next to a planned upgrade
           may be viable on a later timeline even if it is constrained today.</td></tr>
 
       <tr><td><b>Tariffs and rates</b></td>
-        <td>${T.utility ? `${T.utility} — ${regulated ? "regulated" : "market"} service`
-          : `<span class="cannot">utility not resolved</span>`}
-          <div class="hint">No component-level Indiana tariff is held yet.</div></td>
-        <td class="hint"><b>Your rate schedule depends on your maximum load and your service
-          voltage</b>, and both are site decisions. We deliberately do not print a $/kWh here:
-          a blended county average would look precise and be wrong. This is open work.</td></tr>
+        <td>${tariffHeld}</td>
+        <td class="hint">${tariffMeans}</td></tr>
 
       <tr><td><b>Local rules</b></td>
         <td>${po.posture || '<span class="cannot">not assessed</span>'}
@@ -1703,9 +1854,11 @@ function renderPowerPlan(p, fips) {
         .map(([m, d]) => `<tr><td>${m}</td><td class="cannot">Not started</td>
           <td class="hint">${d}</td></tr>`).join("")}
     </table>
-    <div class="prov">Every milestone reads <b>Not started</b> because no study documentation exists
-      for this site — that is the honest status of a prospect, and the checklist is here so the path
-      is visible before you commit.</div>
+    <div class="prov">⚠ <b>This checklist is not derived from anything.</b> We hold no utility
+      study documentation for any Indiana site, so every milestone is printed as
+      <b>Not started</b> rather than measured — it is the honest status of a prospect and a map of
+      the path ahead, but it would not change if a study did exist. Do not read it as a
+      check we performed. (dossier audit D-8)</div>
 
     <h3>Figure 5 · Evidence held for this site</h3>
     <table class="pp">
@@ -1718,7 +1871,8 @@ function renderPowerPlan(p, fips) {
       ${row("Flood zone", p.sfha_flood === undefined ? null : (p.sfha_flood ? "YES — mapped flood hazard" : "clear (measured)"))}
       ${row("Wetland on parcel", p.wetland_on_parcel === undefined ? null : (p.wetland_on_parcel ? "YES" : "clear (measured)"))}
       ${row("Protected land overlap", p.protected_land === undefined ? null : (p.protected_land ? "YES" : "clear (measured)"))}
-      ${row("Federal tax-credit zone", p.bonus_kinds)}
+      ${row("Federal tax-credit zone", p.bonus_kinds,
+             p.bonus_kinds === undefined ? undefined : "none — this parcel is in no bonus zone")}
       ${siDetail}
     </table>
     <div class="prov">Sources used in this document:<br>${tables.map((t) => prov(t)).join("<br>")}</div>

@@ -21,6 +21,15 @@ async function fetchGz(url) {
   return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).json();
 }
 async function fetchJson(url) { return (await fetch(url + "?v=" + Date.now())).json(); }
+/* HTML escape, shared. ⚠ NOT named `esc`: market.html declares its own `const esc` at module
+   scope, and a second top-level `esc` here would be a duplicate declaration that takes that page
+   down - its own comment warns of exactly this. app.js had NO html escaper at all, which is how
+   an `esc(...)` added to the dossier threw "esc is not defined" at open time and made the Dossier
+   button do nothing. Parse-checking did not catch it; rendering the document did. */
+function escHtml(x) {
+  return String(x == null ? "" : x).replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
+}
+
 const fmt = (n) => n == null ? "—" : Number(n).toLocaleString("en-US");
 let PROV = {};
 async function loadProv() {
@@ -284,3 +293,276 @@ function mwReality(mw, density) {
 }
 
 document.addEventListener("DOMContentLoaded", () => renderNav());
+
+
+/* ============================================================================================
+   TARIFF COSTING ENGINE - ONE copy, shared by the Market page and the map console's dossier.
+   ============================================================================================
+   ⛔ IT LIVES HERE BECAUSE TWO COPIES DRIFT. This repo has the receipts: the eligibility
+   vocabulary was maintained separately in the exporter and the renderer, and when the exporter
+   learned the words "ceiling" and "exceeds" the renderer did not - so a 1,000 kW schedule kept
+   being quoted to a 300 MW load. The dossier needs exactly the arithmetic the Market page uses,
+   and the only safe way to give it that is to have one function.
+
+   The rules encoded below were each earned by a wrong number; the reasoning is kept inline
+   because the reasoning is the part that stops it being re-broken:
+     - only components that BILL enter a total; a qualifying floor is not a charge
+     - block ladders are ALTERNATIVES across slices, never addends
+     - TOU energy bills its own share of the year; TOU DEMAND bills full kW in every period,
+       because a flat 24/7 load peaks in all of them
+     - reactive and optional-service charges are excluded, counted, and disclosed
+     - an inherited schedule leg is still a schedule leg, not a rider
+   ============================================================================================ */
+const LLF_MAX = 0.15;          // low-load-factor service is for customers under ~15% LF
+const VOLT_FAMILY = {
+  transmission:    "Transmission (138 kV and above)",
+  subtransmission: "Sub-transmission (around 34 kV)",
+  primary:         "Primary distribution (4-13 kV)",
+  secondary:       "Secondary (below 4 kV)",
+  any:             "Any service voltage",
+};
+/* Asymmetric on purpose - below a utility's blended industrial average has always meant a
+   MISSING CHARGE in this codebase, while above is what a new large-load schedule does against
+   decades of embedded cost. */
+const BAND_LO = -20, BAND_HI = 60;
+
+function allocate(blocks, total, scale) {
+  let cost = 0, used = [];
+  for (const b of blocks) {
+    const lo = b.block[1] == null ? 0 : b.block[1];
+    const hi = b.block[2] == null ? Infinity : b.block[2];
+    const qty = Math.max(0, Math.min(total, hi) - lo);
+    if (qty <= 0) continue;
+    cost += qty * scale * b.rate;
+    used.push({ ...b, amt: qty * scale * b.rate });
+  }
+  return { cost, used };
+}
+
+function costAt(sch, volt, kW, kWh, lf) {
+  /* A component applies at this class if it names no class at all, or names THIS one. A
+   * multi-class component ("transmission and primary") carries the families it named, and
+   * applies only at those - letting it bill everywhere put Duke HLF at 44.31 c/kWh. */
+  const famOf = (k) => (sch.volt_classes.find((x) => x.key === k) || {}).family || k;
+  const at = (c) => {
+    if (c.volt) return c.volt === volt;
+    if (c.volt_named && c.volt_named.length) return c.volt_named.includes(famOf(volt));
+    return true;
+  };
+  const legs = { fixed: 0, demand: 0, energy: 0 };
+  const riders = { fixed: 0, demand: 0, energy: 0 };
+  const lines = [];
+  let reactive = 0, conditional = 0;
+  const monthlyKWh = kWh / 12, hoursUse = kW ? monthlyKWh / kW : 0;
+
+  /* An INHERITED schedule leg is still a schedule leg. A large-load framework rides on a parent
+   * (I&M IP-LL on IP), and the exporter re-labels the inherited components so the reader can see
+   * where they came from — "IP (underlying schedule)". Bucketing on `origin !== "schedule"` then
+   * counted the parent's own demand and energy as RIDERS, which is why IP-LL showed ENERGY $0
+   * across all four service classes while its Riders column carried $153.89M. The money was
+   * right and every column it sat in was wrong. */
+  const isScheduleLeg = (c) => c.origin === "schedule"
+                        || String(c.origin).endsWith("(underlying schedule)");
+  const push = (c, amt, leg) => {
+    (isScheduleLeg(c) ? legs : riders)[leg] += amt;
+    lines.push({ ...c, amt, leg });
+  };
+
+  // --- blocked legs first: group by (origin, kind) and allocate the ladder ---
+  const blocked = sch.components.filter((c) => c.block && c.bill && at(c) && !c.conditional
+                                      && !(c.low_lf_only && lf > LLF_MAX));
+  const groups = {};
+  for (const c of blocked) (groups[`${c.origin}|${c.block[0]}`] ||= []).push(c);
+  for (const key of Object.keys(groups)) {
+    const g = groups[key].slice().sort((a, b) => (a.block[1] ?? 0) - (b.block[1] ?? 0));
+    const kind = g[0].block[0];
+    let r;
+    if (kind === "kwh_month")      r = allocate(g, monthlyKWh, 1);
+    else if (kind === "hours_use") r = allocate(g, hoursUse, kW);
+    else                           r = allocate(g, kW, 1);          // kW slices
+    const months = kind === "kw" ? 12 : 12;                          // both bill monthly
+    for (const l of r.used) push(l, l.amt * months, kind === "kw" ? "demand" : "energy");
+  }
+
+  // --- unblocked legs ---
+  for (const c of sch.components) {
+    if (c.block || !c.bill || !at(c)) { if (c.reactive) reactive++; continue; }
+    if (c.reactive) { reactive++; continue; }
+    /* An OPTIONAL service riding inside the schedule is not part of a firm 24/7 bill. NIPSCO
+     * puts maintenance service ($0.62/kW/DAY, unavailable June-September, capped at 60 days a
+     * year), back-up service for cogenerators, and an affiliate-transfer premium in among its
+     * firm rates; billing them as mandatory added $106.22M/yr to Rate 632 and drove it to
+     * +241%. Skipped and COUNTED, never silently dropped - the same treatment reactive charges
+     * get, for the same reason. */
+    if (c.conditional) { conditional++; continue; }
+    /* A charge that forks on load factor INSIDE one schedule. Southeastern REMC's C-5 prices
+     * summer demand at 15.50 $/kW for customers at or above 300 kWh/kW and 8.10 for those
+     * below, both carrying season='summer' and the SAME component name - so applying both
+     * charged one customer twice across the same four months. They are alternatives; at 85%
+     * load factor ours is unambiguously the upper fork. */
+    if (c.low_lf_only && lf > LLF_MAX) { conditional++; continue; }
+    let amt = 0, leg = "demand";
+    /* A time-of-use ENERGY rate bills only the kWh that falls in its own period. For a flat
+     * 24/7 load that share is fixed by the clock, so it is arithmetic rather than a guess.
+     * DEMAND is different and simpler: a constant load peaks in EVERY period, so each
+     * time-differentiated demand charge bills the full kW - which is precisely why TOU is
+     * usually a poor deal for a data centre, and worth showing rather than hiding. */
+    if (c.bill === "energy")          { amt = c.rate * kWh * (c.tou_share ?? 1); leg = "energy"; }
+    else if (c.bill === "demand")     { amt = c.rate * kW * (c.months ?? 12); }
+    else if (c.bill === "demand_kva") { amt = c.rate * kW * (c.months ?? 12); }
+    else if (c.bill === "demand_day") { amt = c.rate * kW * 365; }
+    else if (c.bill === "fixed")      { amt = c.rate * 12; leg = "fixed"; }
+    push(c, amt, leg);
+  }
+  const total = legs.fixed + legs.demand + legs.energy
+              + riders.fixed + riders.demand + riders.energy;
+  return { legs, riders, lines, reactive, conditional, total,
+           cents: kWh ? (total / kWh) * 100 : null };
+}
+
+/* ============================================================================================
+   THE DOSSIER'S TARIFF BLOCK  (audit D-1, D-3)
+   ============================================================================================
+   The Power Plan used to print "No component-level Indiana tariff is held yet" and "we
+   deliberately do not print a $/kWh here", while `app.js` did not even load the tariff payload.
+   Both statements were true when written and false by 2026-08-18: 668 components across 73
+   utilities, 22 costed from their own books at every service voltage.
+
+   ⭐ The second claim's REASONING was the part that had gone stale. It declined to print a rate
+   because only "a blended county average" was available - which is exactly what the rate engine
+   removed. The dossier already names the serving utility by point-in-polygon; this joins that
+   name to that utility's own book.
+
+   Lives here, not in app.js, for two reasons: the arithmetic must be the SAME engine the Market
+   page uses (see the note above costAt), and app.js is boot-critical and cannot be rendered in a
+   headless sandbox - so the logic sits in a file that CAN be exercised from market.html.
+   ============================================================================================ */
+
+/* territory name (in_territories) -> the tariff payload's utility, or null.
+   The two vocabularies match ZERO times out of 145, so the exporter ships an enumerated map
+   (scripts/utility_names.py) and stamps `territory_names` on each utility. Never fuzzy-matched:
+   a wrong utility here would price the wrong company's book under this parcel's address. */
+function tariffForTerritory(TF, territoryName) {
+  if (!TF || !TF.utilities || !territoryName) return null;
+  const want = String(territoryName).trim().toUpperCase();
+  return TF.utilities.find((u) => (u.territory_names || [])
+    .some((t) => String(t).trim().toUpperCase() === want)) || null;
+}
+
+/* The schedules a load of this size can actually TAKE - eligibility is a ceiling as well as a
+   floor, and a schedule the customer is 300x too large for is not an option. */
+function eligibleSchedules(u, kW, lf) {
+  return (u.schedules || []).filter((sc) =>
+    sc.costable && !sc.by_contract
+    && !(sc.low_load_factor && lf > LLF_MAX)
+    && !(sc.max_kw != null && kW > sc.max_kw)
+    && !(sc.min_kw != null && kW < sc.min_kw));
+}
+
+/* What this parcel's utility would charge, priced through the SAME engine as the Market page.
+   Returns null when we hold no book, so the caller can say so rather than invent a number. */
+function tariffQuote(TF, territoryName, mw, lf) {
+  const u = tariffForTerritory(TF, territoryName);
+  if (!u) return null;
+  const kW = mw * 1000, kWh = kW * 8760 * lf;
+  const out = { utility: u.utility, urdbOnly: false, benchmark: u.benchmark_cents, rows: [] };
+
+  const elig = eligibleSchedules(u, kW, lf);
+  if (!elig.length) {
+    /* No BOOK schedule fits. URDB is a floor and is labelled as one - it is flattened, carrying
+       no riders, no fixed charges and no seasonal blocks, and the rider stack alone is worth
+       1.5-2 c/kWh where we hold it. */
+    const ur = (u.urdb || []).filter((r) => /industrial/i.test(r.sector || "") && r.e_lo != null);
+    if (!ur.length) return { ...out, none: true };
+    const priced = ur.map((r) => {
+      const dem = r.d_max != null ? Number(r.d_max) * kW * 12 : 0;
+      return { name: r.name, hasDem: r.d_max != null,
+               total: dem + Number(r.e_lo) * kWh };
+    }).sort((a, b) => a.total - b.total);
+    return { ...out, urdbOnly: true,
+             rows: priced.map((x) => ({ ...x, cents: (x.total / kWh) * 100 })) };
+  }
+
+  for (const sc of elig) {
+    const classes = (sc.volt_classes || []).length ? sc.volt_classes
+                                                   : [{ key: "any", family: "any", label: "any" }];
+    for (const vc of classes) {
+      if (/low[- ]load[- ]factor|\bllf\b/i.test(vc.label || "") && lf > LLF_MAX) continue;
+      const r = costAt(sc, vc.key, kW, kWh, lf);
+      /* the leg guard, unchanged: a row missing a whole billing leg never shows a rate */
+      const missing = (sc.has_demand_leg !== false && (r.legs.demand + r.riders.demand) === 0)
+                   || (sc.has_energy_leg !== false && (r.legs.energy + r.riders.energy) === 0);
+      if (missing || r.cents == null || r.cents < 2) continue;
+      out.rows.push({ code: sc.code, name: sc.name, largeLoad: !!sc.large_load,
+                      voltage: vc.label || VOLT_FAMILY[vc.family] || vc.key,
+                      total: r.total, cents: r.cents,
+                      ridersNotHeld: !!sc.riders_not_held,
+                      riders: r.riders.fixed + r.riders.demand + r.riders.energy });
+    }
+  }
+  out.rows.sort((a, b) => a.cents - b.cents);
+  return out.rows.length ? out : { ...out, none: true };
+}
+
+/* The Figure 3 cell and its "what it means" column, as [held, meaning]. */
+function tariffCells(q, mw, lf) {
+  const money = (n) => Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${fmt(Math.round(n))}`;
+  if (!q) {
+    return [`<span class="cannot">utility not resolved, so no tariff can be looked up</span>`,
+            `Figure 1 could not name the serving utility, so there is no book to price. Resolve
+             the utility first - the rate follows from it.`];
+  }
+  if (q.none) {
+    return [`${q.utility}<div class="hint"><span class="cannot">no rate we hold applies at
+             ${fmt(mw)} MW</span></div>`,
+            `We hold no schedule this load is eligible for at this utility. That is usually a
+             CEILING - small municipal schedules cap out well below a data centre - and it means
+             the rate would be individually negotiated.`];
+  }
+  if (q.urdbOnly) {
+    const b = q.rows[0];
+    return [`${q.utility}<div class="hint">no tariff book held &mdash; URDB floor</div>
+             <b>&ge;${b.cents.toFixed(2)}&cent;/kWh</b> &middot; &ge;${money(b.total)}/yr
+             <div class="hint">${String(b.name || "").slice(0, 40)}${b.hasDem ? "" : " · no demand charge captured"}</div>`,
+            `<b>A floor, not a bill.</b> URDB is flattened &mdash; no riders, no fixed charges, no
+             seasonal blocks. Where we hold both, the rider stack alone adds roughly
+             <b>1.5&ndash;2&cent;/kWh</b>. Use it to decide whether this utility is worth a call.`];
+  }
+  const best = q.rows[0], worst = q.rows[q.rows.length - 1];
+  const spread = worst.total - best.total;
+  const ll = q.rows.find((r) => r.largeLoad);
+  /* ⛔ THE SPREAD IS NOT ALWAYS A VOLTAGE SPREAD, and calling it one was wrong. Where a utility
+     publishes no service-class split - most municipals and co-ops - every row keys to "any", and
+     the gap between cheapest and dearest is a gap between SCHEDULES. Printing "6.61c at any
+     against 8.16c at any ... service voltage is a site decision" attributed a schedule choice to
+     a voltage choice and told the reader to go and check a thing that does not vary here. */
+  const named = (r) => r.voltage && !/^any$/i.test(r.voltage);
+  const byVoltage = best.code === worst.code && named(best) && named(worst);
+  const at = (r) => named(r) ? ` at ${r.voltage}` : "";
+  return [
+    `${q.utility}<div class="hint">${q.rows.length} priced option(s) at ${fmt(mw)} MW,
+       ${(lf * 100).toFixed(0)}% load factor</div>
+     <b>${best.ridersNotHeld ? "&ge;" : ""}${best.cents.toFixed(2)}&cent;/kWh</b> &middot;
+     ${best.ridersNotHeld ? "&ge;" : ""}${money(best.total)}/yr
+     <div class="hint">cheapest: <b>${best.code}</b>${best.largeLoad ? " (large load)" : ""}${at(best)}</div>
+     ${ll && ll.code !== best.code ? `<div class="hint">large-load schedule <b>${ll.code}</b>:
+       ${ll.cents.toFixed(2)}&cent;</div>` : ""}
+     ${q.benchmark != null ? `<div class="hint">industrial customers here actually pay
+       ${q.benchmark}&cent; (EIA-861)</div>` : ""}`,
+    `${q.rows.length === 1
+       ? `<b>One priced option.</b> ${best.cents.toFixed(2)}&cent;/kWh on <b>${best.code}</b>${at(best)}.`
+       : byVoltage
+       ? `<b>Service voltage is a site decision worth ${money(spread)} a year here</b> &mdash;
+          ${best.cents.toFixed(2)}&cent; at ${best.voltage} against ${worst.cents.toFixed(2)}&cent;
+          at ${worst.voltage}. Which one you can take is set by what is in the ground near the
+          site, not by which is cheapest.`
+       : `<b>Which schedule you qualify for is worth ${money(spread)} a year here</b> &mdash;
+          ${best.cents.toFixed(2)}&cent; on <b>${best.code}</b>${at(best)} against
+          ${worst.cents.toFixed(2)}&cent; on <b>${worst.code}</b>${at(worst)}.
+          ${named(best) || named(worst) ? "" : "This utility publishes no service-voltage split, so the choice is the schedule, not the connection point. "}Eligibility
+          is set by contract demand and load factor, so confirm which one you actually qualify for.`}
+     Every figure includes the schedule's own charges <b>and every rider that
+     attaches to it</b>${best.ridersNotHeld
+       ? ", except this schedule's riders, which the book says exist but we do not hold - so treat it as a floor"
+       : ""}.`];
+}

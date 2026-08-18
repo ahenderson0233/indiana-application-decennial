@@ -38,6 +38,9 @@ from google.cloud import bigquery
 # cannot break another (BACKLOG G56, operator 2026-08-18). Nine defects on 2026-08-18 were all a
 # generic rule meeting a house convention.
 import tariff_adapters as TA
+# The map console names a parcel's utility from `in_territories`, whose names match the tariff
+# books' names ZERO times out of 145. Enumerated map, reviewed pair by pair - never fuzzy.
+import utility_names as UN
 
 DS = "energy-platfrom.indiana_app"
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -907,6 +910,9 @@ for util, rs in by_util.items():
         "utility": util, "is_iou": util in IOU,
         # so the dossier can answer "what can a load of this size actually take here?" directly
         "conventions": TA.describe(util),
+        # every `in_territories` name that resolves to this utility, so the dossier can look up
+        # the book for the utility it just named by point-in-polygon
+        "territory_names": sorted(k for k, v in UN.TERRITORY_TO_TARIFF.items() if v == util),
         "eligibility": [{"code": sc["code"], "name": sc["name"],
                          "min_kw": sc.get("min_kw"), "max_kw": sc.get("max_kw"),
                          "costable": sc.get("costable"), "tou": sc.get("tou"),
@@ -940,7 +946,7 @@ for key, rws in urdb_by_util.items():
         continue
     utilities.append({
         "utility": rws[0].get("utility_name") or key.title(), "is_iou": False,
-        "conventions": None, "eligibility": [], "urdb": rws,
+        "conventions": None, "eligibility": [], "urdb": rws, "territory_names": [],
         "benchmark_cents": None, "benchmark_year": None,
         "benchmark_mwh_per_customer": None, "benchmark_customers": None,
         "n_schedules": 0, "n_riders": 0, "schedules": [], "riders_index": [],
