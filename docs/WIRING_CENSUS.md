@@ -97,7 +97,7 @@ headline can be audited rather than taken on trust:
 | `in_eia860m_generators` | direct | `grid.html`, `scripts/export_context_layers.py` |
 | `in_eia861_demand_response` | direct | `market.html`, `scripts/export_context_layers.py` |
 | `in_eia861_reliability` | direct | `app.js`, `market.html` |
-| `in_eia861_sales` | direct | `app.js` |
+| `in_eia861_sales` | direct | `app.js`, `scripts/export_tariffs.py` |
 | `in_eia861_sales_ult_cust` | direct | `app.js` |
 | `in_eia861_territory` | direct | `app.js` |
 | `in_eia923_fuel_receipts_costs` | direct | `market.html`, `scripts/export_context_layers.py` |
@@ -313,7 +313,7 @@ headline can be audited rather than taken on trust:
 | `in_urdb_rates` | direct | `app.js`, `market.html` |
 | `in_usa_structures_county` | direct | `app.js` |
 | `in_ustp_ch7_tfr` | direct | `app.js` |
-| `in_utility_tariff_riders` | direct | `app.js` |
+| `in_utility_tariff_riders` | direct | `app.js`, `market.html` |
 | `in_water` | direct | `app.js` |
 | `in_water_aqueduct` | direct | `app.js` |
 | `in_water_county` | direct | `scripts/export_water.py` |

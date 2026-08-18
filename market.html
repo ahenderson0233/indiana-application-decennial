@@ -416,13 +416,19 @@ function mmbtuToCents(v) {
    * ($/kVAr) charges depend on a power factor the siter has not chosen, so they are excluded and
    * SAID to be excluded rather than assumed to zero. */
   const TF = await fetchGz("data/tariffs.json.gz");
-  const VOLT_PLAIN = {
+  /* The publisher's own words for the service class beat any label we invent - "primary direct"
+     and "transmission (69,000 V)" are real distinctions a siter has to make. VOLT_FAMILY is only
+     a fallback for rows that name no class. */
+  const VOLT_FAMILY = {
     transmission:    "Transmission (138 kV and above)",
     subtransmission: "Sub-transmission (around 34 kV)",
     primary:         "Primary distribution (4-13 kV)",
     secondary:       "Secondary (below 4 kV)",
     any:             "Any service voltage",
   };
+  // Low-load-factor service is for customers under roughly 15% annual load factor. Showing it to
+  // someone running at 85% would price a service they cannot take, so it is dropped above that.
+  const LLF_MAX = 0.15;
   const usd = (n) => Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${fmt(Math.round(n))}`;
 
   /* Allocate a quantity across a block ladder. The rates are ALTERNATIVES applied to successive
@@ -443,7 +449,15 @@ function mmbtuToCents(v) {
   }
 
   function costAt(sch, volt, kW, kWh) {
-    const at = (c) => !c.volt || c.volt === volt;
+    /* A component applies at this class if it names no class at all, or names THIS one. A
+     * multi-class component ("transmission and primary") carries the families it named, and
+     * applies only at those - letting it bill everywhere put Duke HLF at 44.31 c/kWh. */
+    const famOf = (k) => (sch.volt_classes.find((x) => x.key === k) || {}).family || k;
+    const at = (c) => {
+      if (c.volt) return c.volt === volt;
+      if (c.volt_named && c.volt_named.length) return c.volt_named.includes(famOf(volt));
+      return true;
+    };
     const legs = { fixed: 0, demand: 0, energy: 0 };
     const riders = { fixed: 0, demand: 0, energy: 0 };
     const lines = [];
@@ -475,7 +489,12 @@ function mmbtuToCents(v) {
       if (c.block || !c.bill || !at(c)) { if (c.reactive) reactive++; continue; }
       if (c.reactive) { reactive++; continue; }
       let amt = 0, leg = "demand";
-      if (c.bill === "energy")          { amt = c.rate * kWh; leg = "energy"; }
+      /* A time-of-use ENERGY rate bills only the kWh that falls in its own period. For a flat
+       * 24/7 load that share is fixed by the clock, so it is arithmetic rather than a guess.
+       * DEMAND is different and simpler: a constant load peaks in EVERY period, so each
+       * time-differentiated demand charge bills the full kW - which is precisely why TOU is
+       * usually a poor deal for a data centre, and worth showing rather than hiding. */
+      if (c.bill === "energy")          { amt = c.rate * kWh * (c.tou_share ?? 1); leg = "energy"; }
       else if (c.bill === "demand")     { amt = c.rate * kW * (c.months ?? 12); }
       else if (c.bill === "demand_kva") { amt = c.rate * kW * (c.months ?? 12); }
       else if (c.bill === "demand_day") { amt = c.rate * kW * 365; }
@@ -501,8 +520,25 @@ function mmbtuToCents(v) {
       const minKW = sch.components.find((c) => c.type === "eligibility"
         && /minimum|contract demand/i.test(c.name || "") && /kW/i.test(c.unit || ""));
       const tooSmall = minKW && minKW.rate && kW < minKW.rate;
-      const elig = tooSmall ? `<div class="sowhat"><b>You would not qualify at ${fmt(mw)} MW.</b>
-        This schedule requires at least ${fmt(minKW.rate)} kW of contract demand.</div>` : "";
+      /* ⛔ A CEILING IS ELIGIBILITY TOO, and only the floor was being checked. NIPSCO 624
+       * "General Service - Large" states "Company shall not supply demand in excess of 25,000 kW
+       * under this schedule" - a 300 MW load is 12x over it and cannot take service at all, yet
+       * the page priced it at 14.12 c/kWh as though it were an option. Its name is misleading:
+       * "large" there means large GENERAL SERVICE, not large load. */
+      const maxKW = sch.components.find((c) => c.type === "eligibility"
+        && /kW/i.test(c.unit || "") && c.rate
+        && /maximum|in excess of|not exceed|no greater|up to/i.test(`${c.name || ""} ${c.basis || ""}`));
+      const tooBig = maxKW && kW > maxKW.rate;
+      const elig = tooBig
+        ? `<div class="sowhat"><b>&#9888; You CANNOT take service on this schedule at ${fmt(mw)} MW.</b>
+           It carries a ceiling of <b>${fmt(maxKW.rate)} kW (${(maxKW.rate / 1000).toFixed(0)} MW)</b>
+           &mdash; ${esc(maxKW.basis || maxKW.name || "")}. You are
+           <b>${(kW / maxKW.rate).toFixed(1)}&times; over it</b>. The figures below are what the
+           published rates would compute to, and are shown only so the exclusion is checkable
+           &mdash; <b>they are not a price available to you</b>. Look for this utility's large-load
+           schedule instead.</div>`
+        : tooSmall ? `<div class="sowhat"><b>You would not qualify at ${fmt(mw)} MW.</b>
+           This schedule requires at least ${fmt(minKW.rate)} kW of contract demand.</div>` : "";
 
       if (sch.modifier) {
         return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
@@ -527,11 +563,16 @@ function mmbtuToCents(v) {
        * recommendation, and the voltage you can actually interconnect at is set by what is in the
        * ground near the site, not by which row is cheapest (operator, 2026-08-18). Each voltage is
        * modelled and judged on its own below. */
-      const VORDER = ["transmission", "subtransmission", "primary", "secondary", "any"];
-      const runs = volts.map((v) => ({ v, r: costAt(sch, v, kW, kWh) }))
-                        .filter((x) => (x.r.legs.energy + x.r.riders.energy) > 0)
-                        .sort((a, b) => VORDER.indexOf(a.v) - VORDER.indexOf(b.v));
+      /* Each entry is a SERVICE CLASS in the publisher's own words, already ordered by voltage
+       * family (transmission first). Low-load-factor classes are dropped above 15% load factor -
+       * that service exists for customers who run rarely, and pricing it for someone at 85% would
+       * quote a rate they cannot take. */
+      const runs = volts
+        .filter((vc) => !(/low[- ]load[- ]factor|\bllf\b/i.test(vc.label) && lf > LLF_MAX))
+        .map((vc) => ({ vc, r: costAt(sch, vc.key, kW, kWh) }))
+        .filter((x) => (x.r.legs.energy + x.r.riders.energy) > 0);
       const priced = runs.slice().sort((a, b) => a.r.total - b.r.total);
+      const vlabel = (vc) => vc.label || VOLT_FAMILY[vc.family] || vc.key;
       if (!runs.length) return "";
       const best = priced[0], worst = priced[priced.length - 1];
       const spread = worst.r.total - best.r.total;
@@ -541,14 +582,28 @@ function mmbtuToCents(v) {
        * this schedule, and the run only looked cheap because of the gap. Say that, rather than
        * presenting a hole in the data as the best deal available. */
       const thin = best.r.cents < 2;
+      /* ⛔ A BILL WITH A WHOLE LEG MISSING IS NOT A BILL. Every costing bug found today shared one
+       * signature: a priced row whose demand or energy leg came to exactly $0 while the other legs
+       * looked plausible - NIPSCO 631 with DEMAND $0 on a schedule whose headline charge is
+       * $35.74/kW-month, I&M IP-LL with ENERGY $0 because a large-load framework inherited its
+       * parent's classes but not its energy rates, AES PH and I&M GS likewise. Each produced a
+       * confident, wrong c/kWh.
+       * Rather than keep chasing them one at a time, refuse to publish an effective rate when a
+       * leg is absent. This turns an invisible error into a visible gap, which is the whole point:
+       * an unexplained hole is honest, a fabricated number is not. */
+      const legMissing = (r) => (r.legs.demand + r.riders.demand) === 0
+                             || (r.legs.energy + r.riders.energy) === 0;
       /* An inverted block ladder is SUPPOSED to look expensive at high load factor - NIPSCO 632
        * and 633 price high-LF customers out deliberately. Comparing that against a blended
        * industrial average is not a fair test of the model, so it is not reported as a failure. */
       const inverted = sch.blocked && off !== null && off > 35;
-      const check = thin
-        ? `<span class="cannot">&#9888; Only ${best.r.cents.toFixed(2)}&cent;/kWh &mdash; too low to be
-           a real bill. A charge we have not extracted for this schedule is missing, so treat this
-           as incomplete rather than cheap.</span>`
+      const anyMissing = runs.some((x) => legMissing(x.r));
+      const check = (thin || legMissing(best.r))
+        ? `<span class="cannot">&#9888; <b>Not costable from what we hold.</b> A whole billing leg is
+           missing for this schedule &mdash; ${(best.r.legs.energy + best.r.riders.energy) === 0
+             ? "no energy charge could be matched to it" : "no demand charge could be matched to it"}
+           &mdash; so any annual figure would be wrong. The components we DO hold are listed below;
+           the gap is in our extraction, not in the tariff.</span>`
         : (bench === null || bench === undefined)
         ? `<span class="cannot">No realized average is published for this utility, so this figure
            cannot be checked against anything.</span>`
@@ -563,35 +618,35 @@ function mmbtuToCents(v) {
            (<b>${off > 0 ? "+" : ""}${off.toFixed(0)}%</b>)${ok ? "" : " &mdash; <b>outside tolerance; treat as unreliable</b>"}`;
 
       return `<details class="acc"${i === 0 ? " open" : ""}>
-        <summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
-          <span class="hint">· ${runs.length > 1
+        <summary>${sch.large_load ? '<span class="est-badge" style="background:#ecfdf5;color:#065f46;border-color:#10b981">LARGE LOAD</span> ' : ""}<b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
+          <span class="hint">${tooBig ? "· <b>not available at this load</b> " : ""}· ${runs.length > 1
             ? `<b>${best.r.cents.toFixed(2)}&ndash;${worst.r.cents.toFixed(2)}&cent;/kWh</b> depending on service voltage`
             : `<b>${best.r.cents.toFixed(2)}&cent;/kWh</b>`}</span></summary>
         <div class="accbody">${elig}
           <div class="scroll"><table>
             <tr><th>Service voltage</th><th>Fixed</th><th>Demand</th><th>Energy</th>
                 <th>Riders</th><th>Per year</th><th>Effective</th><th>vs actual</th></tr>
-            ${runs.map(({ v, r }) => {
+            ${runs.map(({ vc, r }) => {
               const o = bench ? ((r.cents - bench) / bench) * 100 : null;
-              const thinRow = r.cents < 2;
+              const thinRow = r.cents < 2 || legMissing(r);
               const mark = thinRow
-                ? `<span class="cannot" title="a charge we have not extracted is missing">incomplete</span>`
+                ? `<span class="cannot" title="a whole billing leg is missing from our extraction">incomplete</span>`
                 : o === null ? `<span class="cannot">no benchmark</span>`
                 : `${Math.abs(o) <= 35 ? "&#10003;" : "&#9888;"} ${o > 0 ? "+" : ""}${o.toFixed(0)}%`;
-              return `<tr><td><b>${esc(VOLT_PLAIN[v] || v)}</b></td>
+              return `<tr><td><b>${esc(vlabel(vc))}</b></td>
               <td>${usd(r.legs.fixed)}</td><td>${usd(r.legs.demand)}</td><td>${usd(r.legs.energy)}</td>
               <td>${usd(r.riders.fixed + r.riders.demand + r.riders.energy)}</td>
-              <td><b>${usd(r.total)}</b></td><td><b>${r.cents.toFixed(2)}&cent;</b></td>
+              <td><b>${usd(r.total)}</b></td><td>${thinRow ? '<span class="cannot">not costable</span>' : `<b>${r.cents.toFixed(2)}&cent;</b>`}</td>
               <td class="hint">${mark}</td></tr>`;
             }).join("")}
           </table></div>
           <div class="sowhat">${check}${runs.length > 1 ? `<br>Across the voltages this schedule prices, the spread is
             <b>${usd(spread)} a year</b> (${(100 * spread / worst.r.total).toFixed(1)}% of the bill) &mdash;
-            cheapest at ${esc(VOLT_PLAIN[best.v] || best.v)}, dearest at ${esc(VOLT_PLAIN[worst.v] || worst.v)}.
+            cheapest on ${esc(vlabel(best.vc))}, dearest on ${esc(vlabel(worst.vc))}.
             <b>Which one you can actually take is set by what is in the ground near the site</b>, so
             price the voltage you can reach, not the cheapest row.` : ""}</div>
-          ${runs.map(({ v, r }) => `<details style="margin-top:6px"><summary class="hint">Line by line at
-            <b>${esc(VOLT_PLAIN[v] || v)}</b> &mdash; ${usd(r.total)}/yr, schedule and riders together</summary>
+          ${runs.map(({ vc, r }) => `<details style="margin-top:6px"><summary class="hint">Line by line at
+            <b>${esc(vlabel(vc))}</b> &mdash; ${usd(r.total)}/yr, schedule and riders together</summary>
             <div class="scroll" style="max-height:320px"><table>
               <tr><th>from</th><th>component</th><th>rate</th><th>per year</th></tr>
               ${r.lines.sort((a, b) => Math.abs(b.amt) - Math.abs(a.amt)).map((l) => `<tr>
@@ -604,6 +659,11 @@ function mmbtuToCents(v) {
             ${sch.n_components} components bill; the rest are eligibility floors, terms and ratchets.
             ${sch.fuel_base_rate ? `Fuel base ${sch.fuel_base_rate} $/kWh is <b>embedded in the energy charge</b> and is NOT added again &mdash; the fuel adjustment rider carries the difference. ` : ""}
             ${best.r.reactive ? `${best.r.reactive} reactive ($/kVAr) charge(s) excluded &mdash; they need a power factor you have not chosen. ` : ""}
+            ${sch.tou ? `<b>Time-of-use, costed for a flat 24/7 load:</b> energy is split by the
+            hours in each period the tariff states (super off-peak 12-4am, on-peak 5-9pm plus winter
+            mornings, off-peak the remainder), and <b>every</b> time-differentiated demand charge
+            bills the full kW because a constant load peaks in every period. That is usually why TOU
+            suits a data centre poorly. ` : ""}
             <b>All-firm service assumed</b>; where a schedule offers a non-firm or market-indexed
             tier, electing it changes the answer more than any rider.</div>
         </div></details>`;

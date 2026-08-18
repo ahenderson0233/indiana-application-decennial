@@ -1,12 +1,12 @@
 {
- "run_at": "2026-08-18T15:13:03.090998+00:00",
+ "run_at": "2026-08-18T16:11:07.638119+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 120 payloads + pages \u00b7 0 leaks"
+   "detail": "scanned 121 payloads + pages \u00b7 0 leaks"
   },
   {
    "criterion": 1,
