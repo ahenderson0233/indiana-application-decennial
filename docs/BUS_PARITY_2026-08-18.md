@@ -127,6 +127,43 @@ is closable from public sources** — it is a substation-name matching problem a
 hold, not a CEII wall. `in_substations_dedup` and the RTEP bridge already place 227; the same
 technique applied harder is the highest-value next move on the PJM side.
 
+### ⭐ 3b — HOW the vendor placed them, and why the cheap fix does not work
+
+Their file answers the question "if Orennia has coordinates, why can't we?" — and the answer is
+reassuring: **they mostly do not have authoritative coordinates either.**
+
+| their `Location Source` | rows | share |
+|---|---:|---:|
+| **`Estimated`** | 13,824 | **70%** |
+| `ISO` | 5,626 | 28% |
+| `Interpolated` | 384 | 2% |
+
+**Only 28% come from the ISO.** The rest are derived — and the derivation is visible in the data:
+bus `PJM_242865` and bus `PJM_243208` are both named `05JEFRSO` and carry **byte-identical
+coordinates**. They match the bus NAME to a substation and reuse one coordinate for every bus there.
+That is precisely our `substation_match_exact` method. Their advantage is coverage, not access.
+
+⚠ **But the cheap version of that does not work, and this was measured rather than assumed.**
+Our `bus_label` already contains the same name in the same form — `05AMOS 765 kV (242508)` parses
+cleanly to `05AMOS` on **all 1,826 buses, 0 unparseable**. Matching those against
+`in_substations_dedup.substation_name` (with and without the two-digit area prefix) yields:
+
+| | buses |
+|---|---:|
+| placed today | 227 |
+| label matches an Indiana substation name exactly | 35 |
+| **newly placeable this way** | **13** |
+
+Thirteen. The reason is legible in the names themselves: `05GRNGST`, `05CLYTR1`, `05BRADL1`,
+`05CHATFLD_BP` are **PJM's 8-character internal abbreviations**, and an abbreviation does not
+exact-match a full substation name. Closing this needs **abbreviation expansion or fuzzy matching
+with a confidence gate**, which is real work with a real false-positive risk — placing a bus at the
+wrong substation is worse than leaving it unplaced, because a wrong coordinate silently pollutes
+every distance and every county rollup downstream. It is not a join away.
+
+**Scoped honestly, this is a half-day task, not a one-hour one**, and it is the single highest-value
+item on the PJM side because everything per-bus is behind it.
+
 ## RECOMMENDATION
 
 | region | verdict | what to ship |
