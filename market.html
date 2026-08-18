@@ -48,8 +48,11 @@
     <div class="scroll"><table id="t-proxy"><tr><th>utility · tariff</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr></table></div>
     <div class="prov">METHOD (ANALYSIS_METHODOLOGY §4): URDB is FLATTENED — no riders, fixed charges, or seasonal blocks —
     so this is a CROSS-CHECK, not an itemised quote. annual = demand_max·kW·12 + energy·kWh·8760·LF.
-    Large-load tariffs have MW FLOORS (eligibility minimums). A bundled rate must clear the ISO wholesale
-    floor by ≥1.75× — treat anything cheaper as a modelling error. The itemised rate engine is the full milestone.</div></div>
+    Large-load tariffs have MW FLOORS (eligibility minimums).
+    ⚠ <b>The old “must clear the ISO wholesale floor by ≥1.75×” test has been REMOVED</b> (operator,
+    2026-08-17): it assumed a wholesale pass-through that does not exist for a vertically integrated
+    Indiana utility. The right anchor for a bundled rate is the <b>EIA-861 realized average</b> for
+    that utility and sector — what comparable customers actually paid, riders included. The itemised rate engine is the full milestone.</div></div>
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
     <div class="sowhat"><b>So what:</b> this is the only gas number at a grain you can site
       against — a named delivery point, in a named county, with what the pipeline says is unsold
@@ -123,7 +126,18 @@
       tariff eligibility test, and an explicit list of the components no Indiana publisher has put
       in the public record.</div>
 
-    <div class="hint" style="margin:6px 0"><b>Wholesale floor</b> — the hard lower bound.</div>
+    <div class="sowhat"><b>Operator ruling, 2026-08-17: this is NOT a floor under an Indiana
+      bundled rate, and it is no longer presented as one.</b> The old framing was borrowed from a
+      restructured market, where a retail supplier prices energy off the wholesale market and the
+      utility bills regulated wires on top — there, wholesale really does flow through.
+      <br><b>Indiana is vertically integrated.</b> The utility owns its generation and recovers it
+      through base rates set in an IURC rate case, so a bundled customer never buys at the market
+      price. What actually passes fuel and purchased-power cost through is the <b>Fuel Adjustment
+      Clause</b>, plus the RTO cost rider — and the utility’s embedded generation cost can sit
+      <i>either side</i> of today’s market price, so a rate below LMP is not evidence of an error.
+      <br><b>What it is still good for:</b> the cost of energy if you buy it <i>as energy</i> — a PPA,
+      a block purchase, or behind-the-meter generation — and as a read on regional energy cost.
+      Treat it as an alternative procurement route, not as a bound on the tariff.</div>
     <div class="scroll"><table id="t-floor"><tr><th>ISO</th><th>market</th><th>window actually returned</th><th>intervals</th><th>avg ¢/kWh</th><th>median ¢/kWh</th><th>min credible retail ¢/kWh</th></tr></table></div>
     <div class="hint cannot" id="h-floor" style="margin:6px 0"></div>
 
