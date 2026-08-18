@@ -145,8 +145,18 @@ def audit_utility(u):
             # voltage tier are ALTERNATIVES, and summing them is the AES/Duke defect. Conditional
             # and reactive components never enter a total, so they cannot be double-counted.
             for leg in ("energy",) + DEMAND_LEGS:
+                # TIME-OF-USE PERIODS ARE NOT ALTERNATIVES. On-peak and off-peak energy both
+                # bill, each against its own share of the year, so two of them at one class is
+                # correct - Southeastern REMC's UIPS-1 is the case. Excluded, or the check
+                # flags the one arrangement the costing already handles properly.
+                # Excluded from this check, because each is already handled and none is a sum:
+                #   conditional / reactive - never enter a total at all
+                #   tou_period             - on-peak and off-peak BOTH bill, each on its own share
+                #   low_lf_only            - the other fork of a load-factor split, dropped above
+                #                            the threshold
                 same = [c for c in here if c["bill"] == leg and not c.get("block")
-                        and not c.get("conditional") and not c.get("reactive")]
+                        and not c.get("conditional") and not c.get("reactive")
+                        and not c.get("tou_period") and not c.get("low_lf_only")]
                 if len(same) < 2:
                     continue
                 stems = {}
@@ -154,7 +164,11 @@ def audit_utility(u):
                     stem = (c.get("name") or "").split(" - ")[0].strip().lower()
                     stems.setdefault(stem, []).append(c)
                 for stem, group in stems.items():
-                    if len(group) > 1:
+                    # SEASONS DO NOT OVERLAP. A summer rate at 4 months and a non-summer rate at 8
+                    # cover the year between them and are never both in force in one month, so
+                    # they are a seasonal pair rather than a double-count. Only flag a group whose
+                    # months add to MORE than a year.
+                    if sum(c.get("months") or 12 for c in group) > 12 and len(group) > 1:
                         rates = ", ".join(str(c.get("rate")) for c in group)
                         findings.append(("A1", code, key,
                                          "%d '%s' %s rows summed at one class (%s) - if these are "

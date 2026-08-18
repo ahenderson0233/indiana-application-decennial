@@ -455,7 +455,7 @@ function mmbtuToCents(v) {
     return { cost, used };
   }
 
-  function costAt(sch, volt, kW, kWh) {
+  function costAt(sch, volt, kW, kWh, lf) {
     /* A component applies at this class if it names no class at all, or names THIS one. A
      * multi-class component ("transmission and primary") carries the families it named, and
      * applies only at those - letting it bill everywhere put Duke HLF at 44.31 c/kWh. */
@@ -485,7 +485,8 @@ function mmbtuToCents(v) {
     };
 
     // --- blocked legs first: group by (origin, kind) and allocate the ladder ---
-    const blocked = sch.components.filter((c) => c.block && c.bill && at(c) && !c.conditional);
+    const blocked = sch.components.filter((c) => c.block && c.bill && at(c) && !c.conditional
+                                            && !(c.low_lf_only && lf > LLF_MAX));
     const groups = {};
     for (const c of blocked) (groups[`${c.origin}|${c.block[0]}`] ||= []).push(c);
     for (const key of Object.keys(groups)) {
@@ -510,6 +511,12 @@ function mmbtuToCents(v) {
        * +241%. Skipped and COUNTED, never silently dropped - the same treatment reactive charges
        * get, for the same reason. */
       if (c.conditional) { conditional++; continue; }
+      /* A charge that forks on load factor INSIDE one schedule. Southeastern REMC's C-5 prices
+       * summer demand at 15.50 $/kW for customers at or above 300 kWh/kW and 8.10 for those
+       * below, both carrying season='summer' and the SAME component name - so applying both
+       * charged one customer twice across the same four months. They are alternatives; at 85%
+       * load factor ours is unambiguously the upper fork. */
+      if (c.low_lf_only && lf > LLF_MAX) { conditional++; continue; }
       let amt = 0, leg = "demand";
       /* A time-of-use ENERGY rate bills only the kWh that falls in its own period. For a flat
        * 24/7 load that share is fixed by the clock, so it is arithmetic rather than a guess.
@@ -553,14 +560,24 @@ function mmbtuToCents(v) {
        * "exceeds" - which is how I&M's Tariff G.S. states its 1,000 kW limit - this copy did not.
        * `sch.max_kw` is computed once, in the exporter, from the whole estate's vocabulary; use
        * it for the DECISION and search the components only for the prose that explains it. */
-      const maxKW = sch.components.find((c) => c.type === "eligibility"
-        && /kW/i.test(c.unit || "") && c.rate === sch.max_kw);
+      /* ⛔ NEVER DEREFERENCE THE PROSE ROW WITHOUT GUARDING IT. `sch.max_kw` is normalised to kW
+       * by the exporter, which CONVERTS units - a ceiling stated as "70 MW" becomes 70000 while
+       * the component's own rate stays 70 - so an exact-rate lookup finds nothing and
+       * `maxKW.rate` throws. That killed the ENTIRE body render for any utility whose ceiling was
+       * unit-converted, and because innerHTML is assigned from the map's result, the page silently
+       * kept the PREVIOUS utility's schedules on screen: selecting Auburn showed Southeastern
+       * REMC's rates under Auburn's header. A thrown render is worse than a missing one, because
+       * it looks like an answer. Match on either the raw or the converted value, and treat the
+       * prose as optional. */
+      const maxKW = sch.components.find((c) => c.type === "eligibility" && c.rate != null
+        && /kW|MW|kVA/i.test(c.unit || "")
+        && (c.rate === sch.max_kw || c.rate * 1000 === sch.max_kw));
       const tooBig = sch.max_kw != null && kW > sch.max_kw;
       const elig = tooBig
         ? `<div class="sowhat"><b>&#9888; You CANNOT take service on this schedule at ${fmt(mw)} MW.</b>
-           It carries a ceiling of <b>${fmt(maxKW.rate)} kW (${(maxKW.rate / 1000).toFixed(0)} MW)</b>
-           &mdash; ${esc(maxKW.basis || maxKW.name || "")}. You are
-           <b>${(kW / maxKW.rate).toFixed(1)}&times; over it</b>. The figures below are what the
+           It carries a ceiling of <b>${fmt(sch.max_kw)} kW (${(sch.max_kw / 1000).toFixed(0)} MW)</b>
+           ${maxKW ? `&mdash; ${esc(maxKW.basis || maxKW.name || "")}` : ""}. You are
+           <b>${(kW / sch.max_kw).toFixed(1)}&times; over it</b>. The figures below are what the
            published rates would compute to, and are shown only so the exclusion is checkable
            &mdash; <b>they are not a price available to you</b>. Look for this utility's large-load
            schedule instead.</div>`
@@ -622,7 +639,7 @@ function mmbtuToCents(v) {
        * quote a rate they cannot take. */
       const runs = volts
         .filter((vc) => !(/low[- ]load[- ]factor|\bllf\b/i.test(vc.label) && lf > LLF_MAX))
-        .map((vc) => ({ vc, r: costAt(sch, vc.key, kW, kWh) }))
+        .map((vc) => ({ vc, r: costAt(sch, vc.key, kW, kWh, lf) }))
         .filter((x) => (x.r.legs.energy + x.r.riders.energy) > 0);
       const priced = runs.slice().sort((a, b) => a.r.total - b.r.total);
       const vlabel = (vc) => vc.label || VOLT_FAMILY[vc.family] || vc.key;
@@ -656,7 +673,8 @@ function mmbtuToCents(v) {
       /* Below ~2 c/kWh nothing real is being priced - it means our extraction is missing a leg of
        * this schedule, and the run only looked cheap because of the gap. Say that, rather than
        * presenting a hole in the data as the best deal available. */
-      const thin = best.r.cents < 2;
+      const thinAt = (r) => r.cents < 2;      // below ~2c nothing real is being priced
+      const thin = thinAt(best.r);
       /* ⛔ A BILL WITH A WHOLE LEG MISSING IS NOT A BILL. Every costing bug found today shared one
        * signature: a priced row whose demand or energy leg came to exactly $0 while the other legs
        * looked plausible - NIPSCO 631 with DEMAND $0 on a schedule whose headline charge is
@@ -716,9 +734,22 @@ function mmbtuToCents(v) {
 
       return `<details class="acc"${i === 0 ? " open" : ""}>
         <summary>${sch.large_load ? '<span class="est-badge" style="background:#ecfdf5;color:#065f46;border-color:#10b981">LARGE LOAD</span> ' : ""}<b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
-          <span class="hint">${tooBig ? "· <b>not available at this load</b> " : ""}· ${runs.length > 1
-            ? `<b>${best.r.cents.toFixed(2)}&ndash;${worst.r.cents.toFixed(2)}&cent;/kWh</b> depending on service voltage`
-            : `<b>${best.r.cents.toFixed(2)}&cent;/kWh</b>`}</span></summary>
+          <span class="hint">${tooBig ? "· <b>not available at this load</b> " : ""}· ${
+            /* ⛔ THE COLLAPSED HEADER MUST NOT STATE A RATE THE TABLE ITSELF REFUSES TO SHOW.
+             * The per-row guard was working - every implausible row read "not costable" - but the
+             * summary was still built from the raw range, so a reader saw "RES - Residential ·
+             * 0.00c/kWh" and "LPI · 1.77c/kWh" as headlines while the table below called both
+             * incomplete. The header is the FIRST thing read and the most likely thing quoted, so
+             * a false figure there is worse than anywhere else on the page. Range from the rows
+             * that survive the guard, and say so plainly when none do. */
+            (() => {
+              const ok = priced.filter((x) => !thinAt(x.r) && !legMissing(x.r));
+              if (!ok.length) return "<b>not costable from what we hold</b>";
+              const lo = ok[0].r.cents, hi = ok[ok.length - 1].r.cents;
+              return ok.length > 1 && hi - lo > 0.005
+                ? `<b>${lo.toFixed(2)}&ndash;${hi.toFixed(2)}&cent;/kWh</b> depending on service voltage`
+                : `<b>${lo.toFixed(2)}&cent;/kWh</b>`;
+            })()}</span></summary>
         <div class="accbody">${elig}
           <div class="scroll"><table>
             <tr><th>Service voltage</th><th>Fixed</th><th>Demand</th><th>Energy</th>

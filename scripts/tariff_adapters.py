@@ -207,6 +207,67 @@ ADAPTERS = {
     },
 
     # -----------------------------------------------------------------------------------------
+    # ----------------------------- MUNICIPALS AND CO-OPS (BACKLOG G55) -----------------------
+    # The first four to be given adapters. The other 15 costable municipals and the 51 stubs are
+    # still on the generic path - see G55. Each block below is one publisher's convention, found
+    # by running scripts/audit_tariff_costing.py --all and reading that utility's own book.
+    "City of Auburn, Indiana (Utility Company)": {
+        "notes": (
+            "Joins its two service classes with the word OR - 'primary or secondary' - on the "
+            "customer and demand charges, while pricing energy at each class separately. "
+            "Unrecognised, that string became a THIRD service class of its own, and it was the "
+            "only one the $17.10/kVA-month demand charge applied at: the real primary and "
+            "secondary rows both showed DEMAND $0. Its demand is billed in kVA, like SIGECO's."),
+        "class_separators": [" or "],
+        "demand_unit": "kva",
+        "assumed_power_factor": 1.0,
+    },
+
+    "Southeastern Indiana R E M C": {
+        "notes": (
+            "Its season column says 'all' on three rows whose NAME states a three-month window - "
+            "Summer Production (Jun-Aug), Winter Production (Dec-Feb) and Summer Power Supply. "
+            "Billed twelve months each, they overstate the bill by four times their real "
+            "exposure. UIPS-1 is a genuinely four-part demand rate - delivery, transmission, and "
+            "summer/winter production are DIFFERENT determinants and do add up - so only the two "
+            "production legs are seasonal, not the whole stack. "
+            "C-5 forks by load factor: 15.50 $/kW summer for customers at or above 300 kWh/kW, "
+            "8.10 for those below. Those are ALTERNATIVES; a 24/7 load takes the first."),
+        "season_months": {"summer production billing demand": 3,
+                          "winter production billing demand": 3,
+                          "summer power supply demand": 3},
+        # C-5 forks INSIDE the schedule on annual load factor: 15.50 $/kW summer for customers at
+        # or above 300 kWh/kW, 8.10 for those below, and both carry season='summer'. They are
+        # ALTERNATIVES, so applying both charged one customer twice in the same four months. A
+        # 24/7 load is unambiguously the first fork; the second is excluded and said to be.
+        # ⚠ Both forks share the NAME "Demand charge - June through August" and differ only by
+        # rate, so the name cannot tell them apart. The BASIS can: the low fork's begins
+        # "LLF fork (<300 kWh/kW)". Match on what actually distinguishes them.
+        "low_lf_basis": ["llf fork"],
+    },
+
+    "City of Anderson, Indiana (Utility Company)": {
+        "notes": (
+            "Writes its block ladder in the component NAME - 'Energy charge - first 200 hours "
+            "use', 'over 200 hours use' - and leaves the basis as the bare words 'hours-use "
+            "block'. Read from the basis alone the ladder is invisible and its two rates were "
+            "SUMMED, which is the NIPSCO 57.94 c/kWh defect reached from the other direction."),
+    },
+
+    "City of Logansport, Indiana (Utility Company)": {
+        "notes": (
+            "Same block-in-the-name convention as Anderson, but measured in kWh per kVA of "
+            "billing demand: 'first 200 kWh/kVAD', 'next 100', 'over 300'. The NAME carries the "
+            "bounds and the BASIS carries the kind ('hours-use block'), so neither alone is "
+            "enough - both are read together."),
+    },
+
+    "City of Lebanon, Indiana (Utility Company)": {
+        "notes": (
+            "Block ladder in the name, on hours-use of billing maximum: 'first 300 hours use', "
+            "'over 300 hours use'. Summed, they overstated PPL's energy leg."),
+    },
+
     "Southern Indiana Gas & Elec Co": {
         "notes": (
             "Bills demand in kVA rather than kW, so a power factor is needed to convert; PF 1.0 is "
@@ -287,6 +348,60 @@ assert not is_multi_class("Duke Energy Indiana Inc",
 assert not is_multi_class("Duke Energy Indiana Inc", "transmission (69,000 V)")
 assert is_multi_class("Duke Energy Indiana Inc", "primary and primary direct (2,400-34,500 V)")
 assert is_multi_class("Northern Indiana Pub Serv Co", "transmission/subtransmission")
+
+
+def is_low_lf_component(utility, basis):
+    """Is this the LOW-load-factor fork of a charge that forks inside one schedule?
+
+    Southeastern Indiana REMC's C-5 is the case: 15.50 $/kW summer at or above 300 kWh/kW, 8.10
+    below, both carrying season='summer' and the SAME component name. They are alternatives, so
+    applying both charged one customer twice across the same four months. Matched on the basis,
+    which is the only field that distinguishes them.
+    """
+    b = (basis or "").strip().lower()
+    if not b:
+        return False
+    return any(p in b for p in adapter(utility).get("low_lf_basis", []))
+
+
+assert is_low_lf_component("Southeastern Indiana R E M C",
+                           "LLF fork (<300 kWh/kW); non-summer $7.10")
+assert not is_low_lf_component("Southeastern Indiana R E M C",
+                               "class: >=75 kVA transformer capacity")
+assert not is_low_lf_component("Duke Energy Indiana Inc", "LLF fork (<300 kWh/kW)")
+
+
+def season_months(utility, name, season):
+    """How many months a year this rate is in force.
+
+    The `season` column is authoritative when it commits to one - "summer" or "non_summer". When
+    it says "all" it is a DEFAULT rather than a statement, and a publisher may declare the real
+    window for a named component. Southeastern Indiana REMC is the case that found this: three
+    rows whose names state a three-month window carry season='all' and were billed twelve.
+
+    ⛔ Nothing is inferred from a name unless that utility's own adapter says to. Reading seasons
+    out of names generally would repeat the mistake that gave NIPSCO's "Transmission charge" a
+    transmission service class.
+    """
+    sn = (season or "").strip().lower()
+    if sn.startswith("summer"):
+        return 4
+    if sn.startswith("non"):
+        return 8
+    declared = adapter(utility).get("season_months", {})
+    if declared:
+        key = (name or "").strip().lower()
+        for phrase, months in declared.items():
+            if phrase in key:
+                return months
+    return 12
+
+
+assert season_months("Southeastern Indiana R E M C", "Summer Production billing demand",
+                     "all") == 3
+assert season_months("Southeastern Indiana R E M C", "Delivery billing demand", "all") == 12
+assert season_months("Duke Energy Indiana Inc", "Summer Production billing demand", "all") == 12
+assert season_months("Duke Energy Indiana Inc", "anything", "summer") == 4
 
 
 def rider_alias(utility, code):

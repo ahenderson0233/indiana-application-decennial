@@ -208,6 +208,50 @@ def parse_block(basis):
     return (kind, None, val)          # "next N" - lower bound resolved by ordering below
 
 
+# A ladder has to be denominated in something this component can actually bill. Southeastern
+# REMC's C-5 proves why: its low-load-factor DEMAND row ($8.10/kW-month) carries a basis note
+# describing the LLF fork's ENERGY blocks - "0.10600 first 150 kWh/kW, 0.09100 next 150" - and
+# reading name and basis together handed that kWh ladder to a $/kW-month charge. The prose in a
+# basis may describe a DIFFERENT charge on the same sheet; the unit is the check on that.
+BLOCK_KIND_OK = {
+    "energy":     ("kwh_month", "hours_use"),
+    "demand":     ("kw", "hours_use"),
+    "demand_kva": ("kw", "hours_use"),
+    "demand_day": ("kw", "hours_use"),
+    "fixed":      ("kw", "kwh_month", "hours_use"),
+}
+
+
+def _block_text(name, basis):
+    """The prose describing a block ladder, or None.
+
+    Read together on purpose: seven municipals put the BOUNDS in the name ("first 200 kWh/kVAD")
+    and the KIND in the basis ("hours-use block"), and neither alone is enough. The caller
+    validates the parsed kind against what the component bills.
+    """
+    both = f"{name or ''} {basis or ''}"
+    return both if BLOCK_RE.search(both) else None
+
+
+def block_for(name, basis, bill):
+    """Parse this component's block ladder, refusing one its billing unit cannot carry."""
+    txt = _block_text(name, basis)
+    if not txt:
+        return None
+    parsed = parse_block(txt)
+    if not parsed:
+        return None
+    allowed = BLOCK_KIND_OK.get(bill or "", ())
+    return parsed if parsed[0] in allowed else None
+
+
+assert _block_text("Energy - first 200 kWh/kVAD", "hours-use block, 2026 step")
+assert _block_text("Energy charge - transmission", "first 30,000 kWh per month")
+assert _block_text("Energy charge - over 200 hours use", "hours-use block")
+assert not _block_text("Energy charge - transmission", "all kWh")
+assert not _block_text("Demand charge", "per kW of Billing Demand")
+
+
 def resolve_next(blocks):
     """'next N' gives a WIDTH, not a boundary. Walk the ladder in order and turn widths into
     absolute [lo, hi) bounds."""
@@ -469,13 +513,22 @@ for util, rs in by_util.items():
             "fuel_base": r.component_type == "fuel_base",
             # months this rate is in force. The books state a season on the row where one applies;
             # absent a season the rate runs all 12 months.
-            "months": (4 if (r.season or "").strip().lower().startswith("summer")
-                       else 8 if (r.season or "").strip().lower().startswith("non")
-                       else 12),
+            # ⚠ A `season` of "all" is a DEFAULT, not a statement, and three Southeastern
+            # Indiana REMC rows use it while their NAME states a three-month window: "Summer
+            # Production billing demand" (Jun-Aug), "Winter Production billing demand" (Dec-Feb),
+            # "Summer Power Supply demand". Billed 12 months each, they overstate the bill by
+            # four times their true exposure. A publisher may declare the real months for a named
+            # component; nothing is inferred from a name unless its own adapter says to.
+            "months": TA.season_months(util, r.name, r.season),
             "reactive": uk in REACTIVE,
             # an OPTIONAL service riding inside the schedule (maintenance, back-up, affiliate
             # transfer). Shown and counted, never summed - see TA.is_conditional
             "conditional": TA.is_conditional(util, r.applies_to),
+            # a component that only applies BELOW a load-factor threshold. Southeastern REMC's
+            # C-5 forks inside one schedule - 15.50 $/kW summer at or above 300 kWh/kW, 8.10
+            # below - and those are alternatives, not addends. Excluded above the threshold and
+            # SAID to be, rather than silently added to the customer who cannot take it.
+            "low_lf_only": TA.is_low_lf_component(util, r.basis),
             "volt": service_class(r.applies_to, r.name)[0],
             "volt_family": service_class(r.applies_to, r.name)[1],
             "volt_label": (r.applies_to or service_class(r.applies_to, r.name)[1]),
@@ -501,7 +554,17 @@ for util, rs in by_util.items():
             # silently, while `grep` rendered the line as clean text because the terminal ate the
             # control characters - so the code looked right and detected zero blocks. Compiled at
             # module level now, and asserted at import, so it cannot fail quietly again.
-            "block": parse_block(r.basis) if BLOCK_RE.search(r.basis or "") else None,
+            # ⛔ THE LADDER IS NOT ALWAYS IN THE BASIS. Seven municipals write it in the NAME -
+            # "Energy - first 200 kWh/kVAD", "Energy charge - over 200 hours use" - while the
+            # basis says only "hours-use block". Scanning the basis alone left 14 components
+            # across Anderson, Logansport, Lebanon, Mishawaka, Peru and Columbia City looking
+            # like independent charges, so their block rates were SUMMED: the same defect that
+            # put NIPSCO at 57.94 c/kWh, reached by a different route.
+            # Both are read together, because each supplies half the answer: Logansport's NAME
+            # carries the bounds ("first 200") while its BASIS carries the kind ("hours-use").
+            "block": block_for(r.name, r.basis,
+                                None if r.component_type in NOT_A_CHARGE
+                                else BILLING.get(uk) if r.rate is not None else None),
         }
 
     scheds = []

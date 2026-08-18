@@ -2,12 +2,12 @@
  "City of Anderson, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 7,
-  "sha": "2cf086d7a2392472"
+  "sha": "9004706ef3bfbee4"
  },
  "City of Auburn, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 8,
-  "sha": "0d741aa69bca19f0"
+  "sha": "5d8fcbece3d93a4e"
  },
  "City of Bluffton, Indiana (Utility Company)": {
   "is_iou": false,
@@ -17,7 +17,7 @@
  "City of Columbia City, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 3,
-  "sha": "dd36c630b0962967"
+  "sha": "8211ce17e528bb6b"
  },
  "City of Covington, Indiana (Utility Company)": {
   "is_iou": false,
@@ -72,7 +72,7 @@
  "City of Lebanon, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 2,
-  "sha": "8ad3952e9b9bcc58"
+  "sha": "9e4eac93921369e7"
  },
  "City of Lewisville, Indiana (Utility Company)": {
   "is_iou": false,
@@ -87,17 +87,17 @@
  "City of Logansport, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 4,
-  "sha": "bbbd2a0473125505"
+  "sha": "29ba2b802163eb38"
  },
  "City of Mishawaka, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 4,
-  "sha": "d36490a52467e553"
+  "sha": "3e2824883c11d87c"
  },
  "City of Peru, Indiana (Utility Company)": {
   "is_iou": false,
   "schedules": 3,
-  "sha": "c83bbfb33bc365a1"
+  "sha": "2b3ee270927e9839"
  },
  "City of Rensselaer, Indiana (Utility Company)": {
   "is_iou": false,
@@ -182,7 +182,7 @@
  "Paulding-Putman Elec Coop, Inc (Indiana)": {
   "is_iou": false,
   "schedules": 3,
-  "sha": "bd403c09d8560e14"
+  "sha": "8d81357fe09cf56b"
  },
  "South Central Indiana REMC": {
   "is_iou": false,
@@ -192,7 +192,7 @@
  "Southeastern Indiana R E M C": {
   "is_iou": false,
   "schedules": 5,
-  "sha": "cf54dd2e777b8255"
+  "sha": "95517dbc6942f8c9"
  },
  "Southern Indiana Gas & Elec Co": {
   "is_iou": true,
