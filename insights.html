@@ -102,12 +102,16 @@ const $ = (id) => document.getElementById(id);
       <p class="hint"><b>What we do about it:</b> we never substitute one direction for the other,
         even though both are large positive megawatt figures from real grid models. A site with no
         getting-power figure is shown as <i>not measured</i> &mdash; not as zero, and not as a bad
-        site. <b>Partly acquired since:</b> we now hold PJM's current case &mdash; 2028 TC2 Phase
-        II, <b>1,826 of 1,826 AEP buses in both directions</b> &mdash; which is the vendor's own
-        case. ⚠ It is <b>not yet wired into the surfaces</b>, which still read the older 2027 RTEP
-        base case, so the coverage figure above has not moved yet. MISO publishes no load-side
-        headroom at all and four independent sweeps found no public route, so that half stays
-        open.</p>
+        site. <b>✅ Largely closed since, and the surfaces now read it.</b> Two changes.
+        <b>PJM:</b> our own harvest of the current case &mdash; 2028 TC2 Phase II, 1,826 of 1,826
+        AEP buses, both directions. <b>MISO:</b> the load-side direction, which MISO publishes
+        nowhere, now comes from our <b>licensed Orennia subscription</b> &mdash; 1,731 buses,
+        <b>1,079 with non-zero load headroom</b>. A data centre in MISO Indiana can be given a
+        getting-power figure for the first time.
+        <br>⚠ <b>Two honest limits.</b> The MISO half is <b>licensed, not ours</b>, and expires
+        late 2027. And only <b>227 of the 1,826 PJM buses carry a location we trust</b>, so PJM
+        parcels often still match nothing within 25 miles &mdash; the figure exists, placing it is
+        the open work.</p>
       <p class="prov">${G.direction_note}</p>
     </div>`;
 

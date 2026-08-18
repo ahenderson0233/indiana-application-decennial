@@ -82,22 +82,51 @@ WITH pjm_raw AS (
   SELECT 'Injection'  AS direction, * FROM `{DS}.in_pjm_qs_c23sens_inj`
 ),
 pjm_scoped AS (
-  SELECT *, (pre_loading_pct >= 100) AS facility_overloaded
+  -- ⭐ HEADROOM THE WAY THE VENDOR COMPUTES IT, so a MISO bus and a PJM bus on the same screen are
+  -- the same quantity. Operator: "we need to make sure we are presenting the same headroom value
+  -- as Orennia for both MISO and PJM ... the accurate available headroom rather than our current
+  -- median and best scenarios."
+  --
+  -- Their capacity is a linear solve on the binding facility:
+  --      capacity = (rating - base flow) / |shift factor|
+  -- Verified on bus 243209 against their own published row: rating 2844 MVA, base flow 2550 MW,
+  -- shift factor -0.0745 -> (2844-2550)/0.0745 = 3,946 against their 3,943.59.
+  --
+  -- We do not ship the rating, but it is RECOVERABLE from what QueueScope does give us. The
+  -- request moves the facility's loading by a known amount, so
+  --      rating = impact_mw / ((post_loading_pct - pre_loading_pct) / 100)
+  -- and the headroom before the request is rating * (1 - pre_loading_pct/100).
+  --
+  -- ⛔ WHY NOT available_mw, WHICH IS RIGHT THERE. Measured against their export on the 283 buses
+  -- we share, MIN(available_mw) agreed with them on ZERO and ran a median 0.136x of their figure -
+  -- seven times too low. The derived form lands at a median ratio of 1.010 and inside 20% on 84 of
+  -- 283. Centred rather than biased, which is the difference between a number a developer can site
+  -- around and one that silently rules out good buses.
+  --
+  -- ⚠ It is NOT parity. 30% within 20% means real dispersion, and the cause is the binding-facility
+  -- CHOICE: they monitor a different set per bus. A precision guard on the loading delta changes
+  -- nothing (identical results at 0.0, 0.02, 0.05 and 0.10), so it is not rounding noise.
+  SELECT *,
+         (pre_loading_pct >= 100) AS facility_overloaded,
+         SAFE_DIVIDE(
+           SAFE_DIVIDE(impact_mw, (post_loading_pct - pre_loading_pct) / 100)
+             * (1 - pre_loading_pct / 100),
+           ABS(dfax))                                    AS capacity_mw_derived
   FROM pjm_raw
   WHERE ABS(dfax) >= 0.05
 ),
 pjm_rank AS (
   SELECT *, ROW_NUMBER() OVER (
       PARTITION BY bus_number, direction
-      ORDER BY facility_overloaded ASC, available_mw ASC, ABS(dfax) DESC) AS rk
+      ORDER BY facility_overloaded ASC, capacity_mw_derived ASC, ABS(dfax) DESC) AS rk
   FROM pjm_scoped
 ),
 pjm_agg AS (
   SELECT bus_number, direction,
          COUNT(*)                                        AS n_scoped,
          COUNTIF(facility_overloaded)                    AS n_overloaded,
-         MIN(IF(facility_overloaded, NULL, available_mw)) AS mw_clean,
-         MIN(available_mw)                               AS mw_all
+         MIN(IF(facility_overloaded, NULL, capacity_mw_derived)) AS mw_clean,
+         MIN(IF(facility_overloaded, NULL, available_mw)) AS mw_probe
   FROM pjm_scoped GROUP BY 1, 2
 ),
 pjm AS (
@@ -109,7 +138,7 @@ pjm AS (
     b.direction                                    AS interconnection_type,
     0                                              AS upgrade_tier,
     -- a bus whose every scoped facility is already overloaded reports 0, exactly as theirs does
-    IFNULL(a.mw_clean, 0.0)                        AS bus_interconnection_capacity_mw,
+    GREATEST(IFNULL(a.mw_clean, 0.0), 0.0)         AS bus_interconnection_capacity_mw,
     b.transmission_facility                        AS primary_limiting_constraint,
     CAST(NULL AS STRING)                           AS primary_limiting_constraint_branch_id,
     b.contingency_type                             AS contingency_name,

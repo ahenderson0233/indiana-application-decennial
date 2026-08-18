@@ -109,7 +109,7 @@
   document.getElementById("ledger").innerHTML =
     `${fmt(c.si_observations_unmappable)} SI observations unmappable · ${fmt(c.parcels_without_geometry)} parcel w/o geometry · ` +
     `${fmt(c.parcels_geometry_but_no_county)} w/o county — listed, never zeroed. Estimates never style as published coordinates. ` +
-    `Headroom direction is disclosed everywhere (PJM=load, MISO viewer=injection-only). MW capacities are adjustable assumptions.`;
+    `Headroom direction is disclosed everywhere, and we now hold BOTH directions for BOTH operators: PJM from our own case-23 harvest (1,826 buses), MISO from the licensed Orennia DPP-2025 proxy (1,731 buses) because MISO publishes no load-side figure at all. MW capacities are adjustable assumptions.`;
   const tbl = document.getElementById("t-prov");
   function render() {
     const q = (document.getElementById("f-q").value || "").toLowerCase();

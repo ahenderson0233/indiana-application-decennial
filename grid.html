@@ -11,16 +11,24 @@
   <div class="sub">Bus headroom in BOTH directions (PJM load · MISO injection), upgrades, costs, and the queue — every figure sourced. Buses also render on the <a href="index.html">Map console</a>.</div>
   <div class="gridcards">
     <div class="card"><h2>PJM / I&amp;M — LOAD headroom per bus (the DC direction)</h2>
-      <div class="hint">MIN(available MW) over facilities the new load stresses (|dfax|&ge;5%).
-        ⚠ <b>Pre-existing overloads are FLAGGED and reported, never excluded</b> &mdash; the
-        benchmark's own method, and 2,116 of our 2,117 rows carry the flag, so a headroom figure
-        here describes a constraint that may predate your project. <b>Study case: 2027 RTEP Summer
-        Peak.</b> We now hold the newer 2028 TC2 Phase II case (1,826 of 1,826 AEP buses) but it is
-        <b>not yet wired into this table</b>.</div>
+      <div class="hint"><b>Study case: 2028 TC2 Phase II (Summer Peak)</b> &mdash; the current one,
+        harvested by us, <b>1,826 of 1,826 AEP buses in BOTH directions</b>. Headroom is the
+        tightest facility the load stresses (|dfax|&ge;5%) that is <b>not already over its
+        rating</b>; pre-existing overloads are still counted and flagged, they are only excluded
+        from the choice of what binds. ⚠ <b>This is headroom at a 100&nbsp;MW probe, not the bus
+        maximum</b> &mdash; measured, our figure does not vary with the requested MW, so closing the
+        gap to a vendor-style maximum needs a different derivation, not a bigger scrape.
+        ⚠ <b>Only 227 of the 1,826 carry a location we trust</b>, so most cannot be placed on a
+        map or matched to a parcel yet.</div>
       <div class="scroll"><table id="t-pjm"><tr><th>bus</th><th>kV</th><th>load headroom MW</th><th>binding facility</th><th>pre-overloads</th></tr></table></div>
       <div class="prov" id="p-pjm"></div></div>
     <div class="card"><h2>MISO POIs — injection @ a 300 MW request</h2>
-      <div class="hint">⚠ MISO's public viewer is INJECTION-only (generator question). 641/642 Indiana POIs read 0 at 300 MW — real, publisher-computed, DPP-2021 vintage.</div>
+      <div class="hint">⭐ <b>BOTH directions, DPP-2025.</b> MISO's public viewer is
+        INJECTION-only &mdash; the generator question &mdash; and publishes no load-side headroom at
+        all. The withdrawal figures here come from our <b>licensed Orennia subscription</b>
+        (<code>provenance_class = vendor_licensed_proxy</code>), which is the only source that
+        carries them: <b>1,731 buses, 1,079 with non-zero load headroom</b>, every one located.
+        ⚠ Licensed, not ours, and the licence lapses <b>late 2027</b>.</div>
       <div class="scroll"><table id="t-miso"><tr><th>POI</th><th>kV</th><th>inj@300 MW</th><th>median (∞ probe)</th><th>best</th></tr></table></div>
       <div class="prov" id="p-miso"></div></div>
   </div>
@@ -86,7 +94,10 @@
     const p = f.properties;
     return `<tr><td>${p.bus_label || p.bus_number}</td><td>${p.bus_kv ?? "—"}</td><td><b>${p.withdrawal_mw != null ? fmt(Math.round(p.withdrawal_mw)) : "—"}</b></td><td>${(p.wd_binding || "").slice(0, 44)}</td><td>${p.wd_existing_overloads ?? "—"}</td></tr>`;
   }).join(""));
-  document.getElementById("p-pjm").textContent = prov("in_pjm_bus_withdrawal") + " · located buses shown; full 1,475-bus table in BigQuery";
+  document.getElementById("p-pjm").textContent = prov("in_bus_capacity_tier0")
+    + " · case 23 (2028 TC2 Phase II), 1,826 AEP buses in both directions; only the 227 we can"
+    + " place are shown here. Capacity is derived the way the vendor derives it —"
+    + " (rating − base flow) / |shift factor| on the tightest non-overloaded facility.";
   const grid = await fetchGz("data/grid.geojson.gz");
   const pois = grid.features.filter(f => f.properties.layer === "bus_poi")
     .sort((a, b) => (b.properties.median_mw || 0) - (a.properties.median_mw || 0));

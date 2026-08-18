@@ -1138,9 +1138,9 @@ function renderLedger() {
   $("ledger").innerHTML =
     `<b>Honesty ledger:</b> ${fmt(c.si_observations_unmappable)} SI observations unmappable · ` +
     `${fmt(c.parcels_without_geometry)} parcel w/o geometry · ${fmt(c.parcels_geometry_but_no_county)} w/o county · ` +
-    `substations without published coords stay off-map but in counts · MISO values are DPP-2021 study results (worst/median/best shown together) · ` +
+    `substations without published coords stay off-map but in counts · MISO headroom is the licensed Orennia DPP-2025 study, BOTH directions, one binding figure per bus — the old worst/median/best triple is gone, it invited a reader to pick the flattering one · ` +
     `PJM bus locations marked ESTIMATE render as hollow red rings · grid distances are to the nearest mapped feature (a floor, not a guarantee) · ` +
-    `headroom DIRECTION matters: PJM buses carry LOAD (withdrawal) headroom — the DC question; MISO's public viewer is INJECTION-only, so its 300MW numbers answer the generator question and a MISO load-direction source is an open acquisition lane.`;
+    `headroom DIRECTION matters, and we now hold BOTH for BOTH operators: PJM from our own case-23 harvest, MISO from the licensed Orennia DPP-2025 proxy — MISO publishes no load-side figure at all, so that half is licensed rather than ours. Its 300MW numbers answer the generator question and a MISO load-direction source is an open acquisition lane.`;
 }
 function renderDenominator() {
   if (state.measure.on) return;
@@ -1526,7 +1526,8 @@ function openWaterEvidence(p) {
      · cannot-assess prints as itself and is LEFT OUT of the score denominator, never zeroed
      · MW figures are adjustable assumptions at the user's own density, and say so
      · a headroom figure ALWAYS carries its direction and its study vintage. Our MISO case is
-       DPP-2021 and a 0 from a four-year-old queue model must never read as "this bus is full" */
+       the licensed DPP-2025 case, and a 0 there means every monitored facility at that bus is
+       already over its rating - which must never read as "this bus is full" */
 
 /* which service territory contains the parcel - Figure 1 needs the utility, and the utility is a
    polygon question, not a county question */
@@ -2006,7 +2007,7 @@ function renderPowerPlan(p, fips) {
         <td>${injBus
           ? `<b>${injBus.name}</b> · ${fmt(injBus.kv)} kV · ${injBus.mi} mi<br>
              <b>${fmt(injBus.mw)} MW</b> injection headroom
-             <div class="hint">study case: DPP-2021 cycle</div>`
+             <div class="hint">study case: ${escHtml(injBus.vintage || "per publisher")}</div>`
           : `<span class="cannot">No connection point within 25 miles.</span>`}</td>
         <td class="hint">Only relevant if you intend to co-locate generation or export.
           <b>It is not a substitute for the withdrawal figure</b> — re-measured on the current
@@ -2255,7 +2256,7 @@ function gridEv(p) {
       <h3>Injection headroom at a 300 MW request (bounded re-harvest)</h3><table>
       ${row("available for a 300MW-class INJECTION", p.headroom300_mw != null ? `${fmt(Math.round(p.headroom300_mw))} MW` : null)}
       ${row("binding facility @300MW", p.binding_300)}</table>
-      <div class="prov">${prov("in_bus_headroom_300")} · ⚠ this MISO viewer is INJECTION-only (generators); it cannot answer the data-centre LOAD question — PJM buses carry the withdrawal number; a MISO load-direction source is an open lane</div>
+      <div class="prov">${prov("in_bus_capacity_tier0")} · ⚠ MISO's PUBLIC viewer is INJECTION-only (generators) and cannot answer the data-centre LOAD question; the load-side figures here come from our licensed Orennia DPP-2025 subscription. Formerly this panel could only question — PJM buses carry the withdrawal number; a MISO load-direction source is an open lane</div>
       <h3>Transfer capability at infinite request (study detail)</h3><table>
       ${row("worst across facilities (MW)", p.worst_mw)}${row("median (MW)", p.median_mw)}${row("best (MW)", p.best_mw)}
       ${row("monitored facilities", p.monitored_facilities)}${row("at zero", p.facilities_at_zero)}
