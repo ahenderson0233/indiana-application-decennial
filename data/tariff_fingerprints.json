@@ -1,0 +1,367 @@
+{
+ "City of Anderson, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 7,
+  "sha": "2cf086d7a2392472"
+ },
+ "City of Auburn, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 8,
+  "sha": "0d741aa69bca19f0"
+ },
+ "City of Bluffton, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "d60f505952409acd"
+ },
+ "City of Columbia City, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 3,
+  "sha": "dd36c630b0962967"
+ },
+ "City of Covington, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "35d5b85f6265b963"
+ },
+ "City of Crawfordsville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 4,
+  "sha": "02279a4269a58316"
+ },
+ "City of Frankfort, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 5,
+  "sha": "4b0b76c1f1b249bc"
+ },
+ "City of Garrett, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "28d81e3cc0f6da23"
+ },
+ "City of Gas City, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "6727b8d650a907f2"
+ },
+ "City of Greendale, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "2304c43ead7d9eba"
+ },
+ "City of Greenfield, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "9934f15977a4ef59"
+ },
+ "City of Hagerstown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "6300f23ffad89e9e"
+ },
+ "City of Huntingburg, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "6d1685aece161fad"
+ },
+ "City of Jasper, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 3,
+  "sha": "f01cb381d0293aab"
+ },
+ "City of Lebanon, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 2,
+  "sha": "8ad3952e9b9bcc58"
+ },
+ "City of Lewisville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "79dc0f159d974e41"
+ },
+ "City of Linton, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "f33865e594cafd81"
+ },
+ "City of Logansport, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 4,
+  "sha": "bbbd2a0473125505"
+ },
+ "City of Mishawaka, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 4,
+  "sha": "d36490a52467e553"
+ },
+ "City of Peru, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 3,
+  "sha": "c83bbfb33bc365a1"
+ },
+ "City of Rensselaer, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "34c7e21a9a077112"
+ },
+ "City of Richmond, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 6,
+  "sha": "ab8dd0a27b321a21"
+ },
+ "City of Rising Sun, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "7ca1dae394766290"
+ },
+ "City of Scottsburg, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "643f96515361d852"
+ },
+ "City of Tell City, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 4,
+  "sha": "4888ce146b3ecca5"
+ },
+ "City of Thorntown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "51feb1cf99479e9e"
+ },
+ "City of Troy, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "b1b28d1b5901848e"
+ },
+ "City of Washington, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "7fbed173a6f34695"
+ },
+ "City of Waynetown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "f359c8cc397875a1"
+ },
+ "City of Williamsport, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "a25ca3c3490c16da"
+ },
+ "Duke Energy Indiana Inc": {
+  "is_iou": true,
+  "schedules": 4,
+  "sha": "5a247a5065331c10"
+ },
+ "Hoosier Energy Rural Electric Cooperative, Inc.": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "d3968aaa8b1fdd29"
+ },
+ "Indiana Michigan Power Co (Indiana)": {
+  "is_iou": true,
+  "schedules": 3,
+  "sha": "39f2a4b8effa41f7"
+ },
+ "Indiana Municipal Power Agency": {
+  "is_iou": false,
+  "schedules": 1,
+  "sha": "c9f8df4d93679fb9"
+ },
+ "Indianapolis Power & Light Co": {
+  "is_iou": true,
+  "schedules": 5,
+  "sha": "2dc0030038d89773"
+ },
+ "Northern Indiana Pub Serv Co": {
+  "is_iou": true,
+  "schedules": 4,
+  "sha": "70c1301baa2a791b"
+ },
+ "Paulding-Putman Elec Coop, Inc (Indiana)": {
+  "is_iou": false,
+  "schedules": 3,
+  "sha": "bd403c09d8560e14"
+ },
+ "South Central Indiana REMC": {
+  "is_iou": false,
+  "schedules": 3,
+  "sha": "a472d22e78b1965f"
+ },
+ "Southeastern Indiana R E M C": {
+  "is_iou": false,
+  "schedules": 5,
+  "sha": "cf54dd2e777b8255"
+ },
+ "Southern Indiana Gas & Elec Co": {
+  "is_iou": true,
+  "schedules": 2,
+  "sha": "f4cebd6274237cbc"
+ },
+ "Southern Indiana R E C, Inc": {
+  "is_iou": false,
+  "schedules": 1,
+  "sha": "ef33ce8db3169c4e"
+ },
+ "Town of Argos, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "64dbfb99c429552a"
+ },
+ "Town of Avilla, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "686d1fe40e73200b"
+ },
+ "Town of Bainbridge, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "10f04eb7eb9f96b5"
+ },
+ "Town of Bargersville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "005c1f71bddc754c"
+ },
+ "Town of Brooklyn, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "59d3bbcfd142f40a"
+ },
+ "Town of Brookston, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "a5932919fc281a39"
+ },
+ "Town of Centerville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "0edcc5cb04695ebe"
+ },
+ "Town of Chalmers, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "edafe051685cff38"
+ },
+ "Town of Coatesville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "0af0f907c78e4a9e"
+ },
+ "Town of Crane, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "a1d49d6db6e94964"
+ },
+ "Town of Etna Green, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "5c47915936243dc8"
+ },
+ "Town of Ferdinand, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "62c924694b67a8b2"
+ },
+ "Town of Frankton, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "0fc795e26c46a3ce"
+ },
+ "Town of Jamestown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "75d2ad2bcd9ed953"
+ },
+ "Town of Kingsford Heights, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "b915085a3308e44e"
+ },
+ "Town of Knightstown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "6bced6b24d9e57e7"
+ },
+ "Town of Ladoga, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "035f67c3f811ae2a"
+ },
+ "Town of Middletown, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "26ac4ee88199432b"
+ },
+ "Town of Montezuma, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "786b5938cc056348"
+ },
+ "Town of New Carlisle, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "66581c09a38d88f3"
+ },
+ "Town of Paoli, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "32039bebe964dfbe"
+ },
+ "Town of Pendleton, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "f4bf347934b46f8b"
+ },
+ "Town of Pittsboro, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "c1087fc25ac7740a"
+ },
+ "Town of Rockville, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "c1d936feb33f9994"
+ },
+ "Town of South Whitley, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "a33e165f017f6cbe"
+ },
+ "Town of Spiceland, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "3987035d0d7fec09"
+ },
+ "Town of Straughn, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "7d09fa85b8c2ee71"
+ },
+ "Town of Veedersburg, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "f0956a122ef37b49"
+ },
+ "Town of Walkerton, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "f2642573068795d9"
+ },
+ "Town of Warren, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "fdf3f105cfcf429a"
+ },
+ "Town of Winamac, Indiana (Utility Company)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "0c8938ecc6fcd7da"
+ },
+ "Wabash Valley Power Association, Inc. (d/b/a Wabash Valley Power Alliance)": {
+  "is_iou": false,
+  "schedules": 0,
+  "sha": "68589619fca59490"
+ }
+}

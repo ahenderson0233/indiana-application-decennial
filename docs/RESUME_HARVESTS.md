@@ -1,9 +1,17 @@
 # PJM CASE-23 HARVESTS
 
-> ## ⚠⚠ LIVE RIGHT NOW — 2026-08-18 09:11, A RE-HARVEST IS RUNNING
+> ## ✅ WITHDRAWAL IS DONE — 🟡 INJECTION IS RUNNING (2026-08-18 afternoon)
 >
-> **`in_pjm_qs_c23sens_wd` — WITHDRAWAL, case 23, owner 1568, 100 MW. Started 09:11.**
-> Expect roughly 4-5 hours. Injection follows AFTER it, never alongside.
+> **✅ `in_pjm_qs_c23sens_wd` — WITHDRAWAL, COMPLETE.** **462,654 rows, 1,826 of 1,826 buses,
+> 0 null `available_mw`, one `case_label`.** That is landing-sequence step 1 below, passed in full.
+>
+> **🟡 `in_pjm_qs_c23sens_inj` — INJECTION, RUNNING.** Case 23, owner **1568**, 100 MW, started
+> 11:36 by the chained poll-for-absence guard, which did its job: it waited for withdrawal to
+> finish rather than launching alongside it. At **1,600 of 1,826 buses** late afternoon, and it is
+> the **only** QueueScope process.
+>
+> ⚠ **It registers only on completion.** The honesty audit reporting **1 unregistered table** is
+> the expected mid-flight state — registering early would assert a row count that is still moving.
 >
 > ⛔ **DO NOT START A SECOND QUEUESCOPE PROCESS.** Check first:
 > ```

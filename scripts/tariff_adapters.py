@@ -32,6 +32,25 @@ what the 19 municipals do until each is given one.
 """
 import re
 
+# ⚠ A COMMA BETWEEN TWO DIGITS IS A THOUSANDS SEPARATOR, NOT A CLASS SEPARATOR.
+#
+# Duke writes its two alternative transmission rates as "transmission (138,000/230,000/345,000 V)"
+# and "transmission (69,000 V)". The generic multi-class test below treats a comma as a list
+# separator - correctly, for "primary, secondary" - and so read the DIGIT-GROUP commas inside
+# "138,000" as a class list. Both rates were marked class-agnostic-within-transmission, landed in
+# the same run, and were SUMMED: 23.59 + 20.51 $/kW-month and 0.046775 + 0.044002 $/kWh, putting
+# Duke HLF at 16.96 c/kWh against an 8.83 c benchmark (+92%).
+#
+# It is the same shape as the AES low-load-factor defect - two ALTERNATIVE rates for one service
+# added together - reached by a different route. Compiled at module level and self-tested at
+# import, because a pattern that silently stops matching is exactly how this went wrong before.
+DIGIT_COMMA_RE = re.compile(r"(?<=\d),(?=\d)")
+assert DIGIT_COMMA_RE.sub("", "transmission (138,000/230,000/345,000 v)") \
+    == "transmission (138000/230000/345000 v)"
+assert DIGIT_COMMA_RE.sub("", "primary, secondary") == "primary, secondary"
+assert DIGIT_COMMA_RE.sub("", "shall not supply demand in excess of 25,000 kw") \
+    == "shall not supply demand in excess of 25000 kw"
+
 # =============================================================================================
 ADAPTERS = {
 
@@ -61,11 +80,17 @@ ADAPTERS = {
             "transmission read 20.64 c/kWh - DEARER than secondary. A price ladder that inverts is "
             "always the tell. "
             "It also spells the same class differently per leg: 'transmission (138,000/345,000 V)' "
-            "on the customer and demand charges, plain 'transmission' on energy."),
+            "on the customer and demand charges, plain 'transmission' on energy. "
+            "CSC is not a rate: 'All charges - per contract', with no rate at all. Its only "
+            "numbers came from riders that happened to name it, which totalled $4.02M/yr out of "
+            "nothing. PH (Process Heating) is genuinely ENERGY-ONLY - two energy blocks and a "
+            "customer charge, no demand charge anywhere in the schedule - so a $0 demand column "
+            "there is the tariff, not a matching failure."),
         "split_classes": ["transmission"],          # LLF transmission is a separate service
         "merge_classes": ["subtransmission", "primary", "secondary"],
         "llf_classes": ["low-load-factor transmission"],
         "large_load": ["HL"],
+        "by_contract": ["CSC"],                     # negotiated, not published
     },
 
     # -----------------------------------------------------------------------------------------
@@ -80,12 +105,30 @@ ADAPTERS = {
             "let them bill everywhere and put HLF at +402%. "
             "And its 'Minimum specified capacity' row states a 25 kW FLOOR in a basis that also "
             "contains the word 'maximum' - read as a ceiling, it excluded HLF from every load and "
-            "HID the +402% error behind a bogus exclusion."),
+            "HID the +402% error behind a bogus exclusion. "
+            "It writes kV lists with THOUSANDS SEPARATORS - 'transmission "
+            "(138,000/230,000/345,000 V)' - and those digit-group commas were read as a class "
+            "list, which merged its two ALTERNATIVE transmission rates and summed them: +92%. "
+            "It splits load factor by SCHEDULE (HLF vs LLF/LLF-B) where AES splits it by class, "
+            "and it keeps one CLOSED class, 'secondary (closed class)', that no new customer can "
+            "take."),
         "split_classes": ["transmission", "primary"],
         "multi_class_phrases": ["transmission and primary", "primary voltage and higher",
-                                "primary and primary direct"],
+                                "primary and primary direct",
+                                # ⚠ Its CONNECTION charge spans every transmission tier at once -
+                                # "transmission (69/138/230/345 kV)" - while its energy and demand
+                                # charges name ONE tier each. Read as a class of its own it became
+                                # a THIRD, phantom transmission class holding nothing but the
+                                # $855.37/month connection charge: demand $0, energy $0, and a
+                                # 0.77 c/kWh headline that led the schedule's range. It is one
+                                # charge that applies at whichever transmission tier you take.
+                                "transmission (69/138/230/345 kv)"],
         "bounds_from_name_only": True,   # its basis text mixes floor and ceiling wording
         "large_load": ["HLF"],
+        # grandfathered - present in the book, not available to a new load
+        "closed_classes": ["secondary (closed class)"],
+        # LOW load factor services: LLF/LLF-B are the counterpart to HLF, not alternatives to it
+        "llf_schedules": ["LLF", "LLF-B"],
     },
 
     # -----------------------------------------------------------------------------------------
@@ -101,11 +144,33 @@ ADAPTERS = {
             "them at all. 624 is named 'General Service - LARGE' and is NOT a large-load tariff; "
             "631 is."),
         "class_separators": ["/"],
+        # ⛔ NIPSCO PUBLISHES OPTIONAL SERVICES INSIDE ITS SCHEDULES, and they were being billed
+        # as if firm. "Maintenance service" is capacity a customer confirms for planned outage
+        # work - 0.62 $/kW/DAY in Jan/May/Dec, 0.35 in the shoulder months, NOT AVAILABLE
+        # June-September and capped at 60 days per rolling 12 months. Charged as a 365-day firm
+        # demand it added $106.22M/yr to Rate 632 for a service nobody elected, and drove it to
+        # +241%. "Back-up service" is cogeneration stand-by, priced at Real-Time LMP plus a
+        # non-fuel adder. 631's affiliate premium applies only to energy moved between commonly
+        # owned adjacent premises with behind-the-meter generation.
+        # None of these is part of a firm 24/7 bill. They are shown, not summed, and said to be
+        # excluded - the same treatment reactive charges get, and for the same reason.
+        "conditional_applies_to": ["maintenance service",
+                                   "back-up service",
+                                   "back-up service (cogeneration customers)",
+                                   "aggregated premises with btm generation"],
         # 631's own components leave no class-bearing row once the slash-joined demand charge is
         # (correctly) made class-agnostic, so the classes fell back to junk like "all tiers" and
         # "aggregated premises with BTM generation". Its eligibility states the truth plainly:
         # transmission / sub-transmission only. Declare it rather than infer it.
-        "explicit_classes": {"631": ["transmission", "subtransmission"]},
+        # 631, 632 and 633 all state "transmission/subtransmission" eligibility and put their
+        # demand charge on that same slash-joined string. Once the slash is (correctly) read as a
+        # separator, the demand row becomes class-agnostic and NO row is left carrying a class -
+        # so volt_classes came out EMPTY, the renderer had no class to match against, and 633's
+        # $24.72/kW-month demand charge was dropped entirely: DEMAND $0 on a demand-led schedule.
+        # 631 had already been fixed this way; 632 and 633 have the identical convention.
+        "explicit_classes": {"631": ["transmission", "subtransmission"],
+                             "632": ["transmission", "subtransmission"],
+                             "633": ["transmission", "subtransmission"]},
         "not_large_load": ["624"],
         "large_load": ["631"],
         "merge_classes": ["transmission", "subtransmission", "primary", "secondary"],
@@ -176,7 +241,8 @@ def bounds_name_only(utility):
 
 def is_multi_class(utility, text):
     """Does this applies_to name several classes, by this publisher's conventions?"""
-    t = (text or "").lower()
+    # digit-group commas first, or "138,000" reads as a class list - see DIGIT_COMMA_RE
+    t = DIGIT_COMMA_RE.sub("", (text or "").lower())
     for phrase in adapter(utility).get("multi_class_phrases", []):
         if phrase in t:
             return True
@@ -184,6 +250,64 @@ def is_multi_class(utility, text):
         if sep in t:
             return True
     return bool(re.search(r"\band\b|\bor higher\b|,", t))
+
+
+assert not is_multi_class("Duke Energy Indiana Inc",
+                          "transmission (138,000/230,000/345,000 V)")
+assert not is_multi_class("Duke Energy Indiana Inc", "transmission (69,000 V)")
+assert is_multi_class("Duke Energy Indiana Inc", "primary and primary direct (2,400-34,500 V)")
+assert is_multi_class("Northern Indiana Pub Serv Co", "transmission/subtransmission")
+
+
+def closed_classes(utility):
+    """Service classes this publisher has CLOSED to new customers.
+
+    A grandfathered class is not an option a siter can choose, and pricing one implies it is.
+    Declared per publisher because the wording is the publisher's: Duke is the only one in the
+    estate that marks a class this way, writing "secondary (closed class)".
+    """
+    return adapter(utility).get("closed_classes", [])
+
+
+def is_by_contract(utility, code):
+    """A 'schedule' whose rate is negotiated rather than published.
+
+    AES's CSC (Customer Specific Contracts) states "All charges - per contract" and carries no
+    rate at all. It is a PROCESS, not a price; totalling it produced a $4.02M/yr figure built
+    from nothing but the riders that happened to name it.
+    """
+    return code in adapter(utility).get("by_contract", [])
+
+
+def is_conditional(utility, applies_to):
+    """Is this an OPTIONAL service the customer has not elected, rather than part of a firm bill?
+
+    Declared per publisher because it is the publisher who decides what rides inside a schedule.
+    NIPSCO puts maintenance service, back-up service and an affiliate premium in with the firm
+    rates; treating those as mandatory added $106.22M/yr to Rate 632 alone.
+    """
+    a = (applies_to or "").strip().lower()
+    if not a:
+        return False
+    return any(a == p or a.startswith(p)
+               for p in adapter(utility).get("conditional_applies_to", []))
+
+
+assert is_conditional("Northern Indiana Pub Serv Co", "maintenance service")
+assert is_conditional("Northern Indiana Pub Serv Co", "back-up service (cogeneration customers)")
+assert not is_conditional("Northern Indiana Pub Serv Co", "transmission/subtransmission")
+assert not is_conditional("Duke Energy Indiana Inc", "maintenance service")   # not declared there
+
+
+def is_low_load_factor(utility, code):
+    """A whole SCHEDULE that only serves low-load-factor customers.
+
+    Publishers split load factor two different ways and the difference matters. AES makes it a
+    SERVICE CLASS inside one schedule ("low-load-factor transmission"), which the renderer
+    already drops above 15% LF. Duke makes it a SCHEDULE - LLF and LLF-B against HLF - and those
+    were being priced at 85% load factor, a service the customer cannot take.
+    """
+    return code in adapter(utility).get("llf_schedules", [])
 
 
 def explicit_classes(utility, code):

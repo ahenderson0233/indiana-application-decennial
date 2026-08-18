@@ -52,54 +52,65 @@ re-run against existing markers resumes and harvests almost nothing. Archive, ne
 
 ---
 
-## ⭐ YOUR FIRST ACTION ITEM — fix the tariff rates that are still wrong
+## ✅ THE PREVIOUS FIRST ACTION ITEM IS DONE — do not re-do it
 
-The Market page prices each rate schedule at a user-set MW and load factor, folds in every
-applicable rider, prices **every service voltage separately**, and checks each figure against what
-that utility's **industrial** customers actually pay (EIA-861). It works for most of the five IOUs.
-**It is still wrong in specific, named places, and that is your first job.**
+The five IOUs' rates were the last session's first job and they are **finished**. Read
+`docs/HANDOFF_2026-08-18.md` §8–15 before touching any tariff code, because the reasons matter more
+than the result:
 
-Reproduce the audit before changing anything — run it **through the shipped renderer in a browser**,
-not by reimplementing the maths:
+- ⭐ **No rider was ever counted, on 17 of 18 IOU schedules.** A rider's `applies_to` was being used
+  as its service-class key, so the renderer's per-class filter dropped every one. It survived a full
+  session of auditing because `n_riders_attached` reported them correctly attached the whole time.
+  **A count is not a total.**
+- **Eight further defects followed it**, including a thousands-separator comma read as a class list
+  (Duke HLF **+92% → −4%**), a service class inferred from a charge NAME (NIPSCO losing
+  **$32.8M/yr**), and NIPSCO's **$0.62/kW-DAY maintenance service billed 365 days a year**
+  (**+$106.22M/yr** on one schedule).
+- **Every priced row at all five IOUs now lands inside a reasoned −20%/+60% band except three, and
+  all three are explained** — see §13. Do not "fix" them: AES PH is energy-only Process Heating,
+  NIPSCO 631 is a genuinely expensive new large-load tariff, and I&M IP-LL at secondary is 300 MW at
+  under 4 kV.
+- **Per-utility isolation is now proven, not asserted.** `scripts/tariff_fingerprint.py` showed that
+  perturbing only Duke's adapter moves exactly 1 of 73 utilities.
 
-1. `python scripts/export_tariffs.py`
-2. serve the repo and open `market.html`
-3. iterate every IOU in the `#tf-util` selector, read each schedule's per-voltage rows, and compare
-   the `vs actual` column against the benchmark in `#tf-count`
-
-### A. Rows showing **$0 for an entire column** — these are the highest priority
-
-A priced row whose **demand** or **energy** column is `$0` means a whole billing leg failed to match
-that service class. Every costing bug found so far had this signature. The page now refuses to show
-an effective rate for these (`not costable`) — **that guard is working; the underlying gap is not
-fixed.**
-
-| utility | schedule | symptom |
-|---|---|---|
-| **AES Indiana** | **PH** | demand `$0` — energy-only, so no rate is shown |
-| **I&M** | **GS** (transmission) | demand `$0` |
-
-Find which component *should* have matched and why it did not. It will almost certainly be a
-class-key mismatch — the same family of defect as the nine already fixed.
-
-### B. Schedules whose totals are wildly off
-
-| utility | schedule | reads | benchmark | likely cause |
-|---|---|---|---|---|
-| **NIPSCO** | **631** | +52% / +69% | 6.10¢ | ⭐ Its **Tier 2 is day-ahead LMP** and **Tier 3 is MISO Asset Owner settlement** — market-indexed, not firm. We cost everything as all-firm, which overstates it. The firm/non-firm election moves a NIPSCO bill more than any rider. |
-| **SIGECO** | LP, HLF | −36% / −34% | 9.02¢ | demand billed in **kVA**; PF 1.0 is assumed. Also HLF is demand-only with no base energy charge. |
-| **I&M** | IP | −34% | 8.04¢ | may be legitimate — see the tolerance note below |
-| **Duke** | **HLF** | **never verified** | 8.83¢ | excluded by a ceiling, so the multi-class fix that was supposed to repair its +402% error is **unproven, not proven** |
-
-### C. The tolerance band itself is the wrong instrument
-
-A flat ±20% flags correct answers as failures. A **300 MW customer at 85% load factor should sit
-below** an average that includes small industrials — so I&M IP at −34% may be right. **Make the
-tolerance scale with load** relative to the average customer, rather than tuning rates to hit a
-fixed band. ⛔ Never tune a rate to match the benchmark; match the **method**, then let the number
-land where it lands.
+⛔ **Never tune a rate to match the benchmark.** Match the method, then let the number land.
 
 ---
+
+## ⭐ YOUR FIRST ACTION ITEM — G55, the 19 municipals
+
+**252 municipal / co-op rows across 19 utilities are loaded and NOT ONE has been through the costing
+audit.** This is the largest remaining tariff item, and the last session is the argument for why it
+cannot be skipped: it found **nine further defects in five utilities that had already been audited
+once**.
+
+Why the municipals are harder, not easier:
+
+1. **19 publishers with 19 sets of conventions**, against five.
+2. **None has an adapter**, so all fall back to the generic path — the same path that produced
+   seventeen defects on the IOUs.
+3. ⛔ **Most have no EIA-861 industrial benchmark at all**, so the reconciliation gate that caught
+   every one of those defects **does not exist for them**. A different check has to be designed
+   before the numbers mean anything.
+
+**Suggested order:**
+
+- Run `python scripts/export_tariffs.py` then `python scripts/tariff_fingerprint.py --update` so you
+  have a baseline, and re-run the fingerprint after every adapter you add — it names exactly which
+  publishers moved.
+- Work the **zero-column signature first**, because it caught every defect so far: any priced row
+  whose demand, energy or riders column is `$0`. `has_demand_leg` / `has_energy_leg` already
+  distinguish an absent leg from an unmatched one.
+- Then design the reconciliation check for utilities with no benchmark. Candidates worth measuring:
+  cross-check against the neighbouring IOU's rate for the same voltage, against the utility's own
+  wholesale supply contract if published, or against Richmond TS (~7.6¢/kWh at 90% LF), which
+  `docs/TARIFF_HARVEST_MUNIS_COOPS.md` already judges the best published firm municipal path — and
+  which reaches no surface today.
+
+**Also open, small and specific:** **G57** — two I&M Tariff G.S. rows carry `rate = 0.0` with
+`value_status = 'published'`, which breaks *"unpublished is NULL, never 0"*. Contained today because
+G.S. is excluded on its 1,000 kW ceiling, but it needs the source sheets read rather than guessed.
+
 
 ## HOW TO MAKE TARIFF CHANGES — this is the part that matters
 

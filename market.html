@@ -429,6 +429,13 @@ function mmbtuToCents(v) {
   // Low-load-factor service is for customers under roughly 15% annual load factor. Showing it to
   // someone running at 85% would price a service they cannot take, so it is dropped above that.
   const LLF_MAX = 0.15;
+  /* ⛔ ONE definition of the plausibility band, read by both the schedule verdict and the
+   * per-voltage row mark. The eligibility vocabulary was maintained in two places and they
+   * drifted; a threshold is exactly the kind of constant that does that. Asymmetric on purpose:
+   * BELOW this utility's blended industrial average has always meant a missing charge in this
+   * codebase, while ABOVE is what a NEW large-load schedule does against decades of embedded
+   * cost. See the long note at `const ok = ...`. */
+  const BAND_LO = -20, BAND_HI = 60;
   const usd = (n) => Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${fmt(Math.round(n))}`;
 
   /* Allocate a quantity across a block ladder. The rates are ALTERNATIVES applied to successive
@@ -461,16 +468,24 @@ function mmbtuToCents(v) {
     const legs = { fixed: 0, demand: 0, energy: 0 };
     const riders = { fixed: 0, demand: 0, energy: 0 };
     const lines = [];
-    let reactive = 0;
+    let reactive = 0, conditional = 0;
     const monthlyKWh = kWh / 12, hoursUse = kW ? monthlyKWh / kW : 0;
 
+    /* An INHERITED schedule leg is still a schedule leg. A large-load framework rides on a parent
+     * (I&M IP-LL on IP), and the exporter re-labels the inherited components so the reader can see
+     * where they came from — "IP (underlying schedule)". Bucketing on `origin !== "schedule"` then
+     * counted the parent's own demand and energy as RIDERS, which is why IP-LL showed ENERGY $0
+     * across all four service classes while its Riders column carried $153.89M. The money was
+     * right and every column it sat in was wrong. */
+    const isScheduleLeg = (c) => c.origin === "schedule"
+                              || String(c.origin).endsWith("(underlying schedule)");
     const push = (c, amt, leg) => {
-      (c.origin === "schedule" ? legs : riders)[leg] += amt;
+      (isScheduleLeg(c) ? legs : riders)[leg] += amt;
       lines.push({ ...c, amt, leg });
     };
 
     // --- blocked legs first: group by (origin, kind) and allocate the ladder ---
-    const blocked = sch.components.filter((c) => c.block && c.bill && at(c));
+    const blocked = sch.components.filter((c) => c.block && c.bill && at(c) && !c.conditional);
     const groups = {};
     for (const c of blocked) (groups[`${c.origin}|${c.block[0]}`] ||= []).push(c);
     for (const key of Object.keys(groups)) {
@@ -488,6 +503,13 @@ function mmbtuToCents(v) {
     for (const c of sch.components) {
       if (c.block || !c.bill || !at(c)) { if (c.reactive) reactive++; continue; }
       if (c.reactive) { reactive++; continue; }
+      /* An OPTIONAL service riding inside the schedule is not part of a firm 24/7 bill. NIPSCO
+       * puts maintenance service ($0.62/kW/DAY, unavailable June-September, capped at 60 days a
+       * year), back-up service for cogenerators, and an affiliate-transfer premium in among its
+       * firm rates; billing them as mandatory added $106.22M/yr to Rate 632 and drove it to
+       * +241%. Skipped and COUNTED, never silently dropped - the same treatment reactive charges
+       * get, for the same reason. */
+      if (c.conditional) { conditional++; continue; }
       let amt = 0, leg = "demand";
       /* A time-of-use ENERGY rate bills only the kWh that falls in its own period. For a flat
        * 24/7 load that share is fixed by the clock, so it is arithmetic rather than a guess.
@@ -503,7 +525,8 @@ function mmbtuToCents(v) {
     }
     const total = legs.fixed + legs.demand + legs.energy
                 + riders.fixed + riders.demand + riders.energy;
-    return { legs, riders, lines, reactive, total, cents: kWh ? (total / kWh) * 100 : null };
+    return { legs, riders, lines, reactive, conditional, total,
+             cents: kWh ? (total / kWh) * 100 : null };
   }
 
   function tfRender() {
@@ -525,10 +548,14 @@ function mmbtuToCents(v) {
        * under this schedule" - a 300 MW load is 12x over it and cannot take service at all, yet
        * the page priced it at 14.12 c/kWh as though it were an option. Its name is misleading:
        * "large" there means large GENERAL SERVICE, not large load. */
+      /* ⛔ TWO COPIES OF THE ELIGIBILITY VOCABULARY DRIFTED APART. This regex and the exporter's
+       * MAX_RE were maintained separately, and when the exporter learned the words "ceiling" and
+       * "exceeds" - which is how I&M's Tariff G.S. states its 1,000 kW limit - this copy did not.
+       * `sch.max_kw` is computed once, in the exporter, from the whole estate's vocabulary; use
+       * it for the DECISION and search the components only for the prose that explains it. */
       const maxKW = sch.components.find((c) => c.type === "eligibility"
-        && /kW/i.test(c.unit || "") && c.rate
-        && /maximum|in excess of|not exceed|no greater|up to/i.test(`${c.name || ""} ${c.basis || ""}`));
-      const tooBig = maxKW && kW > maxKW.rate;
+        && /kW/i.test(c.unit || "") && c.rate === sch.max_kw);
+      const tooBig = sch.max_kw != null && kW > sch.max_kw;
       const elig = tooBig
         ? `<div class="sowhat"><b>&#9888; You CANNOT take service on this schedule at ${fmt(mw)} MW.</b>
            It carries a ceiling of <b>${fmt(maxKW.rate)} kW (${(maxKW.rate / 1000).toFixed(0)} MW)</b>
@@ -539,6 +566,32 @@ function mmbtuToCents(v) {
            schedule instead.</div>`
         : tooSmall ? `<div class="sowhat"><b>You would not qualify at ${fmt(mw)} MW.</b>
            This schedule requires at least ${fmt(minKW.rate)} kW of contract demand.</div>` : "";
+
+      /* ⛔ A NEGOTIATED CONTRACT IS NOT A PUBLISHED RATE. AES's CSC states "All charges — per
+       * contract" and carries no rate at all; once riders began costing correctly it printed a
+       * $4.02M/yr total assembled entirely from riders that happened to name it. Say what it is. */
+      if (sch.by_contract) {
+        return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
+            <span class="hint">· negotiated, not published</span></summary>
+          <div class="accbody"><div class="sowhat"><b>There is no rate to project here.</b> This
+            schedule sets out how a contract is negotiated, not what it costs &mdash; the tariff
+            says only <i>"all charges: per contract"</i>. A load of your size would negotiate
+            against the published large-load schedule, so price that one and treat this as the
+            route, not the number.</div>${elig}</div></details>`;
+      }
+      /* Load factor is published two different ways and the difference decides eligibility. AES
+       * makes it a SERVICE CLASS inside one schedule, already handled below at LLF_MAX. Duke makes
+       * it a SCHEDULE — LLF and LLF-B against HLF — and those were being priced at 85% load
+       * factor, quoting a service the customer cannot take at rates that then read 30% high. */
+      if (sch.low_load_factor && lf > LLF_MAX) {
+        return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
+            <span class="hint">· not available at ${(lf * 100).toFixed(0)}% load factor</span></summary>
+          <div class="accbody"><div class="sowhat"><b>This is a LOW load factor schedule.</b> It
+            exists for customers who run rarely, and at <b>${(lf * 100).toFixed(0)}%</b> you are
+            the opposite of the customer it is written for. Its rates are not a price available to
+            you &mdash; take this utility's high-load-factor schedule instead.</div>${elig}</div>
+          </details>`;
+      }
 
       if (sch.modifier) {
         return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
@@ -577,7 +630,29 @@ function mmbtuToCents(v) {
       const best = priced[0], worst = priced[priced.length - 1];
       const spread = worst.r.total - best.r.total;
       const off = bench ? ((best.r.cents - bench) / bench) * 100 : null;
-      const ok = off !== null && Math.abs(off) <= 35;
+      /* ⭐ THE BAND IS NOT SYMMETRIC, BECAUSE THE TWO DIRECTIONS MEAN DIFFERENT THINGS.
+       * Operator, 2026-08-18: a flat +/-20% "is the wrong instrument" - and it was, because it
+       * called correct answers failures. The benchmark is a BLENDED average over every industrial
+       * customer on the system, and a single 300 MW load is nothing like that population.
+       *
+       * ⛔ The wrong fix would be a tolerance formula tuned until the numbers pass. What the two
+       * directions actually tell us is asymmetric:
+       *   BELOW the average  -> suspicious. A big load does pay less per kWh than a small one, but
+       *      our own history says a low figure is far more often a MISSING CHARGE: the absent rider
+       *      stack read -36%, a dropped transmission charge -14%, a missing demand leg 0.26c.
+       *      Every single one of those was a defect, and none of them was a bargain.
+       *   ABOVE the average  -> expected, up to a point. A NEW large-load schedule prices at
+       *      long-run marginal cost while the average reflects decades of embedded cost, so a new
+       *      tariff SHOULD read dearer than the incumbent base it is averaged against.
+       * So: -20% is the floor of plausibility and +60% the ceiling, and the page states which side
+       * a figure fell on and why, instead of stamping it unreliable. */
+      const ok = off !== null && off >= BAND_LO && off <= BAND_HI;
+      /* How relevant is this benchmark to THIS load? A published fact, not a model: EIA-861 gives
+       * the industrial customer count alongside the sales, so the average industrial customer's
+       * annual MWh is arithmetic. Saying "you would be 640x the average customer here" lets the
+       * reader judge the comparison rather than trust a band. */
+      const benchMwh = u.benchmark_mwh_per_customer;
+      const sizeX = benchMwh ? (kWh / 1000) / benchMwh : null;
       /* Below ~2 c/kWh nothing real is being priced - it means our extraction is missing a leg of
        * this schedule, and the run only looked cheap because of the gap. Say that, rather than
        * presenting a hole in the data as the best deal available. */
@@ -590,9 +665,20 @@ function mmbtuToCents(v) {
        * confident, wrong c/kWh.
        * Rather than keep chasing them one at a time, refuse to publish an effective rate when a
        * leg is absent. This turns an invisible error into a visible gap, which is the whole point:
-       * an unexplained hole is honest, a fabricated number is not. */
-      const legMissing = (r) => (r.legs.demand + r.riders.demand) === 0
-                             || (r.legs.energy + r.riders.energy) === 0;
+       * an unexplained hole is honest, a fabricated number is not.
+       *
+       * ⭐ REFINED 2026-08-18b: the guard could not tell a MISSING leg from an ABSENT one. AES's
+       * PH (Process Heating) publishes two energy blocks, a customer charge and NO demand charge
+       * anywhere in the schedule - a $0 demand column there is the tariff, not a gap - and it was
+       * being refused for telling the truth. The exporter now states, per schedule, whether the
+       * book contains a demand leg and an energy leg at all (`has_demand_leg` / `has_energy_leg`),
+       * so a leg is only "missing" when the schedule HAS one and this class did not get it. That
+       * keeps the guard on NIPSCO 633 - which does publish a $24.72/kW-month demand charge - and
+       * takes it off the schedules that never had one. */
+      const legMissing = (r) => (sch.has_demand_leg !== false
+                                 && (r.legs.demand + r.riders.demand) === 0)
+                             || (sch.has_energy_leg !== false
+                                 && (r.legs.energy + r.riders.energy) === 0);
       /* An inverted block ladder is SUPPOSED to look expensive at high load factor - NIPSCO 632
        * and 633 price high-LF customers out deliberately. Comparing that against a blended
        * industrial average is not a fair test of the model, so it is not reported as a failure. */
@@ -615,7 +701,18 @@ function mmbtuToCents(v) {
            customer it is designed to turn away &mdash; which is itself the finding.`
         : `${ok ? "&#10003;" : "&#9888;"} Modelled <b>${best.r.cents.toFixed(2)}&cent;</b> against
            <b>${bench}&cent;</b> actually paid by industrial customers here
-           (<b>${off > 0 ? "+" : ""}${off.toFixed(0)}%</b>)${ok ? "" : " &mdash; <b>outside tolerance; treat as unreliable</b>"}`;
+           (<b>${off > 0 ? "+" : ""}${off.toFixed(0)}%</b>)${
+             sizeX && sizeX >= 2 ? `. That average covers <b>${fmt(u.benchmark_customers)}
+             industrial customers</b> using about <b>${fmt(benchMwh)} MWh</b> a year each &mdash; you
+             would use <b>${sizeX >= 100 ? Math.round(sizeX) : sizeX.toFixed(1)}&times;</b> that, so
+             it is a sanity check on our METHOD, not a prediction of your price` : ""}${
+             ok ? "" : off > 60
+             ? `. <b>&#9888; Dearer than this utility's incumbent industrials by more than we can
+                explain by tariff vintage alone</b> &mdash; check the itemisation below before
+                relying on it`
+             : `. <b>&#9888; CHEAPER than the blended average, which is the direction that has
+                always meant a missing charge here</b>, not a bargain &mdash; every low reading
+                found so far was a billing leg or a rider stack that failed to attach`}`;
 
       return `<details class="acc"${i === 0 ? " open" : ""}>
         <summary>${sch.large_load ? '<span class="est-badge" style="background:#ecfdf5;color:#065f46;border-color:#10b981">LARGE LOAD</span> ' : ""}<b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
@@ -632,7 +729,12 @@ function mmbtuToCents(v) {
               const mark = thinRow
                 ? `<span class="cannot" title="a whole billing leg is missing from our extraction">incomplete</span>`
                 : o === null ? `<span class="cannot">no benchmark</span>`
-                : `${Math.abs(o) <= 35 ? "&#10003;" : "&#9888;"} ${o > 0 ? "+" : ""}${o.toFixed(0)}%`;
+                /* Same asymmetric band as the schedule verdict above, and for the same reason:
+                 * BELOW the blended average has always meant a missing charge here, ABOVE is what
+                 * a new large-load tariff is expected to do against decades of embedded cost.
+                 * Two copies of one threshold is how the eligibility vocabulary drifted, so this
+                 * reads the shared constants rather than restating the numbers. */
+                : `${o >= BAND_LO && o <= BAND_HI ? "&#10003;" : "&#9888;"} ${o > 0 ? "+" : ""}${o.toFixed(0)}%`;
               return `<tr><td><b>${esc(vlabel(vc))}</b></td>
               <td>${usd(r.legs.fixed)}</td><td>${usd(r.legs.demand)}</td><td>${usd(r.legs.energy)}</td>
               <td>${usd(r.riders.fixed + r.riders.demand + r.riders.energy)}</td>
@@ -640,11 +742,20 @@ function mmbtuToCents(v) {
               <td class="hint">${mark}</td></tr>`;
             }).join("")}
           </table></div>
-          <div class="sowhat">${check}${runs.length > 1 ? `<br>Across the voltages this schedule prices, the spread is
+          <div class="sowhat">${check}${runs.length > 1 ? (spread < 1
+            /* A $0 spread must not be narrated as "cheapest on X, dearest on Y". NIPSCO 631 prices
+             * transmission and sub-transmission identically - its demand charge is written across
+             * both - and claiming a cheaper end invites a siter to chase a difference that is not
+             * there. Say the voltage does not move the bill, because that is itself the finding. */
+            ? `<br>This schedule prices <b>${runs.length} service voltages identically</b> &mdash;
+               ${esc(runs.map((x) => vlabel(x.vc)).join(" and "))} come to the same
+               <b>${usd(best.r.total)} a year</b>. The voltage you interconnect at does not change
+               what you pay here, so choose it on what you can physically reach.`
+            : `<br>Across the voltages this schedule prices, the spread is
             <b>${usd(spread)} a year</b> (${(100 * spread / worst.r.total).toFixed(1)}% of the bill) &mdash;
             cheapest on ${esc(vlabel(best.vc))}, dearest on ${esc(vlabel(worst.vc))}.
             <b>Which one you can actually take is set by what is in the ground near the site</b>, so
-            price the voltage you can reach, not the cheapest row.` : ""}</div>
+            price the voltage you can reach, not the cheapest row.`) : ""}</div>
           ${runs.map(({ vc, r }) => `<details style="margin-top:6px"><summary class="hint">Line by line at
             <b>${esc(vlabel(vc))}</b> &mdash; ${usd(r.total)}/yr, schedule and riders together</summary>
             <div class="scroll" style="max-height:320px"><table>
@@ -659,6 +770,7 @@ function mmbtuToCents(v) {
             ${sch.n_components} components bill; the rest are eligibility floors, terms and ratchets.
             ${sch.fuel_base_rate ? `Fuel base ${sch.fuel_base_rate} $/kWh is <b>embedded in the energy charge</b> and is NOT added again &mdash; the fuel adjustment rider carries the difference. ` : ""}
             ${best.r.reactive ? `${best.r.reactive} reactive ($/kVAr) charge(s) excluded &mdash; they need a power factor you have not chosen. ` : ""}
+            ${best.r.conditional ? `${best.r.conditional} optional-service charge(s) excluded &mdash; maintenance, back-up or affiliate-transfer service you have not elected. ` : ""}
             ${sch.tou ? `<b>Time-of-use, costed for a flat 24/7 load:</b> energy is split by the
             hours in each period the tariff states (super off-peak 12-4am, on-peak 5-9pm plus winter
             mornings, off-peak the remainder), and <b>every</b> time-differentiated demand charge

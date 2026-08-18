@@ -93,11 +93,23 @@ assert not BLOCK_RE.search("per kW per month, Tier 1 firm service")
 # supply demand in excess of 25,000 kW under this schedule". A 300 MW load is 12x over that
 # ceiling, and we were quoting it 14.12 c/kWh as though it were an option. The NAME is not the
 # eligibility - only the numbers are.
+#
+# ⚠ "CEILING" AND "EXCEEDS" WERE MISSING FROM THIS VOCABULARY and one row fell through it. I&M's
+# Tariff G.S. states a "Class ceiling" of 1,000 kW - "customers qualify until 12-month average
+# metered demand exceeds 1,000 kW (then Tariff I.P.)". Neither word was matched, so the row was
+# skipped as ambiguous, GS got no ceiling at all, and a 300 MW load - THREE HUNDRED TIMES over the
+# limit - was quoted a small general-service tariff as though it could take it.
+# Measured across all 31 eligibility rows in the estate: adding these two words changes the
+# classification of EXACTLY THIS ONE ROW and leaves the other 30 identical.
 MIN_RE = re.compile(r"minimum|at least|contract demand", re.I)
-MAX_RE = re.compile(r"maximum|in excess of|not exceed|no greater|up to|shall not supply", re.I)
+MAX_RE = re.compile(
+    r"maximum|in excess of|not exceed|exceeds|no greater|up to|shall not supply|ceiling", re.I)
 assert MAX_RE.search("Company shall not supply demand in excess of 25,000 kW")
+assert MAX_RE.search("Class ceiling")
+assert MAX_RE.search("customers qualify until 12-month average metered demand exceeds 1,000 kW")
 assert MIN_RE.search("Minimum contract demand")
 assert not MAX_RE.search("Minimum contract demand")
+assert not MAX_RE.search("Minimum monthly billing demand")
 
 
 # A LARGE-LOAD schedule is the one a data centre actually takes service under, and it must be
@@ -230,6 +242,44 @@ assert not MULTI_CLASS_RE.search("transmission (69000 v)")
 assert not MULTI_CLASS_RE.search("subtransmission")
 assert not MULTI_CLASS_RE.search("primary distribution")
 
+# Which service-class FAMILIES does a string actually name? Shared by the schedule's multi-class
+# path and by the rider normalisation below, because both ask the same question of two different
+# kinds of prose.
+#
+# ⚠ "transmission" is a SUBSTRING of "subtransmission", so a naive `in` test claims plain
+# transmission for a row that only ever said sub-transmission. The negative lookbehind is the
+# whole point of this helper, and it is compiled at module level with import-time self-tests
+# because TWICE on 2026-08-18 a regex authored through a shell heredoc reached disk with literal
+# BACKSPACE bytes where \b was intended, matched nothing, and displayed as clean under grep.
+BARE_TRANS_RE = re.compile(r"(?<!sub)(?<!sub-)transmission")
+assert BARE_TRANS_RE.search("transmission/subtransmission")
+assert BARE_TRANS_RE.search("rate hlf - bulk transmission")
+assert not BARE_TRANS_RE.search("subtransmission")
+assert not BARE_TRANS_RE.search("sub-transmission")
+
+
+def families_named(text):
+    """Every voltage family this prose names, in physical order. [] if it names none."""
+    t = (text or "").lower()
+    out = []
+    if BARE_TRANS_RE.search(t):
+        out.append("transmission")
+    if "subtransmission" in t or "sub-transmission" in t:
+        out.append("subtransmission")
+    if "primary" in t:
+        out.append("primary")
+    if "secondary" in t:
+        out.append("secondary")
+    return out          # already appended in physical order, highest voltage first
+
+
+assert families_named("transmission/subtransmission") == ["transmission", "subtransmission"]
+assert families_named("sub-transmission") == ["subtransmission"]
+assert families_named("rate hlf - primary direct") == ["primary"]
+assert families_named("hl (all voltages), pl") == []
+assert families_named("rate 632") == []
+assert families_named("transmission and primary") == ["transmission", "primary"]
+
 # ---- LARGE-LOAD FRAMEWORKS ------------------------------------------------------------------
 # Operator, 2026-08-18: "the large load tariff/s ... are incomplete and don't actually carry out a
 # yearly projection or any applicable riders ... these are the rates that most concern us."
@@ -288,7 +338,16 @@ def service_class(applies_to, name):
         b = volt_base(name)
         return (b or "any"), (b or "any")
     key = re.sub(r"\s+", " ", a.lower())
-    return key, (volt_base(a) or volt_base(name) or "any")
+    # ⛔ NEVER INFER A SERVICE CLASS FROM A CHARGE NAME when the row states what it applies to.
+    # NIPSCO 631 has a "Transmission charge" - cost recovery for transmission service, applying at
+    # "all tiers" and at every voltage - and reading the word "Transmission" out of its NAME gave
+    # it the transmission FAMILY. That put it in the same (family, leg) bucket as an unrelated
+    # affiliate-premium row, made `transmission` look like a family the publisher SPLITS, so both
+    # rows kept their raw keys, and neither could ever match a service class. The result was
+    # NIPSCO 631 silently dropping $0.014689/kWh - $32.8M/yr on a 300 MW load.
+    # The applies_to is authoritative about class; the name is prose. Measured across all five IOU
+    # books: exactly 2 components change family, and both are the 631 rows above.
+    return key, (volt_base(a) or "any")
 
 
 # Time-of-use periods are NOT alternatives and NOT addends: each rate applies to the kWh that
@@ -348,16 +407,29 @@ EIA_NAME = {
     "Indianapolis Power & Light Co":      "AES Indiana",
     "Southern Indiana Gas & Elec Co":     "Southern Indiana Gas & Elec Co",
 }
+#
+# ⭐ AND WHOSE AVERAGE IS IT? Operator, 2026-08-18: a flat +/-20% band "is the wrong instrument",
+# because a 300 MW customer should not be expected to match an average that includes every small
+# industrial on the system. Rather than invent a tolerance that scales with load - which would be
+# fabricating a model - carry the ONE fact that makes the comparison readable: the average
+# industrial customer's annual consumption at this utility, from EIA-861's own customer count.
+# The page can then say how many times larger the modelled load is, so the reader judges the
+# benchmark's relevance instead of trusting a band.
 bench = {}
 for r in client.query(f"""
   SELECT utility_name,
          MAX(data_year) AS yr,
          ROUND(100 * SAFE_DIVIDE(SUM(SAFE_CAST(thousand_dollars_2 AS FLOAT64)),
-                                 SUM(SAFE_CAST(megawatthours_2 AS FLOAT64))), 2) AS ind_cents
+                                 SUM(SAFE_CAST(megawatthours_2 AS FLOAT64))), 2) AS ind_cents,
+         ROUND(SAFE_DIVIDE(SUM(SAFE_CAST(megawatthours_2 AS FLOAT64)),
+                           SUM(SAFE_CAST(count_2 AS FLOAT64)))) AS mwh_per_customer,
+         CAST(SUM(SAFE_CAST(count_2 AS FLOAT64)) AS INT64) AS ind_customers
   FROM `{DS}.in_eia861_sales`
   WHERE state = 'IN' AND SAFE_CAST(megawatthours_2 AS FLOAT64) > 100000
   GROUP BY utility_name"""):
-    bench[r.utility_name] = {"cents": r.ind_cents, "year": r.yr}
+    bench[r.utility_name] = {"cents": r.ind_cents, "year": r.yr,
+                             "mwh_per_customer": r.mwh_per_customer,
+                             "customers": r.ind_customers}
 print(f"benchmark utilities: {len(bench)}")
 
 rows = list(client.query(f"""
@@ -401,6 +473,9 @@ for util, rs in by_util.items():
                        else 8 if (r.season or "").strip().lower().startswith("non")
                        else 12),
             "reactive": uk in REACTIVE,
+            # an OPTIONAL service riding inside the schedule (maintenance, back-up, affiliate
+            # transfer). Shown and counted, never summed - see TA.is_conditional
+            "conditional": TA.is_conditional(util, r.applies_to),
             "volt": service_class(r.applies_to, r.name)[0],
             "volt_family": service_class(r.applies_to, r.name)[1],
             "volt_label": (r.applies_to or service_class(r.applies_to, r.name)[1]),
@@ -433,6 +508,16 @@ for util, rs in by_util.items():
     for code, v in sched_codes.items():
         name = next((x.tariff_name for x in v if x.tariff_name), None)
         components = [comp(r, "schedule", name) for r in v]
+
+        # A CLOSED class is not an option a siter can choose, so drop it before anything else
+        # sees it - pricing a grandfathered service implies it is available. Duke's LLF carries
+        # "secondary (closed class)", and once the riders began costing correctly that class
+        # surfaced as a row with $0 demand, $0 energy and $5.82M of riders: a service that does
+        # not exist, priced. Declared per publisher because the wording is the publisher's.
+        _closed = TA.closed_classes(util)
+        if _closed:
+            components = [c for c in components
+                          if (c.get("applies_to") or "").strip().lower() not in _closed]
 
         # ---- decide, PER FAMILY, whether the publisher is drawing a real sub-class ----------
         # Two failure modes pull in opposite directions and both produced wrong bills:
@@ -560,14 +645,62 @@ for util, rs in by_util.items():
             mid = group[len(group) // 2]
             mid = dict(mid, tiered_of=len(group))
             attached.append(mid)
+        # ⛔ A RIDER'S applies_to IS NOT A SERVICE CLASS, and it was being read as one. This is the
+        # largest costing defect found to date and it hid behind a correct-looking count.
+        #
+        # `service_class()` returns the raw applies_to as the class KEY, so an attached rider
+        # carried volt="hl (all voltages), pl" / "rate hlf" / "rate 632" - strings that can never
+        # equal a schedule's class key ("transmission"). The renderer's per-class filter is
+        # `c.volt === volt`, so EVERY rider was dropped at EVERY service voltage: the Riders column
+        # read $0 on 17 of the 18 IOU schedules while `n_riders_attached` correctly reported 8-13
+        # riders attached. The riders were selected; their money was never counted. I&M's eight
+        # riders were reported fixed on 2026-08-18 on the strength of that count.
+        #
+        # WHY IT SURVIVED: the normalisation loop above runs over the schedule's own components,
+        # BEFORE the riders are appended here, so the riders never passed through it. An ordering
+        # defect, not a matching one - which is why every check aimed at matching missed it.
+        #
+        # Riders normalise on their OWN terms, not the schedule's:
+        #   * naming no service class  -> applies at every class (volt None, no volt_named)
+        #   * naming one or more       -> applies at those FAMILIES. Family, not exact key,
+        #     because Duke's Rider 65 says "primary" where the schedule says "primary direct";
+        #     neither publisher spells the other's key and requiring equality drops the rider.
+        for c in attached:
+            named = families_named(c.get("volt"))
+            c["volt"] = None
+            c["volt_named"] = named or None
         components += attached
         billable = [c for c in components if c["bill"]]
+
+        # ⭐ DOES THIS SCHEDULE PUBLISH A DEMAND CHARGE AT ALL? The leg guard - a row missing a
+        # whole billing leg refuses to show an effective rate - is what made every costing defect
+        # findable, and it must stay. But it cannot tell two very different things apart:
+        #
+        #   * the schedule HAS demand rows and none matched THIS class  -> a matching failure,
+        #     the signature of all nine defects, and the rate must be refused
+        #   * the schedule has NO demand row anywhere                   -> the tariff is genuinely
+        #     energy-only and the rate is perfectly costable
+        #
+        # AES's PH (Process Heating) is the second kind: two energy blocks and a customer charge,
+        # no demand charge in the book at all. It was being refused as "not costable" for having
+        # a $0 demand column that is simply the truth. NIPSCO's 633 is the FIRST kind, and looked
+        # identical on screen.
+        own = [c for c in components if c.get("bill") and c["origin"] == "schedule"]
+        has_demand_leg = any(c["bill"] in ("demand", "demand_kva", "demand_day") for c in own)
+        has_energy_leg = any(c["bill"] == "energy" for c in own)
+
         scheds.append({
             "code": code, "name": name,
             "components": components,
             "n_components": len(components),
             "n_billable": len(billable),
             "n_riders_attached": len({c["origin"] for c in attached}),
+            "has_demand_leg": has_demand_leg,
+            "has_energy_leg": has_energy_leg,
+            # negotiated rather than published (AES CSC) - a process, not a price
+            "by_contract": TA.is_by_contract(util, code),
+            # a LOW-load-factor schedule, which a 24/7 load cannot take (Duke LLF / LLF-B)
+            "low_load_factor": TA.is_low_load_factor(util, code),
             # ONLY the schedule's own components define the service classes. A rider's
             # applies_to ("participating customers, all classes") is not a service voltage, and
             # treating it as one invented phantom rows priced at 0.18 c/kWh.
@@ -636,6 +769,13 @@ for util, rs in by_util.items():
                                        if c["origin"] != "schedule"
                                        and not str(c["origin"]).endswith("(underlying schedule)")})
         sc["costable"] = any(c["bill"] == "energy" for c in billable2)
+        # the framework's legs are its own PLUS the parent's - the guard has to see both, or
+        # IP-LL looks energy-less and gets refused for inheriting rather than for a defect
+        _own2 = [c for c in billable2 if c["origin"] == "schedule"
+                 or str(c["origin"]).endswith("(underlying schedule)")]
+        sc["has_demand_leg"] = any(c["bill"] in ("demand", "demand_kva", "demand_day")
+                                   for c in _own2)
+        sc["has_energy_leg"] = any(c["bill"] == "energy" for c in _own2)
         sc["volt_classes"] = parent["volt_classes"]
         sc["fuel_base_rate"] = sc.get("fuel_base_rate") or parent.get("fuel_base_rate")
         if sc.get("min_kw") is None:
@@ -659,6 +799,8 @@ for util, rs in by_util.items():
                          "min_kw": sc.get("min_kw"), "max_kw": sc.get("max_kw"),
                          "costable": sc.get("costable"), "tou": sc.get("tou"),
                          "large_load": sc.get("large_load"),
+                         "by_contract": sc.get("by_contract"),
+                         "low_load_factor": sc.get("low_load_factor"),
                          "inherits_from": sc.get("inherits_from")}
                         for sc in scheds],
         # None where EIA publishes no industrial sales for this utility - most municipals and
@@ -666,6 +808,9 @@ for util, rs in by_util.items():
         # rather than implying it passed.
         "benchmark_cents": (b or {}).get("cents"),
         "benchmark_year": (b or {}).get("year"),
+        # what the benchmark's POPULATION looks like, so its relevance is checkable
+        "benchmark_mwh_per_customer": (b or {}).get("mwh_per_customer"),
+        "benchmark_customers": (b or {}).get("customers"),
         "n_schedules": len(scheds), "n_riders": len(riders_only),
         "schedules": scheds, "riders_index": sorted(riders_only, key=lambda x: x["code"]),
     })
