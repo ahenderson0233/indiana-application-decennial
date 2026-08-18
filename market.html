@@ -51,18 +51,55 @@
     Large-load tariffs have MW FLOORS (eligibility minimums). A bundled rate must clear the ISO wholesale
     floor by ≥1.75× — treat anything cheaper as a modelling error. The itemised rate engine is the full milestone.</div></div>
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
-    <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th></tr></table></div>
-    <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline · latest held posting; values verbatim from the EBB</div></div>
+    <div class="sowhat"><b>So what:</b> this is the only gas number at a grain you can site
+      against — a named delivery point, in a named county, with what the pipeline says is unsold
+      <i>today</i>. The last column turns that into <b>the generation it could actually
+      support</b>. Roughly <b>50 MMcf/d feeds a 300 MW plant</b>, so a point posting a few
+      thousand dekatherms a day is a boiler connection, not a data-centre power supply.
+      <br><b>What to do with it:</b> shortlist points whose spare capacity clears your load with
+      margin, then confirm with the pipeline — posted capacity is a daily operational figure,
+      not a reservation, and it can be sold to someone else tomorrow. Texas Eastern and REX are
+      BLOCKED (walls recorded), so a gap here is not an absence of gas.</div>
+    <div class="est-badge">MW column is an ESTIMATE — derived by us, not published by the pipeline</div>
+    <div class="hint" style="margin-bottom:6px">⚠ <b>The unit is inferred, not captured.</b>
+      Energy Transfer's iPost bulletin boards post quantities in <b>dekatherms/day</b>
+      (1 Dth = 1 MMBtu) and the magnitudes here match that, but <b>our capture kept no units
+      column</b>, so the pipeline never states it in our own data. MW assumes a modern
+      combined-cycle heat rate of <b>6.5 MMBtu/MWh</b>: MW &asymp; Dth/day &divide; 156. A
+      screening figure, not a supply commitment.</div>
+    <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th><th>&asymp; MW supportable</th></tr></table></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline ·
+      <span id="gasloc-count">…</span> · values verbatim from the bulletin board.
+      ⚠ <b>Not "the latest posting"</b> — the card used to say that, but <code>gas_day</code> is
+      <b>empty on every row we hold</b>, so which posting is current cannot be determined from our
+      capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
   <div class="gridcards">
     <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
-      <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>MMBtu received</th></tr></table></div>
+      <div class="sowhat"><b>So what:</b> this is the <b>floor under your power price</b> — what
+        Indiana generators actually paid for fuel, before any margin, delivery or rider. The
+        &cent;/kWh column converts it at a combined-cycle heat rate so you can hold it against a
+        retail tariff: a bundled quote sitting near this number is a modelling error, not a
+        bargain. It also sets the economics of running <b>your own</b> generation.</div>
+      <div class="est-badge">¢/kWh is an ESTIMATE — fuel only, at an assumed 6.5 MMBtu/MWh heat rate</div>
+      <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>&asymp; &cent;/kWh fuel only</th><th>MMBtu received</th></tr></table></div>
       <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
         actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
     <div class="card"><h2>Demand response — load the utilities can already shed</h2>
+      <div class="sowhat"><b>So what:</b> two readings. It measures how much peak the utility can
+        already remove <i>without building anything</i>, so a utility with deep demand response has
+        more room for a new large load than its headline capacity suggests. It also signals whether
+        an <b>interruptible or curtailable tariff</b> is likely to be offered to you — those trade a
+        lower price for the utility's right to cut you, which suits a BESS far better than a data
+        centre carrying an uptime commitment. <b>Context for the negotiation, not a site test.</b></div>
       <div class="scroll" style="max-height:280px"><table id="t-dr"><tr><th>utility</th><th>class</th><th>year</th><th>actual MW</th><th>potential MW</th></tr></table></div>
       <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
   </div>
   <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
+    <div class="sowhat"><b>So what:</b> these are <b>counterparties, not sites</b> — companies
+      already selling wholesale power that list an Indiana contact address, which makes this a
+      starting call-list for a PPA or a block purchase rather than anything about land. Quarters
+      filed is a crude liveness check: a filer that stopped years ago is not a counterparty today.
+      <b>Context only.</b></div>
     <div class="scroll" style="max-height:260px"><table id="t-eqr"><tr><th>company</th><th>contact city</th><th>quarters filed</th><th>first</th><th>latest</th></tr></table></div>
     <div class="prov">source: <code>in_eqr_identity</code>. <b>Read this as a contact address, not a
       location of operations</b> — the state field is where the filer's contact sits. Checked rather
@@ -71,6 +108,12 @@
       elsewhere.</div></div>
 
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
+    <div class="sowhat"><b>So what:</b> use this to see <b>which utility territory is worth being
+      in</b>, and whether a large-load tariff exists at all — not to price a deal. These rates are
+      <b>flattened</b>: no riders, no fixed charges, no seasonal blocks, so the energy column is a
+      <b>lower bound</b> on what you would actually pay. A large-load tariff also carries a <b>MW
+      floor you must clear to qualify</b>, which the eligibility table below tests at your load.
+      For a number you can defend, read the wholesale floor and the rate engine beneath this.</div>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
 
@@ -96,6 +139,25 @@
 </div>
 <script src="common.js?v=e664d330"></script>
 <script>
+/* G21 requirement 4 -- translate into the reader's DECISION unit. Both conversions are ESTIMATES
+   and both say so on screen via .est-badge; "estimates never style as published".
+   Gas: Energy Transfer iPost bulletin boards post dekatherms/day and the magnitudes here match,
+   but our capture kept NO units column -- so the unit is INFERRED, and labelled as inferred on the
+   card rather than quietly asserted. 1 Dth = 1 MMBtu; at a 6.5 MMBtu/MWh combined-cycle heat rate,
+   MW = Dth/day / 24 / 6.5, i.e. Dth/day / 156. A zero or unparseable value renders as
+   "not measured here", never as 0 MW. */
+const HEAT_RATE_MMBTU_PER_MWH = 6.5;
+function dthToMW(v) {
+  const d = Number(String(v == null ? "" : v).replace(/,/g, ""));
+  if (!isFinite(d) || d <= 0) return '<span class="cannot">not measured here</span>';
+  const mw = d / 24 / HEAT_RATE_MMBTU_PER_MWH;
+  return mw < 1 ? "&lt;1" : Math.round(mw).toLocaleString("en-US");
+}
+function mmbtuToCents(v) {
+  const u = Number(v);
+  if (!isFinite(u) || u <= 0) return '<span class="cannot">not measured here</span>';
+  return (u * HEAT_RATE_MMBTU_PER_MWH / 10).toFixed(2);
+}
 (async () => {
   await loadProv();
   const m = await fetchGz("data/market.json.gz");
@@ -194,8 +256,33 @@
   renderProxy();
   try {
     const gl = await fetchGz("data/gas_locations.json.gz");
-    document.getElementById("t-gasloc").insertAdjacentHTML("beforeend", gl.slice(0, 210).map(r =>
-      `<tr><td>${r.pipeline}</td><td>${(r.location || "").slice(0, 40)}</td><td>${r.county}</td><td>${r.design}</td><td><b>${r.oac}</b></td></tr>`).join(""));
+    /* G21 -- VOLUME IS NOT VALUE. This shipped 203 rows that said 28 distinct things: the
+       bulletin board re-posts the same delivery point many times and our capture kept every
+       posting. Same defect the gas border table had at 1,017 rows for ~40 facts. Collapsed to
+       one row per delivery point. NOTE we cannot take "the latest" posting -- gas_day is EMPTY
+       on every row we hold -- so the range across held postings is shown instead of pretending
+       to a currency we do not have. */
+    const byPoint = new Map();
+    for (const r of gl) {
+      const k = `${r.pipeline}|${r.location}|${r.county}`;
+      const v = Number(String(r.oac == null ? "" : r.oac).replace(/,/g, ""));
+      const cur = byPoint.get(k) || { r, min: Infinity, max: -Infinity, postings: 0 };
+      if (isFinite(v)) { cur.min = Math.min(cur.min, v); cur.max = Math.max(cur.max, v); }
+      cur.postings++;
+      byPoint.set(k, cur);
+    }
+    const pts = [...byPoint.values()].sort((a, b) => b.max - a.max);
+    document.getElementById("t-gasloc").insertAdjacentHTML("beforeend", pts.map(({ r, min, max, postings }) => {
+      const spread = isFinite(min) && isFinite(max) && min !== max;
+      const oacCell = !isFinite(max) ? '<span class="cannot">not measured here</span>'
+        : `<b>${max.toLocaleString("en-US")}</b>` +
+          (spread ? ` <span class="hint">(low ${min.toLocaleString("en-US")} across ${postings} postings)</span>`
+                  : (postings > 1 ? ` <span class="hint">(${postings} postings, unchanged)</span>` : ""));
+      return `<tr><td>${r.pipeline}</td><td>${(r.location || "").slice(0, 40)}</td><td>${r.county}</td>` +
+             `<td>${r.design}</td><td>${oacCell}</td><td>${dthToMW(max)}</td></tr>`;
+    }).join(""));
+    const gnote = document.getElementById("gasloc-count");
+    if (gnote) gnote.textContent = `${pts.length} delivery points, collapsed from ${gl.length} held postings`;
   } catch (e) { console.error(e); }
   document.getElementById("t-oac").insertAdjacentHTML("beforeend", (m.gas_oac || []).map(r =>
     `<tr><td>${r.pipeline}</td><td>${fmt(r.n_rows)}</td><td>${r.indiana_locations != null ? fmt(r.indiana_locations) : "—"}</td><td>${r.indiana_counties ?? "—"}</td><td>${String(r.pulled).slice(0, 10)}</td></tr>`).join(""));
@@ -203,6 +290,7 @@
   document.getElementById("t-fuel").insertAdjacentHTML("beforeend",
     CTX.fuel_costs.slice().reverse().slice(0, 60).map(f =>
     `<tr><td>${String(f.d).slice(0, 7)}</td><td>${f.fuel || "—"}</td><td>${f.usd_per_mmbtu ?? "—"}</td>
+     <td>${mmbtuToCents(f.usd_per_mmbtu)}</td>
      <td>${f.mmbtu != null ? fmt(f.mmbtu) : "—"}</td></tr>`).join(""));
   document.getElementById("t-dr").insertAdjacentHTML("beforeend", CTX.demand_response.slice(0, 60).map(d =>
     `<tr><td>${String(d.utility || "—").slice(0, 30)}</td><td>${d.customer_class || "—"}</td>
