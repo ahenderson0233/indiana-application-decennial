@@ -187,10 +187,20 @@ def main():
         "EXCLUDED: PJM and SERC rows (we derive PJM ourselves from QueueScope case 23). "
         "RE-SCRAPE COMMAND: python scripts/load_miso_vendor_proxy.py --load")
 
+    # source AND method are required: the honesty audit's provenance-completeness check counts
+    # any object missing either one, and an incomplete row failed it the first time this ran.
+    source = ("Orennia 'Greenfield Interconnection Capacity, Buses' extract 2026-06-23 "
+              "(licensed vendor CSV), MISO rows only")
+    method = ("Direct load of the vendor's per-bus tier-0..4 capacity, ISO='MISO' slice, read "
+              "POSITIONALLY because the file has two columns named 'Bus ID'. LICENSED PROXY under "
+              "operator ruling 2026-08-18: MISO parity has no public route (DPP-2025 is CEII). "
+              "Not publicly derived; must be removed when the subscription lapses late 2027.")
     client.query(f"""
-        INSERT INTO `{DS}._registry` (table_name, n_rows, built_at, notes)
-        VALUES ('in_bus_headroom_miso_vendor', {n}, CURRENT_TIMESTAMP(), @notes)""",
+        INSERT INTO `{DS}._registry` (table_name, source, method, n_rows, built_at, notes)
+        VALUES ('in_bus_headroom_miso_vendor', @source, @method, {n}, CURRENT_TIMESTAMP(), @notes)""",
         job_config=bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("source", "STRING", source),
+            bigquery.ScalarQueryParameter("method", "STRING", method),
             bigquery.ScalarQueryParameter("notes", "STRING", notes)])).result()
     print("registered in indiana_app._registry")
 
