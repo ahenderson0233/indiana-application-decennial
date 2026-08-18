@@ -28,8 +28,16 @@ import gzip
 import json
 import os
 import re
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 
 from google.cloud import bigquery
+
+# Per-utility conventions live in ONE place, declared per publisher, so a change for one utility
+# cannot break another (BACKLOG G56, operator 2026-08-18). Nine defects on 2026-08-18 were all a
+# generic rule meeting a house convention.
+import tariff_adapters as TA
 
 DS = "energy-platfrom.indiana_app"
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -475,7 +483,7 @@ for util, rs in by_util.items():
         MULTI = MULTI_CLASS_RE
         for c in components:
             fam = c.get("volt_family")
-            if fam and fam != "any" and MULTI.search(c.get("volt") or ""):
+            if fam and fam != "any" and TA.is_multi_class(util, c.get("volt")):
                 # "transmission and primary" applies at BOTH of those - and at nothing else.
                 # Making it class-agnostic instead let it bill at secondary too, which put Duke
                 # HLF at 44.31 c/kWh (+402%). Record the families it actually names.
@@ -492,7 +500,7 @@ for util, rs in by_util.items():
                 continue
             if not fam or fam == "any":
                 c["volt"] = None            # applies at every class (most riders land here)
-            elif fam not in split_fams:
+            elif TA.family_policy(util, fam) == "merge" and fam not in split_fams:
                 c["volt"] = fam             # one service; merge the spellings
                 c["volt_label"] = fam.replace("subtransmission", "sub-transmission").capitalize()
             elif fam not in collide:
@@ -526,8 +534,10 @@ for util, rs in by_util.items():
                 # every one of I&M's eight riders - DSM, ECR, FAC, OSS/PJM, PRA, RAR, SPR, TAX,
                 # worth roughly +8.6 $/kW-month between them - silently failed to attach to
                 # schedule IP. The bill was short by the entire rider stack and looked fine.
+                # the publisher's own cleanup first - I&M's "Tariff I.P." only tokenises to
+                # "IP" once its periods are stripped, and that is an I&M fact, not a global rule
                 toks = set(re.findall(r"[A-Za-z]{1,4}\d{0,2}|\d{3}",
-                                      a.upper().replace(".", "")))
+                                      TA.norm_applies_to(util, a).upper().replace(".", "")))
                 c_up = code.upper()
                 exact = c_up in toks
                 # "HL1" is a tier OF "HL" - same class, one of several alternatives
@@ -561,7 +571,9 @@ for util, rs in by_util.items():
             # ONLY the schedule's own components define the service classes. A rider's
             # applies_to ("participating customers, all classes") is not a service voltage, and
             # treating it as one invented phantom rows priced at 0.18 c/kWh.
-            "volt_classes": [
+            "volt_classes": ([{"key": f, "label": f.replace("subtransmission", "sub-transmission").capitalize(),
+                                "family": f} for f in TA.explicit_classes(util, code)]
+                             if TA.explicit_classes(util, code) else [
                 {"key": k,
                  "label": next(c["volt_label"] for c in components if c["volt"] == k),
                  "family": next(c["volt_family"] for c in components if c["volt"] == k)}
@@ -572,7 +584,7 @@ for util, rs in by_util.items():
                         VOLT_ORDER.index(next((c["volt_family"] for c in components
                                                if c["volt"] == k), "any"))
                         if next((c["volt_family"] for c in components if c["volt"] == k), "any")
-                        in VOLT_ORDER else 99, k))],
+                        in VOLT_ORDER else 99, k))]),
             # a schedule with no energy AND no demand charge cannot be costed; say so rather than
             # emitting a confidently wrong total
             # costable = has a billable leg AND no block ladder. Refusing to total a
@@ -583,7 +595,9 @@ for util, rs in by_util.items():
             "fuel_base_rate": next((c["rate"] for c in components if c.get("fuel_base")), None),
             "min_kw": eligibility_bounds(components)[0],
             "max_kw": eligibility_bounds(components)[1],
-            "large_load": is_large_load(code, name, eligibility_bounds(components)[0]),
+            "large_load": (TA.large_load_override(util, code)
+                           if TA.large_load_override(util, code) is not None
+                           else is_large_load(code, name, eligibility_bounds(components)[0])),
             # BLOCKS NO LONGER DISQUALIFY. The ladder parses (26/26) and its slice boundaries
             # are computable from load factor, so a blocked schedule can be costed correctly.
             # What still cannot be costed is a schedule with no energy leg of its own - I&M's
@@ -601,7 +615,7 @@ for util, rs in by_util.items():
     for sc in scheds:
         if not sc.get("modifier"):
             continue
-        pc = parent_of(util, sc["code"])
+        pc = TA.forced_parent(util, sc["code"]) or parent_of(util, sc["code"])
         parent = by_code.get(pc)
         if not parent:
             continue
@@ -640,6 +654,7 @@ for util, rs in by_util.items():
     utilities.append({
         "utility": util, "is_iou": util in IOU,
         # so the dossier can answer "what can a load of this size actually take here?" directly
+        "conventions": TA.describe(util),
         "eligibility": [{"code": sc["code"], "name": sc["name"],
                          "min_kw": sc.get("min_kw"), "max_kw": sc.get("max_kw"),
                          "costable": sc.get("costable"), "tou": sc.get("tou"),
