@@ -60,7 +60,8 @@ print(f"in_eia861_reliability: {n2}")
 # STOP: this block used to read `[:12]` of the parent schema. `classification` is column 16, so the
 # clip stopped four columns short of the ONE field a reader actually needs -- the severity band that
 # decides the air-permitting burden. Nothing was mis-mapped; a SLICE INDEX silently truncated the
-# meaning, and the map popup rendered an empty "classification" row for months. That is the G27
+# meaning, and the map popup rendered an empty "classification" row from the table's first build
+# (2026-08-15, per its _registry row) until 2026-08-17. That is the G27
 # under-clip defect in its purest form. The same idiom still sits in build_gas_facilities.py [:10],
 # build_gas_market.py [:14] and export_full_wiring.py [:12] -- audit those before trusting them.
 # Columns are NAMED here so a parent-schema reorder can never truncate this table again, and the
