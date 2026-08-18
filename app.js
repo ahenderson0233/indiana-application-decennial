@@ -1776,7 +1776,7 @@ function openParcelEvidence(p, fips) {
           ? `${p._dline_kv ? `${p._dline_kv} kV` : "voltage not published"} · ${p._dline_on ? "<b>runs across this parcel</b>" : `${p._dline_mi} mi`}`
           : null)}
       ${row("nearest connection point", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · median ${fmt(p._dpoi_median)} MW` : null)}</table>
-    ${p._dline_mi != null ? `<div class="sowhat"><b>What this means.</b> ${
+    ${p._dline_mi != null ? `<div class="sowhat">${
       p._dline_on
         ? "A transmission line already crosses this parcel, so there is <b>no greenfield line to build</b> — but expect an easement and conductor-clearance constraint that shapes where you can put steel."
         : (p._dline_mi <= 1
@@ -1813,7 +1813,7 @@ function openParcelEvidence(p, fips) {
       ${row("active queued capacity", `${fmt(q.active_mw || 0)} MW`)}
       ${row("withdrawn", `${fmt(wd)} projects (${attrition}% of all attempts)`)}
     </table>
-    <div class="sowhat"><b>What this means.</b> ${
+    <div class="sowhat">${
       (q.active_mw || 0) > 0
         ? `<b>${fmt(q.active_mw)} MW across ${fmt(q.active_projects)} live projects</b> is already in the interconnection queue in this county. That cuts both ways: queued generation is future <i>supply</i> near your load, but it is also competition for the same study slots and the same network upgrades, and those projects hold their place ahead of you.`
         : `No live queue activity in this county — you would not be competing for study slots locally, but there is also no nearby generation being built out.`
@@ -1826,7 +1826,7 @@ function openParcelEvidence(p, fips) {
     <h3>Water — can this site be cooled?</h3><table>
       ${row("nearest water source", `${p.x_wat_name || "unnamed"} (${p.x_wat_kind || "surface water"}) · ${p.x_wat_on ? "<b>on this parcel</b>" : `${p.x_wat_mi} mi`}`)}
     </table>
-    <div class="sowhat"><b>What this means.</b> ${
+    <div class="sowhat">${
       p.x_wat_on
         ? "A surface-water source sits on this parcel, so a cooling intake is a site-design question rather than a pipeline project — subject to a withdrawal permit."
         : (p.x_wat_mi <= 1
