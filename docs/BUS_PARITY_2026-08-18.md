@@ -310,6 +310,70 @@ because PJM bus names ARE substation names. MISO's are abbreviations of them. **
 the same pipeline but not the same confidence thresholds**, and a single blended accuracy figure
 across both would hide that.
 
+### ⭐⭐ 3f — WE DO NOT OWN A PLACEMENT METHODOLOGY FOR EITHER ISO. We mirror one and lack the other.
+
+⛔ **OPERATOR CORRECTION, 2026-08-18, and it corrects MY framing:** *"these are NOT our
+coordinates, and we will have to determine and define a placement methodology."* An earlier draft of
+this section called MISO placement "solved". **It is not solved. It is BORROWED**, and the
+distinction is the whole point.
+
+**What is actually true about MISO.** `in_bus_headroom_miso` carries real coordinates for **9,608 of
+11,155 buses (86%)**, sourced from `in_miso_poi_identity` — which is **MISO's OWN published POI
+location data**. Checked against the vendor on the same `bus_number`:
+
+| | |
+|---|---:|
+| buses placed by BOTH | **570** |
+| **median disagreement** | **0.0 mi** |
+| same point to within 0.1 mi | 512 (**89.8%**) |
+| more than 25 mi apart | **1** |
+
+⭐ **The agreement proves SHARED PROVENANCE, not competence.** Their file shows **571 MISO buses
+with `Location Source = 'ISO'`** against our 570 matches at a 0.0 mi median. We are not
+independently arriving at the same answer — **we are both copying MISO's published coordinates.**
+Reading that as "our method works" would be measuring a mirror and calling it a measurement.
+
+⚠ **So MISO is a DEPENDENCY, not a capability.** If MISO changes the publication, restricts it, or
+retires the POI layer, we are in exactly the position PJM is in now — with the added risk that the
+failure would be silent, because the table would simply stop refreshing rather than error.
+
+**And PJM shows what that position looks like: nobody has coordinates, including the vendor.**
+
+| `Location Source`, distinct buses | PJM (298) | MISO (1,731) |
+|---|---:|---:|
+| **`ISO`** | **0 — none** | 571 (33.0%) |
+| `Estimated` | **274 (91.9%)** | 1,138 (65.7%) |
+| `Breaker Branch Coincidence` | 10 | — |
+| `Queue Generator Coincidence` | 8 | 3 |
+| `Interpolated` / blank | 6 | 19 |
+
+**PJM publishes no bus coordinates to anyone.** The vendor estimates 92% of its PJM buses, so our
+227 substation-matched buses are **the same class of artefact as their 274 estimates** — not an
+inferior stand-in for a feed we failed to find. Parity on PJM locations is a question of
+**estimation quality, not acquisition.**
+
+### THE METHODOLOGY WE HAVE TO DEFINE — required for both ISOs, urgent for neither today
+
+It must be **ours**: reproducible from sources we control, scored against something, and carrying a
+per-bus confidence we are willing to publish. Ordered by how much each step can be trusted:
+
+1. **Exact joins first.** `Queue Generator Coincidence` is a JOIN, not a guess — a queue project
+   interconnects at a named bus, so the project's coordinates place it. **We already hold the PJM
+   queue** (`in_queue_*`, rendered as the `pjm-queue` layer). Highest confidence, build first.
+2. **Topology second.** `Breaker Branch Coincidence` — buses joined by a breaker are the same
+   physical station, so one placed bus places its neighbours, and **each placement seeds the next**.
+   Our harvest's `transmission_facility` carries from/to bus identifiers on every constraint row,
+   which is the graph needed to walk it.
+3. **String similarity LAST, and gated** — with the area-prefix geographic prior from 3e, because
+   without a regional constraint name matching returns the wrong state (median 100-180 mi).
+4. **Publish a confidence per bus and refuse to place below a threshold.** **Unplaced is honest;
+   misplaced is not** — a wrong coordinate silently corrupts every distance, county rollup and
+   screener filter downstream, and unlike a missing one it never announces itself.
+
+⭐ **Do this while the subscription is live.** The vendor's 2,029 placed buses are the only
+labelled truth set we will ever have to score steps 1-3 against. After it lapses we would be
+building the same methodology blind.
+
 ## RECOMMENDATION
 
 | region | verdict | what to ship |
