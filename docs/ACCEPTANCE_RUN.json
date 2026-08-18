@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-18T02:25:15.671005+00:00",
+ "run_at": "2026-08-18T02:48:19.422703+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -60,35 +60,35 @@
  "number_sample": [
   {
    "label": "si_v2.flag_summary.flagged",
-   "value": 24275,
+   "value": 24277,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.dated",
-   "value": 14549,
+   "value": 14553,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r3",
-   "value": 4390,
+   "value": 4385,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r5",
-   "value": 7730,
+   "value": 7727,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ci",
-   "value": 5153,
+   "value": 5154,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
@@ -109,14 +109,14 @@
   },
   {
    "label": "si_v2.flag_summary.land",
-   "value": 18011,
+   "value": 18012,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_resid",
-   "value": 101621,
+   "value": 101646,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
@@ -144,7 +144,7 @@
   },
   {
    "label": "si_v2.capability.too_small",
-   "value": 16630,
+   "value": 16632,
    "table": "in_si_sites_flags_v2",
    "built_at": "2026-08-18 02:11:34",
    "traced": true
