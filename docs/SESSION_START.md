@@ -164,7 +164,11 @@ Run the checkpoint first; then `docs/BACKLOG.md`. As of the last close:
   robots-vs-terms standing policy, a WSL/Docker install (**C5 PMTiles is fully scripted the moment
   it exists**), D10 procurement, the IRS FOIA fax, an IEDC email.
 - **Cannot close as specified, not defects:** §13(5) needs an AI docket summary and this app has no
-  LLM feature; §13(8) needs a component-level Indiana tariff that exists nowhere in the estate.
+  LLM feature. ✅ **§13(8) IS NOW CLOSED and this line was wrong from 2026-08-18** — a
+  component-level Indiana tariff DOES exist in the estate: `in_utility_tariff_riders`, **668
+  components across 73 utilities**, 22 of them costed from their own books at every service voltage
+  with every applicable rider, plus a labelled URDB floor for 50 more. The Market page prices them
+  and the dossier quotes the parcel's own utility.
 - **Deferred by the operator:** the front-end pass.
 
 ---

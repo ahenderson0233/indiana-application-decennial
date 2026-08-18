@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-18T19:38:44.541803+00:00",
+ "run_at": "2026-08-18T20:56:25.228456+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,7 +12,7 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 282 of 300 registered objects reach a surface \u00b7 18 unwired: ['in_bus_capacity_tier0', 'in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail']"
+   "detail": "MEASURED this run: 283 of 300 registered objects reach a surface \u00b7 17 unwired: ['in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail', 'in_miso_poi_ladder']"
   },
   {
    "criterion": 2,
@@ -54,7 +54,7 @@
    "criterion": 8,
    "name": "per-part acceptance",
    "state": "PARTIAL",
-   "detail": "P1 24,277 flagged parcels \u00b7 P2 79 facilities carry RTEP upgrades \u00b7 P4 1,200,923 parcels gated \u00b7 P6 132 rate proxies (no Indiana component-level tariff exists, so P6 cannot be closed)"
+   "detail": "P1 24,277 flagged parcels \u00b7 P2 79 facilities carry RTEP upgrades \u00b7 P4 1,200,923 parcels gated \u00b7 P6 132 rate proxies PLUS an itemised rate engine: 668 tariff components across 73 utilities, 22 of them costed from their own books at every service voltage with riders. P6 was recorded as not-achievable because no component-level Indiana tariff existed; one now does."
   }
  ],
  "number_sample": [

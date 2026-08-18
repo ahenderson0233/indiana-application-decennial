@@ -11,13 +11,12 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 282 of 300 registered objects reach a surface
+## 283 of 300 registered objects reach a surface
 
 ### Not reaching a surface
 
 | object | rows | built by |
 |---|---:|---|
-| `in_bus_capacity_tier0` | 2117 | `—` |
 | `in_bus_headroom_miso_vendor` | 17006 | `—` |
 | `in_miso_dpp2025_counties` | 1000 | `—` |
 | `in_miso_dpp2025_footprint` | 1 | `—` |
@@ -55,7 +54,7 @@ headline can be audited rather than taken on trust:
 | `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
-| `in_bus_capacity_tier0` | **none** | — |
+| `in_bus_capacity_tier0` | direct | `app.js` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | direct | `scripts/export_grid_siting.py` |
@@ -83,7 +82,7 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_coverage_v2` | direct | `community.html`, `scripts/export_ordinances.py` |
 | `in_dc_actions_nw_first_pass` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_nw_reconciled` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
-| `in_dc_actions_resolved` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/audit_frontend.py` |
+| `in_dc_actions_resolved` | direct | `app.js`, `scrapers/lane_f/load_verifications.py` |
 | `in_dc_actions_resweep` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_coverage` | direct | `scripts/export_ordinances.py` |
 | `in_dc_actions_resweep_walls` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
@@ -308,7 +307,7 @@ headline can be audited rather than taken on trust:
 | `in_storm_events` | direct | `community.html`, `scripts/export_context_layers.py` |
 | `in_substations` | direct | `app.js`, `grid.html` |
 | `in_substations_dedup` | direct | `scripts/export_grid_sentiment.py` |
-| `in_territories` | direct | `app.js`, `scripts/export_grid_siting.py` |
+| `in_territories` | direct | `app.js`, `common.js` |
 | `in_transmission_lines` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_transmission_union` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_transmission_voltage` | direct | `scripts/export_grid_sentiment.py` |

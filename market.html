@@ -63,9 +63,11 @@
       <br>⚠ <b>It will UNDERSTATE, and by a lot.</b> This is built from URDB, which is flattened:
       no riders, no fixed charges, no seasonal blocks. From the tariff books we now hold, the rider
       stack alone adds about <b>+8.6&nbsp;$/kW-month</b> of demand-side charges at I&amp;M, and the
-      voltage you take service at moves the bill by <b>$9.30/kW-month at AES Indiana</b> &mdash;
-      roughly <b>$3.9M a year on 35&nbsp;MW</b>, from one line in the tariff. For a number you could
-      put in a board paper, use the rate engine below.</div>
+      voltage you take service at moves the bill by <b>$9.42/kW-month at AES Indiana</b> &mdash;
+      roughly <b>$4.0M a year on 35&nbsp;MW</b>, from one line in the tariff. <b>The itemised rate
+      engine below is built</b>: it prices every schedule at every service voltage with all riders
+      folded in, so use that for a number you would put in a board paper and this card only to
+      rank.</div>
     <div style="margin-bottom:8px">
       Load: <input id="rp-mw" type="number" value="300" min="1" style="width:70px"> MW ·
       load factor <input id="rp-lf" type="number" value="0.85" min="0.1" max="1" step="0.05" style="width:60px"> ·
@@ -79,7 +81,10 @@
     ⚠ <b>The old “must clear the ISO wholesale floor by ≥1.75×” test has been REMOVED</b> (operator,
     2026-08-17): it assumed a wholesale pass-through that does not exist for a vertically integrated
     Indiana utility. The right anchor for a bundled rate is the <b>EIA-861 realized average</b> for
-    that utility and sector — what comparable customers actually paid, riders included. The itemised rate engine is the full milestone.</div></div>
+    that utility and sector — what comparable customers actually paid, riders included.
+    ✅ <b>The itemised rate engine is BUILT and is the card below</b> — 22 utilities costed from their
+    own tariff books at every service voltage with every applicable rider, and a labelled URDB floor
+    for the 50 more where we hold no book. This card remains as an independent cross-check.</div></div>
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
     <div class="sowhat">This is the only gas number at a grain you can site
       against — a named delivery point, in a named county, with what the pipeline says is unsold
@@ -403,7 +408,9 @@ function mmbtuToCents(v) {
 
   document.getElementById("t-tar").insertAdjacentHTML("beforeend", (m.tariffs || []).slice(0, 80).map(r =>
     `<tr><td>${String(r.utility).slice(0, 40)}</td><td>${(r.name || "").slice(0, 44)}</td><td>${r.sector || ""}</td><td>${r.has_demand_charge ? "yes" : "—"}</td><td>${r.energy_rate_max_usd_kwh ?? "—"}</td></tr>`).join(""));
-  document.getElementById("p-tar").textContent = prov("in_urdb_rates") + " · name-matched floor; rate-engine math is the flagged milestone";
+  document.getElementById("p-tar").textContent = prov("in_urdb_rates")
+    + " · name-matched floor. The itemised rate engine is built and sits below this card;"
+    + " this remains an independent cross-check, not the headline number.";
 
   /* ---------- C2 the rate engine ----------
      Every "not held" component renders as its own words, never as 0. An absent rate treated as

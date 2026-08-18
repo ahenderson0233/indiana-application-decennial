@@ -11,7 +11,12 @@
   <div class="sub">Bus headroom in BOTH directions (PJM load · MISO injection), upgrades, costs, and the queue — every figure sourced. Buses also render on the <a href="index.html">Map console</a>.</div>
   <div class="gridcards">
     <div class="card"><h2>PJM / I&amp;M — LOAD headroom per bus (the DC direction)</h2>
-      <div class="hint">MIN(available MW) over facilities the new load stresses (|dfax|≥5%), pre-existing overloads excluded &amp; counted. 2027 RTEP Summer Peak.</div>
+      <div class="hint">MIN(available MW) over facilities the new load stresses (|dfax|&ge;5%).
+        ⚠ <b>Pre-existing overloads are FLAGGED and reported, never excluded</b> &mdash; the
+        benchmark's own method, and 2,116 of our 2,117 rows carry the flag, so a headroom figure
+        here describes a constraint that may predate your project. <b>Study case: 2027 RTEP Summer
+        Peak.</b> We now hold the newer 2028 TC2 Phase II case (1,826 of 1,826 AEP buses) but it is
+        <b>not yet wired into this table</b>.</div>
       <div class="scroll"><table id="t-pjm"><tr><th>bus</th><th>kV</th><th>load headroom MW</th><th>binding facility</th><th>pre-overloads</th></tr></table></div>
       <div class="prov" id="p-pjm"></div></div>
     <div class="card"><h2>MISO POIs — injection @ a 300 MW request</h2>

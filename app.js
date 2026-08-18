@@ -706,7 +706,7 @@ async function openScreenerSite(fips, key, fallback) {
   const ok = await ensureCountyLoaded(fips);
   const feats = ok ? (state.loaded.get(fips) || []) : [];
   const ft = feats.find((f) => f.properties && f.properties.parcel_key === key);
-  if (ft) return openParcelEvidence(ft.properties, fips);
+  if (ft) { highlightParcel(ft); return openParcelEvidence(ft.properties, fips); }
   show("Screener site", `<div class="sowhat">This site is in the screener's list, but its parcel
     record did not load for county ${escHtml(fips)}, so the full evidence panel cannot be shown.
     What the screener holds:</div>
@@ -949,7 +949,15 @@ function addCountyLayers(fips, fc) {
   map.addLayer({ id: `${src}-line`, type: "line", source: src, minzoom: PARCEL_ZOOM,
     layout: { visibility: $("L-parcels").checked ? "visible" : "none" },
     paint: { "line-color": "#333", "line-width": 0.6 } }, "grid-lines");
-  map.on("click", `${src}-fill`, (e) => { if (!state.measure.on) openParcelEvidence(e.features[0].properties, fips); });
+  map.on("click", `${src}-fill`, (e) => {
+    if (state.measure.on) return;
+    /* highlight whichever parcel the panel is about, however it was reached */
+    const key = e.features[0].properties.parcel_key;
+    const full = (state.loaded.get(fips) || []).find((f) => f.properties
+      && f.properties.parcel_key === key);
+    if (full) highlightParcel(full);
+    openParcelEvidence(e.features[0].properties, fips);
+  });
   map.on("mousemove", `${src}-fill`, (e) => showTip(e, tipText(e.features[0].properties)));
   map.on("mouseleave", `${src}-fill`, hideTip);
 }
@@ -1010,18 +1018,45 @@ async function handleDeepLink() {
       may be from an older build, or the parcel may have dropped out of the render set.</div>`);
     return;
   }
-  /* Fly to the parcel's own geometry, not a point: fit its bounds so the whole property is on
-     screen at a zoom that keeps the county's parcels loaded. */
+  /* Fly to the parcel's own geometry, not a point.
+     ⚠ Operator, 2026-08-18: *"the whole show this site on the map doesn't zoom in enough to
+     actually see the site"*. Two causes, both fixed here. `padding: 220` on a 1920px viewport
+     leaves under 1,500px for the parcel, and `maxZoom: 15` caps the view at roughly 3 km across -
+     so a 5-acre parcel arrived as a speck in the middle of a county. Padding is now a small
+     fraction of the shorter viewport edge, and the cap is 17.5, which puts a small parcel across
+     most of the screen while still keeping the county's parcels loaded. */
   const pts = [];
   (function walk(c) { if (typeof c[0] === "number") { pts.push(c); return; }
                       for (const x of c) walk(x); })(ft.geometry.coordinates);
   if (pts.length) {
     const xs = pts.map((v) => v[0]), ys = pts.map((v) => v[1]);
+    const pad = Math.max(40, Math.min(110, Math.round(
+      Math.min(map.getContainer().clientWidth, map.getContainer().clientHeight) * 0.12)));
     map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
-                  { padding: 220, maxZoom: 15, duration: 900 });
+                  { padding: pad, maxZoom: 17.5, duration: 900 });
   }
+  /* ⭐ And SAY WHICH ONE. Operator: *"the site parcel should probably be highlighted slightly so
+     we can actually decipher what parcel is identified in the screener."* Right - a parcel panel
+     that opens without marking the parcel leaves the reader guessing which of the dozens on
+     screen it describes. Drawn as its own source above the county fill so it reads regardless of
+     which layers are on. */
+  highlightParcel(ft);
   if (q.get("open") === "dossier") await openDossier(ft.properties, fips);
   else openParcelEvidence(ft.properties, fips);
+}
+
+/* The one parcel this session is about, outlined so it is findable among its neighbours. One
+   source reused, so selecting another parcel moves the highlight rather than stacking them. */
+function highlightParcel(ft) {
+  if (!ft || !ft.geometry) return;
+  const fc = { type: "FeatureCollection", features: [{ type: "Feature", geometry: ft.geometry,
+                                                       properties: {} }] };
+  if (map.getSource("sel-parcel")) { map.getSource("sel-parcel").setData(fc); return; }
+  map.addSource("sel-parcel", { type: "geojson", data: fc });
+  map.addLayer({ id: "sel-parcel-fill", type: "fill", source: "sel-parcel",
+    paint: { "fill-color": "#f59e0b", "fill-opacity": 0.28 } });
+  map.addLayer({ id: "sel-parcel-line", type: "line", source: "sel-parcel",
+    paint: { "line-color": "#b45309", "line-width": 2.5 } });
 }
 
 async function maybeLoadCounties() {

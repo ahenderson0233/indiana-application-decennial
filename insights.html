@@ -91,12 +91,23 @@ const $ = (id) => document.getElementById(id);
       </table>
       <p><b>Most of Indiana is served by MISO, and MISO publishes only the sending-power
         direction.</b> The getting-power figures we do hold come from PJM, which in Indiana covers
-        mainly the Fort Wayne, Muncie and South Bend area. So for roughly three fifths of candidate
-        sites, the number a data-centre developer most wants does not exist in public data yet.</p>
+        mainly the Fort Wayne, Muncie and South Bend area. Measured on the <b>shipped screener
+        list</b>: <b>34,771 of 51,493 sites (67.5%) carry no getting-power figure</b> &mdash;
+        roughly two thirds. The sending-power direction, which a load cannot use, is present
+        on 97.7%.
+        <br><span class="hint">⚠ Two populations, so two figures, and they do not disagree: across
+        the <b>full warehouse candidate set</b> of 532,868 parcels the gap is <b>61%</b> (207,614
+        have a load-side bus within 25 miles). The shipped list is the filtered subset, and it is
+        slightly worse covered. Always read which denominator a coverage figure uses.</span></p>
       <p class="hint"><b>What we do about it:</b> we never substitute one direction for the other,
         even though both are large positive megawatt figures from real grid models. A site with no
         getting-power figure is shown as <i>not measured</i> &mdash; not as zero, and not as a bad
-        site. Acquiring the missing direction is open work.</p>
+        site. <b>Partly acquired since:</b> we now hold PJM's current case &mdash; 2028 TC2 Phase
+        II, <b>1,826 of 1,826 AEP buses in both directions</b> &mdash; which is the vendor's own
+        case. ⚠ It is <b>not yet wired into the surfaces</b>, which still read the older 2027 RTEP
+        base case, so the coverage figure above has not moved yet. MISO publishes no load-side
+        headroom at all and four independent sweeps found no public route, so that half stays
+        open.</p>
       <p class="prov">${G.direction_note}</p>
     </div>`;
 

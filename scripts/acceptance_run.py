@@ -206,11 +206,18 @@ p = {r["part"]: r["n"] for r in [dict(x) for x in client.query(f"""
   SELECT 'p1' part, COUNTIF(has_si_signal) n FROM `{DS}.in_si_sites_flags_v2`
   UNION ALL SELECT 'p2', COUNT(*) FROM `{DS}.in_rtep_bus_summary`
   UNION ALL SELECT 'p4', COUNT(*) FROM `{DS}.in_site_gates`
-  UNION ALL SELECT 'p6', COUNT(*) FROM `{DS}.in_rate_proxies`""")]}
+  UNION ALL SELECT 'p6', COUNT(*) FROM `{DS}.in_rate_proxies`
+  UNION ALL SELECT 'p6_tariff', COUNT(*) FROM `{DS}.in_utility_tariff_riders`
+  UNION ALL SELECT 'p6_utils', COUNT(DISTINCT utility) FROM `{DS}.in_utility_tariff_riders`
+  UNION ALL SELECT 'p6_costed', COUNT(DISTINCT utility) FROM `{DS}.in_utility_tariff_riders`
+    WHERE rate IS NOT NULL AND component_type IN ('demand','energy')""")]}
 crit(8, "per-part acceptance", "PARTIAL",
      f"P1 {p.get('p1',0):,} flagged parcels · P2 {p.get('p2',0)} facilities carry RTEP upgrades · "
-     f"P4 {p.get('p4',0):,} parcels gated · P6 {p.get('p6',0)} rate proxies (no Indiana "
-     f"component-level tariff exists, so P6 cannot be closed)")
+     f"P4 {p.get('p4',0):,} parcels gated · P6 {p.get('p6',0)} rate proxies PLUS an itemised "
+     f"rate engine: {p.get('p6_tariff',0):,} tariff components across {p.get('p6_utils',0)} "
+     f"utilities, {p.get('p6_costed',0)} of them costed from their own books at every service "
+     f"voltage with riders. P6 was recorded as not-achievable because no component-level Indiana "
+     f"tariff existed; one now does.")
 
 out = {"run_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
        "spec": "2_TECHNICAL_BUILD_SPEC.md §13", "criteria": results,
