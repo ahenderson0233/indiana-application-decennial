@@ -65,7 +65,7 @@ headline can be audited rather than taken on trust:
 | `in_commission_posture` | direct | `app.js` |
 | `in_county_fibre` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_county_flood` | direct | `app.js`, `scripts/export_full_wiring.py` |
-| `in_county_rollup` | direct | `app.js`, `scripts/export_spine.py` |
+| `in_county_rollup` | direct | `app.js`, `scripts/checkpoint.py` |
 | `in_county_wetlands` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_data_centers` | direct | `app.js` |
 | `in_data_centers_all` | direct | `app.js`, `scripts/export_facilities.py` |
@@ -141,7 +141,7 @@ headline can be audited rather than taken on trust:
 | `in_grid_plans` | direct | `app.js`, `grid.html` |
 | `in_groundwater_sites` | direct | `app.js` |
 | `in_huc8_boundaries` | direct | `scripts/export_water.py` |
-| `in_iocs_county_context` | direct | `community.html`, `scripts/export_signoff_payloads.py` |
+| `in_iocs_county_context` | direct | `community.html`, `scripts/checkpoint.py` |
 | `in_iurc_dockets` | direct | `app.js`, `community.html` |
 | `in_land_faa_sua` | direct | `app.js` |
 | `in_land_military_bases` | direct | `app.js` |
@@ -176,7 +176,7 @@ headline can be audited rather than taken on trust:
 | `in_nhd_flowline_geom` | **none** | — |
 | `in_nhd_waterbody` | direct | `app.js` |
 | `in_nhd_waterbody_geom` | **none** | — |
-| `in_nonattainment` | direct | `app.js` |
+| `in_nonattainment` | direct | `app.js`, `scripts/checkpoint.py` |
 | `in_nrc_reactors` | direct | `app.js` |
 | `in_openstates_energy_bill_abstracts` | direct | `community.html`, `scripts/export_legislature.py` |
 | `in_openstates_energy_bill_actions` | direct | `community.html`, `scripts/export_legislature.py` |
@@ -242,7 +242,7 @@ headline can be audited rather than taken on trust:
 | `in_seismic` | direct | `app.js` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |
 | `in_si_candidates` | direct | `app.js`, `si.html` |
-| `in_si_d11_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
+| `in_si_d11_admitted` | direct | `si.html`, `scripts/checkpoint.py` |
 | `in_si_d11_entity_dissolution` | direct | `app.js` |
 | `in_si_d22_county_rollup` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_d22_echo_facilities` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
@@ -250,9 +250,9 @@ headline can be audited rather than taken on trust:
 | `in_si_d22_idem_dated` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_d22_idem_enforcement` | derivative | `feeds `in_si_d22_county_rollup` via `scripts/build_d22_wiring.py`` |
 | `in_si_d22_parcel_join` | direct | `scripts/audit_honesty.py`, `scripts/checkpoint.py` |
-| `in_si_d25_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
+| `in_si_d25_admitted` | direct | `si.html`, `scripts/checkpoint.py` |
 | `in_si_d25_stb_abandonment_state` | direct | `app.js` |
-| `in_si_d27_admitted` | direct | `si.html`, `scripts/export_signoff_payloads.py` |
+| `in_si_d27_admitted` | direct | `si.html`, `scripts/checkpoint.py` |
 | `in_si_d27_ucc_lapse_v2` | direct | `app.js` |
 | `in_si_d5_abandoned_buildings` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |

@@ -212,6 +212,81 @@ for f in glob.glob(os.path.join(REPO, "data", "sites", "*.geojson.gz")):
 check("shipped payload agrees with the warehouse", payload == flag,
       f"{payload:,} flagged in the 92 county files vs {flag:,} in BigQuery")
 
+# ---------------------------------------------------------------- G41: payloads falling behind
+# The check above compares ONE payload (the 92 county files) against ONE table. Everything else
+# shipped under data/ was unguarded, and on 2026-08-17 four surfaces were caught rendering stale or
+# empty data that no check could see:
+#   * si_v2.json.gz still said 24,275 after the warehouse moved to 24,277 -- export_sites_exact
+#     rebuilds the county files, but the SI Feed has its own exporter that had not been run.
+#   * overlays.geojson.gz predated 337 QCT tracts, so the tax-credit layer shipped 1,057 of 1,394.
+#   * state_summary.json lost si_by_signal to a whole-file rewrite, so the signal inventory
+#     rendered EMPTY under a "totals conserve to 0" provenance line.
+#   * county_context.json lost iocs the same way -- export_signoff_payloads.py writes it and
+#     export_grid_sentiment.py rewrites the whole file -- so the court-activity table on Community
+#     had been rendering zero rows under a full paragraph explaining how to read it.
+# audit_frontend.py cannot see any of these: the element ids ARE referenced by a script, so they
+# are not dead ids -- the DATA is absent, and that audit reads source, not runtime.
+#
+# TWO failure modes, so TWO checks. Freshness catches a payload older than the table it reads;
+# it does NOT catch a wholesale rewrite that drops a key while leaving the file newer. That is
+# what REQUIRED_KEYS is for -- both of the key losses above would have been caught by it.
+PAYLOAD_SOURCES = {
+    "data/si_v2.json.gz":         ["in_si_sites_flags_v2", "in_si_parcel_signals_v2", "in_si_signal_coverage"],
+    "data/overlays.geojson.gz":   ["in_nonattainment", "in_bonus_geo", "in_padus"],
+    "data/county_context.json":   ["in_iocs_county_context"],
+    "data/receipts.json.gz":      ["in_iurc_dockets", "in_news_dc", "in_dc_actions"],
+    "data/market.json.gz":        ["in_urdb_rates", "in_eia861_reliability"],
+    "data/counties.geojson.gz":   ["in_county_rollup"],
+    "data/signoff.json.gz":       ["in_si_d11_admitted", "in_si_d25_admitted", "in_si_d27_admitted"],
+    "data/gas_locations.json.gz": ["in_gas_capacity_panhandle_eastern", "in_gas_capacity_trunkline"],
+}
+_mods = {r.table_id: r.last_modified_time
+         for r in client.query(f"SELECT table_id, last_modified_time FROM `{DS}.__TABLES__`")}
+# a table named here that does not exist would make the check a silent no-op -- the exact shape of
+# defect it is meant to catch, so it is reported rather than skipped.
+_unknown = sorted({t for v in PAYLOAD_SOURCES.values() for t in v} - set(_mods))
+_stale, _tol_ms = [], 60_000
+for _rel, _tabs in sorted(PAYLOAD_SOURCES.items()):
+    _fp = os.path.join(REPO, _rel)
+    if not os.path.exists(_fp):
+        _stale.append(f"{_rel} is MISSING")
+        continue
+    _live = [(t, _mods[t]) for t in _tabs if t in _mods]
+    if not _live:
+        continue
+    _tname, _tms = max(_live, key=lambda x: x[1])
+    _fms = os.path.getmtime(_fp) * 1000
+    if _tms > _fms + _tol_ms:
+        _stale.append(f"{_rel} is {(_tms - _fms) / 3_600_000:.1f}h behind {_tname}")
+check("no shipped payload is older than the table it reads",
+      not _stale and not _unknown,
+      f"{len(PAYLOAD_SOURCES)} payloads checked"
+      + (f" | STALE: {'; '.join(_stale)}" if _stale else "")
+      + (f" | named table does not exist: {', '.join(_unknown)}" if _unknown else ""))
+
+# A whole-file rewrite can drop a key while leaving the file NEWER than its table, so freshness
+# alone would pass. These are the keys that were actually lost, and what reads each one.
+REQUIRED_KEYS = [
+    ("data/state_summary.json", "si_by_signal", "SI Feed signal inventory"),
+    ("data/county_context.json", "by_fips.*.iocs", "Community court-activity table"),
+]
+_lost = []
+for _rel, _key, _reader in REQUIRED_KEYS:
+    _fp = os.path.join(REPO, _rel)
+    try:
+        _d = json.load(open(_fp, encoding="utf-8"))
+        if _key == "si_by_signal":
+            _ok_key = bool(_d.get("si_by_signal"))
+        else:
+            _bf = _d.get("by_fips") or {}
+            _ok_key = any(isinstance(v, dict) and v.get("iocs") for v in _bf.values())
+    except Exception as e:
+        _ok_key, _reader = False, f"{_reader} ({type(e).__name__})"
+    if not _ok_key:
+        _lost.append(f"{_rel} lost `{_key}` -> {_reader} renders EMPTY")
+check("no payload has lost a key a surface depends on", not _lost,
+      f"{len(REQUIRED_KEYS)} keys checked" + (f" | {'; '.join(_lost)}" if _lost else ""))
+
 sig = q1(f"""SELECT COUNT(*) total, COUNTIF(parcels_admitted > 0) admitting
 FROM `{DS}.in_si_signal_coverage`""")
 objects = q1(f"SELECT COUNT(DISTINCT table_name) n FROM `{DS}._registry`").n
