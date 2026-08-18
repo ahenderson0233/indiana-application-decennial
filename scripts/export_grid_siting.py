@@ -30,7 +30,7 @@ COVERAGE IS NOT SYMMETRIC, AND THE PAYLOAD SAYS SO:
     Those 1,246 are counted in the gap ledger, never dropped silently.
 
 Outputs (gzipped; the client decompresses natively via DecompressionStream):
-  data/gridsiting.json.gz   buses (MISO injection + PJM withdrawal), MTEP planned projects,
+  data/gridsiting.json.gz   buses (MISO + PJM, BOTH directions each), MTEP planned projects,
                             LBNL interconnection costs, utility stakeholder table, gap ledger
 
 READS indiana_app ONLY. An export is on the path to what the user sees, so the app stays
@@ -89,103 +89,64 @@ buses = []
 # So: the headline comes from the LADDER (the actual at each stated request size), and
 # worst/best ride along as context only, clearly named as such.
 n_miso = 0
+# ---------------------------------------------------------------------------------------------
+# ⭐ ONE SOURCE FOR BOTH ISOs AND BOTH DIRECTIONS: in_bus_capacity_tier0.
+#
+# This export used to read `in_bus_headroom_miso` (DPP-2021, INJECTION only) and
+# `vw_pjm_bus_withdrawal_located` (the superseded 2027 RTEP case) DIRECTLY, bypassing tier0
+# entirely. Two consequences reached the dossier, which is the document a developer carries to a
+# utility:
+#   * across the two thirds of Indiana inside MISO, the only number available was the GENERATOR
+#     direction. A data centre asking "how much load can I connect here" got the wrong question
+#     answered, or silence.
+#   * PJM was screened against a study we had already replaced.
+#
+# Now: MISO from the operator-authorised Orennia DPP-2025 proxy (both directions, every bus
+# located), PJM from our own case-23 harvest (both directions, 1,826 buses). One vintage per ISO,
+# stated on every row, so nothing on a map mixes two studies.
+#
+# ⚠ The PJM figure is headroom at a 100 MW PROBE, not a bus maximum - we hold no other scenario
+# yet. `probe_mw` rides on the row and the surfaces say so.
+n_miso = n_pjm = 0
 for r in client.query(f"""
-  -- ⛔ `pMaxValue` IS A REPORTING CLAMP, NOT A STUDY INPUT: PMax(X) = min(PMax_true, X).
-  -- Proven twice (docs/RTO_DIRECTIONS.md): 67/67 facilities live, and 38,381 of 38,381 distinct
-  -- (POI, facility) keys across two independent harvests, zero violations. `headroom_mw_unclamped`
-  -- is therefore INVARIANT across every rung (verified: 1.27 avg at all six) and is the TRUE
-  -- headroom; `headroom_mw` is that value clipped to whatever request size was asked for.
-  -- Taking the rung-100 clamped value as the headline reported 100 MW for J1724 POI 138, whose
-  -- real headroom is 815.3 MW - an 8x understatement on the one Indiana POI that has capacity.
-  WITH lad AS (
-    SELECT poi_name,
-           MAX(headroom_mw_unclamped) AS true_mw,          -- rung-invariant; the actual headroom
-           ARRAY_AGG(STRUCT(request_mw, ROUND(headroom_mw, 1) AS mw_clamped, request_fits)
-                     ORDER BY request_mw) AS ladder
-    FROM `{DS}.in_bus_headroom_miso_ladder`
-    GROUP BY poi_name
-  )
-  SELECT m.poi_name, m.bus_number, m.bus_name, m.kv, m.area_name,
-         m.worst_mw, m.best_mw, m.median_mw,
-         m.facilities_at_zero, m.monitored_facilities, m.worst_binding_facility, m.vintage,
-         m.lat, m.lon,
-         lad.true_mw, IFNULL(lad.ladder, []) AS ladder,
-         -- G27: WHY a POI reads zero. Re-clipped columns the original clip dropped.
-         st.headroom_state, st.n_facilities_overloaded_base, st.max_facility_mw_available
-  FROM `{DS}.in_bus_headroom_miso` m
-  LEFT JOIN lad ON lad.poi_name = m.poi_name
-  LEFT JOIN `{DS}.in_miso_poi_state` st ON st.poi_name = m.poi_name
-  WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL"""):
+  SELECT iso, interconnection_type, bus_id, bus_name, bus_voltage_kv, bus_area,
+         bus_interconnection_capacity_mw AS mw, primary_limiting_constraint,
+         existing_overload_flag, n_facilities_overloaded_base, n_monitored_facilities,
+         constraint_headroom_mw, powerflow_case, latitude, longitude, provenance_class, probe_mw
+  FROM `{DS}.in_bus_capacity_tier0`
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""):
     d = dict(r)
-    ladder = [dict(x) for x in (d.get("ladder") or [])]
-    # The headline is the UNCLAMPED figure. It does not vary by rung; what varies is whether the
-    # ask fits inside it, which is `request_fits` and is a comparison, not a different measurement.
+    direction = (d["interconnection_type"] or "").lower()      # "withdrawal" | "injection"
     buses.append({
-        "src": "MISO",
-        "direction": "injection",          # <- generator-side. NOT a load-serving number.
-        "name": d["bus_name"] or d["poi_name"],
-        "poi": d["poi_name"],
-        "bus": d["bus_number"],
-        "kv": d["kv"],
-        "area": d["area_name"],
-        "mw": r1(d.get("true_mw")),                  # ACTUAL, unclamped. Not a median, not a rung.
-        "mw_basis": ("true headroom (minimum over binding constraints, unclamped). Request size "
-                     "does NOT change this number - it only decides whether the ask fits inside it"),
-        "fits": {str(x["request_mw"]): x["request_fits"] for x in ladder},
-        "ladder": ladder,                            # rung detail retained for audit
-        "ctx_worst": r1(d["worst_mw"]),              # context only - never the headline
-        "ctx_best": r1(d["best_mw"]),
-        "ctx_median": r1(d["median_mw"]),
-        "at_zero": d["facilities_at_zero"],
-        "monitored": d["monitored_facilities"],
-        "binding": d["worst_binding_facility"],
-        "vintage": d["vintage"],
-        # G27: the zero's CAUSE. A bus reading 0 because a monitored facility was already over its
-        # rating before any request is a different finding from a bus that is genuinely full, and
-        # until now both rendered as a bare zero.
-        "state": d.get("headroom_state"),
-        "overloaded_base": d.get("n_facilities_overloaded_base"),
-        "best_facility_mw": r1(d.get("max_facility_mw_available")),
-        "conf": "publisher",               # publisher-supplied coordinates
-        "lat": r6(d["lat"]), "lon": r6(d["lon"]),
+        "src": d["iso"],
+        "direction": direction,
+        "name": d["bus_name"] or d["bus_id"],
+        "poi": d["bus_name"] or d["bus_id"],
+        "bus": d["bus_id"],
+        "kv": int(d["bus_voltage_kv"]) if d["bus_voltage_kv"] else None,
+        "area": d["bus_area"],
+        "mw": r1(d["mw"]),
+        "mw_basis": ("headroom at a 100 MW probe - the tightest facility with |shift factor| >= 5% "
+                     "that is not already over its rating. NOT a bus maximum: we hold no other "
+                     "scenario yet" if d["iso"] == "PJM" else
+                     "vendor-published interconnection capacity, minimum over binding constraints, "
+                     "excluding facilities already over their rating"),
+        "binding": d["primary_limiting_constraint"],
+        "monitored": d["n_monitored_facilities"],
+        "at_zero": d["n_facilities_overloaded_base"],
+        "overloaded_base": d["n_facilities_overloaded_base"],
+        "best_facility_mw": r1(d["constraint_headroom_mw"]),
+        "vintage": d["powerflow_case"],
+        # a reader must be able to see which rows are licensed vendor data and which we derived
+        "provenance": d["provenance_class"],
+        "probe_mw": d["probe_mw"],
+        "conf": "publisher" if d["provenance_class"] != "own_harvest" else "estimated",
+        "lat": r6(d["latitude"]), "lon": r6(d["longitude"]),
     })
-    n_miso += 1
-
-# ---------------------------------------------------------------- PJM: WITHDRAWAL
-# This is the direction a data centre actually needs. match_confidence is carried through and
-# NOT flattened: a bus placed by prefix match is a weaker claim than one matched exactly, and the
-# screener must be able to show that rather than average it away.
-n_pjm = 0
-for r in client.query(f"""
-  SELECT bus_number, bus_label, bus_kv, withdrawal_mw, existing_overloads, facilities,
-         binding_facility, case_label, lat, lon, location_method, match_confidence
-  FROM `{DS}.vw_pjm_bus_withdrawal_located`
-  WHERE lat IS NOT NULL AND lon IS NOT NULL"""):
-    d = dict(r)
-    kv = None
-    try:
-        kv = int(float(d["bus_kv"]))
-    except (TypeError, ValueError):
-        kv = None                          # bus_kv is STRING; unparseable stays NULL, never 0
-    buses.append({
-        "src": "PJM",
-        "direction": "withdrawal",         # <- load-side. This is what a DC needs.
-        "name": d["bus_label"],
-        "poi": d["bus_label"],
-        "bus": d["bus_number"],
-        "kv": kv,
-        "area": d["case_label"],
-        "mw": r1(d["withdrawal_mw"]),
-        "mw_worst": None, "mw_best": None, "mw_raw": r1(d["withdrawal_mw"]),
-        "at_zero": d["existing_overloads"],
-        "monitored": d["facilities"],
-        "binding": d["binding_facility"],
-        "vintage": d["case_label"],
-        "conf": d["match_confidence"] or "unknown",
-        "loc_method": d["location_method"],
-        "lat": r6(d["lat"]), "lon": r6(d["lon"]),
-    })
-    n_pjm += 1
+    if d["iso"] == "MISO":
+        n_miso += 1
+    else:
+        n_pjm += 1
 
 # ---------------------------------------------------------------- MTEP planned transmission
 # The Illinois dashboard's "planned grid investments" idea: where capacity is going to appear,
@@ -291,7 +252,7 @@ with gzip.open(out, "wt", encoding="utf-8", compresslevel=6) as f:
     json.dump(payload, f, separators=(",", ":"), default=jd)
 
 print(f"gridsiting.json.gz written")
-print(f"  buses          : {len(buses):,}  ({n_miso:,} MISO injection + {n_pjm:,} PJM withdrawal)")
+print(f"  buses          : {len(buses):,}  ({n_miso:,} MISO + {n_pjm:,} PJM, both directions each)")
 print(f"  mtep (Indiana) : {len(mtep):,} planned projects")
 print(f"  costs          : {len(costs):,} studied interconnections")
 print(f"  utilities      : {len(util):,} service territories")

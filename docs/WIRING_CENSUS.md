@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 283 of 300 registered objects reach a surface
+## 282 of 300 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -23,6 +23,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_miso_dpp2025_ph1_project_costs` | 202 | `—` |
 | `in_miso_facility_detail` | 40007 | `scripts/build_miso_facility_detail.py` |
 | `in_miso_poi_ladder` | 230286 | `—` |
+| `in_miso_poi_state` | 642 | `scripts/build_miso_facility_detail.py` |
 | `in_nhd_flowline_geom` | 163976 | `—` |
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
@@ -54,10 +55,10 @@ headline can be audited rather than taken on trust:
 | `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
-| `in_bus_capacity_tier0` | direct | `app.js` |
+| `in_bus_capacity_tier0` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
-| `in_bus_headroom_miso_ladder` | direct | `scripts/export_grid_siting.py` |
+| `in_bus_headroom_miso_ladder` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
 | `in_bus_headroom_miso_vendor` | **none** | — |
 | `in_candidate_sites_colleges` | direct | `app.js` |
 | `in_candidate_sites_private_schools` | direct | `scripts/export_context_layers.py` |
@@ -159,7 +160,7 @@ headline can be audited rather than taken on trust:
 | `in_miso_poi_300mw` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_miso_poi_identity` | direct | `app.js` |
 | `in_miso_poi_ladder` | **none** | — |
-| `in_miso_poi_state` | direct | `scripts/export_grid_siting.py` |
+| `in_miso_poi_state` | **none** | — |
 | `in_news_dc` | direct | `app.js`, `community.html` |
 | `in_nfirs_basicincident_2020` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_nfirs_basicincident_2021` | direct | `si.html`, `scripts/export_si_sources.py` |

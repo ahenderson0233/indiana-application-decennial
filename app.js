@@ -1829,7 +1829,7 @@ function renderPowerPlan(p, fips) {
       <tr><td>4</td><td><b>Balancing authority</b></td>
         <td>${ba || '<span class="cannot">not resolved</span>'}</td>
         <td class="hint">${ba === "MISO"
-          ? "MISO runs the grid here. ⚠ MISO publishes only the sending-power direction, so the load-side headroom figure a data centre needs does not exist in public data for this site."
+          ? "MISO runs the grid here. ⚠ MISO publishes only the sending-power direction publicly; the load-side figure below comes from our licensed Orennia subscription, which is the only source that carries it."
           : ba === "PJM" ? "PJM runs the grid here, and publishes load-side (withdrawal) capacity — the direction a data centre needs."
           : "Sets the interconnection process and study queue."}</td></tr>
     </table>`;
@@ -1852,9 +1852,10 @@ function renderPowerPlan(p, fips) {
       : null,
     wdBus ? `Nearest <b>load-side</b> connection point is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
         at ${wdBus.mi} mi, with <b>${fmt(wdBus.mw)} MW</b> of published withdrawal capacity.`
-      : `<b>No load-side capacity figure exists for this site.</b> ${ba === "MISO" ? "MISO" : "The grid operator here"}
-         does not publish withdrawal headroom, so the number a data centre most needs cannot be
-         quoted — this is a gap in public data, not a finding about the site.`,
+      : `<b>No load-side capacity figure could be matched to this site.</b> ${ba === "PJM"
+         ? "We hold PJM's current case for 1,826 buses but can place only 227 of them, and none is within 25 miles"
+         : "MISO publishes none publicly and our licensed substitute has no bus within 25 miles"}
+         — a gap in OUR coverage, not a finding about the site.`,
     injBus && injBus.mw > 0
       ? `Nearest generation-side point <b>${injBus.name}</b> shows ${fmt(injBus.mw)} MW of injection
          headroom — relevant only if you intend to co-locate generation.`
@@ -1982,16 +1983,24 @@ function renderPowerPlan(p, fips) {
              <b>${fmt(wdBus.mw)} MW</b> published withdrawal capacity
              ${wdBus.binding ? `<div class="hint">first constraint to bind: ${bindingPlain(wdBus.binding)}</div>` : ""}
              <div class="hint">vintage: ${wdBus.vintage || "per publisher"}</div>
-             ${/2027 RTEP/i.test(String(wdBus.vintage || "")) ? `<div class="hint"><b>⚠ This is a
-               SUPERSEDED study.</b> We hold the current case (2028 TC2 Phase II, 1,826 buses) but
-               it is not yet wired into this figure — treat the number as indicative and ask the
-               utility.</div>` : ""}`
+             ${wdBus.provenance === "vendor_licensed_proxy" ? `<div class="hint"><b>⚠ Licensed
+               vendor figure.</b> MISO publishes no load-side headroom at all, so this comes from
+               our Orennia subscription rather than from a public source. It is the best number
+               that exists for this direction, and it is not ours — the licence lapses late 2027,
+               after which this row goes back to reading "not published".</div>`
+               : wdBus.probe_mw ? `<div class="hint">⚠ Headroom at a <b>${fmt(wdBus.probe_mw)} MW
+               probe</b>, not this bus's maximum — we hold no other scenario yet, so a larger
+               request could bind on a different facility.</div>` : ""}`
           : `<span class="cannot">Not published for this location.</span>`}</td>
         <td class="hint">${wdBus
           ? `This is the direction a data centre needs. It is a published screening figure, not a
              service guarantee — only the utility's own study is binding.`
-          : `<b>A gap in public data, not a property of the site.</b> Most of Indiana sits in MISO,
-             which publishes only the generation direction. Ask the utility directly.`}</td></tr>
+          : `<b>A gap in OUR coverage, not a property of the site.</b> ${ba === "PJM"
+             ? `We hold PJM's current case for 1,826 buses, but only 227 of them carry a location
+                we trust, so no bus could be matched within 25 miles of here. The figure exists;
+                placing it is the open work.`
+             : `MISO publishes no load-side headroom publicly, and our licensed substitute covers
+                1,731 buses — none within 25 miles of this parcel.`} Ask the utility directly.`}</td></tr>
 
       <tr><td><b>Sending power<br>(injection)</b></td>
         <td>${injBus
