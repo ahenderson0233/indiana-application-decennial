@@ -164,6 +164,77 @@ every distance and every county rollup downstream. It is not a join away.
 **Scoped honestly, this is a half-day task, not a one-hour one**, and it is the single highest-value
 item on the PJM side because everything per-bus is behind it.
 
+### ⭐ 3c — THE JOIN KEY EXISTS, and the cutoff rule is DECODED, but parity is NOT yet reached
+
+**No fuzzy matching is needed to identify the Indiana buses.** Their `Bus ID` is `PJM_242865` and our
+`bus_number` is `242865`. Stripping the prefix joins **282 of their 297 PJM buses (94.9%)** to our
+harvest on an exact key. (My earlier "0 overlap" was a bug: the CSV has **two columns both named
+`Bus ID`**, so `DictReader` silently kept the second one. Read that file positionally.)
+
+**Their tier-0 filter rule is decoded, and it is a perfect 1:1:**
+
+| `Shift Factor Cutoff Ratio` | `Existing Overload Flag` | rows |
+|---|---|---:|
+| **0.05** | false | 339 |
+| **0.20** | true | 255 |
+
+The cutoff is **not** direction-based, it is **overload-based**: a bus with no pre-existing overload
+is evaluated at a 5% shift-factor floor, an already-overloaded bus at 20%. This also explains the
+direction asymmetry with no need for a second rule — withdrawal buses are 94% NOT overloaded
+(279/297) while injection buses are 80% overloaded (237/297). **One rule, two populations.**
+
+⚠ **Our `dfax` is a FRACTION (min 0.02, median 0.043, max 1.0), not a percentage.** An earlier rule
+written as `ABS(dfax) >= 5` matched zero rows and **silently dropped out of the comparison** rather
+than erroring — the same partial-enumeration failure mode as the `[:12]` clip. **60% of our constraint
+rows sit below their 0.05 floor**, and those low-shift-factor rows dominate the MIN, which is why our
+medians were an order of magnitude low.
+
+**Applying their decoded rule still does NOT reproduce their numbers:**
+
+| | vendor | ours, their rule | exact (<1 MW) | within 10% |
+|---|---:|---:|---:|---:|
+| Withdrawal (n=176) | 96.8% >0, median 227.5 | 58.2% >0, median 99.5 | **5.1%** | 13.1% |
+| Injection (n=271) | 28.8% >0, median 0.0 | 64.4% >0, median 100.0 | **27.7%** | 31.4% |
+
+⛔ **The percentage-above-zero agreement reported earlier was COINCIDENTAL and must not be read as
+parity.** At the aggregate level `dfax>=0.20` puts withdrawal at 93.2% against their 93.9% — but
+per bus the median error is still ~103 MW. Two distributions can share a shape and disagree on almost
+every row.
+
+### The actual blocker: WE ARE NOT BINDING ON THE SAME FACILITIES
+
+**Binding-constraint name agreement is 6% on withdrawal and 0% on injection**, and the overload flag
+agrees on only 3.2% of withdrawal buses. No filter over our constraint set can reproduce a MIN taken
+over a *different* constraint set. Two candidate causes, both testable and neither yet tested:
+
+1. **`desired_mw = 100` is OUR request size.** Headroom per constraint is request-invariant (G7b),
+   but the **set of constraints QueueScope returns is not necessarily** — their cost file carries a
+   `Proxy Interconnection Capacity` column, implying a different probe size.
+2. **`Local Transfer Capacity` caps their answer and we do not harvest it at all.** It is populated
+   on all 594 tier-0 rows (median 392 MW), and on **55 of them the reported capacity EQUALS it
+   exactly** — the no-binding-constraint case. We have no equivalent column.
+
+**Until the constraint sets agree, tuning filters is fitting to an answer key.** The next test is to
+re-harvest a small sample of buses at a different `desired_mw` and see whether the returned
+constraint set moves toward theirs.
+
+### ⭐ PLOTTING THE BUSES WITHOUT THEM — the post-subscription path
+
+The subscription lapses late 2027 and their data cannot remain in the tools. The placement problem is
+nonetheless solvable **using them as a yardstick now and keeping only what we derive**:
+
+- Their coordinates are **70% `Estimated`** — derived by substation-name match, the same technique we
+  already use. There is no privileged coordinate source to lose.
+- Their 282 joinable buses are therefore a **labelled validation set**: build our own
+  bus-name → substation matcher, score it against those 282 known-good placements, and tune until it
+  is accurate.
+- **What persists is the MATCHER and a crosswalk whose coordinates come from `in_substations_dedup`
+  (HIFLD/OSM), not from them.** Nothing of theirs ships or remains. That is squarely the permitted
+  yardstick use, and it is the one window in which we have ground truth to calibrate against.
+
+**Do this while the subscription is live.** After it lapses we would be building the same matcher with
+no way to score it.
+
 ## RECOMMENDATION
 
 | region | verdict | what to ship |
