@@ -483,6 +483,36 @@ rows = list(client.query(f"""
   ORDER BY utility, tariff_code, component_type, name"""))
 print(f"components read: {len(rows):,}")
 
+# ---- URDB FALLBACK, for the utilities whose BOOK we do not hold ------------------------------
+# Operator, 2026-08-18: "there is definitely more data in BQ than we currently have wired."
+#
+# Measured: of the 73 utilities in `in_utility_tariff_riders`, only 20 carry both a demand and an
+# energy leg. FIFTY-ONE are single-row stubs recording that nothing was captured - and 49 of those
+# 51 have rates in `in_urdb_rates`. A siter looking up Winamac or Hagerstown today finds nothing at
+# all, while the warehouse holds their rates.
+#
+# ⛔ URDB IS A DIFFERENT KIND OF THING AND MUST NEVER BE STYLED AS THE BOOKS. It is FLATTENED: no
+# riders, no fixed charges, no seasonal blocks, no service-class split. On the utilities where we
+# hold both, the rider stack alone is worth 1.5-2 c/kWh, so a URDB figure is a FLOOR and the page
+# has to say so. It is carried in its own field, never merged into `schedules`, so no arithmetic
+# can silently mix the two.
+urdb_rows = list(client.query(f"""
+  SELECT utility, name, sector, voltagecategory,
+         energy_rate_min_usd_kwh AS e_lo, energy_rate_max_usd_kwh AS e_hi,
+         demand_rate_max_usd_kw  AS d_max,
+         peakkwcapacitymin AS kw_min, peakkwcapacitymax AS kw_max, source
+  FROM `{DS}.in_urdb_rates`
+  WHERE energy_rate_min_usd_kwh IS NOT NULL
+  ORDER BY utility, sector, name"""))
+urdb_by_util = {}
+for r in urdb_rows:
+    urdb_by_util.setdefault((r.utility or "").strip().lower(), []).append({
+        "name": r.name, "sector": r.sector, "voltage": r.voltagecategory,
+        "e_lo": r.e_lo, "e_hi": r.e_hi, "d_max": r.d_max,
+        "kw_min": r.kw_min, "kw_max": r.kw_max, "source": r.source,
+    })
+print(f"urdb fallback rows: {len(urdb_rows):,} across {len(urdb_by_util)} utilities")
+
 # ---- split each utility's rows into schedules and riders ------------------------------------
 by_util = {}
 for r in rows:
@@ -889,6 +919,10 @@ for util, rs in by_util.items():
         # None where EIA publishes no industrial sales for this utility - most municipals and
         # co-ops. An absent benchmark means the calculation cannot be judged, and the page says so
         # rather than implying it passed.
+        # URDB is attached ONLY where the book gives us nothing to cost, and it is kept in its
+        # own field so no total can mix a flattened rate with an itemised one.
+        "urdb": (urdb_by_util.get(util.strip().lower(), [])
+                 if not any(sc.get("costable") for sc in scheds) else []),
         "benchmark_cents": (b or {}).get("cents"),
         "benchmark_year": (b or {}).get("year"),
         # what the benchmark's POPULATION looks like, so its relevance is checkable
@@ -896,6 +930,20 @@ for util, rs in by_util.items():
         "benchmark_customers": (b or {}).get("customers"),
         "n_schedules": len(scheds), "n_riders": len(riders_only),
         "schedules": scheds, "riders_index": sorted(riders_only, key=lambda x: x["code"]),
+    })
+
+# One utility appears in URDB and not in the book table at all. Dropping it would be the same
+# silent absence the stubs already caused, so it is carried with an empty schedule list.
+_seen = {u["utility"].strip().lower() for u in utilities}
+for key, rws in urdb_by_util.items():
+    if key in _seen:
+        continue
+    utilities.append({
+        "utility": rws[0].get("utility_name") or key.title(), "is_iou": False,
+        "conventions": None, "eligibility": [], "urdb": rws,
+        "benchmark_cents": None, "benchmark_year": None,
+        "benchmark_mwh_per_customer": None, "benchmark_customers": None,
+        "n_schedules": 0, "n_riders": 0, "schedules": [], "riders_index": [],
     })
 
 utilities.sort(key=lambda u: (not u["is_iou"], -u["n_schedules"], u["utility"]))
@@ -906,6 +954,9 @@ payload = {
         "utilities": len(utilities), "iou": sum(1 for u in utilities if u["is_iou"]),
         "schedules": n_sched, "riders": n_rider, "components": len(rows),
         "costable": sum(1 for u in utilities for s in u["schedules"] if s["costable"]),
+        "utilities_with_book": sum(1 for u in utilities
+                                   if any(s["costable"] for s in u["schedules"])),
+        "utilities_urdb_only": sum(1 for u in utilities if u.get("urdb")),
     },
     "utilities": utilities,
 }

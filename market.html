@@ -72,6 +72,7 @@
       sector <select id="rp-sec"><option>Industrial</option><option>Commercial</option></select>
     </div>
     <div class="scroll"><table id="t-proxy"><tr><th>utility · tariff</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr></table></div>
+    <div class="prov" id="p-proxy-count"></div>
     <div class="prov">METHOD (ANALYSIS_METHODOLOGY §4): URDB is FLATTENED — no riders, fixed charges, or seasonal blocks —
     so this is a CROSS-CHECK, not an itemised quote. annual = demand_max·kW·12 + energy·kWh·8760·LF.
     Large-load tariffs have MW FLOORS (eligibility minimums).
@@ -295,23 +296,58 @@ function mmbtuToCents(v) {
     " ⚠ Design capacity is the size of the pipe, NOT unsold capacity: how much is actually" +
     " available on a given day is the operationally-available capacity below.";
   function renderProxy() {
+    /* ⚠ `esc` is declared with `const` further down this file, and renderProxy runs during init -
+     * reaching for it here threw "Cannot access 'esc' before initialization" and took the whole
+     * page down, selector included. A local escape keeps this card independent of declaration
+     * order rather than depending on it. */
+    const escP = (x) => String(x ?? "").replace(/[<>&]/g, (ch) =>
+      ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[ch]));
     const mw = Number(document.getElementById("rp-mw").value) || 300;
     const lf = Number(document.getElementById("rp-lf").value) || 0.85;
     const sec = document.getElementById("rp-sec").value.toLowerCase();
     const kw = mw * 1000, kwh = kw * 8760 * lf;
-    const rows = (m.tariffs || [])
-      .filter(t => (t.sector || "").toLowerCase() === sec && t.demand_rate_max_usd_kw != null
-                   && t.energy_rate_min_usd_kwh != null)
-      .map(t => {
-        const demand = Number(t.demand_rate_max_usd_kw) * kw * 12;
-        const eLo = Number(t.energy_rate_min_usd_kwh) * kwh, eHi = Number(t.energy_rate_max_usd_kwh || t.energy_rate_min_usd_kwh) * kwh;
-        return { t, lo: demand + eLo, hi: demand + eHi };
-      }).sort((a, b) => a.lo - b.lo).slice(0, 14);
+    /* ⛔ THIS TABLE USED TO `.slice(0, 14)` AFTER SORTING CHEAPEST-FIRST, AND SAID NOTHING.
+     * Measured at the industrial sector: 432 rows across 35 utilities qualify and FOURTEEN were
+     * rendered - 418 dropped in silence. Worse than the volume is the direction: sorting by cost
+     * and keeping the cheapest means the cut selects for whichever rows have the LEAST data, so
+     * a gap in our extraction presented itself as the best deal in Indiana. That is the same
+     * failure as the "cheapest voltage" bug on the rate engine, one card over.
+     *
+     * Now: one row per UTILITY, because ranking utilities is what this card is for, with the
+     * schedule that is cheapest for them named underneath and the rest counted. Nothing is
+     * dropped without being counted on the page. */
+    const all = (m.tariffs || [])
+      .filter(t => (t.sector || "").toLowerCase() === sec && t.energy_rate_min_usd_kwh != null);
+    const noDemand = all.filter(t => t.demand_rate_max_usd_kw == null);
+    const priced = all.filter(t => t.demand_rate_max_usd_kw != null).map(t => {
+      const demand = Number(t.demand_rate_max_usd_kw) * kw * 12;
+      const eLo = Number(t.energy_rate_min_usd_kwh) * kwh;
+      const eHi = Number(t.energy_rate_max_usd_kwh || t.energy_rate_min_usd_kwh) * kwh;
+      return { t, lo: demand + eLo, hi: demand + eHi };
+    });
+    const byUtil = new Map();
+    for (const x of priced) {
+      const k = String(x.t.utility);
+      const cur = byUtil.get(k);
+      if (!cur) byUtil.set(k, { best: x, n: 1 });
+      else { cur.n++; if (x.lo < cur.best.lo) cur.best = x; }
+    }
+    const rows = [...byUtil.values()].sort((a, b) => a.best.lo - b.best.lo);
     document.getElementById("t-proxy").innerHTML =
-      "<tr><th>utility · tariff</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr>" +
-      rows.map(x => `<tr><td>${String(x.t.utility).slice(0, 34)}<br><span class="hint">${(x.t.name || "").slice(0, 44)}</span></td>
+      "<tr><th>utility</th><th>cheapest qualifying rate</th><th>$/yr (energy range)</th><th>eff ¢/kWh</th></tr>" +
+      rows.map(({ best: x, n }) => `<tr><td><b>${escP(String(x.t.utility).slice(0, 38))}</b></td>
+        <td class="hint">${escP((x.t.name || "").slice(0, 46))}${n > 1
+          ? `<br>+${n - 1} other ${sec} rate${n === 2 ? "" : "s"} at this utility` : ""}</td>
         <td>$${fmt(Math.round(x.lo / 1e6))}M – $${fmt(Math.round(x.hi / 1e6))}M</td>
         <td>${(x.lo / kwh * 100).toFixed(1)}–${(x.hi / kwh * 100).toFixed(1)}</td></tr>`).join("");
+    document.getElementById("p-proxy-count").innerHTML =
+      `<b>All ${rows.length} ${sec} utilities shown</b> &mdash; nothing is truncated. Ranked from
+       ${priced.length} qualifying rate${priced.length === 1 ? "" : "s"}; where a utility publishes
+       several, the cheapest is named and the rest counted.` +
+      (noDemand.length ? ` <b>${noDemand.length} rate${noDemand.length === 1 ? " was" : "s were"}
+       excluded</b> for carrying no demand charge in URDB &mdash; at ${fmt(mw)}&nbsp;MW a missing
+       demand charge understates a bill by more than any rider, so those would rank first for the
+       wrong reason.` : "");
   }
   for (const id of ["rp-mw", "rp-lf", "rp-sec"]) document.getElementById(id).addEventListener("change", renderProxy);
   renderProxy();
@@ -545,6 +581,54 @@ function mmbtuToCents(v) {
     document.getElementById("tf-count").textContent =
       `${u.n_schedules} schedule${u.n_schedules === 1 ? "" : "s"} · ${u.n_riders} riders`
       + (bench ? ` · industrial customers here actually pay ${bench}¢/kWh (EIA-861 ${u.benchmark_year})` : "");
+
+    /* ⛔ URDB IS A FLOOR, NOT A BILL, AND THE PAGE HAS TO SAY WHICH IT IS SHOWING. Where we hold
+     * no tariff book, URDB is all there is - but it is FLATTENED: no riders, no fixed charges, no
+     * seasonal blocks, no service-class split. On the utilities where we hold both, the rider
+     * stack alone is worth 1.5-2 c/kWh. Rendered in its own panel, never merged with the itemised
+     * schedules, so the two can never be mistaken for each other. */
+    if (u.urdb && u.urdb.length && !u.schedules.some((sch) => sch.costable)) {
+      const rel = u.urdb.filter((r) => /industrial|commercial/i.test(r.sector || ""));
+      const use = (rel.length ? rel : u.urdb).map((r) => {
+        const dem = r.d_max != null ? Number(r.d_max) * kW * 12 : 0;
+        const eLo = Number(r.e_lo) * kWh;
+        const eHi = Number(r.e_hi != null ? r.e_hi : r.e_lo) * kWh;
+        return { r, lo: dem + eLo, hi: dem + eHi, hasDem: r.d_max != null };
+      }).sort((a, b) => a.lo - b.lo);
+      const tooBigFor = (r) => r.kw_max != null && kW > Number(r.kw_max);
+      document.getElementById("tf-body").innerHTML = `
+        <div class="sowhat"><b>&#9888; We do not hold a tariff book for this utility.</b> What
+          follows is <b>URDB's flattened summary</b> &mdash; the published energy and demand rates
+          only. It carries <b>no riders, no fixed charges, no seasonal blocks and no service-voltage
+          split</b>. On the utilities where we hold both, the rider stack alone is worth roughly
+          <b>1.5&ndash;2&cent;/kWh</b>, so <b>read every figure below as a FLOOR</b>, not a quote,
+          and do not compare it like-for-like against the itemised utilities.
+          <br><b>What to do with it:</b> use it to decide whether this utility is worth a phone
+          call. A real number needs their book.</div>
+        <div class="scroll"><table>
+          <tr><th>Rate</th><th>Sector</th><th>Energy</th><th>Demand</th><th>Eligibility</th>
+              <th>Per year (floor)</th><th>Effective (floor)</th></tr>
+          ${use.map((x) => `<tr${tooBigFor(x.r) ? ' style="opacity:.55"' : ""}>
+            <td><b>${esc(x.r.name || "(unnamed)")}</b>${tooBigFor(x.r)
+              ? '<br><span class="cannot">above this rate’s ceiling at your load</span>' : ""}</td>
+            <td class="hint">${esc(x.r.sector || "")}${x.r.voltage ? `<br>${esc(x.r.voltage)}` : ""}</td>
+            <td>${(Number(x.r.e_lo) * 100).toFixed(2)}${x.r.e_hi != null && x.r.e_hi !== x.r.e_lo
+              ? `&ndash;${(Number(x.r.e_hi) * 100).toFixed(2)}` : ""}&cent;</td>
+            <td>${x.hasDem ? `$${Number(x.r.d_max).toFixed(2)}/kW-mo`
+              : '<span class="cannot">none captured</span>'}</td>
+            <td class="hint">${x.r.kw_min != null || x.r.kw_max != null
+              ? `${x.r.kw_min != null ? fmt(x.r.kw_min) : "0"}&ndash;${x.r.kw_max != null ? fmt(x.r.kw_max) : "∞"} kW`
+              : "not stated"}</td>
+            <td><b>&ge;${usd(x.lo)}</b>${x.hi > x.lo ? ` &ndash; ${usd(x.hi)}` : ""}</td>
+            <td><b>&ge;${(x.lo / kWh * 100).toFixed(2)}&cent;</b></td></tr>`).join("")}
+        </table></div>
+        <div class="prov">${u.urdb.length} URDB rate(s) held for this utility, ${use.length}
+          shown${rel.length ? " (industrial and commercial only)" : ""}. Source
+          <code>in_urdb_rates</code>. A rate with <b>no demand charge captured</b> understates a
+          300&nbsp;MW bill by more than any rider does &mdash; treat those as unusable rather than
+          cheap.</div>`;
+      return;
+    }
 
     document.getElementById("tf-body").innerHTML = u.schedules.map((sch, i) => {
       const minKW = sch.components.find((c) => c.type === "eligibility"
@@ -824,8 +908,15 @@ function mmbtuToCents(v) {
   }
 
   const tfSel = document.getElementById("tf-util");
-  tfSel.innerHTML = TF.utilities.filter((u) => u.n_schedules > 0).map((u) =>
-    `<option value="${TF.utilities.indexOf(u)}">${esc(u.utility)}</option>`).join("");
+  /* A utility we hold NOTHING for was simply absent from this list, which reads as "we have no
+   * data" when the warehouse in fact holds URDB rates for it. 49 of the 51 book-stubs have URDB
+   * rows. They are offered here, labelled, so a siter looking up Winamac finds an answer and can
+   * see exactly what KIND of answer it is. */
+  tfSel.innerHTML = TF.utilities
+    .filter((u) => u.n_schedules > 0 || (u.urdb && u.urdb.length))
+    .map((u) => `<option value="${TF.utilities.indexOf(u)}">${esc(u.utility)}${
+      (u.urdb && u.urdb.length && !u.schedules.some((s) => s.costable))
+        ? "  — no tariff book (URDB only)" : ""}</option>`).join("");
   ["tf-util", "tf-mw", "tf-lf"].forEach((id) =>
     document.getElementById(id).addEventListener("change", tfRender));
   tfRender();
