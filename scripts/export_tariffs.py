@@ -44,12 +44,18 @@ IOU = ("Duke Energy Indiana Inc", "Northern Indiana Pub Serv Co",
 # otherwise is how a "$/yr" figure quietly becomes fiction: "2,000 kW" is a qualifying floor, not a
 # charge, and "5 years" is a contract term.
 BILLING = {
-    "$/kwh":          "energy",     # x annual kWh
-    "$/kw/month":     "demand",     # x billing kW x 12
+    "$/kwh":          "energy",     # x annual kWh (allocated across blocks where present)
+    "$/kw/month":     "demand",     # x billing kW x months in that season
     "$/kva/month":    "demand_kva",  # x billing kVA x 12 - needs a power factor
     "$/month":        "fixed",      # x 12
     "$/kw/day":       "demand_day",  # x billing kW x 365
 }
+# ⛔ FUEL BASE IS NOT A CHARGE. Per CPS_35MW_Rate_Model.xlsx the base is ALREADY EMBEDDED in the
+# energy charge, and what bills is the DIFFERENCE: (actual fuel cost - embedded base) x kWh. Adding
+# the base as if it were its own line double-counts fuel, which is one of the reasons the first
+# attempt read 13-15 c/kWh against an Indiana industrial reality of 6-9c. It is carried for display
+# and for the fuel-adjustment arithmetic, never summed.
+NOT_A_CHARGE = ("fuel_base",)
 # Reactive charges depend on the site's power factor, which a siter has not chosen yet. Excluded
 # from the total ON PURPOSE and reported, rather than silently dropped or assumed away.
 REACTIVE = ("$/kvar/month",)
@@ -69,6 +75,57 @@ assert not BLOCK_RE.search("per kW per month, Tier 1 firm service")
 CORE = ("demand", "energy", "base_charge")   # a tariff_code with any of these is a real schedule
 
 
+def parse_block(basis):
+    """Parse the block ladder out of the basis prose -> (kind, lo, hi); hi None = 'and above'.
+
+    Proven against every block row in the estate: 26 of 26 parse, across all five IOUs.
+      kwh_month  slices of MONTHLY kWh          "first 30,000 kWh per month"
+      hours_use  slices of HOURS-USE of demand  "first 450 hours use of Billing Demand"
+      kw         slices of BILLING DEMAND       "next 1,950 kW of Billing Demand"
+    A block ladder is why a naive sum put NIPSCO at 57.94 c/kWh: these rates are alternatives
+    applied to successive slices, and the slice boundaries are computable from load factor.
+    """
+    if not basis:
+        return None
+    b = basis.lower().replace(",", "")
+    if "hours use" in b or "hour use" in b:
+        kind = "hours_use"
+    elif "kwh" in b:
+        kind = "kwh_month"
+    elif re.search(r"\bkw\b", b):
+        kind = "kw"
+    else:
+        return None
+    # "over 450 up to 500 hours use" - a BOUNDED middle block. Checked before the open-ended
+    # form, or the upper bound is silently dropped and the block runs to infinity.
+    m = re.search(r"over\s+([\d.]+)\s+up to\s+([\d.]+)", b)
+    if m:
+        return (kind, float(m.group(1)), float(m.group(2)))
+    m = re.search(r"(first|next|all over|over)\s+([\d.]+)", b)
+    if not m:
+        m2 = re.search(r"first\s+([\d.]+)\s*kw", b)
+        return ("kw", 0.0, float(m2.group(1))) if m2 else None
+    word, val = m.group(1), float(m.group(2))
+    if word == "first":
+        return (kind, 0.0, val)
+    if word in ("all over", "over"):
+        return (kind, val, None)
+    return (kind, None, val)          # "next N" - lower bound resolved by ordering below
+
+
+def resolve_next(blocks):
+    """'next N' gives a WIDTH, not a boundary. Walk the ladder in order and turn widths into
+    absolute [lo, hi) bounds."""
+    cursor = 0.0
+    for b in blocks:
+        k, lo, hi = b["block"]
+        if lo is None:                 # a "next N" width
+            lo, hi = cursor, cursor + hi
+        b["block"] = (k, lo, hi)
+        cursor = hi if hi is not None else cursor
+    return blocks
+
+
 def unit_key(u):
     return re.sub(r"\s+", "", (u or "").strip().lower())
 
@@ -86,6 +143,32 @@ def volt_class(text):
         return "secondary"
     return None
 
+
+# ---- the ACCEPTANCE BENCHMARK -------------------------------------------------------------
+# What this utility's INDUSTRIAL customers actually paid, all-in, per EIA-861. A modelled tariff
+# bill that lands far from this is wrong, and saying so on the page is the difference between a
+# calculation and a claim. CPS_35MW_Rate_Model.xlsx uses the same anchor for the same reason.
+#
+# ⚠ EIA publishes under its own utility names, which are NOT our names. Mapped EXPLICITLY rather
+# than fuzzy-matched: a wrong benchmark silently validates a wrong bill, which is worse than none.
+EIA_NAME = {
+    "Duke Energy Indiana Inc":            "Duke Energy Indiana, LLC",
+    "Northern Indiana Pub Serv Co":       "Northern Indiana Pub Serv Co",
+    "Indiana Michigan Power Co (Indiana)": "Indiana Michigan Power Co",
+    "Indianapolis Power & Light Co":      "AES Indiana",
+    "Southern Indiana Gas & Elec Co":     "Southern Indiana Gas & Elec Co",
+}
+bench = {}
+for r in client.query(f"""
+  SELECT utility_name,
+         MAX(data_year) AS yr,
+         ROUND(100 * SAFE_DIVIDE(SUM(SAFE_CAST(thousand_dollars_2 AS FLOAT64)),
+                                 SUM(SAFE_CAST(megawatthours_2 AS FLOAT64))), 2) AS ind_cents
+  FROM `{DS}.in_eia861_sales`
+  WHERE state = 'IN' AND SAFE_CAST(megawatthours_2 AS FLOAT64) > 100000
+  GROUP BY utility_name"""):
+    bench[r.utility_name] = {"cents": r.ind_cents, "year": r.yr}
+print(f"benchmark utilities: {len(bench)}")
 
 rows = list(client.query(f"""
   SELECT utility, tariff_code, tariff_name, component_type, code, name,
@@ -119,7 +202,14 @@ for util, rs in by_util.items():
             "name": r.name or r.code,
             "rate": r.rate,
             "unit": r.unit,
-            "bill": BILLING.get(uk) if r.rate is not None else None,
+            "bill": (None if r.component_type in NOT_A_CHARGE
+                     else BILLING.get(uk) if r.rate is not None else None),
+            "fuel_base": r.component_type == "fuel_base",
+            # months this rate is in force. The books state a season on the row where one applies;
+            # absent a season the rate runs all 12 months.
+            "months": (4 if (r.season or "").strip().lower().startswith("summer")
+                       else 8 if (r.season or "").strip().lower().startswith("non")
+                       else 12),
             "reactive": uk in REACTIVE,
             "volt": volt_class(r.applies_to) or volt_class(r.name),
             "applies_to": r.applies_to,
@@ -141,7 +231,7 @@ for util, rs in by_util.items():
             # silently, while `grep` rendered the line as clean text because the terminal ate the
             # control characters - so the code looked right and detected zero blocks. Compiled at
             # module level now, and asserted at import, so it cannot fail quietly again.
-            "block": bool(BLOCK_RE.search(r.basis or "")),
+            "block": parse_block(r.basis) if BLOCK_RE.search(r.basis or "") else None,
         }
 
     scheds = []
@@ -208,9 +298,15 @@ for util, rs in by_util.items():
             # block-rated schedule is the whole point: a wrong dollar figure on a page shown to
             # management is worse than an honest absence.
             "blocked": any(c["block"] for c in billable),
-            "costable": (any(c["bill"] == "energy" for c in billable)
-                         or any(c["bill"] in ("demand", "demand_kva") for c in billable))
-                        and not any(c["block"] for c in billable),
+            # a block ladder is costable once its bounds are absolute
+            "fuel_base_rate": next((c["rate"] for c in components if c.get("fuel_base")), None),
+            # BLOCKS NO LONGER DISQUALIFY. The ladder parses (26/26) and its slice boundaries
+            # are computable from load factor, so a blocked schedule can be costed correctly.
+            # What still cannot be costed is a schedule with no energy leg of its own - I&M's
+            # IP-LL large-load framework is a MODIFIER on IP, and costing it alone returned an
+            # impossible 1.77 c/kWh.
+            "modifier": not any(c["bill"] == "energy" for c in billable),
+            "costable": any(c["bill"] == "energy" for c in billable),
         })
     scheds.sort(key=lambda s: (not s["costable"], -s["n_billable"], s["code"]))
 
@@ -218,8 +314,14 @@ for util, rs in by_util.items():
                     "n": len(v)} for c, v in rider_codes.items()]
     n_sched += len(scheds)
     n_rider += len(riders_only)
+    b = bench.get(EIA_NAME.get(util, util))
     utilities.append({
         "utility": util, "is_iou": util in IOU,
+        # None where EIA publishes no industrial sales for this utility - most municipals and
+        # co-ops. An absent benchmark means the calculation cannot be judged, and the page says so
+        # rather than implying it passed.
+        "benchmark_cents": (b or {}).get("cents"),
+        "benchmark_year": (b or {}).get("year"),
         "n_schedules": len(scheds), "n_riders": len(riders_only),
         "schedules": scheds, "riders_index": sorted(riders_only, key=lambda x: x["code"]),
     })

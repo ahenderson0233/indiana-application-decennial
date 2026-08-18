@@ -136,25 +136,23 @@
       its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
       elsewhere.</div></div>
 
-  <div class="card"><h2>Tariff schedules, with every rider that attaches to them</h2>
-    <div class="sowhat">Each utility's rate schedules, read from its own tariff book and the IURC's
-      commission-stamped copies &mdash; and with each schedule, <b>the riders that actually bill on
-      it</b>. Riders are not a separate topic: they are charges on your bill, and at I&amp;M the
-      stack alone is worth roughly <b>+8.6&nbsp;$/kW-month</b>.
-      <br><b>Read the service-voltage rows.</b> Taking service at transmission rather than primary
-      distribution is usually the largest controllable line on a large bill &mdash; a
-      <b>$9.30/kW-month</b> spread at AES Indiana, about <b>$3.9M a year on 35&nbsp;MW</b>.
-      <br>&#11088; <b>If you are large, look for a large-load schedule.</b> NIPSCO Rate 631 is
-      purpose-built for &ge;10&nbsp;MW at transmission voltage and prices firm, non-firm and
-      market-indexed tiers separately; that election moves the bill more than any rider.
-      <br>⚠ <b>An annual total is deliberately NOT shown yet.</b> Several of these schedules price
-      in <b>blocks</b> &mdash; successive slices of usage, sometimes inverted specifically to price
-      high-load-factor customers out &mdash; and a first pass that summed them returned figures that
-      did not reconcile against what these utilities' industrial customers actually pay. <b>The
-      components below are measured; a bill built from them is not, until it reconciles.</b></div>
+  <div class="card"><h2>What would power cost here?</h2>
+    <div class="sowhat">A yearly bill and an effective price per kWh for your load, built from the
+      utility's own tariff &mdash; the rate schedule <b>plus every rider that bills on it</b>. Riders
+      are not a separate topic; at I&amp;M the stack alone is worth about <b>+8.6&nbsp;$/kW-month</b>.
+      <br><b>Every service voltage is priced side by side</b>, because taking service at
+      transmission rather than primary distribution is usually the largest controllable line on a
+      large bill &mdash; a <b>$9.30/kW-month</b> spread at AES Indiana, roughly <b>$3.9M a year on
+      35&nbsp;MW</b>. You should not need to know which voltage you want before you can see what the
+      choice costs.
+      <br>&#11088; <b>Each figure is checked against what that utility's industrial customers
+      actually paid</b> (EIA-861). A tariff model that does not land near the realized average is
+      wrong, so the check is shown rather than hidden.</div>
     <div style="margin:10px 0">
-      Utility: <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:280px"></select>
-      <span class="hint" id="tf-count" style="margin-left:8px"></span>
+      Load <input id="tf-mw" type="number" value="300" min="1" max="5000" style="width:74px"> MW
+      &middot; load factor <input id="tf-lf" type="number" value="0.85" min="0.05" max="1" step="0.05" style="width:64px">
+      &middot; <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:260px"></select>
+      <span class="hint" id="tf-count" style="margin-left:6px"></span>
     </div>
     <div id="tf-body"></div>
     <div class="prov" id="tf-prov"></div></div>
@@ -425,74 +423,189 @@ function mmbtuToCents(v) {
     secondary:       "Secondary (below 4 kV)",
     any:             "Any service voltage",
   };
-  const usd = (n) => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${fmt(Math.round(n))}`;
+  const usd = (n) => Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${fmt(Math.round(n))}`;
+
+  /* Allocate a quantity across a block ladder. The rates are ALTERNATIVES applied to successive
+   * slices, not addends - summing them is what put NIPSCO at 57.94 c/kWh. `total` and the block
+   * bounds share a unit; `scale` converts a slice into the billable quantity (hours-use slices
+   * are multiplied by kW to become kWh). */
+  function allocate(blocks, total, scale) {
+    let cost = 0, used = [];
+    for (const b of blocks) {
+      const lo = b.block[1] == null ? 0 : b.block[1];
+      const hi = b.block[2] == null ? Infinity : b.block[2];
+      const qty = Math.max(0, Math.min(total, hi) - lo);
+      if (qty <= 0) continue;
+      cost += qty * scale * b.rate;
+      used.push({ ...b, amt: qty * scale * b.rate });
+    }
+    return { cost, used };
+  }
 
   function costAt(sch, volt, kW, kWh) {
+    const at = (c) => !c.volt || c.volt === volt;
     const legs = { fixed: 0, demand: 0, energy: 0 };
     const riders = { fixed: 0, demand: 0, energy: 0 };
     const lines = [];
     let reactive = 0;
-    for (const c of sch.components) {
-      if (c.reactive) { reactive++; continue; }
-      if (!c.bill) continue;
-      if (c.volt && c.volt !== volt) continue;      // wrong voltage for this run
-      let amt = 0;
-      if (c.bill === "energy") amt = c.rate * kWh;
-      else if (c.bill === "demand") amt = c.rate * kW * 12;
-      else if (c.bill === "demand_day") amt = c.rate * kW * 365;
-      else if (c.bill === "demand_kva") amt = c.rate * kW * 12;   // PF 1.0, stated below
-      else if (c.bill === "fixed") amt = c.rate * 12;
-      const leg = c.bill === "energy" ? "energy" : (c.bill === "fixed" ? "fixed" : "demand");
+    const monthlyKWh = kWh / 12, hoursUse = kW ? monthlyKWh / kW : 0;
+
+    const push = (c, amt, leg) => {
       (c.origin === "schedule" ? legs : riders)[leg] += amt;
       lines.push({ ...c, amt, leg });
+    };
+
+    // --- blocked legs first: group by (origin, kind) and allocate the ladder ---
+    const blocked = sch.components.filter((c) => c.block && c.bill && at(c));
+    const groups = {};
+    for (const c of blocked) (groups[`${c.origin}|${c.block[0]}`] ||= []).push(c);
+    for (const key of Object.keys(groups)) {
+      const g = groups[key].slice().sort((a, b) => (a.block[1] ?? 0) - (b.block[1] ?? 0));
+      const kind = g[0].block[0];
+      let r;
+      if (kind === "kwh_month")      r = allocate(g, monthlyKWh, 1);
+      else if (kind === "hours_use") r = allocate(g, hoursUse, kW);
+      else                           r = allocate(g, kW, 1);          // kW slices
+      const months = kind === "kw" ? 12 : 12;                          // both bill monthly
+      for (const l of r.used) push(l, l.amt * months, kind === "kw" ? "demand" : "energy");
     }
-    const total = legs.fixed + legs.demand + legs.energy + riders.fixed + riders.demand + riders.energy;
+
+    // --- unblocked legs ---
+    for (const c of sch.components) {
+      if (c.block || !c.bill || !at(c)) { if (c.reactive) reactive++; continue; }
+      if (c.reactive) { reactive++; continue; }
+      let amt = 0, leg = "demand";
+      if (c.bill === "energy")          { amt = c.rate * kWh; leg = "energy"; }
+      else if (c.bill === "demand")     { amt = c.rate * kW * (c.months ?? 12); }
+      else if (c.bill === "demand_kva") { amt = c.rate * kW * (c.months ?? 12); }
+      else if (c.bill === "demand_day") { amt = c.rate * kW * 365; }
+      else if (c.bill === "fixed")      { amt = c.rate * 12; leg = "fixed"; }
+      push(c, amt, leg);
+    }
+    const total = legs.fixed + legs.demand + legs.energy
+                + riders.fixed + riders.demand + riders.energy;
     return { legs, riders, lines, reactive, total, cents: kWh ? (total / kWh) * 100 : null };
   }
 
   function tfRender() {
     const u = TF.utilities[+document.getElementById("tf-util").value];
+    const mw = Math.max(1, +document.getElementById("tf-mw").value || 300);
+    const lf = Math.min(1, Math.max(0.05, +document.getElementById("tf-lf").value || 0.85));
+    const kW = mw * 1000, kWh = kW * 8760 * lf;
+    const bench = u.benchmark_cents;
     document.getElementById("tf-count").textContent =
-      `${u.n_schedules} rate schedule${u.n_schedules === 1 ? "" : "s"} · ${u.n_riders} riders applied`;
-
-    if (!u.schedules.length) {
-      document.getElementById("tf-body").innerHTML =
-        `<div class="sowhat">No rate schedule is held for this utility. What we hold is recorded on the
-         Data page; for most municipals and co-ops the rates are set by city ordinance or a co-op
-         board and never reach the Commission.</div>`;
-      return;
-    }
+      `${u.n_schedules} schedule${u.n_schedules === 1 ? "" : "s"} · ${u.n_riders} riders`
+      + (bench ? ` · industrial customers here actually pay ${bench}¢/kWh (EIA-861 ${u.benchmark_year})` : "");
 
     document.getElementById("tf-body").innerHTML = u.schedules.map((sch, i) => {
-      const byGroup = {};
-      for (const c of sch.components) (byGroup[c.group || c.type] ||= []).push(c);
-      const order = ["Fixed charge", "Demand (capacity)", "Energy", "Fuel base embedded in rates",
-                     "Riders", "Ratchet", "Eligibility & terms"];
-      const groups = Object.keys(byGroup).sort((a, b) => {
-        const ia = order.indexOf(a), ib = order.indexOf(b);
-        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-      });
-      const rateCell = (c) => c.rate === null || c.rate === undefined
-        ? `<span class="cannot">not published in the tariff</span>`
-        : `<b>${c.rate}</b> <span class="hint">${esc(c.unit || "")}</span>`;
+      const minKW = sch.components.find((c) => c.type === "eligibility"
+        && /minimum|contract demand/i.test(c.name || "") && /kW/i.test(c.unit || ""));
+      const tooSmall = minKW && minKW.rate && kW < minKW.rate;
+      const elig = tooSmall ? `<div class="sowhat"><b>You would not qualify at ${fmt(mw)} MW.</b>
+        This schedule requires at least ${fmt(minKW.rate)} kW of contract demand.</div>` : "";
+
+      if (sch.modifier) {
+        return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
+            <span class="hint">· a framework on another schedule, not a standalone rate</span></summary>
+          <div class="accbody"><div class="sowhat"><b>This is not a standalone rate.</b> It has no
+            energy charge of its own &mdash; it modifies another schedule (adding an embedded
+            capacity charge, a longer term and a heavier ratchet), so costing it alone would
+            understate a bill badly. Price the underlying schedule, then apply these terms.</div>
+            <div class="scroll"><table><tr><th>component</th><th>rate</th><th>applies to</th></tr>
+            ${sch.components.map((c) => `<tr><td>${esc(c.name || "")}</td>
+              <td>${c.rate == null ? '<span class="cannot">not published in the tariff</span>' : `<b>${c.rate}</b> <span class="hint">${esc(c.unit || "")}</span>`}</td>
+              <td class="hint">${esc(c.basis || c.applies_to || "")}</td></tr>`).join("")}
+            </table></div></div></details>`;
+      }
+
+      const volts = sch.volt_classes.length ? sch.volt_classes : ["any"];
+      /* A voltage is only a real option if the tariff actually prices ENERGY at it. Filtering on
+       * total > 0 alone picked whichever voltage had the LEAST data - a lone $500/month customer
+       * charge sorts cheapest and reads 0.26 c/kWh - so a gap in our extraction masqueraded as the
+       * best deal. Require an energy leg; a voltage without one is missing data, not a bargain. */
+      /* Ordered by SERVICE VOLTAGE, highest first - not by price. Sorting by cost implied a
+       * recommendation, and the voltage you can actually interconnect at is set by what is in the
+       * ground near the site, not by which row is cheapest (operator, 2026-08-18). Each voltage is
+       * modelled and judged on its own below. */
+      const VORDER = ["transmission", "subtransmission", "primary", "secondary", "any"];
+      const runs = volts.map((v) => ({ v, r: costAt(sch, v, kW, kWh) }))
+                        .filter((x) => (x.r.legs.energy + x.r.riders.energy) > 0)
+                        .sort((a, b) => VORDER.indexOf(a.v) - VORDER.indexOf(b.v));
+      const priced = runs.slice().sort((a, b) => a.r.total - b.r.total);
+      if (!runs.length) return "";
+      const best = priced[0], worst = priced[priced.length - 1];
+      const spread = worst.r.total - best.r.total;
+      const off = bench ? ((best.r.cents - bench) / bench) * 100 : null;
+      const ok = off !== null && Math.abs(off) <= 35;
+      /* Below ~2 c/kWh nothing real is being priced - it means our extraction is missing a leg of
+       * this schedule, and the run only looked cheap because of the gap. Say that, rather than
+       * presenting a hole in the data as the best deal available. */
+      const thin = best.r.cents < 2;
+      /* An inverted block ladder is SUPPOSED to look expensive at high load factor - NIPSCO 632
+       * and 633 price high-LF customers out deliberately. Comparing that against a blended
+       * industrial average is not a fair test of the model, so it is not reported as a failure. */
+      const inverted = sch.blocked && off !== null && off > 35;
+      const check = thin
+        ? `<span class="cannot">&#9888; Only ${best.r.cents.toFixed(2)}&cent;/kWh &mdash; too low to be
+           a real bill. A charge we have not extracted for this schedule is missing, so treat this
+           as incomplete rather than cheap.</span>`
+        : (bench === null || bench === undefined)
+        ? `<span class="cannot">No realized average is published for this utility, so this figure
+           cannot be checked against anything.</span>`
+        : inverted
+        ? `&#9888; Modelled <b>${best.r.cents.toFixed(2)}&cent;</b> against <b>${bench}&cent;</b> paid on
+           average here. <b>That gap is the tariff working as intended, not a modelling error:</b>
+           this schedule prices in an <b>inverted block ladder</b> that deliberately makes a
+           high-load-factor customer expensive. At ${(lf * 100).toFixed(0)}% load factor you are the
+           customer it is designed to turn away &mdash; which is itself the finding.`
+        : `${ok ? "&#10003;" : "&#9888;"} Modelled <b>${best.r.cents.toFixed(2)}&cent;</b> against
+           <b>${bench}&cent;</b> actually paid by industrial customers here
+           (<b>${off > 0 ? "+" : ""}${off.toFixed(0)}%</b>)${ok ? "" : " &mdash; <b>outside tolerance; treat as unreliable</b>"}`;
+
       return `<details class="acc"${i === 0 ? " open" : ""}>
         <summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
-          <span class="hint">· ${sch.n_components} components · ${sch.n_riders_attached} rider${sch.n_riders_attached === 1 ? "" : "s"} applied${sch.blocked ? " · block-rated" : ""}</span></summary>
-        <div class="accbody">
-          ${sch.blocked ? `<div class="sowhat"><b>This schedule prices in BLOCKS.</b> The rates below
-             apply to successive slices of your usage, not all at once, and an inverted ladder is
-             sometimes used deliberately to price high-load-factor customers out. Read the
-             <i>applies to</i> column: it carries the slice each rate covers.</div>` : ""}
-          ${groups.map((g) => `<div class="subhead">${esc(g)}</div>
-            <div class="scroll"><table>
-              <tr><th style="width:34%">component</th><th style="width:16%">from</th>
-                  <th style="width:20%">rate</th><th>applies to</th></tr>
-              ${byGroup[g].map((c) => `<tr>
-                <td>${esc(c.name || "")}</td>
-                <td class="hint">${c.origin === "schedule" ? "schedule" : esc(c.origin)}</td>
-                <td>${rateCell(c)}</td>
-                <td class="hint">${esc(c.basis || c.applies_to || "")}${c.season ? ` · ${esc(c.season)}` : ""}</td></tr>`).join("")}
-            </table></div>`).join("")}
+          <span class="hint">· ${runs.length > 1
+            ? `<b>${best.r.cents.toFixed(2)}&ndash;${worst.r.cents.toFixed(2)}&cent;/kWh</b> depending on service voltage`
+            : `<b>${best.r.cents.toFixed(2)}&cent;/kWh</b>`}</span></summary>
+        <div class="accbody">${elig}
+          <div class="scroll"><table>
+            <tr><th>Service voltage</th><th>Fixed</th><th>Demand</th><th>Energy</th>
+                <th>Riders</th><th>Per year</th><th>Effective</th><th>vs actual</th></tr>
+            ${runs.map(({ v, r }) => {
+              const o = bench ? ((r.cents - bench) / bench) * 100 : null;
+              const thinRow = r.cents < 2;
+              const mark = thinRow
+                ? `<span class="cannot" title="a charge we have not extracted is missing">incomplete</span>`
+                : o === null ? `<span class="cannot">no benchmark</span>`
+                : `${Math.abs(o) <= 35 ? "&#10003;" : "&#9888;"} ${o > 0 ? "+" : ""}${o.toFixed(0)}%`;
+              return `<tr><td><b>${esc(VOLT_PLAIN[v] || v)}</b></td>
+              <td>${usd(r.legs.fixed)}</td><td>${usd(r.legs.demand)}</td><td>${usd(r.legs.energy)}</td>
+              <td>${usd(r.riders.fixed + r.riders.demand + r.riders.energy)}</td>
+              <td><b>${usd(r.total)}</b></td><td><b>${r.cents.toFixed(2)}&cent;</b></td>
+              <td class="hint">${mark}</td></tr>`;
+            }).join("")}
+          </table></div>
+          <div class="sowhat">${check}${runs.length > 1 ? `<br>Across the voltages this schedule prices, the spread is
+            <b>${usd(spread)} a year</b> (${(100 * spread / worst.r.total).toFixed(1)}% of the bill) &mdash;
+            cheapest at ${esc(VOLT_PLAIN[best.v] || best.v)}, dearest at ${esc(VOLT_PLAIN[worst.v] || worst.v)}.
+            <b>Which one you can actually take is set by what is in the ground near the site</b>, so
+            price the voltage you can reach, not the cheapest row.` : ""}</div>
+          ${runs.map(({ v, r }) => `<details style="margin-top:6px"><summary class="hint">Line by line at
+            <b>${esc(VOLT_PLAIN[v] || v)}</b> &mdash; ${usd(r.total)}/yr, schedule and riders together</summary>
+            <div class="scroll" style="max-height:320px"><table>
+              <tr><th>from</th><th>component</th><th>rate</th><th>per year</th></tr>
+              ${r.lines.sort((a, b) => Math.abs(b.amt) - Math.abs(a.amt)).map((l) => `<tr>
+                <td class="hint">${l.origin === "schedule" ? "schedule" : esc(l.origin)}</td>
+                <td>${esc(l.name || "")}${l.block ? ' <span class="hint">(block)</span>' : ""}</td>
+                <td>${l.rate} <span class="hint">${esc(l.unit || "")}</span></td>
+                <td>${usd(l.amt)}</td></tr>`).join("")}
+            </table></div></details>`).join("")}
+          <div class="prov">${sch.n_riders_attached} riders applied &middot; ${sch.n_billable} of
+            ${sch.n_components} components bill; the rest are eligibility floors, terms and ratchets.
+            ${sch.fuel_base_rate ? `Fuel base ${sch.fuel_base_rate} $/kWh is <b>embedded in the energy charge</b> and is NOT added again &mdash; the fuel adjustment rider carries the difference. ` : ""}
+            ${best.r.reactive ? `${best.r.reactive} reactive ($/kVAr) charge(s) excluded &mdash; they need a power factor you have not chosen. ` : ""}
+            <b>All-firm service assumed</b>; where a schedule offers a non-firm or market-indexed
+            tier, electing it changes the answer more than any rider.</div>
         </div></details>`;
     }).join("");
   }
@@ -500,8 +613,10 @@ function mmbtuToCents(v) {
   const tfSel = document.getElementById("tf-util");
   tfSel.innerHTML = TF.utilities.filter((u) => u.n_schedules > 0).map((u) =>
     `<option value="${TF.utilities.indexOf(u)}">${esc(u.utility)}</option>`).join("");
-  document.getElementById("tf-util").addEventListener("change", tfRender);
+  ["tf-util", "tf-mw", "tf-lf"].forEach((id) =>
+    document.getElementById(id).addEventListener("change", tfRender));
   tfRender();
+
   document.getElementById("tf-prov").innerHTML =
     `<code>in_utility_tariff_riders</code> — <b>${TF.summary.schedules} rate schedules</b> across ` +
     `${TF.summary.iou} investor-owned utilities, with <b>${TF.summary.riders} riders</b> attached to ` +
