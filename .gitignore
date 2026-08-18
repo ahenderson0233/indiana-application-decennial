@@ -33,3 +33,8 @@ scrapers/**/*.orig
 
 # scraper checkpoint dirs - resumable state, not deliverables
 data/_ckpt_*/
+
+# QueueScope checkpoint markers archived during a re-harvest (state, not source)
+data/_ARCHIVED_*/
+# raw tariff PDFs cached by the IURC loader
+scrapers/tariff_books/
