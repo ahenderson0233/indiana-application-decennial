@@ -1,51 +1,25 @@
-"""Bus-name -> substation matcher, scored against the vendor's 282 placed buses.
+"""Bus-name -> substation matcher, scored against a labelled truth set.
 
-YARDSTICK ONLY. Vendor coordinates are used to SCORE our matcher; the coordinates our
-matcher outputs come from in_substations_dedup (HIFLD/OSM). Nothing of theirs is stored.
+⭐ WHY THIS EXISTS. The Orennia subscription lapses late 2027 and their data cannot remain in the
+tools. Their bus coordinates are 70% `Estimated` - derived by matching the bus NAME to a substation,
+which is the same technique available to us - so there is no privileged coordinate feed to lose.
+What we lose is the ANSWER KEY. So build the matcher now, while we can still score it.
+
+YARDSTICK USE ONLY. Vendor coordinates SCORE the matcher. The coordinates the matcher OUTPUTS come
+from our own substation tables (`energy.mat_grid_substations`, HIFLD/OSM). Nothing of theirs is
+stored or shipped - which is exactly the permitted use under the standing ruling.
+
+RE-SCRAPE COMMAND: python scripts/score_bus_substation_matcher.py
 """
-import csv, math, re, statistics as st
+import math
+import re
+import statistics as st
 from collections import defaultdict
+
 from google.cloud import bigquery
 
 c = bigquery.Client(project="energy-platfrom")
-CSV = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Bus Analysis\Data Input Files"
-       r"\Greenfield Interconnection Capacity, Buses-2026-06-23T16-58-00.csv")
-
-# ---- truth set: vendor bus -> (lat, lon) ----------------------------------------------
-rd = csv.reader(open(CSV, encoding="utf-8-sig", newline="")); next(rd)
-I_ID, I_ISO, I_LAT, I_LON, I_CTY = 0, 44, 45, 47, 43
-truth = {}
-for r in rd:
-    if r[I_ISO] != "PJM":
-        continue
-    try:
-        truth[r[I_ID].split("_", 1)[-1]] = (float(r[I_LAT]), float(r[I_LON]), r[I_CTY])
-    except ValueError:
-        pass
-print(f"vendor PJM buses with coordinates: {len(truth)}")
-
-# ---- our buses -------------------------------------------------------------------------
-buses = {}
-for r in c.query("""SELECT DISTINCT bus_number, bus_label
-                    FROM `energy-platfrom.indiana_app.in_pjm_qs_tc2phii_wd`"""):
-    buses[str(r.bus_number).strip()] = r.bus_label
-print(f"our AEP buses: {len(buses)}")
-
-# ---- our substations (name -> coords). Indiana only, which is the clip we want ----------
-subs = []
-for r in c.query("""SELECT substation_name, lat, lon, county, max_kv
-                    FROM `energy-platfrom.indiana_app.in_substations_dedup`
-                    WHERE substation_name IS NOT NULL AND lat IS NOT NULL"""):
-    subs.append((r.substation_name, r.lat, r.lon, r.county, r.max_kv))
-print(f"Indiana substations with coordinates: {len(subs)}")
-
-
-def busname(label):
-    """'05AMOS 765 kV (242508)' -> 'AMOS'  (strip 2-digit area prefix and the kV tail)"""
-    m = re.match(r"^\s*(.*?)\s+[0-9.]+\s*kV", label or "")
-    n = (m.group(1) if m else (label or "")).upper()
-    n = re.sub(r"^\d{2}", "", n)              # area prefix: 05, 06, 17...
-    return re.sub(r"[^A-Z0-9]", "", n)
+AEP_STATES = ("IN", "OH", "WV", "VA", "KY", "MI", "IL", "PA", "TN", "WI", "MD", "NC")
 
 
 def norm(s):
@@ -53,65 +27,124 @@ def norm(s):
 
 
 def skeleton(s):
-    """consonant skeleton - PJM abbreviations drop vowels: GRNGST <- GRANGE ST"""
+    """PJM abbreviations drop vowels: GRNGST <- GRANGE ST. Keep the first letter."""
+    n = norm(s)
+    return n[0] + re.sub(r"[AEIOU]", "", n[1:]) if n else n
+
+
+# kV values that appear as a TRAILING part of a bus name (07VIC161 = VIC at 161 kV). Longest
+# first so 161 is stripped before 16 would be. Only these - a bare trailing "2" is part of a name.
+KV_SUFFIX = ("1000", "765", "500", "345", "230", "161", "138", "115", "100", "69", "46", "34", "13")
+# suffixes that describe the FACILITY, not the place: tap points and station markers
+NAME_SUFFIX = ("STATN", "STATION", "SUBSTA", "SUB", "TAP", "TP", "STA", "SS")
+
+
+def busname(label):
+    """'05AMOS 765 kV (242508)' -> 'AMOS';  '07VIC161' -> 'VIC';  'O7RATTS161' -> 'RATTS'.
+
+    Learned by READING the two conventions rather than assuming one:
+      PJM   '05AMOS 765 kV (242508)'  - name, then voltage, then bus number, space separated
+      MISO  '07VIC161', '07SUL_TP'    - area prefix, name, voltage or facility suffix, NO spaces
+    Three traps live in the MISO form and each one silently kills an exact match:
+      1. the trailing digits ARE the kV and are not part of the name;
+      2. _TP / TP / STATN are facility markers, not place names;
+      3. 'O7RATTS161' begins with the LETTER O, not a zero - a typo in the publisher's own data,
+         so the prefix strip has to accept both.
+    """
+    s = (label or "").upper()
+    m = re.match(r"^\s*(.*?)\s+[0-9.]+\s*KV", s)      # PJM form: cut at the voltage
+    s = m.group(1) if m else s
+    s = re.sub(r"^[0O]\d", "", s.strip())              # area prefix, tolerating O-for-zero
     s = norm(s)
-    return s[0] + re.sub(r"[AEIOU]", "", s[1:]) if s else s
-
-
-sub_exact, sub_skel = defaultdict(list), defaultdict(list)
-for name, la, lo, cty, kv in subs:
-    sub_exact[norm(name)].append((name, la, lo))
-    sub_skel[skeleton(name)].append((name, la, lo))
+    for suf in NAME_SUFFIX:                            # facility markers before voltage:
+        if s.endswith(suf) and len(s) > len(suf) + 2:  # LYLESTATN -> LYLES
+            s = s[: -len(suf)]
+            break
+    for kv in KV_SUFFIX:                               # trailing voltage: VIC161 -> VIC
+        if s.endswith(kv) and len(s) > len(kv) + 1:
+            s = s[: -len(kv)]
+            break
+    for suf in NAME_SUFFIX:                            # and again, for VIC161TP ordering
+        if s.endswith(suf) and len(s) > len(suf) + 2:
+            s = s[: -len(suf)]
+            break
+    return s
 
 
 def hav(a, b, c2, d):
-    R = 3958.8
-    p = math.radians
+    R, p = 3958.8, math.radians
     return 2 * R * math.asin(math.sqrt(
-        math.sin(p(c2 - a) / 2) ** 2 + math.cos(p(a)) * math.cos(p(c2)) * math.sin(p(d - b) / 2) ** 2))
+        math.sin(p(c2 - a) / 2) ** 2
+        + math.cos(p(a)) * math.cos(p(c2)) * math.sin(p(d - b) / 2) ** 2))
 
 
-STRATS = {}
-STRATS["exact"] = lambda n: sub_exact.get(n, [])
-STRATS["skeleton"] = lambda n: sub_skel.get(skeleton(n), [])
+# ---- truth set: the vendor's placed buses, from the licensed MISO proxy already in BigQuery ----
+truth = {}
+for r in c.query("""SELECT bus_number, bus_name, bus_kv, lat, lon
+                    FROM `energy-platfrom.indiana_app.in_bus_headroom_miso_vendor`
+                    WHERE lat IS NOT NULL AND bus_number IS NOT NULL
+                    GROUP BY 1, 2, 3, 4, 5"""):
+    truth[int(r.bus_number)] = (r.bus_name, r.bus_kv, r.lat, r.lon)
+print(f"truth set (vendor-placed buses with coordinates): {len(truth):,}")
+
+# ---- our substations, national over the AEP/MISO footprint ----
+subs = []
+for r in c.query(f"""SELECT substation_name nm, lat, lon, max_kv, min_kv
+                     FROM `energy-platfrom.energy.mat_grid_substations`
+                     WHERE substation_name IS NOT NULL AND lat IS NOT NULL
+                       AND state IN {AEP_STATES}"""):
+    subs.append((r.nm, r.lat, r.lon, r.max_kv, r.min_kv))
+print(f"candidate substations: {len(subs):,}")
+
+by_exact, by_skel, by_pref = defaultdict(list), defaultdict(list), defaultdict(list)
+for nm, la, lo, mx, mn in subs:
+    rec = (nm, la, lo, mx, mn)
+    n = norm(nm)
+    by_exact[n].append(rec)
+    by_skel[skeleton(nm)].append(rec)
+    if len(n) >= 5:
+        by_pref[n[:5]].append(rec)
 
 
-def prefix_match(n):
-    if len(n) < 5:
-        return []
-    out = [(nm, la, lo) for nm, la, lo in
-           ((s[0], s[1], s[2]) for s in subs) if norm(nm).startswith(n[:5])]
+def kv_ok(rec, kv):
+    """Voltage gate. A 138 kV bus cannot sit at a substation topping out at 34 kV.
+    NULL voltage on either side is NOT a mismatch - unknown is not disagreement."""
+    if kv is None:
+        return True
+    mx, mn = rec[3], rec[4]
+    if mx is None and mn is None:
+        return True
+    hi = mx if mx is not None else mn
+    lo = mn if mn is not None else mx
+    return (lo or 0) * 0.5 <= kv <= (hi or 0) * 2.0
+
+
+def candidates(name, kv, strategy, gate):
+    idx = {"exact": by_exact, "skeleton": by_skel, "prefix5": by_pref}[strategy]
+    key = {"exact": name, "skeleton": skeleton(name), "prefix5": name[:5]}[strategy]
+    out = idx.get(key, [])
+    if gate:
+        out = [r for r in out if kv_ok(r, kv)]
     return out
 
 
-STRATS["prefix5"] = prefix_match
-
-# ---- score each strategy on the buses we can check --------------------------------------
-checkable = [b for b in buses if b in truth]
-print(f"buses we can SCORE (ours AND vendor-placed): {len(checkable)}\n")
-
-for sname, fn in STRATS.items():
-    hits, dists, ambig = 0, [], 0
-    for b in checkable:
-        cands = fn(busname(buses[b]))
-        if not cands:
+print()
+for gate in (False, True):
+    print(f"{'=' * 78}\nVOLTAGE GATE: {'ON' if gate else 'OFF'}\n{'=' * 78}")
+    for strat in ("exact", "skeleton", "prefix5"):
+        hits, dists, amb = 0, [], 0
+        for bn, (name, kv, tl, to) in truth.items():
+            cands = candidates(busname(name), kv, strat, gate)
+            if not cands:
+                continue
+            hits += 1
+            amb += len(cands) > 1
+            dists.append(min(hav(r[1], r[2], tl, to) for r in cands))
+        if not dists:
+            print(f"  {strat:9s} matched 0")
             continue
-        hits += 1
-        if len(cands) > 1:
-            ambig += 1
-        tl, to, _ = truth[b]
-        dists.append(min(hav(la, lo, tl, to) for _, la, lo in cands))
-    if not dists:
-        print(f"  {sname:10s} matched 0")
-        continue
-    good = sum(1 for d in dists if d <= 1.0)
-    ok5 = sum(1 for d in dists if d <= 5.0)
-    print(f"  {sname:10s} matched {hits:>4}/{len(checkable)}  ambiguous={ambig:>3}  "
-          f"median={st.median(dists):7.2f} mi  within1mi={good:>3} ({100*good/len(dists):.0f}%)  "
-          f"within5mi={ok5:>3} ({100*ok5/len(dists):.0f}%)")
-
-# ---- coverage over ALL our buses, not just the scoreable ones ---------------------------
-print("\ncoverage over all 1,826 buses:")
-for sname, fn in STRATS.items():
-    n = sum(1 for b in buses if fn(busname(buses[b])))
-    print(f"  {sname:10s} places {n:>5} ({100*n/len(buses):.1f}%)")
+        g1 = sum(1 for d in dists if d <= 1)
+        g5 = sum(1 for d in dists if d <= 5)
+        print(f"  {strat:9s} matched {hits:>5}/{len(truth)} ({100 * hits / len(truth):4.1f}%)"
+              f"  ambiguous={amb:>4}  median={st.median(dists):6.2f}mi"
+              f"  <=1mi={100 * g1 / len(dists):3.0f}%  <=5mi={100 * g5 / len(dists):3.0f}%")

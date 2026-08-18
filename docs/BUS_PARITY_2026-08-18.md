@@ -265,6 +265,51 @@ wrong substation, and a wrong coordinate silently corrupts every distance, every
 every screener filter downstream. **Unplaced is honest; misplaced is not.** Ship exact+skeleton
 (precise, ~13% coverage) and gate prefix matches behind a voltage agreement test.
 
+### ⚠ 3e — THE MATCHER GOT WORSE WHEN I "IMPROVED" IT, and the reason is the useful part
+
+Re-scored against a far larger truth set — the **1,731 vendor-placed MISO buses** now in
+`in_bus_headroom_miso_vendor`, alongside PJM's 297.
+
+**Reading the MISO names revealed three real parsing traps**, none of which are guesses:
+
+| form | what it is |
+|---|---|
+| `07VIC161`, `07APOLLO161` | trailing digits are the **kV**, not part of the name |
+| `07SUL_TP`, `07RHILTP`, `07LYLESTATN` | `TP`/`TAP` = tap, `STATN` = station — **facility markers, not places** |
+| `O7RATTS161` | begins with the **letter O, not a zero** — a typo in the publisher's own data |
+
+The normaliser now handles all three (`07VIC161` → `VIC`, `O7RATTS161` → `RATTS`,
+`07SUL_TP` → `SUL`). **And the match got measurably WORSE:**
+
+| strategy | before parsing fix | after |
+|---|---|---|
+| exact | 6.0% matched, median **1.20 mi** | 2.3% matched, median **147 mi** |
+| skeleton | 10.9%, median 120 mi | 6.5%, median 184 mi |
+| prefix5 | 18.5%, median 99 mi | 10.7%, median 153 mi |
+
+⭐ **A median error of 100-180 MILES is not a near-miss, it is the wrong state.** And better parsing
+made it worse for a reason that should have been obvious in advance: **shorter, cleaner names match
+MORE things, not better things.** `VIC` collides with Victoria, Vicksburg and Victor across a
+12-state candidate pool of 29,798 substations. The voltage gate did not rescue it either — it
+removed a few candidates and moved nothing.
+
+**The missing ingredient is not a better string algorithm, it is a GEOGRAPHIC PRIOR**, and we
+already hold one that is entirely ours: **the two-digit area prefix encodes region.** Every `07`
+bus in the truth set sits in southwest Indiana — Gibson, Pike, Knox, Spencer, Sullivan, Dubois,
+Harrison, Orange — and `05` is the AEP footprint. That is in OUR bus labels, not the vendor's.
+
+**The design that should work, in order:**
+1. Learn `area prefix → region` from the buses we can already place with high confidence.
+2. Constrain candidates to that region **before** any name comparison.
+3. Only then match on name, with the voltage gate as a tiebreak among survivors.
+4. Ship nothing below a measured precision bar. **Unplaced is honest; misplaced is not** — a bus at
+   the wrong substation silently corrupts every distance, county rollup and screener filter.
+
+⚠ **Do not read the PJM result as transferable.** PJM exact matches scored a median of 0.06 mi
+because PJM bus names ARE substation names. MISO's are abbreviations of them. **The two ISOs need
+the same pipeline but not the same confidence thresholds**, and a single blended accuracy figure
+across both would hide that.
+
 ## RECOMMENDATION
 
 | region | verdict | what to ship |
