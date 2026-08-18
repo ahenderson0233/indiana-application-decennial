@@ -136,6 +136,26 @@
       its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
       elsewhere.</div></div>
 
+  <div class="card"><h2>Tariff schedules and riders &mdash; the itemised build-up</h2>
+    <div class="sowhat">The cost proxy above is <b>URDB flattened</b>: no riders, no fixed charge, no
+      seasonal split. <b>This is the actual book</b> &mdash; read from each utility's own tariff and
+      from the IURC's commission-stamped copies, component by component, in the order a bill is
+      built: fixed charge, then demand, then energy, then the fuel base embedded in rates, then the
+      rider stack, then the ratchet and the eligibility terms that decide whether you qualify at all.
+      <br><b>The three numbers that move a large bill most</b> are in here and are invisible in a
+      flattened rate: <b>service voltage</b> (a $9.30/kW-month spread at AES Indiana, about
+      <b>$3.9M a year on 35&nbsp;MW</b>), the <b>rider stack</b> (roughly +8.6&nbsp;$/kW-month at
+      I&amp;M), and the <b>ratchet</b>, which sets the demand you pay for in the months you are not
+      running. &#11088; Look for a <b>large-load schedule</b> where one exists &mdash; NIPSCO Rate
+      631 is purpose-built for &ge;10&nbsp;MW at transmission voltage and prices firm, non-firm and
+      market tiers differently, and that election moves the bill more than any rider.</div>
+    <div style="margin:8px 0">
+      Utility: <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:280px"></select>
+      <span class="hint" id="tf-count" style="margin-left:8px"></span>
+    </div>
+    <div id="tf-body"></div>
+    <div class="prov" id="tf-prov"></div></div>
+
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
     <div class="sowhat">Use this to see <b>which utility territory is worth being
       in</b>, and whether a large-load tariff exists at all — not to price a deal. These rates are
@@ -379,6 +399,56 @@ function mmbtuToCents(v) {
     `<code>in_rate_wholesale_floor</code> · <code>in_rate_eligibility</code> ·
      <code>in_rate_component_gaps</code> · <code>in_rate_proxies</code>, built by
      <code>scripts/build_rate_engine.py</code>. ${E.caveats.eligibility} ${E.caveats.component_gaps}`;
+
+  /* HTML-escape. Defined LOCALLY on purpose: community.html already declares `const esc` in its
+     own script, so putting one at top level in common.js would be a duplicate declaration and
+     could take that page down. Consolidating the two copies is a separate, deliberate change. */
+  const esc = (x) => String(x ?? "").replace(/[<>&]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m]));
+
+  /* ---- tariff schedules & riders (operator 2026-08-18: the complete breakdown) ------------
+   * A NULL rate is rendered as "not published in the tariff", never as 0 and never as a blank.
+   * The books genuinely omit components - a two-part rate has no customer charge line - and
+   * showing that as zero is what would make a modelled bill look cheaper than reality. */
+  const TF = await fetchGz("data/tariffs.json.gz");
+  const tfSel = document.getElementById("tf-util");
+  tfSel.innerHTML = TF.utilities.map((u, i) =>
+    `<option value="${i}">${u.is_iou ? "" : "\u00b7 "}${esc(u.utility)} — ${u.n_schedules} schedule${u.n_schedules === 1 ? "" : "s"}, ${u.n_components} component${u.n_components === 1 ? "" : "s"}</option>`).join("");
+  const tfCell = (c) => {
+    if (c.rate === null || c.rate === undefined)
+      return `<span class="cannot">not published in the tariff</span>`;
+    const n = Math.abs(c.rate) >= 1000 ? fmt(c.rate)
+            : (Math.abs(c.rate) < 0.01 ? c.rate.toPrecision(3) : String(c.rate));
+    return `<b>${n}</b>${c.unit ? ` <span class="hint">${esc(c.unit)}</span>` : ""}`;
+  };
+  function tfRender(i) {
+    const u = TF.utilities[+i];
+    document.getElementById("tf-count").textContent =
+      `${u.n_schedules} schedules · ${u.n_components} components held`;
+    document.getElementById("tf-body").innerHTML = u.schedules.map((s, k) => `
+      <details class="acc"${k === 0 ? " open" : ""}>
+        <summary><b>${esc(s.code)}</b>${s.name ? ` — ${esc(s.name)}` : ""}
+          <span class="hint">(${s.components.length} component${s.components.length === 1 ? "" : "s"}, ${s.n_priced} priced)</span></summary>
+        <div class="accbody"><div class="scroll"><table>
+          <tr><th style="width:20%">group</th><th style="width:34%">component</th>
+              <th style="width:18%">rate</th><th>applies to</th></tr>
+          ${s.components.map((c) => `<tr>
+            <td class="hint">${esc(c.group)}</td>
+            <td>${esc(c.name || c.code || "")}</td>
+            <td>${tfCell(c)}</td>
+            <td class="hint">${esc(c.applies_to || "")}${c.season ? ` · ${esc(c.season)}` : ""}</td></tr>`).join("")}
+        </table></div></div></details>`).join("");
+  }
+  tfSel.addEventListener("change", (e) => tfRender(e.target.value));
+  tfRender(0);
+  document.getElementById("tf-prov").innerHTML =
+    `<code>in_utility_tariff_riders</code> — ${TF.summary.components} components across ` +
+    `${TF.summary.schedules} schedules and ${TF.summary.utilities} utilities ` +
+    `(${TF.summary.iou} investor-owned), ${TF.summary.priced} carrying a published rate. ` +
+    `Read from each utility's own tariff book and the IURC's commission-stamped copies; built by ` +
+    `<code>scripts/export_tariffs.py</code>. <b>${TF.summary.not_held} components are recorded as ` +
+    `not published rather than as zero</b> — including utilities whose rates are set by city ` +
+    `ordinance or a co-op board and therefore never reach the Commission at all.`;
+
 })();
 </script>
 </body></html>
