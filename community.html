@@ -9,16 +9,17 @@
 <div class="page">
   <h1>Community &amp; Regulatory</h1>
   <div class="sub">County posture with receipts, IURC dockets, and the Indiana legislative preview (the scope-limited P7). Grey = no receipts held — <b>cannot assess, not calm</b>.</div>
-  <div class="card"><h2>Receipts browser — all 882 county-taggable items</h2>
+  <div class="card"><h2>Receipts browser — every item, newest first</h2>
     <div class="sowhat"><b>So what:</b> this is the <b>evidence behind every county colour on the
       map</b>. Before you trust a posture, read what produced it — a single news article and an
       adopted ordinance are not the same weight, and the difference decides whether you walk away
       or send a lawyer. When you do file, this is where the specific docket number or ordinance to
       cite comes from. <b>Audit trail, not a site test.</b></div>
     <div style="margin-bottom:8px">
-      <select id="f-kind"><option value="">all kinds</option><option>iurc_docket</option><option>news</option><option>dc_action</option><option>ordinance</option></select>
+      <select id="f-kind"><option value="">all kinds</option><option value="news">news</option><option value="iurc_docket">iurc_docket</option><option value="dc_action">dc_action</option><option value="county_action">county_action</option><option value="ordinance">ordinance</option></select>
       <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
     </div>
+    <div class="hint" id="rec-note" style="margin-bottom:6px"></div>
     <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
     <div class="prov" id="p-rec"></div></div>
   <div class="card"><h2>County posture (from held receipts)</h2>
@@ -175,13 +176,48 @@
   const ctx = await fetchJson("data/county_context.json");
   const counties = await fetchGz("data/counties.geojson.gz");
   const tbl = document.getElementById("t-rec");
+  /* ⛔ THE NEWS WAS UNREACHABLE, NOT UNLINKED. This listed the first 300 receipts in payload order,
+     and the payload leads with 516 IURC dockets -- so the default view was 300 dockets and ZERO of
+     the 283 news items, every one of which carries a working URL. The operator reported it as
+     "the news section doesn't supply links"; the links were always there, the ROWS were not.
+     Fixed three ways: sort NEWEST FIRST across all kinds so recent news leads, state the cap and
+     what it withholds rather than truncating in silence, and count each kind in the picker so a
+     category can never be invisible again. `county_action` had no filter option at all. */
+  const CAP = 300;
+  /* ⚠ DATES LIE IN A NEW WAY HERE. News rows are stamped "2026-08-12 22:19:00+00" and that
+     "+00" offset is NOT valid ISO -- Date.parse returns NaN, so every one of the 283 news items
+     scored 0 and sorted to the very bottom, which is why they stayed invisible even after the
+     sort was added. Parse the DATE PART ONLY; it is the grain the column shows anyway. */
+  const recTs = (r) => Date.parse(String(r.observed_date || "").slice(0, 10)) || 0;
+  recs.sort((a, b) => recTs(b) - recTs(a));
+  const kindCounts = recs.reduce((m, r) => (m[r.kind] = (m[r.kind] || 0) + 1, m), {});
+  for (const opt of document.getElementById("f-kind").options) {
+    if (opt.value && kindCounts[opt.value]) opt.textContent = `${opt.value} (${kindCounts[opt.value]})`;
+  }
+  /* "|Allen|Wayne" is how a multi-county item is tagged; 12 news items carry no county at all,
+     and an untagged item is NOT a statewide one -- say so rather than labelling it "state". */
+  const countyLabel = (c) => {
+    const parts = String(c || "").split("|").map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) return `<span class="cannot">no county tagged</span>`;
+    return parts.length <= 2 ? parts.join(", ")
+      : `${parts.slice(0, 2).join(", ")} <span class="hint">+${parts.length - 2}</span>`;
+  };
   function render() {
     const k = document.getElementById("f-kind").value;
     const q = document.getElementById("f-q").value.toLowerCase();
-    const rows = recs.filter(r => (!k || r.kind === k) &&
-      (!q || JSON.stringify(r).toLowerCase().includes(q))).slice(0, 300);
+    const matched = recs.filter(r => (!k || r.kind === k) &&
+      (!q || JSON.stringify(r).toLowerCase().includes(q)));
+    const rows = matched.slice(0, CAP);
+    const hidden = matched.length - rows.length;
+    const byKind = rows.reduce((m, r) => (m[r.kind] = (m[r.kind] || 0) + 1, m), {});
+    document.getElementById("rec-note").innerHTML =
+      `Showing <b>${fmt(rows.length)}</b> of <b>${fmt(matched.length)}</b> matching receipts` +
+      (hidden > 0 ? ` — <b>${fmt(hidden)} not shown.</b> Filter by kind, or search, to reach them.` : ".") +
+      `<br>On screen now: ` + Object.entries(byKind).sort((a, b) => b[1] - a[1])
+        .map(([kk, v]) => `${kk} <b>${fmt(v)}</b>`).join(" · ") +
+      `. Every item links to its own source; news shows the publishing domain beneath the headline.`;
     tbl.innerHTML = "<tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr>" + rows.map(r =>
-      `<tr><td>${r.kind}</td><td>${r.county || "state"}</td><td>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${(r.title || "").slice(0, 80)}</a>` : (r.title || "").slice(0, 80)}<br><span class="hint">${(r.detail || "").slice(0, 90)}</span></td><td>${r.observed_date || "—"}</td></tr>`).join("");
+      `<tr><td>${r.kind}</td><td>${countyLabel(r.county)}</td><td>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${(r.title || "").slice(0, 80)}</a>` : (r.title || "").slice(0, 80)}<br><span class="hint">${(r.detail || "").slice(0, 90)}</span></td><td>${(r.observed_date || "—").slice(0, 10)}</td></tr>`).join("");
   }
   document.getElementById("f-kind").onchange = render;
   document.getElementById("f-q").oninput = render;
