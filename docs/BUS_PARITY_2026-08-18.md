@@ -235,6 +235,36 @@ nonetheless solvable **using them as a yardstick now and keeping only what we de
 **Do this while the subscription is live.** After it lapses we would be building the same matcher with
 no way to score it.
 
+### ⭐ 3d — THE MATCHER, BUILT AND SCORED (scripts/score_bus_substation_matcher.py)
+
+Scored against the 282 vendor-placed buses as a labelled truth set. **Their coordinates score our
+matcher; the coordinates it OUTPUTS come from our own substation tables.**
+
+**First run used `in_substations_dedup` (2,077 Indiana rows) and that was the wrong universe** — AEP
+spans OH/WV/VA/KY/MI, so most buses had no candidate by construction. Re-scored against
+`energy.mat_grid_substations` clipped to the 12 AEP-footprint states (29,798 substations):
+
+| strategy | matched of 282 | ambiguous | median err | ≤1 mi | coverage of all 1,826 |
+|---|---:|---:|---:|---:|---:|
+| exact name | 39 (13.8%) | 14 | 0.06 mi | 56% | **8.6%** (was 1.9%) |
+| consonant skeleton | 55 (19.5%) | 23 | 0.75 mi | 53% | **12.7%** (was 2.8%) |
+| 5-char prefix | 141 (50.0%) | 88 | 1.88 mi | 49% | **40.3%** (was 10.5%) |
+
+⭐ **Where a name matches cleanly the placement is essentially exact** — median 0.06 mi on exact
+match, i.e. the same physical point. The matcher's problem is not accuracy, it is **coverage and
+ambiguity**: `prefix5` reaches 40% of buses but 88 of its 141 scoreable matches are ambiguous, and
+precision falls to 49% within a mile.
+
+**The next lever is voltage, and we already hold it on both sides.** Our harvest carries `bus_kv`
+(STRING) and the substation tables carry `max_kv`/`min_kv` (FLOAT). A name+voltage match should
+collapse most of those 88 ambiguities — `05CLYTR1 138 kV` cannot be a 345 kV substation. County is a
+second discriminator once a bus has any provisional placement.
+
+⛔ **Do not ship `prefix5` unguarded.** At 49% within a mile it would place half the buses at the
+wrong substation, and a wrong coordinate silently corrupts every distance, every county rollup and
+every screener filter downstream. **Unplaced is honest; misplaced is not.** Ship exact+skeleton
+(precise, ~13% coverage) and gate prefix matches behind a voltage agreement test.
+
 ## RECOMMENDATION
 
 | region | verdict | what to ship |
