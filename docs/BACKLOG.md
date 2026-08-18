@@ -1178,7 +1178,100 @@ Minimum bar for any chart we ship:
 ⚠ The `slice(-120)` truncation is the priority: it is not a styling issue, it is the chart showing
 a different dataset from the one its own caption claims.
 
-### G17 — TARIFF COST MODEL: §13(8) is no longer "impossible", it is ACQUIRABLE
+### G17 — TARIFF RATE ENGINE: designed 2026-08-17 against the CPS workbook. BUILDABLE, as a BRACKET
+
+> **Operator, 2026-08-17:** *"leverage our tariff data (whether it be C&I or large load…) modelled out
+> against the rate schedules, riders, and wholesale electric costs… whether the user is interconnecting
+> at transmission, sub transmission, distribution… the load portfolio, energy factor load factor, and
+> demand requirements (these could all be inputs)… Maybe the user has to choose the utility and the
+> above attributes, or should click on the class-based schedule as it is listed… I imagine we will
+> have to tweak this a couple of times before it can be seen by any user or management."*
+
+#### ⭐ 1. The CPS workbook decoded — this is the spec, and it is a clean one
+
+`CPS_35MW_Rate_Model.xlsx` is a two-tab component build-up. Copy its method exactly:
+
+| step | formula |
+|---|---|
+| billing demand | `MW × 1000` (flat 24/7 load → monthly 15-min peak = nameplate) |
+| annual energy | `kW × 8,760 × load factor` |
+| fixed | `service availability $/mo × 12` |
+| demand | `kW × (summer $/kW-mo × summer months + non-summer $/kW-mo × non-summer months)` |
+| energy | `kWh × energy charge $/kWh` |
+| **fuel adjustment** | `(actual unit fuel cost − the fuel base ALREADY EMBEDDED in the rate) × kWh` |
+| riders | `amortisation $/kWh × kWh`, then sales tax on the taxed base |
+| output | annual $ **and effective $/kWh, computed once per SERVICE VOLTAGE** |
+
+Two ideas worth stealing outright. **The voltage delta is pure and small**: CPS transmission vs
+distribution-primary differs only in the demand rate — $0.50/kW-mo → $210,000/yr on 35 MW, **1.3%** —
+which is precisely the number you weigh against the capex of a 138 kV interconnection. And **the
+answer is bracketed, never asserted**: wholesale floor → modelled tariff → realized class average.
+
+#### 2. WHAT WE HOLD — measured, and better than the earlier note in `in_rate_component_gaps` implies
+
+`energy.urdb_rates`: **38,730 rates across 2,829 utilities nationally**; the Indiana clip
+`in_urdb_rates` is **969 rates across 70 utilities**, and it is a **faithful clip — 23 of 23 parent
+columns, nothing truncated** (checked, because three separate surfaces lost columns that way today).
+
+| the operator's input | do we hold the data to honour it? |
+|---|---|
+| **service voltage** | ✅ `voltagecategory` — Indiana: **Transmission 77, Primary 159, Secondary 172** rates (561 unclassified) |
+| **demand requirement → tariff class** | ✅ `peakkwcapacitymin` / `peakkwcapacitymax`. **This is how "large load" is identified without guessing**: NIPSCO *Industrial Power Service* carries a **15,000 kW floor**, *High Load Factor Industrial* a **10,000 kW** floor, Richmond *Transmission Service* 10,000 kW |
+| **load factor / load portfolio** | ✅ pure inputs → `annual kWh = kW × 8,760 × LF` |
+| commercial vs industrial | ✅ `sector` |
+| demand + energy price | ✅ `demand_rate_max_usd_kw`, `energy_rate_min_usd_kwh`–`_max_` (a RANGE, so the output is a range) |
+| eligibility thresholds | ✅ `in_rate_eligibility` |
+| wholesale floor | ✅ `in_rate_wholesale_floor`, `energy.iso_lmp` |
+| realized $/kWh per utility × class | ✅ `in_eia861_sales` |
+| **service / customer charge** | ❌ not in URDB's schema at all |
+| **the rider stack** (FAC, RTO/PJM, DSM/EE, environmental) | ❌ `in_utility_tariff_riders` holds **3 rows, ONE utility, 1 with a rate** |
+| **summer / non-summer split** | ❌ URDB is flattened on season |
+| a named Indiana large-load tariff | ❌ `energy.dc_e3_largeload_tariffs` = **5 rows, 4 states, ZERO Indiana** |
+
+⭐ **The gap is already quantified.** `in_rate_component_gaps` records: *"tariff-modelled energy+demand
+gives **$0.0261–$0.0606/kWh** at 300 MW while the EIA-861 realized industrial average is
+**$0.0804/kWh**. That delta IS the riders + fixed charges + ratchets."* The CPS Results tab reaches
+the same conclusion from the other direction. **So the missing components are not unknown — they are
+bounded**, and that is what makes a bracket honest rather than evasive.
+
+#### 3. THE DESIGN — answering *"I'm not sure quite how to complete this action"*
+
+**Inputs:** utility · load **MW** · **load factor** · **service voltage** (transmission /
+sub-transmission / primary / secondary). Derive, never ask: `billing demand = MW×1000`,
+`annual kWh = kW×8760×LF`.
+
+**Class is DERIVED, not chosen — this is the answer to *"or should click on the class-based schedule"*.**
+Do not make the user classify themselves. Run their demand against `peakkwcapacitymin/max` and
+`voltagecategory` and **return the schedules they qualify for**, best-first, each showing its floor.
+Show the ones they FAIL, greyed, with the reason — a developer at 8 MW learns that NIPSCO's large-load
+rate needs 15 MW, which is itself a siting insight. ⛔ A kW floor is a **minimum to qualify, never a
+cap** — that rule is already on the page and must not invert here.
+
+**Output — three numbers and the NAMED gap between them, never one number:**
+1. **Floor** — ISO wholesale energy-only at their kWh. No delivery exists at this price; below it, a quote is a modelling error.
+2. **Modelled tariff** — `demand × demand_rate × 12 + kWh × energy_rate`, as a **range** (URDB gives min and max energy). Labelled **explicitly incomplete**: no fixed charge, no riders, no seasonal split.
+3. **Realized anchor** — `in_eia861_sales` average for that utility and sector × their kWh: what comparable customers actually paid, riders included.
+
+Then **say what the gap is**: *"the distance between 2 and 3 is the unpublished rider stack — for I&M
+Industrial, roughly $0.02–$0.05/kWh."* A developer can act on a bracket with a named cause. They
+cannot act on a fake point estimate, and a point estimate is what an itemised number would be.
+
+**Voltage comparison** ships as the CPS delta — same load, same LF, one voltage against another — or
+renders *not measured here* where no rate carries that `voltagecategory`. Never $0.
+
+#### 4. THE ACQUISITION THAT UPGRADES THIS TO CPS GRADE
+The Indiana tariff books — **public PDFs, not a gated source**. `in_rate_component_gaps` already
+carries the first URL: **I&M IURC No. 20**,
+`https://www.indianamichiganpower.com/lib/docs/ratesandtariffs/Indiana/IMINTB19_01-16-2023.pdf`.
+The same is wanted for AES Indiana, Duke Energy Indiana, CenterPoint/Vectren and NIPSCO. Each yields
+the customer charge, the seasonal demand split, per-voltage demand rates and the rider stack — every
+❌ above. **This is the highest-value acquisition left on the market side**, and it converts the
+bracket into the itemised CPS-grade model.
+
+⚠ **Ship v1 behind the operator's own caveat** — *"we will have to tweak this a couple of times before
+it can be seen by any user or management"* — so treat the first cut as internal until reviewed.
+
+### G17 (original note) — §13(8) reclassified from "impossible" to ACQUIRABLE
 
 Operator supplied `CPS_35MW_Rate_Model.xlsx` 2026-08-17: *"this is how the tariff costs should be
 broken out for the estimates (leveraging the tariff rate schedule and riders to compute a highly
