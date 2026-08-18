@@ -66,6 +66,7 @@ const SIGNAL_PLAIN = {
   D12_code_violation: ["Repeated code violations", "a pattern of unresolved violations, not a single citation", "event"],
   D14_sba_chargeoff: ["Defaulted federal business loan", "an SBA loan against the property was written off", "event"],
   D16_structure_fire: ["Fire damage on record", "the fire service recorded a structure fire here", "event"],
+  D16_catastrophic_damage: ["Building destroyed or majorly damaged", "the city's own damage assessment recorded this structure as Destroyed or Major - an owner is far more likely to sell the land than rebuild", "event"],
   D19_warn: ["Mass-layoff notice filed", "the employer filed a state notice of a large layoff or closure", "event"],
   D20_loan_maturity: ["Mortgage maturing", "a commercial mortgage is coming due and will need refinancing", "event"],
   D21_demolition_order: ["Demolition ordered", "the building is slated to come down", "event"],

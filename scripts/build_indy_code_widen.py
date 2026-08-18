@@ -72,9 +72,30 @@ TIER2 = {
     "Violation/Environmental": "D22_environmental_violation",
 }
 SEVERE = {**TIER1, **TIER2}
-CASE = "\n".join(
+
+# OPERATOR RULING 2026-08-17: admit CATASTROPHIC structural damage as its own signal.
+# The operator's test for a signal is that it "would actually move an owner to sell", and the
+# example given was "a total and complete structural fire". This is that, in the city's own
+# vocabulary: CASE_TYPE 'Damage Assessment' carries a SEVERITY vocabulary in CASE_STATUS --
+# Destroyed, Major, Affected, Minor, No Damage, Void, Open -- and only the top two qualify.
+# An owner whose building is destroyed is materially more likely to sell the land than rebuild.
+#
+# ⚠ IT ADMITS ALMOST NOTHING TODAY, AND THAT IS THE POINT. Measured 2026-08-17: 330 damage rows,
+# 24 at Destroyed(4)+Major(20), and only 3 of those 24 addresses currently reach a parcel through
+# the address bridge. The operator ruled to wire it anyway: "we will maintain periodic rescrapes
+# and we may see more of these signals, and do not want to miss them." A rule that admits 3 today
+# and catches the next tornado is worth more than one added after the event.
+#
+# STATUS-GATED, so it cannot be widened by accident: 'Affected' (202 rows) and 'Minor' (51) are
+# NOT distress, and reading them as such would be the low-severity error this corpus already
+# guards against elsewhere.
+DAMAGE_PRED = "CASE_TYPE LIKE '%Damage Assessment%' AND CASE_STATUS IN ('Destroyed', 'Major')"
+DAMAGE_SIGNAL = "D16_catastrophic_damage"
+
+CASE = f"    WHEN {DAMAGE_PRED} THEN '{DAMAGE_SIGNAL}'\n" + "\n".join(
     f"    WHEN CASE_TYPE LIKE '%{frag}%' THEN '{sig}'" for frag, sig in SEVERE.items())
-TIER1_PRED = " OR ".join(f"CASE_TYPE LIKE '%{f}%'" for f in TIER1)
+# TIER 1 by construction: a destroyed building needs no pattern of repeat citations to be believed.
+TIER1_PRED = " OR ".join([f"CASE_TYPE LIKE '%{f}%'" for f in TIER1] + [f"({DAMAGE_PRED})"])
 # a case still open, overdue or owing fees is UNRESOLVED distress; a corrected one is not
 UNRESOLVED = ("(CASE_STATUS LIKE '%Overdue%' OR CASE_STATUS LIKE '%Fees Due%' "
               "OR CASE_STATUS IS NULL OR CASE_STATUS IN ('None',''))")
