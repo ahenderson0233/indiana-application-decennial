@@ -287,7 +287,7 @@ headline can be audited rather than taken on trust:
 | `in_si_refresh_ibtr_appeals` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_indy_code_enforcement` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_iocs_eviction` | direct | `scripts/export_si_sources.py` |
-| `in_si_refresh_sri_taxsale_in` | direct | `scripts/export_si_sources.py` |
+| `in_si_refresh_sri_taxsale_in` | direct | `scripts/audit_backlog_truth.py`, `scripts/export_si_sources.py` |
 | `in_si_refresh_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_si_signal_coverage` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_signals` | direct | `app.js`, `si.html` |

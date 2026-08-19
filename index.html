@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=8ca4da1c">
+<link rel="stylesheet" href="style.css?v=750a28e0">
 </head>
 <body>
 <header id="topbar">
@@ -82,9 +82,9 @@
         <div class="hint" id="L-screener-note" style="margin:-2px 0 6px 18px">Loads on first use
           &mdash; 3.7&nbsp;MB. Not every screener site carries a location; the count is stated
           once it loads.</div>
-        <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,117)</span></label>
-        <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(225 &mdash; interstates and US routes)</span></label>
-        <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(861)</span></label>
+        <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,115)</span></label>
+        <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(217 &mdash; interstates and US routes)</span></label>
+        <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(855)</span></label>
         <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
         <div class="sowhat">Rail and highway access decide how construction loads and
           transformers reach the site. Federal surplus is land a government body has already declared
@@ -120,13 +120,13 @@
           </select></label>
         <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
         <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
-        <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(425 &mdash; projects competing for the same study slots)</span></label>
-        <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(229 &mdash; estimated positions, not published)</span></label>
+        <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(315 &mdash; projects competing for the same study slots)</span></label>
+        <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(42 &mdash; estimated positions, not published)</span></label>
         <label><input type="checkbox" id="L-terr"> Utility service territories</label>
-        <label><input type="checkbox" id="L-gas-pipe"> Gas pipelines <span class="hint">(215 &mdash; can you feed on-site generation)</span></label>
+        <label><input type="checkbox" id="L-gas-pipe"> Gas pipelines <span class="hint">(213 &mdash; can you feed on-site generation)</span></label>
         <label><input type="checkbox" id="L-gas-comp"> Gas compressor stations <span class="hint">(24)</span></label>
         <label><input type="checkbox" id="L-gas-stor"> Gas storage fields <span class="hint">(22 &mdash; buffered supply nearby)</span></label>
-        <label><input type="checkbox" id="L-fac-plant"> Power plants <span class="hint">(2,671 &mdash; an existing interconnection, and a possible retirement)</span></label>
+        <label><input type="checkbox" id="L-fac-plant"> Power plants <span class="hint">(2,865 &mdash; an existing interconnection, and a possible retirement)</span></label>
         <label><input type="checkbox" id="L-fac-solar"> Solar farms <span class="hint">(114)</span></label>
         <label><input type="checkbox" id="L-fac-wind"> Wind farms <span class="hint">(1,652 &mdash; competing for the same queue slots)</span></label>
         <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
@@ -175,7 +175,7 @@
              chasing; critical habitat is a constraint that can stop the project. One tick cannot
              mean both. -->
         <label><input type="checkbox" id="L-bonus-ec"> Energy community <span class="hint">(8 &mdash; the 10% adder)</span></label>
-        <label><input type="checkbox" id="L-bonus-coal"> Coal-closure area <span class="hint">(221)</span></label>
+        <label><input type="checkbox" id="L-bonus-coal"> Coal-closure area <span class="hint">(219)</span></label>
         <label><input type="checkbox" id="L-bonus-lit"> Low-income tract <span class="hint">(662)</span></label>
         <label><input type="checkbox" id="L-bonus-qct"> Qualified census tract <span class="hint">(337)</span></label>
         <label><input type="checkbox" id="L-bonus-oz"> Opportunity zone <span class="hint">(156)</span></label>
@@ -295,7 +295,16 @@
     <!-- G5 safeguard. Sections collapse, so without this a user cannot see WHY results vanished.
          Never collapsible, always reflects live control state. -->
     <div id="m-active"></div>
-    <div id="map"><div id="tooltip" class="hidden"></div></div>
+    <div id="map"><div id="tooltip" class="hidden"></div>
+      <!-- G52: a key for what is CURRENTLY drawn. Built from ALL_LAYER_BOXES and coloured by
+           asking the map for each layer's own paint property, so it cannot drift from what is on
+           screen - a hand-maintained legend would be a second copy of the palette, which is the
+           defect this project hits most. Collapsible, and it never covers the evidence panel. -->
+      <details id="layer-legend" open>
+        <summary>Key <span id="legend-count" class="hint"></span></summary>
+        <div id="legend-body"></div>
+      </details>
+    </div>
   </div>
 
   <aside id="evidence" class="hidden">
@@ -310,6 +319,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=849a4bcf"></script>
-<script src="app.js?v=dd99cb12"></script>
+<script src="app.js?v=ae5f9d94"></script>
 </body>
 </html>

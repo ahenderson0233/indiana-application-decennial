@@ -287,3 +287,26 @@ table.dtable td.dv { width: 26%; }
                border-radius: 5px; background: #fff; text-decoration: none; color: #0f172a;
                font-size: 12px; }
 .dlinks .btn:hover { background: #eef2f7; }
+
+/* ---------- G52: the map key ------------------------------------------------------------------
+   Corner placement over a map is a real constraint: it must collapse, it must not cover the
+   evidence panel (which sits right), and it must stay legible at mobile width. So it is anchored
+   BOTTOM-LEFT, capped in height, and scrolls inside itself rather than growing over the map. */
+#layer-legend { position: absolute; left: 10px; bottom: 26px; z-index: 3; max-width: 250px;
+  background: rgba(255,255,255,.94); border: 1px solid #ccd3de; border-radius: 7px;
+  box-shadow: 0 1px 6px rgba(16,32,56,.14); font-size: 11.5px; }
+#layer-legend > summary { cursor: pointer; padding: 5px 9px; font-weight: 600; color: #24405c;
+  list-style: none; user-select: none; }
+#layer-legend > summary::-webkit-details-marker { display: none; }
+#layer-legend > summary::before { content: "\25BE "; color: #7b8aa1; }
+#layer-legend:not([open]) > summary::before { content: "\25B8 "; }
+#legend-body { padding: 2px 9px 8px; max-height: 34vh; overflow-y: auto; }
+.lg-row { display: flex; align-items: center; gap: 6px; padding: 1.5px 0; line-height: 1.35; }
+.lg-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-sw { flex: 0 0 auto; width: 11px; height: 11px; border-radius: 3px; border: 1px solid #94a3b8; }
+/* an expression-painted layer has no single colour, and must not imply one */
+.lg-sw.lg-banded { background: linear-gradient(135deg,#7c3aed 0 33%,#eab308 33% 66%,#0ea5e9 66%); }
+.lg-sw.lg-pending { background: repeating-linear-gradient(45deg,#e2e8f0 0 3px,#f8fafc 3px 6px); }
+.lg-metric { border-top: 1px solid #e6ebf2; margin-top: 4px; padding-top: 4px; }
+@media (max-width: 760px) { #layer-legend { max-width: 168px; font-size: 11px; }
+  #legend-body { max-height: 24vh; } }

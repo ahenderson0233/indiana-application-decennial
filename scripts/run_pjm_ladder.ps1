@@ -75,8 +75,37 @@ function Wait-ForNoQueueScope {
     return $false
 }
 
+# ⚠ FIXED 2026-08-19. Re-running the ladder replayed COMPLETED rungs. The loader skips each marked
+# batch, so no data was duplicated and nothing was lost -- but it still walked all ~74 of them one
+# at a time, which cost about an hour of wall clock before the runner reached the rung that
+# actually needed work. Measured live: the 5,000 MW withdrawal table sat unchanged at 462,654 rows
+# the whole time, which is how we knew it was walking rather than re-harvesting.
+#
+# A rung is DONE when its marker count has stopped short of nothing -- i.e. it has at least as many
+# markers as the largest rung already recorded for that mode. Cheap, on-disk, and it needs no
+# network call. Skipping is logged, never silent: a rung that vanishes from the log without a
+# reason is indistinguishable from one that failed.
+function Test-RungComplete($mode, $mw) {
+    $dir = Join-Path $repo ("data\_ckpt_pjm_qs_case23_" + $mode.ToLower())
+    if (-not (Test-Path $dir)) { return $false }
+    $mine  = @(Get-ChildItem $dir -Filter ("23__" + $mode + "__" + $mw + "__1568__*.done")).Count
+    # the reference is the fullest rung we have ever completed in this direction
+    $best = 0
+    foreach ($f in Get-ChildItem $dir -Filter "*.done") {
+        if ($f.Name -match ("^23__" + $mode + "__(\d+)__1568__")) {
+            $n = @(Get-ChildItem $dir -Filter ("23__" + $mode + "__" + $Matches[1] + "__1568__*.done")).Count
+            if ($n -gt $best) { $best = $n }
+        }
+    }
+    return ($mine -gt 0 -and $mine -ge $best)
+}
+
 Write-Log "=== run_pjm_ladder invoked. Safe to re-run: finished batches are skipped. ==="
 foreach ($step in $plan) {
+    if (Test-RungComplete $step.mode $step.mw) {
+        Write-Log ("SKIP  {0} {1} MW -> {2} (all batches already marked done)" -f $step.mode, $step.mw, $step.table)
+        continue
+    }
     if (-not (Wait-ForNoQueueScope)) { break }
     Write-Log ("START {0} {1} MW -> {2}" -f $step.mode, $step.mw, $step.table)
     & python scripts\pull_pjm_injection.py --case 23 --mode $step.mode --mw $step.mw `

@@ -868,6 +868,68 @@ for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
   });
 }
 
+/* ---------- G52: THE KEY FOR WHAT IS CURRENTLY DRAWN --------------------------------------------
+   Operator, 2026-08-18: *"place a legend or key in the corner of the map for what the map is
+   currently displaying."* Urgent since G65, which took the map from 19 controls to 30 - thirty
+   toggles with no key is worse than nineteen.
+
+   ⛔ It is DERIVED, never written down twice. The label comes from the checkbox's own <label>, and
+   the colour is read back off the map with getPaintProperty(). A hand-maintained legend is a second
+   copy of the palette and WILL drift - the same shape as G34's two layer registries and the
+   duplicated eligibility vocabulary. Nothing here needs touching when a layer is added: put the box
+   in ALL_LAYER_BOXES and it appears.
+
+   A layer whose colour is a MapLibre expression (transmission lines, coloured by kV band; the
+   data-centre pins, tiered by location precision) has no single swatch, and says so rather than
+   showing one of its colours and implying the rest. */
+const PAINT_KEYS = ["circle-color", "line-color", "fill-color"];
+function layerSwatch(layerIds) {
+  for (const id of layerIds) {
+    if (!map.getLayer(id)) continue;
+    for (const k of PAINT_KEYS) {
+      let v;
+      try { v = map.getPaintProperty(id, k); } catch (e) { continue; }
+      if (typeof v === "string") return { colour: v, banded: false };
+      if (Array.isArray(v)) return { colour: null, banded: true };
+    }
+  }
+  return null;                                   // not on the map yet (lazy layer) - say so
+}
+function renderLayerLegend() {
+  const body = $("legend-body"), count = $("legend-count");
+  if (!body) return;
+  const rows = [];
+  for (const box of ALL_LAYER_BOXES) {
+    const el = $(box);
+    if (!el || !el.checked) continue;
+    const lbl = el.closest("label");
+    // the control's own words, minus the parenthetical count - the legend is a key, not a repeat
+    let name = lbl ? lbl.textContent.replace(/\s+/g, " ").trim() : box;
+    name = name.replace(/\s*\((?:[\d,]+|[\d,]+\s*[^)]*)\)\s*$/, "").trim();
+    const ids = LAYER_MAP[box] || (CONTEXT_LAYERS[box] ? [CONTEXT_LAYERS[box]]
+              : box === "L-screener" ? ["scr-pts"] : []);
+    const sw = ids.length ? layerSwatch(ids) : null;
+    const chip = sw === null
+      ? `<i class="lg-sw lg-pending" title="not loaded yet"></i>`
+      : sw.banded
+        ? `<i class="lg-sw lg-banded" title="several colours - banded by value"></i>`
+        : `<i class="lg-sw" style="background:${escHtml(sw.colour)}"></i>`;
+    rows.push(`<div class="lg-row">${chip}<span>${escHtml(name)}</span>` +
+              (sw && sw.banded ? ` <span class="hint">banded</span>` : "") +
+              (sw === null ? ` <span class="hint">loading</span>` : "") + `</div>`);
+  }
+  const metric = $("county-metric") ? $("county-metric").value : "none";
+  if (metric && metric !== "none")
+    rows.push(`<div class="lg-row lg-metric"><i class="lg-sw lg-banded"></i>` +
+              `<span>county shading: ${escHtml($("county-metric").selectedOptions[0].text)}</span></div>`);
+  body.innerHTML = rows.length ? rows.join("")
+    : `<div class="hint">Nothing is switched on. Open a section on the left and tick a layer.</div>`;
+  if (count) count.textContent = rows.length ? `(${rows.length} on)` : "(nothing on)";
+  // collapse itself when there is nothing to key, so an empty box never sits over the map
+  const box = $("layer-legend");
+  if (box && !rows.length) box.open = false;
+}
+
 function syncLayers() {
   if (!map.getLayer("county-fill")) return;
   for (const [box, ids] of Object.entries(LAYER_MAP))
@@ -886,8 +948,13 @@ function syncLayers() {
       map.setLayoutProperty(`sites-${fips}-${suf}`, "visibility", showP ? "visible" : "none");
   if (map.getLayer("cand-line"))
     map.setLayoutProperty("cand-line", "visibility", $("f-cand").checked ? "visible" : "none");
+  renderLayerLegend();     // G52: one call site, so the key cannot disagree with what is drawn
 }
 for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListener("change", syncLayers);
+// the context and screener boxes are wired elsewhere, but the KEY must still update for them
+for (const id of [...Object.keys(CONTEXT_LAYERS), "L-screener"])
+  if ($(id)) $(id).addEventListener("change", () => setTimeout(renderLayerLegend, 0));
+if ($("county-metric")) $("county-metric").addEventListener("change", renderLayerLegend);
 
 /* ---------- G66: THE FOUR PART-PRESETS ARE GONE ----------------------------------------------
  * Operator, 2026-08-19: "remove the JUMP TO A VIEW section, since we want the user to toggle
