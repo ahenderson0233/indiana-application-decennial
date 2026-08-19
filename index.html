@@ -292,13 +292,20 @@
 
     <div class="railcard">
       <h2>Score your own sites <span class="hint">(first-class, same pipeline)</span></h2>
-      <input type="file" id="upload" accept=".csv" style="font-size:11.5px;width:100%">
-      <div class="hint">CSV with <code>lat</code>/<code>lon</code> columns (any casing; <code>latitude/longitude</code> ok).
-      Parses in your browser — nothing uploads anywhere. Each site gets grid distances, county gates &amp; sentiment,
-      and screener context. Rows without coordinates are kept &amp; listed, never dropped.</div>
+      <!-- G74. "ANY Excel sheet" means the columns cannot be hardcoded: the header row is
+           detected, the mapping is PROPOSED and the user overrides it. The sheet then stays
+           loaded while they move between pages and clears when they refresh. -->
+      <input type="file" id="upload" accept=".xlsx,.xlsm,.csv,.tsv,.txt" style="font-size:11.5px;width:100%">
+      <div class="hint"><b>Excel (.xlsx) or CSV</b> — any layout. We find the header row even if
+      it is not the first, then <b>ask you which columns are which</b> rather than guessing
+      silently. Read in your browser; nothing uploads anywhere, because there is nowhere to
+      upload to. Each site gets grid distances, county gates &amp; sentiment and screener context.
+      Rows without coordinates are kept and listed, never dropped.</div>
+      <div id="upload-map" class="hint" style="margin-top:6px"></div>
       <div id="upload-status" class="hint" style="margin-top:6px"></div>
       <div class="rowbtns" style="margin-top:6px">
-        <button id="upload-export" disabled>Export enriched CSV</button>
+        <button id="upload-export" disabled>Export Excel</button>
+        <button id="upload-export-csv" disabled>CSV</button>
         <button id="upload-clear" disabled>Clear</button>
       </div>
     </div>
@@ -306,7 +313,8 @@
     <div class="railcard">
       <div class="rowbtns">
         <button id="btn-measure">📏 Measure</button>
-        <button id="export-csv" disabled>Export CSV</button>
+        <button id="export-xlsx" disabled>Export Excel</button>
+        <button id="export-csv" disabled>CSV</button>
       </div>
       <div id="ledger" class="hint" style="margin-top:8px">…</div>
     </div>
@@ -349,7 +357,8 @@
 </div>
 
 <script src="vendor/maplibre-gl.js"></script>
-<script src="common.js?v=a2714694"></script>
-<script src="app.js?v=88cd3abf"></script>
+<script src="vendor/xlsx-lite.js"></script>
+<script src="common.js?v=f94b14ff"></script>
+<script src="app.js?v=b0e7b8ae"></script>
 </body>
 </html>

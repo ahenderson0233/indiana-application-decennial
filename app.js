@@ -449,6 +449,10 @@ map.on("load", async () => {
      drive it - fetch that county's parcels itself rather than waiting for the viewport to
      wander over them. Failures are reported to the reader, not swallowed. */
   handleDeepLink().catch((e) => console.error("deep link failed", e));
+  /* G74: the user's own sites come back when they return from another page. It runs LAST and in
+     its own try, because a restore is a convenience -- a bad stored row must never be able to
+     stop the console booting. */
+  try { restoreUploadedSites(); } catch (e) { console.error("restoring uploaded sites failed", e); }
   document.body.dataset.ready = "1";
 });
 
@@ -1351,7 +1355,11 @@ function renderLedger() {
 }
 function renderDenominator() {
   if (state.measure.on) return;
-  const el = $("denominator"), btn = $("export-csv");
+  // G74: the Excel and CSV buttons enable and disable together -- two exports of one view that
+  // could disagree about whether there is anything to export would be a nasty little bug.
+  const el = $("denominator");
+  const btn = { set disabled(v) { $("export-csv").disabled = $("export-xlsx").disabled = v; },
+                get disabled() { return $("export-csv").disabled; } };
   if (map.getZoom() < PARCEL_ZOOM) {
     el.innerHTML = `County view — shading counts <b>all ${fmt(state.summary?.totals.all_parcels)}</b> parcels. Zoom to z≥${PARCEL_ZOOM} for parcels; layers stay on at every zoom.`;
     btn.disabled = true; return;
@@ -2927,20 +2935,95 @@ function parseCsv(text) {
   return out.slice(1).map((r) => Object.fromEntries(hdr.map((h, i) => [h, r[i]])));
 }
 state.uploaded = [];
+state.uploadSheet = null;          // { sheets, chosen, headerRow, mapping, filename }
+
+/* ---------- G74: ANY sheet in --------------------------------------------------------------
+   Operator, 2026-08-19: *"It is crucial that we have full functionality for the user to load in
+   sites within the application. ANY Excel sheet should be able to be inputted."*
+
+   The old door took a CSV whose header was row 1 and whose coordinate columns were literally
+   called lat/lon, and told everyone else "No lat/lon columns found". That is a hardcoded schema
+   wearing an error message. Three things change here:
+     * .xlsx as well as .csv/.tsv, read by vendor/xlsx-lite.js -- no CDN, nothing uploaded.
+     * The HEADER ROW IS FOUND, not assumed. Real exports carry a title and a date stamp above it.
+     * The MAPPING IS PROPOSED AND THEN ASKED. We guess, we show the guess in a dropdown per role,
+       and the user overrides it. A guess presented as a fact is worse than a question -- and a
+       silent wrong guess on the longitude column puts every one of their sites in the wrong
+       county with no visible failure. */
+function renderUploadMapper() {
+  const u = state.uploadSheet;
+  if (!u) { $("upload-map").innerHTML = ""; return; }
+  const rows = u.sheets[u.chosen].rows;
+  const header = (rows[u.headerRow] || []).map((c, i) =>
+    (String(c ?? "").trim() || `column ${XLSXLite.colName(i)}`));
+  const sheetPick = u.sheets.length > 1
+    ? `<label class="blk" style="margin-bottom:4px">Sheet
+         <select id="up-sheet">${u.sheets.map((s, i) =>
+           `<option value="${i}"${i === u.chosen ? " selected" : ""}>${escHtml(s.name)} (${s.rows.length} rows)</option>`).join("")}</select></label>` : "";
+  const opts = (sel) => `<option value="">— not in my sheet —</option>` + header.map((h, i) =>
+    `<option value="${i}"${String(sel) === String(i) ? " selected" : ""}>${escHtml(h)}</option>`).join("");
+  $("upload-map").innerHTML = `
+    <div style="border:1px solid #cbd5e1;border-radius:6px;padding:7px;background:#f8fafc">
+      <b>Which column is which?</b>
+      ${sheetPick}
+      <label class="blk" style="margin-bottom:4px">Header row
+        <select id="up-hdr">${rows.slice(0, Math.min(rows.length, 20)).map((r, i) =>
+          `<option value="${i}"${i === u.headerRow ? " selected" : ""}>row ${i + 1}: ${
+            escHtml((r || []).filter((c) => c != null && String(c).trim() !== "").slice(0, 4).join(" | ")).slice(0, 48)}</option>`).join("")}</select></label>
+      ${COLUMN_ROLES.map(([role, label]) =>
+        `<label class="blk" style="margin-bottom:3px">${label}${role === "lat" || role === "lon" ? " <b>*</b>" : ""}
+           <select class="up-role" data-role="${role}">${opts(u.mapping[role])}</select></label>`).join("")}
+      <div class="hint" style="margin-top:4px"><b>*</b> Latitude and longitude are required to place
+        a site. We do <b>not</b> geocode an address to a street centreline — that is a project rule,
+        because a centreline is not a parcel. Rows without coordinates are still kept and exported.</div>
+      <button id="up-apply" style="margin-top:5px">Load these ${Math.max(0, rows.length - u.headerRow - 1)} rows</button>
+    </div>`;
+  const resync = () => {
+    if ($("up-sheet")) u.chosen = Number($("up-sheet").value);
+    u.headerRow = Number($("up-hdr").value);
+    u.mapping = guessColumns((u.sheets[u.chosen].rows[u.headerRow] || []));
+    renderUploadMapper();
+  };
+  if ($("up-sheet")) $("up-sheet").onchange = () => { u.headerRow = findHeaderRow(u.sheets[Number($("up-sheet").value)].rows); resync(); };
+  $("up-hdr").onchange = resync;
+  for (const el of document.querySelectorAll(".up-role"))
+    el.onchange = () => { u.mapping[el.dataset.role] = el.value; };
+  $("up-apply").onclick = () => {
+    const { records } = mapSheetRows(u.sheets[u.chosen].rows, u.headerRow, u.mapping);
+    if (!records.length) { $("upload-status").innerHTML = `<span class="cannot">That header row leaves no data rows below it.</span>`; return; }
+    ingestRecords(records, "_lat", "_lon", { filename: u.filename, sheet: u.sheets[u.chosen].name,
+      sheetCount: u.sheets.length, mapping: u.mapping, headerRow: u.headerRow });
+  };
+}
+
 $("upload").addEventListener("change", async (e) => {
   const file = e.target.files[0]; if (!file) return;
-  const recs = parseCsv(await file.text());
-  const latK = Object.keys(recs[0] || {}).find((k) => ["lat", "latitude", "y"].includes(k));
-  const lonK = Object.keys(recs[0] || {}).find((k) => ["lon", "lng", "longitude", "x"].includes(k));
-  if (!latK || !lonK) {
-    $("upload-status").innerHTML = `<span class="cannot">No lat/lon columns found (headers: ${Object.keys(recs[0] || {}).slice(0, 8).join(", ")}). Address-only lists need coordinates — centreline geocoding is refused by project rule.</span>`;
+  $("upload-status").textContent = "reading…";
+  let wb;
+  try { wb = await XLSXLite.readAny(file); }
+  catch (err) {
+    $("upload-status").innerHTML = `<span class="cannot">Could not read that file: ${escHtml(err.message)}</span>`;
     return;
   }
+  // the sheet with the most rows is the right default far more often than sheet 1 -- workbooks
+  // routinely open on a cover sheet or a notes tab
+  const chosen = wb.sheets.reduce((b, s, i, a) => (s.rows.length > a[b].rows.length ? i : b), 0);
+  state.uploadSheet = { sheets: wb.sheets, chosen, filename: file.name,
+    headerRow: findHeaderRow(wb.sheets[chosen].rows), mapping: {} };
+  state.uploadSheet.mapping = guessColumns(wb.sheets[chosen].rows[state.uploadSheet.headerRow] || []);
+  const g = state.uploadSheet.mapping;
+  renderUploadMapper();
+  $("upload-status").innerHTML = g.lat !== undefined && g.lon !== undefined
+    ? `Found coordinates automatically. Check the mapping and load.`
+    : `<span class="cannot">No coordinate columns recognised — pick them above.</span>`;
+});
+
+function ingestRecords(recs, latK, lonK, meta) {
   let placed = 0, unplaced = 0, outside = 0;
   const feats = [];
   state.uploaded = recs.map((r, i) => {
     const lat = parseFloat(r[latK]), lon = parseFloat(r[lonK]);
-    const row_ = { ...r, _row: i + 1 };
+    const row_ = { ...r, _row: r._row ?? i + 1 };
     if (!isFinite(lat) || !isFinite(lon)) { row_._status = "cannot-place (no coords)"; unplaced++; return row_; }
     const cty = countyOf(lon, lat);
     if (!cty) { row_._status = "outside Indiana"; outside++; return row_; }
@@ -2992,31 +3075,135 @@ $("upload").addEventListener("change", async (e) => {
     map.on("mousemove", "uploaded-pts", (e2) => showTip(e2, `your site · ${e2.features[0].properties._county || ""} · sub ${e2.features[0].properties._sub_mi ?? "?"} mi`));
     map.on("mouseleave", "uploaded-pts", hideTip);
   }
-  $("upload-status").innerHTML = `<b>${placed}</b> placed · ${outside} outside Indiana · <b>${unplaced}</b> cannot-place (kept, listed in export) — green markers.`;
-  $("upload-export").disabled = $("upload-clear").disabled = false;
-});
+  // G74: persist across PAGES. The store drops itself on a refresh, which is the semantics the
+  // operator asked for and is NOT what sessionStorage does on its own -- see SiteStore.
+  const saved = SiteStore.save(state.uploaded, { ...(meta || {}), placed, unplaced, outside });
+  $("upload-map").innerHTML = "";
+  $("upload-status").innerHTML =
+    `<b>${placed}</b> placed · ${outside} outside Indiana · <b>${unplaced}</b> cannot-place `
+    + `(kept, listed in export) — green markers.`
+    + (meta && meta.filename ? `<br><span class="hint">${escHtml(meta.filename)}`
+        + (meta.sheetCount > 1 ? ` · sheet “${escHtml(meta.sheet)}”` : "")
+        + ` · header row ${(meta.headerRow ?? 0) + 1}</span>` : "")
+    + (saved.ok
+        ? `<br><span class="hint">Kept while you move between pages; cleared when you refresh.</span>`
+        : `<br><span class="cannot">${escHtml(saved.error)}</span>`);
+  $("upload-export").disabled = $("upload-export-csv").disabled = $("upload-clear").disabled = false;
+  return { placed, unplaced, outside };
+}
+
+/* G74: restore on a page change. The store is empty after a refresh by design, so this quietly
+   does nothing then -- which is the requirement, not a failure. */
+function restoreUploadedSites() {
+  if (!SiteStore.has()) return;
+  const m = SiteStore.meta() || {};
+  ingestRecords(SiteStore.rows(), "_lat", "_lon", m);
+}
+
+/* ---------- G74: rich Excel out -------------------------------------------------------------
+   "The Excel outputs should also be nearly all-encompassing." So the workbook carries EVERY
+   column present on any row (union, never rows[0]'s keys -- a first row lacking the enriched
+   distance fields would otherwise drop them for everyone), plus a README sheet that says what
+   the file is, when it was built, what was filtered and what the columns mean. A spreadsheet
+   that leaves the tool without its provenance becomes an anonymous number in someone's deck. */
+function sheetFromRows(rows, title) {
+  const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  // put the readable identity columns first; leave everything else in discovered order
+  const lead = ["_row", "_status", "_name", "_county", "county_name", "parcel_key", "_lat", "_lon", "lat", "lon"];
+  cols.sort((a, b) => {
+    const ia = lead.indexOf(a), ib = lead.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  return { name: title, rows: [cols.map((c) => c.replace(/^_/, "")), ...rows.map((r) => cols.map((c) => {
+    const v = r[c];
+    return v === null || v === undefined ? null : (typeof v === "object" ? JSON.stringify(v) : v);
+  }))] };
+}
+function readmeSheet(what, lines) {
+  return { name: "README", rows: [
+    ["Indiana Siting Intelligence — " + what], [],
+    ["Exported", new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC"],
+    ...lines.map((l) => (Array.isArray(l) ? l : [l])), [],
+    ["Blank means NOT MEASURED, never zero."],
+    ["A cell reading 'cannot-place' is a row we kept deliberately rather than dropping."],
+    ["Distances are in miles, measured to the parcel footprint, not to a centroid."],
+    ["Nothing in this workbook was uploaded anywhere — it was built in your browser."],
+  ] };
+}
 $("upload-export").onclick = () => {
+  if (!state.uploaded.length) return;
+  const m = SiteStore.meta() || {};
+  XLSXLite.download(XLSXLite.write([
+    readmeSheet("your uploaded sites, enriched", [
+      ["Source file", m.filename || "(unknown)"],
+      ["Sheet", m.sheet || "(only sheet)"],
+      ["Rows", state.uploaded.length],
+      ["Placed", m.placed ?? ""], ["Outside Indiana", m.outside ?? ""], ["Cannot place", m.unplaced ?? ""],
+      [],
+      ["Every column you supplied is preserved. Columns we added are prefixed in the source data"],
+      ["with an underscore and appear here without it: county, sub_mi, poi_mi, p2_score and so on."],
+    ]),
+    sheetFromRows(state.uploaded, "Your sites"),
+  ]), "your_sites_enriched.xlsx");
+};
+$("upload-export-csv").onclick = () => {
   if (!state.uploaded.length) return;
   const cols = [...new Set(state.uploaded.flatMap((r) => Object.keys(r)))];
   const esc = (v) => v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
   const csv = [cols.join(","), ...state.uploaded.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = "your_sites_enriched.csv"; a.click();
+  XLSXLite.download(new Blob([csv], { type: "text/csv" }), "your_sites_enriched.csv");
 };
 $("upload-clear").onclick = () => {
-  state.uploaded = [];
+  state.uploaded = []; state.uploadSheet = null; SiteStore.clear();
   if (map.getSource("uploaded")) map.getSource("uploaded").setData({ type: "FeatureCollection", features: [] });
-  $("upload-status").textContent = ""; $("upload-export").disabled = $("upload-clear").disabled = true;
+  $("upload-status").textContent = ""; $("upload-map").innerHTML = "";
+  $("upload-export").disabled = $("upload-export-csv").disabled = $("upload-clear").disabled = true;
 };
 
-/* ---------- CSV export ---------- */
-$("export-csv").onclick = () => {
+/* ---------- CSV and Excel export ------------------------------------------------------------
+   G74: "nearly all-encompassing". The workbook carries the parcels you can see under the filters
+   you set, a README that states BOTH numbers (shown and matching) and the filters in force, and
+   your uploaded sites as their own sheet if any are loaded -- so the file is self-describing
+   once it is out of the tool. */
+function exportRows() {
   const rows = [];
   for (const fips of countiesInView()) {
     const feats = state.loaded.get(fips); if (!feats || !countyOk(fips)) continue;
     for (const ft of feats) if (jsMatches(ft.properties)) rows.push(ft.properties);
   }
+  return rows;
+}
+function activeFilterLines() {
+  const out = [];
+  const push = (k, v) => out.push([k, v]);
+  push("Project type", $("f-usecase").selectedOptions[0].text);
+  if ($("f-mw").checked) push("Fits at least", `${V("f-mw-val")} MW at ${V("f-density")} MW/acre`);
+  for (const [id, label] of [["f-ci", "commercial / industrial"], ["f-ag", "farmland"],
+    ["f-vac", "undeveloped"], ["f-other", "other non-residential"]])
+    if ($(id) && $(id).checked) push("Land class kept", label);
+  if ($("f-dsub").checked) push("Within of a substation", `${V("f-dsub-mi")} mi, min ${V("f-dsub-kv")} kV`);
+  if ($("f-dline").checked) push("Within of a transmission line", `${V("f-dline-mi")} mi`);
+  for (const [id, label] of [["f-noflood", "flood zones excluded"], ["f-nowet", "wetland excluded"],
+    ["f-noprot", "protected-land overlap excluded"], ["f-bonus", "tax-credit areas only"]])
+    if ($(id) && $(id).checked) push("Environmental", label);
+  push("Counties in view", countiesInView().length);
+  return out;
+}
+$("export-xlsx").onclick = () => {
+  const rows = exportRows();
+  if (!rows.length) return;
+  const sheets = [readmeSheet("screened parcels", [
+    ["Rows in this workbook", rows.length],
+    ["What they are", "the parcels inside the current map view that pass every filter below"],
+    ["⚠ This is the VIEW, not the state", "pan out or clear filters to widen it"],
+    [], ["FILTERS IN FORCE"], ...activeFilterLines(),
+  ]), sheetFromRows(rows, "Screened parcels")];
+  if (state.uploaded.length) sheets.push(sheetFromRows(state.uploaded, "Your sites"));
+  XLSXLite.download(XLSXLite.write(sheets),
+    `indiana_screened_sites_${new Date().toISOString().slice(0, 10)}.xlsx`);
+};
+$("export-csv").onclick = () => {
+  const rows = exportRows();
   if (!rows.length) return;
   // union, not rows[0]'s keys: the screener attaches _dsub_*/_dpoi_* per parcel, so a first
   // row that happens to lack them would silently drop those columns from everyone's export

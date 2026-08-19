@@ -25,6 +25,9 @@
         power line happens to be.</p>
       <p class="hint">Nothing here is a recommendation. Every number names where it came from, and
         anything we could not measure says so instead of showing a zero.</p>
+      <!-- G74: the uploaded sheet follows the user between pages, so it has to be VISIBLE here.
+           A store that silently persists is indistinguishable from one that lost the file. -->
+      <div id="s-usersites" class="hint" style="margin-top:6px"></div>
     </div>
 
     <!-- STEP 1 -------------------------------------------------------------------------------- -->
@@ -273,7 +276,8 @@
     <div class="railcard">
       <div class="rowbtns">
         <button id="s-reset">Reset all filters</button>
-        <button id="s-export">Download results (CSV)</button>
+        <button id="s-export-xlsx">Download results (Excel)</button>
+        <button id="s-export">CSV</button>
       </div>
     </div>
   </aside>
@@ -288,7 +292,8 @@
   </main>
 </div>
 
-<script src="common.js?v=a2714694"></script>
+<script src="common.js?v=f94b14ff"></script>
+<script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -801,6 +806,76 @@ function toCSV() {
   a.click();
 }
 
+/* ---------- G74: the all-encompassing Excel export -------------------------------------------
+   Operator, 2026-08-19: *"The Excel outputs should also be nearly all-encompassing."*
+
+   The CSV above ships a curated 28 columns under plain-English headers, which is right for a CSV
+   somebody opens once. The workbook is the other job: EVERY field the screener holds, plus the
+   things a spreadsheet loses the moment it leaves the tool -- what was filtered, how many sites
+   matched versus how many are in the file, and what the columns mean.
+
+   Three sheets, and the first one exists because of a specific past failure: a table that ships a
+   subset and does not say so is indistinguishable from one that searched everything. */
+function toXLSX() {
+  const cols = [...new Set(VIEW.flatMap((s) => Object.keys(s)))];
+  const lead = ["county_name", "parcel_key", "occ_group", "site_kind", "mw_dc", "mw_bess",
+    "parcel_acres", "exact_parcel_acres", "wd_mw", "wd_bus", "wd_mi", "inj_mw", "inj_bus", "inj_mi",
+    "has_signal", "signals", "lat", "lon"];
+  cols.sort((a, b) => {
+    const ia = lead.indexOf(a), ib = lead.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  const plainOf = (csv) => !csv ? "" : String(csv).split(",")
+    .map((x) => (SIGNAL_PLAIN[x.trim()] || [x.trim()])[0]).join("; ");
+  const body = VIEW.map((s) => [...cols.map((c) => {
+    const v = s[c];
+    return v === undefined || v === null ? null : (typeof v === "object" ? JSON.stringify(v) : v);
+  }), plainOf(s.signals)]);
+
+  const chips = [...document.querySelectorAll("#s-active .chip")].map((c) => c.textContent);
+  const cap = DATA.cap || {};
+  const readme = [
+    ["Indiana Siting Intelligence - site screener export"], [],
+    ["Exported", new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC"],
+    ["Payload built", String(DATA.built_at_utc || "").slice(0, 19) + "Z"],
+    [],
+    ["HOW MANY SITES THIS FILE REPRESENTS - read this before quoting a count"],
+    ["Rows in this workbook", VIEW.length],
+    ["Matching your filters", VIEW.length],
+    ["Sites in the payload", DATA.sites.length],
+    ["Parcels that qualify statewide", cap.qualifying ?? "(not stated)"],
+    ["Why those differ", cap.rule || ""],
+    ["", cap.note || ""],
+    [],
+    ["FILTERS IN FORCE"],
+    ...(chips.length ? chips.map((c) => ["", c]) : [["", "(none - this is everything shipped)"]]),
+    [],
+    ["WHAT THE COLUMNS MEAN"],
+    ["wd_*", "GETTING power - what a load such as a data centre can pull out. PJM publishes this."],
+    ["inj_*", "SENDING power - what a generator can push in. MISO publishes this."],
+    ["", "A bus can be wide open one way and full the other. Never merge them."],
+    ["mw_dc / mw_bess", "land supports up to this, at your MW-per-acre assumption. GROSS land, not a fit."],
+    ["*_mi", "miles, measured to the parcel FOOTPRINT, not to a centroid."],
+    ["mil_mi / sua_name / tribal_name", "who else holds a say over the land - military review, airspace, sovereignty."],
+    ["signals / owner_signal_plain_english", "public reasons an owner might transact. Absence means a cold approach, not a bad site."],
+    [],
+    ["A BLANK CELL MEANS NOT MEASURED. It never means zero."],
+    ["Nothing here was uploaded anywhere - this workbook was built in your browser."],
+  ];
+
+  const sheets = [{ name: "README", rows: readme },
+                  { name: "Sites", rows: [[...cols, "owner_signal_plain_english"], ...body] }];
+  // G74: the user's own uploaded sheet travels with the export if it is loaded, so one file
+  // carries both sides of the comparison they are actually making.
+  if (typeof SiteStore !== "undefined" && SiteStore.has()) {
+    const u = SiteStore.rows();
+    const ucols = [...new Set(u.flatMap((r) => Object.keys(r)))];
+    sheets.push({ name: "Your sites", rows: [ucols.map((c) => c.replace(/^_/, "")),
+      ...u.map((r) => ucols.map((c) => (r[c] === undefined ? null : r[c])))] });
+  }
+  XLSXLite.download(XLSXLite.write(sheets), `indiana-screener-${VIEW.length}-sites.xlsx`);
+}
+
 (async function () {
   renderNav();
   $("s-headline").innerHTML = '<div class="card">Loading sites…</div>';
@@ -842,6 +917,18 @@ function toCSV() {
     $("s-use-note").innerHTML = USE_NOTE.dc; render();
   };
   $("s-export").onclick = toCSV;
+  $("s-export-xlsx").onclick = toXLSX;
+  // G74: say whether the user's own sheet is still loaded, and say plainly what clears it.
+  if (typeof SiteStore !== "undefined") {
+    const el = $("s-usersites"), m = SiteStore.meta();
+    if (m) el.innerHTML = `<b>${m.n} of your own sites are loaded</b>`
+      + (m.filename ? ` from <b>${m.filename}</b>` : "")
+      + ` — they travel with the Excel export below, and stay while you move between pages.`
+      + ` <a href="index.html">See them on the map</a>.`;
+    else if (SiteStore.wasDroppedByReload())
+      el.innerHTML = `<span class="cannot">Your uploaded sites were cleared by the page refresh.</span>`
+        + ` Load them again from the <a href="index.html">map console</a>.`;
+  }
 })();
 </script>
 </body>

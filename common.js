@@ -566,3 +566,160 @@ function tariffCells(q, mw, lf) {
        ? ", except this schedule's riders, which the book says exist but we do not hold - so treat it as a floor"
        : ""}.`];
 }
+
+/* =============================================================================================
+   G74 - SiteStore: the user's own sites, held across PAGES but cleared on a REFRESH.
+   =============================================================================================
+   Operator, 2026-08-19: *"ANY Excel sheet should be able to be inputted and saved to the
+   application (locally, always resetting when the page is refreshed, but should stay when
+   changing between the application's pages)."*
+
+   Read that requirement carefully, because the obvious implementation gets it WRONG.
+   `sessionStorage` survives a refresh - it is cleared only when the tab closes. So sessionStorage
+   ALONE gives "stays across pages" and fails "resets on refresh".
+
+   The distinction the operator asked for is available, and exactly:
+       performance.getEntriesByType("navigation")[0].type
+   returns "reload" when the user pressed refresh and "navigate" when they followed a link. So the
+   store lives in sessionStorage and is DROPPED on boot if this page load was a reload. That is
+   the stated behaviour rather than the nearest convenient one.
+
+   Nothing leaves the browser. The site is static and has no server to send a file to; the store
+   is per-tab and dies with it.
+   ============================================================================================= */
+const SITE_STORE_KEY = "in_user_sites_v1";
+const SiteStore = (() => {
+  let dropped = false;
+  try {
+    const nav = performance.getEntriesByType("navigation")[0];
+    // `back_forward` is a restore, not a refresh, so it KEEPS the sites - the user is navigating.
+    if (nav && nav.type === "reload") { sessionStorage.removeItem(SITE_STORE_KEY); dropped = true; }
+  } catch { /* private mode or no Navigation Timing: fall through, the store just stays empty */ }
+
+  const read = () => {
+    try { return JSON.parse(sessionStorage.getItem(SITE_STORE_KEY) || "null"); } catch { return null; }
+  };
+  return {
+    /** Rows as loaded, each already carrying _row and _status. Never null. */
+    rows: () => (read() || {}).rows || [],
+    /** {filename, sheet, sheetCount, loadedAt, mapping, n, placed, unplaced} or null. */
+    meta: () => { const s = read(); return s ? s.meta : null; },
+    has: () => ((read() || {}).rows || []).length > 0,
+    save(rows, meta) {
+      const blob = JSON.stringify({ rows, meta: { ...meta, n: rows.length, loadedAt: new Date().toISOString() } });
+      try {
+        sessionStorage.setItem(SITE_STORE_KEY, blob);
+        return { ok: true };
+      } catch (e) {
+        // sessionStorage is ~5 MB. A big sheet must FAIL LOUDLY here rather than half-save and
+        // reappear truncated on the next page, which would look like data loss with no cause.
+        return { ok: false, error: `too large to keep across pages (${(blob.length / 1048576).toFixed(1)} MB; the browser allows about 5). It is loaded on THIS page only.` };
+      }
+    },
+    clear() { sessionStorage.removeItem(SITE_STORE_KEY); },
+    /** true if this page load discarded a store because the user pressed refresh. */
+    wasDroppedByReload: () => dropped,
+  };
+})();
+
+/* ---------- G74: header detection and column mapping -----------------------------------------
+   "ANY Excel sheet" means the column names CANNOT be hardcoded. Two things go wrong in real
+   files and both are handled here:
+     1. The header is not row 1. Exports routinely carry a title, a blank line and a date stamp
+        above it. findHeaderRow() picks the first row that looks like a header - mostly non-empty,
+        mostly text, and no duplicate names.
+     2. The names are the user's, not ours. guessColumns() proposes a mapping and the UI lets the
+        user override every one of them, because a guess presented as a fact is worse than a
+        question. */
+function findHeaderRow(rows) {
+  const limit = Math.min(rows.length, 20);
+  let best = 0, bestScore = -1;
+  for (let i = 0; i < limit; i++) {
+    const r = (rows[i] || []).map((c) => (c === null || c === undefined ? "" : String(c).trim()));
+    const filled = r.filter((c) => c !== "");
+    if (filled.length < 2) continue;
+    const text = filled.filter((c) => !Number.isFinite(Number(c))).length;
+    const uniq = new Set(filled.map((c) => c.toLowerCase())).size;
+    // reward: wide, textual, no repeats. penalise being far down the sheet.
+    const score = filled.length + text * 2 + (uniq === filled.length ? 3 : -3) - i * 0.5;
+    if (score > bestScore) { bestScore = score; best = i; }
+  }
+  return best;
+}
+
+const COLUMN_ROLES = [
+  // ⚠ point_y / point_x are Esri's own coordinate column names and appear on almost every
+  // shapefile-derived export. They must be EXACT aliases: their only distinguishing token is a
+  // single letter, and single letters are barred from token matching (see guessColumns).
+  ["lat",     "Latitude",   ["lat", "latitude", "y", "ycoord", "y_coord", "lat_dd", "latdec",
+                             "northing", "point_y", "centroid_y", "center_y", "intptlat"]],
+  ["lon",     "Longitude",  ["lon", "lng", "long", "longitude", "x", "xcoord", "x_coord", "lon_dd",
+                             "londec", "easting", "point_x", "centroid_x", "center_x", "intptlon"]],
+  ["name",    "Site name",  ["name", "site", "site_name", "sitename", "project", "project_name", "label", "id", "site_id"]],
+  ["address", "Address",    ["address", "addr", "street", "site_address", "full_address", "location"]],
+  ["county",  "County",     ["county", "county_name", "cty"]],
+  ["acres",   "Acres",      ["acres", "acreage", "area_acres", "size_acres", "parcel_acres", "gis_acres"]],
+  ["mw",      "MW wanted",  ["mw", "size_mw", "capacity_mw", "load_mw", "demand_mw", "mw_required"]],
+];
+
+/* THREE PASSES, STRICTEST FIRST, and the ordering is the point. A single pass lets a loose match
+   on an early role steal a column that a later role would have matched exactly.
+
+   Measured against a realistic export whose header reads "Site Latitude (WGS84)": a one-pass
+   prefix/suffix matcher finds NOTHING for lat or lon, because `site_latitude_wgs84` neither
+   equals `latitude` nor starts or ends with it. Pass 2 splits the header into TOKENS and matches
+   any token, which is what real headers need.
+
+   ⚠ Token matching is restricted to aliases of 3+ characters. `x` and `y` are legitimate
+   coordinate names on their own, but as tokens they appear inside things like "max_mw" and would
+   place every site in the wrong hemisphere without ever looking wrong on screen. */
+function guessColumns(header) {
+  const norm = header.map((h) => String(h ?? "").trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""));
+  const toks = norm.map((h) => h.split("_").filter(Boolean));
+  const out = {};
+  const taken = new Set();
+  const claim = (role, i) => { if (i >= 0 && !taken.has(i)) { out[role] = i; taken.add(i); return true; } return false; };
+  const free = (k) => !taken.has(k) && out[k] === undefined;
+
+  for (const [role, , aliases] of COLUMN_ROLES)                                       // 1. exact
+    claim(role, norm.findIndex((h, k) => !taken.has(k) && aliases.includes(h)));
+  for (const [role, , aliases] of COLUMN_ROLES) {                                     // 2. token
+    if (out[role] !== undefined) continue;
+    const long = aliases.filter((a) => a.length >= 3);
+    claim(role, toks.findIndex((t, k) => !taken.has(k) && t.some((x) => long.includes(x))));
+  }
+  for (const [role, , aliases] of COLUMN_ROLES) {                                     // 3. affix
+    if (out[role] !== undefined) continue;
+    const long = aliases.filter((a) => a.length >= 3);
+    claim(role, norm.findIndex((h, k) => !taken.has(k) && h
+      && long.some((a) => h.startsWith(a) || h.endsWith(a))));
+  }
+  // A longitude found without a latitude (or the reverse) is almost always a mis-hit rather than
+  // a sheet that really carries one axis. Dropping the lone one puts the question to the user.
+  if ((out.lat === undefined) !== (out.lon === undefined)) {
+    delete out.lat; delete out.lon;
+  }
+  return out;
+}
+
+/** Rows-of-arrays + a mapping -> rows-of-objects, keeping EVERY original column as well.
+    Nothing is dropped: a row we cannot place is kept and labelled, because ss13(2) upload parity
+    was closed on exactly that behaviour. */
+function mapSheetRows(rows, headerRow, mapping) {
+  const header = (rows[headerRow] || []).map((c, i) => {
+    const s = String(c ?? "").trim();
+    return s || `column_${XLSXLite.colName(i)}`;
+  });
+  const out = [];
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    if (!r.some((c) => c !== null && c !== undefined && String(c).trim() !== "")) continue;
+    const rec = { _row: i + 1 };
+    header.forEach((h, k) => { rec[h] = r[k] ?? null; });
+    for (const [role] of COLUMN_ROLES)
+      if (mapping[role] !== undefined && mapping[role] !== "") rec["_" + role] = r[Number(mapping[role])] ?? null;
+    out.push(rec);
+  }
+  return { header, records: out };
+}
