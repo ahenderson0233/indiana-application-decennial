@@ -687,13 +687,70 @@ function jsMatches(p) {
   if ($("f-dline").checked && !(p._dline_mi != null && p._dline_mi <= V("f-dline-mi"))) return false;
   return true;
 }
+/* ---------- G11: ONE ANSWER ABOUT A COUNTY, NOT TWO ------------------------------------------
+   MEASURED 2026-08-19, and the earlier fix only reached one of four surfaces.
+
+   `county_context.json` carries TWO descriptions of the same county side by side. The legacy
+   `posture` block is a 4-value summary (quiet / active_discussion / contested / restricted) built
+   upstream; the `action_summary` block is derived from the 9-value VERIFIED action vocabulary in
+   `in_dc_actions_resolved`. When they disagree, the verified one is right:
+
+     Cass        posture "quiet",  local_bans 0, has_local_restriction FALSE  -> holds a BAN
+     Floyd       posture "quiet",  has_local_restriction FALSE                -> holds a MORATORIUM
+     Huntington  posture "quiet",  has_local_restriction FALSE                -> holds a MORATORIUM
+     Whitley     posture "quiet",  has_local_restriction FALSE                -> holds a MORATORIUM
+     Clark       posture "quiet"                                              -> has APPROVED one
+     Jasper      posture "quiet"                                              -> has APPROVED one
+
+   ⛔ `local_bans` is **0 on all 92 counties** while the warehouse holds two ban-prohibition
+   actions, so any test written against it can never fire. The county SHADING was moved onto
+   `action_summary` earlier; the SCORE, this FILTER and the DOSSIER were not, so three surfaces
+   still read the stale field and one of them calls a banned county the most permissive word we
+   have. Same estate, two surfaces, different answers - the defect this project keeps re-finding.
+
+   This helper is the single resolver. Everything that asks "what is this county's posture"
+   goes through it, so the four surfaces cannot drift again. */
+const POSTURE_RANK = { blocking: 3, watch: 2, neutral: 1, open: 0 };
+function countyPosture(fips) {
+  const c = state.ctx.by_fips[fips] || {};
+  const po = c.posture || {};
+  const sum = c.action_summary || null;
+  // A verified BLOCKING action outranks anything the 4-value summary says. An expired moratorium
+  // is deliberately NOT blocking - it is "watch" - because a lapsed pause that reads as live is a
+  // false negative, and it sends a developer away from a county that has actually re-opened.
+  const blocking = !!sum && sum.tone === "blocking";
+  /* ⚠ THE TWO VOCABULARIES CAN EACH SEE A RESTRICTION THE OTHER MISSES, so the answer is the
+     WORSE of them, not whichever one happens to be present. Cass shows the verified side alone
+     (a ban, while the legacy block says "quiet"); MARION shows the legacy side alone (a live
+     moratorium, while its verified headline is the milder "proposed"). Reading only one would
+     let a restricted county through in one direction or the other. */
+  const legacyRestricted = po.has_local_restriction === true
+    || !!po.local_moratoriums || !!po.local_bans;
+  return {
+    tone: sum ? sum.tone : (legacyRestricted ? "blocking" : null),
+    headline: sum ? sum.headline : (po.posture || null),
+    why: sum ? sum.why : null,
+    approved: !!(sum && sum.approved),
+    nActions: sum ? sum.n : 0,
+    blocking,                       // a VERIFIED blocking action - drives the wording
+    legacyRestricted,               // the legacy flag alone - still evidence
+    restricted: blocking || legacyRestricted,   // what every DECISION must use
+    // kept for display only; never for a decision - see the measurement above
+    legacy: po.posture || null,
+    opposition: po.opposition_intensity,
+    verified: !!sum,
+  };
+}
 function countyOk(fips) {
   const c = state.ctx.by_fips[fips] || {};
   if ($("f-sent").checked) {
     const oi = c.posture?.opposition_intensity;
     if (oi == null || Number(oi) > V("f-sent-max")) return false;
   }
-  if ($("f-norestrict").checked && c.posture?.has_local_restriction === true) return false;
+  // G11: was `c.posture?.has_local_restriction === true`, which is FALSE on Cass, Floyd,
+  // Huntington and Whitley - so "exclude counties with a local restriction" kept four counties
+  // that hold a ban or a moratorium. It now asks the verified vocabulary.
+  if ($("f-norestrict").checked && countyPosture(fips).restricted) return false;
   return true;
 }
 /* G5: the rail collapses, so the filters in force must be visible somewhere that never does.
@@ -1472,17 +1529,40 @@ function scoreP5(p, fips) {
   const po = (state.ctx.by_fips[fips] || {}).posture;
   if (!po) return null;
   const cfg = SCORE_CFG.p5;
+  const cp = countyPosture(fips);
   const key = String(po.posture || "").toLowerCase();
   let s = key in cfg.posture ? cfg.posture[key] : cfg.unknown;
-  const why = [`county posture: ${po.posture || "unrecorded"}`];
-  // has_local_restriction is a HARD fact; honour it even when the category has not caught up.
-  if (po.has_local_restriction === true && s > cfg.posture.restricted) {
-    s = cfg.posture.restricted; why.push("a local restriction is on the books");
+  const why = [];
+  /* G11: THE VERIFIED ACTION LEADS, and the 4-value summary is only the fallback.
+     Scored off `po.posture` alone, Cass read "quiet" - the most permissive band we have - while
+     holding a ban, and Clark and Jasper read "quiet" while having APPROVED a data centre, which
+     is the most actionable positive signal a siter can get. Both directions were wrong. */
+  /* ⚠ TAKE THE WORSE OF THE TWO, THEN ALLOW A LIFT ONLY IF NEITHER OBJECTS.
+     The first version of this clamp read "if a verified action exists, ignore the legacy flag",
+     and that inverted the very bug it was fixing: MARION carries has_local_restriction = true and
+     a live moratorium, but its verified headline is the milder "proposed" with approved = true,
+     so it jumped from 20 to a PERFECT 100 - a county with a live moratorium scored as wide open.
+     A restriction from either vocabulary is evidence; only the absence of both permits the lift. */
+  if (cp.verified) why.push(`verified county action: ${cp.headline}`);
+  else why.push(`county posture: ${po.posture || "unrecorded"} (no verified action on record)`);
+
+  if (cp.blocking) {
+    s = Math.min(s, cfg.posture.restricted);
+    why.push(cp.why || "a verified blocking action is on the books");
+  } else if (cp.legacyRestricted) {
+    s = Math.min(s, cfg.posture.restricted);
+    why.push("a local restriction is on the books, and no verified action supersedes it");
+  } else if (cp.approved) {
+    s = Math.max(s, cfg.posture.quiet);
+    why.push("this county has APPROVED a data centre - precedent exists");
+  } else if (cp.verified && cp.why) {
+    why.push(cp.why);
   }
   const oi = Number(po.opposition_intensity);
   if (Number.isFinite(oi)) why.push(`opposition intensity ${oi} (statewide median 0, p90 4, max 25)`);
-  if (po.local_moratoriums) why.push(`${po.local_moratoriums} moratorium(s)`);
-  if (po.local_bans) why.push(`${po.local_bans} ban(s)`);
+  // ⛔ NOT `po.local_moratoriums` / `po.local_bans`: local_bans is 0 on all 92 counties while the
+  // warehouse holds two bans, so a test on it can never fire. Count the verified actions instead.
+  if (cp.nActions) why.push(`${cp.nActions} verified action(s) on record`);
   return { score: clamp100(s),
     basis: why.join(" · ") + " — COUNTY grain, not parcel; intensity partly tracks news volume, so large metros read higher" };
 }
@@ -2113,10 +2193,26 @@ function renderPowerPlan(p, fips) {
       return gateRow("Getting power", `${fmt(mwAvail)} MW at ${wdBus.name}, ${a(wdBus.mi)} mi`,
         `Against your ${fmt(target)} MW target. ${mwAvail >= target ? "Covers it on today's binding constraint." : "Short of it — expect upgrades, phasing, or a second point of delivery."}`);
     })(),
-    po.has_local_restriction
-      ? gateRow("Local rules", "RESTRICTION ON RECORD", "This county has already acted. Read the instrument before anything else — the Community page carries the receipt.", "cannot")
-      : gateRow("Local rules", po.opposition_intensity != null ? `opposition intensity ${po.opposition_intensity}` : "nothing on record",
-                "Nothing recorded is not the same as welcoming. It means no action has reached us."),
+    /* G11: this row asked `po.has_local_restriction`, which is FALSE on Cass, Floyd, Huntington
+       and Whitley — so the dossier told a reader "nothing on record" for a county holding a BAN.
+       It now asks the verified vocabulary through the one resolver. */
+    (() => {
+      const cp = countyPosture(fips);
+      if (cp.blocking) return gateRow("Local rules", `${String(cp.headline).toUpperCase()} ON RECORD`,
+        `${cp.why} The Community page carries the receipt and the official URL.`, "cannot");
+      // legacy-only: a restriction is recorded but no VERIFIED action explains it. Say exactly
+      // that rather than borrowing the milder verified headline, which is how Marion would have
+      // read "proposed" while holding a live moratorium.
+      if (cp.legacyRestricted) return gateRow("Local rules", "RESTRICTION ON RECORD",
+        "A local restriction is recorded for this county and no verified action supersedes it. Read the instrument before spending anything - the Community page carries what we hold.", "cannot");
+      if (cp.approved) return gateRow("Local rules", `${cp.headline} — has approved before`,
+        "This county has already approved a data centre, which is the strongest positive precedent a siter can cite. Find that approval and read its conditions.");
+      if (cp.verified) return gateRow("Local rules", cp.headline,
+        `${cp.why} Not a block, but it is movement — track it.`);
+      return gateRow("Local rules",
+        po.opposition_intensity != null ? `no verified action; opposition intensity ${po.opposition_intensity}` : "nothing on record",
+        "Nothing recorded is not the same as welcoming. It means no action has reached us.");
+    })(),
     quote && quote.cents != null
       ? gateRow("What power costs", `${quote.cents.toFixed(2)}¢/kWh at ${T.utility}`,
                 `Priced from that utility's own book at ${Math.round(TARIFF_LF * 100)}% load factor, riders included. Confirm which schedule you qualify for — eligibility has a ceiling as well as a floor.`)
