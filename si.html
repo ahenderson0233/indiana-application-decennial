@@ -17,6 +17,26 @@
     <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (<code>in_si_candidates</code>)</div></div>
   </div>
 
+  <!-- G81, operator 2026-08-19: "We need to determine if ~24,000 seller intent properties is
+       actually truthful — why don't we have more?" The number is not a rendering error (the
+       checkpoint asserts payload-vs-warehouse agreement on it every run), so the honest answer is
+       the FUNNEL, with the loss at each stage named. -->
+  <div class="card"><h2>Why 24,277 and not more? &mdash; the whole funnel, with every loss named</h2>
+    <div class="sowhat" id="funnel-answer">measuring…</div>
+    <div class="scroll" style="max-height:340px"><table id="t-funnel">
+      <tr><th>stage</th><th>count</th><th>what is lost here, and why</th></tr></table></div>
+    <div class="gridcards" style="margin-top:10px">
+      <div class="card"><h3 style="margin-top:0">Where the admitted parcels come from</h3>
+        <div class="hint">One clean chain &mdash; every row below is inside a single table, so
+          these DO subtract.</div>
+        <table id="t-admit"><tr><th>outcome</th><th>parcels</th></tr></table></div>
+      <div class="card"><h3 style="margin-top:0">The largest signal we hold, and why it is excluded</h3>
+        <div class="hint" id="funnel-d5-note">…</div>
+        <table id="t-funnel-d5"><tr><th>what is on the parcel</th><th>parcels</th></tr></table></div>
+    </div>
+    <div class="prov" id="funnel-prov"></div>
+  </div>
+
   <div class="card"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
     <div class="sowhat"><b>This is the question the page exists to answer.</b> Every parcel below is
       non-residential and carries at least one admitted owner-motivation signal. They are ranked by
@@ -231,6 +251,48 @@
   document.getElementById("s-cand").textContent = fmt(PROV["in_si_candidates"]?.n_rows);
   document.getElementById("inv-total").textContent = fmt(sig.reduce((a, b) => a + b.n, 0));
   document.getElementById("inv-n").textContent = sig.length;
+  /* ---- G81: the funnel, and the answer to "why not more?" ---------------------------------
+     ⛔ The two tracks are rendered as tracks, NOT as one subtracting chain. The row-grain feed
+     and the parcel-grain rollup cover different signal sets, and their parcel keys live in
+     different namespaces ('IN:640…' vs '020…') -- joined naively the two tables share ZERO
+     parcels, which would read as "nothing survives the pipeline". */
+  try {
+    const F = await fetchGz("data/si_funnel.json.gz");
+    document.getElementById("funnel-answer").innerHTML = F.answer;
+    document.getElementById("t-funnel").insertAdjacentHTML("beforeend", F.stages.map((st) => {
+      const lost = st.lost ? `<b>${fmt(st.lost)}</b> lost here. ` : "";
+      return `<tr><td>${escHtml(st.stage)}<div class="hint">${escHtml(st.grain)} grain</div></td>
+        <td class="num">${st.n == null ? "&mdash;" : `<b>${fmt(st.n)}</b>`}</td>
+        <td class="hint">${lost}${escHtml(st.note || "")}</td></tr>`;
+    }).join(""));
+    document.getElementById("t-admit").insertAdjacentHTML("beforeend", F.admit_breakdown.map((a) =>
+      `<tr><td>${escHtml(String(a.admit_status).replace(/_/g, " "))}</td>
+       <td class="num">${fmt(a.parcels)}</td></tr>`).join(""));
+    const d5tot = F.d5_vacancy_occ.reduce((x, y) => x + y.n, 0);
+    const bare = (F.d5_vacancy_occ.find((x) => x.occ_group === "no_structure") || {}).n || 0;
+    document.getElementById("funnel-d5-note").innerHTML =
+      `<b>D5 vacancy is 947,592 raw rows &mdash; 52% of everything we hold</b> &mdash; and it is
+       admitted nowhere. That looks like an oversight until you measure the parcels:
+       <b>${fmt(bare)} of ${fmt(d5tot)} (${(100 * bare / d5tot).toFixed(1)}%) have NO STRUCTURE
+       on them.</b> A postal vacancy flag on bare land is not evidence an owner wants to sell, and
+       admitting it would multiply the flagged count roughly 35&times; with empty ground.`;
+    document.getElementById("t-funnel-d5").insertAdjacentHTML("beforeend", F.d5_vacancy_occ.map((o) =>
+      `<tr><td>${escHtml(String(o.occ_group || "not classified").replace(/_/g, " "))}</td>
+       <td class="num">${fmt(o.n)}</td></tr>`).join(""));
+    document.getElementById("funnel-prov").innerHTML =
+      `source: indiana_app.in_si_funnel · built ${escHtml(String(F.built_at_utc).slice(0, 16))}Z ·
+       ⚠ the row-grain and parcel-grain tracks are different populations and must not be
+       subtracted from one another.` +
+      (F.address_recovered && F.address_recovered.parcels
+        ? ` <b>G82 recovered ${fmt(F.address_recovered.rows)} owner-grain rows onto
+            ${fmt(F.address_recovered.parcels)} parcels</b> by matching the address we already
+            hold against Marion County's crosswalk — the only address-to-parcel corpus in the
+            estate.` : "");
+  } catch (e) {
+    document.getElementById("funnel-answer").textContent =
+      "The funnel payload has not been built yet — run scripts/build_si_funnel.py.";
+  }
+
   // ---- SI v2: the widened, non-residential, severity-gated flag ----------------------------
   const V2 = await fetchGz("data/si_v2.json.gz");
   const fs = V2.flag_summary;
