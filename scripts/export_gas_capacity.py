@@ -30,9 +30,18 @@ gas day: **28 locations, 2.53 million Dth/day free**.
     rows are the live snapshot; the dated rows are history and summing all of them multiplies the
     state's free capacity by the number of days captured.
 
-⚠ COVERAGE IS 2 PIPELINES OF 12 ON THE MAP - 34 of 213 drawn segments. The other 179 get an
-explicit "no capacity feed captured for this pipeline", never a blank. A pipeline with no number
-beside it must not read as a pipeline with no capacity.
+⛔ COVERAGE, AND THE CORRECTION MADE ON 2026-08-19b. We hold NINE capacity boards, not two:
+anr, crossroads, midwestern, ngpl, northern_border, panhandle_eastern, texas_gas, trunkline,
+vector. Only PANHANDLE EASTERN and TRUNKLINE publish a `state` column, so only those two can have
+their Indiana locations isolated. The other seven post the operator's WHOLE SYSTEM with no state
+or county field - ANR's locations are in Ohio, Texas Gas's in Louisiana, Vector's in Michigan -
+and their own registry rows say so ("no state/county -> joinable-identity").
+
+⚠ The first reaction on finding the other seven was that this script had under-read the warehouse.
+It had not, and checking before "fixing" is what stopped Louisiana capacity being attached to an
+Indiana pipeline. The popup now distinguishes THREE states: a figure, a board we hold but cannot
+place, and no board at all. A pipeline with no number beside it must never read as one with no
+capacity.
 
 ⚠ THE MW FIGURE IS OURS, NOT THEIRS, and is badged wherever it renders. Unit is INFERRED: the
 capture kept no units column, but the magnitudes match dekatherms/day and 1 Dth = 1 MMBtu, so at a
@@ -124,14 +133,38 @@ for k, e in by_pipe.items():
     e["max_free_mw_est"] = round(max(free) / DTH_PER_MW_DAY) if free else None
     e["locations"].sort(key=lambda x: -(x["free_dth"] or 0))
 
+# ⛔ WE HOLD NINE CAPACITY BOARDS, NOT TWO — AND ONLY TWO CAN BE FILTERED TO INDIANA.
+# Discovered 2026-08-19b while sweeping the unwired tables (G72/G80): the estate carries
+# in_gas_capacity_{anr, crossroads, midwestern, ngpl, northern_border, texas_gas, vector} as well
+# as the two used here. The first instinct was that G92 had under-read the warehouse.
+# ⚠ IT HAD NOT, AND CHECKING SAVED A BAD FIX. Those seven boards post the operator's WHOLE SYSTEM
+# with NO state or county column — ANR's locations are in Ohio, Texas Gas's in Louisiana, Vector's
+# in Michigan — and their own registry rows say so ("Loc id+name+zone, no state/county ->
+# joinable-identity"; NGPL: "only a ~7km sliver clips Indiana"). Wiring them would have attached
+# Louisiana capacity to an Indiana pipeline.
+# So the honest line is not "no feed captured" but "we hold the board and cannot place its rows in
+# Indiana", which is a different and more useful thing for a reader to know.
+BOARDS_WITHOUT_GEOGRAPHY = {
+    "anr pipeline": "ANR Pipeline (TC Energy)",
+    "texas gas transmission": "Texas Gas Transmission (Boardwalk)",
+    "vector pipeline": "Vector Pipeline",
+    "midwestern gas transmission": "Midwestern Gas Transmission",
+    "natural gas pipeline of america": "NGPL (Kinder Morgan)",
+    "northern border pipeline": "Northern Border Pipeline",
+    "crossroads pipeline": "Crossroads Pipeline",
+}
+
 payload = {
     "built_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
     "dth_per_mw_day": DTH_PER_MW_DAY,
     "by_pipeline": by_pipe,
-    "coverage_note": ("Operationally-available capacity is captured for TWO pipelines only "
-                      "(Panhandle Eastern and Trunkline, both Energy Transfer iPost boards). "
-                      "Every other pipeline on the map has NO capacity feed captured — that is an "
-                      "absence of measurement, not a measurement of zero."),
+    "boards_without_geography": BOARDS_WITHOUT_GEOGRAPHY,
+    "coverage_note": ("We hold NINE capacity boards. Only two — Panhandle Eastern and Trunkline, "
+                      "both Energy Transfer iPost — publish a STATE column, so only those two can "
+                      "have their Indiana locations isolated. The other seven post the operator's "
+                      "whole system with no state or county field, so their rows cannot be placed "
+                      "in Indiana without guessing. That is a geography gap, not an absence of "
+                      "data, and it is not a measurement of zero capacity either."),
     "unit_note": ("The boards post no units column. Magnitudes match dekatherms/day and 1 Dth = "
                   "1 MMBtu, so the unit is INFERRED. MW is OUR estimate at a 6.5 MMBtu/MWh "
                   "combined-cycle heat rate: MW = Dth/day / 156."),

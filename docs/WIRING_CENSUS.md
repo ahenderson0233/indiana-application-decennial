@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 237 of 318 registered objects reach a surface
+## 238 of 321 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -19,6 +19,7 @@ The instrument separates two roles, because the first version of this measuremen
 |---|---:|---|
 | `in_acs_county` | 92 | `—` |
 | `in_balancing_authority_areas` | 1 | `—` |
+| `in_bus_headroom_300` | 642 | `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | 3852 | `—` |
 | `in_candidate_sites_colleges` | 151 | `—` |
 | `in_cbp_county_industry` | 234 | `—` |
@@ -50,6 +51,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_gov_auction_gsa` | 2 | `—` |
 | `in_gov_surplus_nces` | 1928 | `—` |
 | `in_groundwater_sites` | 1 | `—` |
+| `in_line_bus_endpoints` | 3736 | `—` |
 | `in_miso_dpp2025_counties` | 1000 | `—` |
 | `in_miso_dpp2025_footprint` | 1 | `—` |
 | `in_miso_dpp2025_ph1_project_costs` | 202 | `—` |
@@ -115,13 +117,14 @@ headline can be audited rather than taken on trust:
 | `_indiana_census` | direct | `data.html`, `scripts/acceptance_run.py` |
 | `data/envgates.geojson.gz` | direct | `app.js`, `scripts/export_env_gates.py` |
 | `data/gas_capacity.json.gz` | direct | `app.js`, `scripts/export_gas_capacity.py` |
+| `data/marion_addresses.json.gz` | direct | `app.js`, `scripts/export_marion_addresses.py` |
 | `in_acs_county` | **none** | — |
 | `in_acs_tract_vacancy` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_asset_distance_parcel` | direct | `app.js`, `scripts/build_land_gates.py` |
 | `in_balancing_authority_areas` | **none** | — |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_bus_capacity_tier0` | direct | `app.js`, `grid.html` |
-| `in_bus_headroom_300` | direct | `grid.html` |
+| `in_bus_headroom_300` | **none** | — |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | **none** | — |
 | `in_bus_headroom_miso_vendor` | direct | `scripts/acceptance_run.py` |
@@ -222,8 +225,9 @@ headline can be audited rather than taken on trust:
 | `in_land_gates` | direct | `app.js` |
 | `in_land_military_bases` | direct | `scripts/build_land_gates.py` |
 | `in_lbnl_interconnection_costs` | direct | `scripts/export_grid_siting.py` |
+| `in_line_bus_endpoints` | **none** | — |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
-| `in_marion_parcel_crosswalk` | direct | `si.html` |
+| `in_marion_parcel_crosswalk` | direct | `si.html`, `scripts/export_marion_addresses.py` |
 | `in_miso_dpp2025_counties` | **none** | — |
 | `in_miso_dpp2025_footprint` | **none** | — |
 | `in_miso_dpp2025_ph1_project_costs` | **none** | — |
@@ -280,6 +284,7 @@ headline can be audited rather than taken on trust:
 | `in_osm_power_substations` | direct | `scripts/export_context_layers.py` |
 | `in_padus` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_parcel_attrs` | direct | `scripts/build_territories.py` |
+| `in_parcel_line_headroom` | direct | `scripts/export_screener.py` |
 | `in_peeringdb_facilities` | direct | `scripts/investigate_cloudscene_gap.py` |
 | `in_pjm_bus_injection` | **none** | — |
 | `in_pjm_bus_locations_candidate` | direct | `app.js`, `scripts/export_full_wiring.py` |
@@ -424,7 +429,7 @@ headline can be audited rather than taken on trust:
 | `vw_nfirs_2023_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_nfirs_2024_located` | direct | `scripts/export_location_joins.py` |
 | `vw_pjm_bus_injection_ladder` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
-| `vw_pjm_bus_withdrawal_located` | direct | `scripts/export_grid_siting.py` |
+| `vw_pjm_bus_withdrawal_located` | direct | `scripts/audit_frontend.py`, `scripts/export_grid_siting.py` |
 | `vw_pjm_queuescope_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_pjm_rtep_upgrades_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |
 | `vw_si_candidates_located` | registry panel | `scripts/export_location_joins.py (family `vw_*`)` |

@@ -3674,12 +3674,31 @@ function gasPipelineHtml(p) {
   }
   const e = state.gasCap.by_pipeline[gasPipeKey(p.operator)];
   if (!e) {
+    /* ⛔ TWO DIFFERENT ABSENCES, and telling them apart is the useful part. We hold NINE capacity
+       boards; only Panhandle Eastern and Trunkline publish a STATE column, so only those two can
+       have their Indiana rows isolated. The other seven post the operator's whole system with no
+       geography at all — ANR's locations are in Ohio, Texas Gas's in Louisiana. Saying "no feed"
+       about those would be wrong, and wiring them would attach Louisiana gas to Indiana. */
+    const boards = (state.gasCap.boards_without_geography) || {};
+    const key = gasPipeKey(p.operator);
+    const heldName = Object.keys(boards).find((k) => key.includes(k) || k.includes(key));
+    if (heldName) {
+      return head + `
+        <div class="cannot">⚠ <b>We hold this pipeline's capacity board, and cannot place its rows
+        in Indiana.</b> ${escHtml(boards[heldName])} posts operationally-available capacity for its
+        <b>whole system</b> with no state or county field, so there is no way to tell which of its
+        locations are the Indiana ones without guessing — and guessing would attach another
+        state's gas to this line.
+        <br><b>This is a geography gap, not an absence of data, and certainly not zero capacity.</b>
+        Closing it needs a location-to-state reference for this operator's own point names.</div>
+        <div class="prov">${prov("in_gas_pipelines")} · interstate border design capacity for every
+        pipeline is on the <a href="market.html">Market</a> page.</div>`;
+    }
     return head + `
-      <div class="cannot">⚠ <b>No daily-capacity feed is captured for this pipeline.</b> We hold
-      operationally-available capacity for <b>Panhandle Eastern</b> and <b>Trunkline</b> only —
-      both Energy Transfer iPost boards. This is an absence of measurement, <b>not</b> a
-      measurement of zero: this pipeline may have plenty of room and we simply have no posting
-      for it.</div>
+      <div class="cannot">⚠ <b>No daily-capacity board is captured for this pipeline.</b> We hold
+      boards for nine operators; only <b>Panhandle Eastern</b> and <b>Trunkline</b> identify their
+      Indiana locations, and this pipeline is not among the nine. An absence of measurement,
+      <b>not</b> a measurement of zero.</div>
       <div class="prov">${prov("in_gas_pipelines")} · interstate border design capacity for every
       pipeline is on the <a href="market.html">Market</a> page.</div>`;
   }
