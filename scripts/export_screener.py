@@ -60,12 +60,27 @@ rows = []
 for r in client.query(f"""
   WITH ranked AS (
     SELECT c.*, g.mil_mi, g.mil_name, g.sua_name, g.tribal_name,
+           ROUND(h.deliverable_wd_mw)  AS deliv_wd_mw,
+           ROUND(h.deliverable_inj_mw) AS deliv_inj_mw,
+           h.deliverable_basis         AS deliv_basis,
+           h.ends_resolved             AS deliv_ends,
+           h.wd_limiting_end           AS deliv_limiting_end,
+           h.wd_binding_at_limit       AS deliv_wd_binding,
+           h.a_bus_name                AS deliv_a_bus,
+           ROUND(h.a_wd_mw)            AS deliv_a_wd,
+           h.b_bus_name                AS deliv_b_bus,
+           ROUND(h.b_wd_mw)            AS deliv_b_wd,
            ROW_NUMBER() OVER (PARTITION BY c.county_fips ORDER BY c.mw_dc DESC) AS rk
     FROM `{DS}.in_screener_candidates` c
     -- G72 land-status and airspace gates. LEFT JOIN, because a parcel with no installation
     -- within 25 miles must come back NULL ("measured, nothing in range"), never 0 -- the same
     -- rule that stopped 95 false "below floor" tariff violations.
     LEFT JOIN `{DS}.in_land_gate_parcel` g USING (parcel_source, parcel_key)
+    -- G116/G118: the DELIVERABLE figure. The nearest line followed to the bus at BOTH ends with
+    -- the lower headroom taken, per the operator's stated method. Sits BESIDE mw_dc (the land
+    -- figure), never replacing it -- a site is capped by the lower of the two, and which one
+    -- binds is the point. Measured: the grid binds on 190,216 parcels, the land on 73,094.
+    LEFT JOIN `{DS}.in_parcel_line_headroom` h USING (parcel_source, parcel_key)
     WHERE c.county_fips IS NOT NULL
   )
   SELECT parcel_source, parcel_key, county_fips, county_name, occ_group, site_kind,
@@ -89,7 +104,12 @@ for r in client.query(f"""
          -- small line_mi and must not be flattened into it.
          line_mi, line_on_parcel, line_kv, line_volt_class,
          -- G72 gates: who ELSE holds a say over this land. mil_mi is NULL past 25 miles.
-         mil_mi, mil_name, sua_name, tribal_name
+         mil_mi, mil_name, sua_name, tribal_name,
+         -- G116/G118 deliverable capacity. ⛔ `deliverable_basis` MUST ship with the figures:
+         -- a NULL under 'both_ends' would be a measured absence, a NULL under 'cannot_assess'
+         -- means we could not follow the line to its buses. Opposite claims, same empty cell.
+         deliv_wd_mw, deliv_inj_mw, deliv_basis, deliv_ends, deliv_limiting_end,
+         deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd
   FROM ranked
   WHERE has_signal OR rk <= {TOP_PER_COUNTY}
   ORDER BY county_fips, mw_dc DESC"""):

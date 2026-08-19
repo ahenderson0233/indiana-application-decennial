@@ -61,7 +61,7 @@ WITH cand AS (
 -- TRANSMISSION LINES. Real LineString geometry, so a conductor crossing a parcel returns 0.0.
 -- HIFLD's -999999 not-available marker and OSM's NULL both become NULL, never 0 (G13).
 lines AS (
-  SELECT geog,
+  SELECT geog, feature_id,
          CASE WHEN kv IS NULL OR kv <= 0 THEN NULL ELSE kv END AS kv,
          volt_class, owner, src
   FROM `{DS}.in_transmission_union`
@@ -69,7 +69,11 @@ lines AS (
 ),
 near_line AS (
   SELECT c.parcel_source, c.parcel_key,
-         ARRAY_AGG(STRUCT(l.kv, l.volt_class, l.owner, l.src,
+         /* G116/G118: carry the line's IDENTITY, not just its attributes. Without feature_id a
+            parcel knows its nearest line's voltage and owner but cannot be followed to that
+            line's two END BUSES - which is the whole basis of the headroom figure the operator
+            specified. One extra column, no extra spatial work. */
+         ARRAY_AGG(STRUCT(l.feature_id, l.kv, l.volt_class, l.owner, l.src,
                           ST_DISTANCE(c.parcel_geog, l.geog) AS m)
                    ORDER BY ST_DISTANCE(c.parcel_geog, l.geog) LIMIT 1)[OFFSET(0)] AS w
   FROM cand c
@@ -101,6 +105,7 @@ near_sub AS (
 SELECT c.parcel_source, c.parcel_key, c.county_fips, c.county_name,
 
        -- ⭐ transmission: the measurement that was missing entirely
+       nl.w.feature_id                       AS line_feature_id,
        ROUND(nl.w.m / 1609.344, 3)          AS line_mi,
        (nl.w.m = 0)                          AS line_on_parcel,
        nl.w.kv                               AS line_kv,

@@ -611,6 +611,81 @@ function siteLocationCell(s) {
   return `<a href="${href}" title="open this point on the map console">${c.short}</a>`;
 }
 
+/* ---------- G116 + G118: WHAT CAN ACTUALLY BE DELIVERED HERE ----------------------------------
+   Operator, 2026-08-19: *"instead of saying how many MW a site could get to based on acreage, we
+   should calculate it off of buses … locate the nearest transmission asset to the site location
+   and follow it on both ends to the bus, taking the measurement of the lower bus headroom, for
+   both withdrawal AND injection … the lower of the two is chosen since it requires flow from both
+   ends."*
+
+   ⛔ THIS DOES NOT REPLACE THE ACREAGE FIGURE, IT SITS BESIDE IT. They are two different
+   constraints and the site is capped by the LOWER. Measured across the corpus: the GRID binds on
+   190,216 parcels and the LAND on 73,094 — so for roughly three sites in four the acreage number
+   was never the real limit, which is exactly why showing only one of them was misleading.
+
+   ⛔ AN EMPTY CELL HERE HAS TWO OPPOSITE MEANINGS and `deliv_basis` is what tells them apart:
+   "both_ends" with no figure would be a measured absence; "cannot_assess…" means we could not
+   follow the line to a located bus. Never render either as 0 MW. */
+const DELIV_BASIS_NOTE = {
+  both_ends: null,
+  cannot_assess_one_end_only:
+    "We found a located bus at ONE end of this line and not the other. The rule is the LOWER of "
+    + "the two ends, because power reaches a mid-line tap from both directions — so one end is "
+    + "not a weaker version of the answer, it is a different question. Reported as unknown.",
+  cannot_assess_no_end_located:
+    "Neither end of the nearest line resolves to a bus we hold a coordinate for. Only 15.1% of "
+    + "PJM buses carry a position at all, and the gap is concentrated in the AEP footprint across "
+    + "north-eastern Indiana.",
+  line_not_in_topology:
+    "The nearest line is not in the endpoint topology — its geometry did not yield two clean "
+    + "endpoints.",
+  no_line_within_25mi: "No transmission line within 25 miles of this parcel.",
+};
+function deliverableBlock(s) {
+  const basis = s.deliv_basis;
+  if (!basis) return "";
+  const note = DELIV_BASIS_NOTE[basis];
+  const land = capacityMW(s);
+  if (note) {
+    return `<table class="dtable" style="margin-bottom:8px">
+      ${detailRow("Deliverable capacity", null, "cannot assess — see below",
+        "What the grid could actually deliver here, as opposed to what fits on the ground.")}
+      </table>
+      <div class="cannot" style="margin-bottom:8px">⚠ <b>Deliverable capacity: cannot assess.</b>
+        ${escHtml(note)} <b>This is not 0 MW</b> — it is an unmeasured quantity.</div>`;
+  }
+  const wd = s.deliv_wd_mw, inj = s.deliv_inj_mw;
+  const gridBinds = wd != null && land != null && wd < land;
+  return `<table class="dtable" style="margin-bottom:8px">
+    ${detailRow("Deliverable to a LOAD (withdrawal)", wd != null ? `<b>${fmt(wd)} MW</b>` : null,
+      "not published at the limiting bus",
+      "The lower of the two end-bus headrooms on the nearest line. This is what a data centre "
+      + "could actually draw, as distinct from what fits on the land.")}
+    ${detailRow("Deliverable from GENERATION (injection)", inj != null ? `<b>${fmt(inj)} MW</b>` : null,
+      "not published at the limiting bus",
+      "The same calculation the other way — what on-site or co-located generation could push in.")}
+    ${detailRow("Line followed", s.line_on_parcel
+        ? "runs THROUGH this parcel" : (s.line_mi != null ? `${Number(s.line_mi).toFixed(2)} mi away` : null),
+      null, "The nearest transmission line by exact edge-to-edge distance. A developer may tap a "
+      + "different circuit; the further away this line is, the weaker the premise.")}
+    ${detailRow("End A", s.deliv_a_bus ? `${escHtml(s.deliv_a_bus)} — ${fmt(s.deliv_a_wd)} MW` : null)}
+    ${detailRow("End B", s.deliv_b_bus ? `${escHtml(s.deliv_b_bus)} — ${fmt(s.deliv_b_wd)} MW` : null)}
+    ${detailRow("Limited at", s.deliv_limiting_end, null,
+      "The weaker of the two ends — the one that caps this site.")}
+    ${detailRow("First constraint to bind there", s.deliv_wd_binding)}
+    </table>
+    <div class="sowhat" style="margin-bottom:8px">${
+      wd == null ? "The limiting bus publishes no withdrawal figure."
+      : gridBinds
+        ? `<b>The GRID is the binding constraint here, not the land.</b> The ground could host
+           about ${fmt(land)} MW, but the weaker end of the nearest line can deliver
+           <b>${fmt(wd)} MW</b>. Building to the acreage figure would strand
+           ${fmt(Math.max(0, land - wd))} MW you cannot get power to.`
+        : `<b>The LAND is the binding constraint here, not the grid.</b> The line can deliver
+           about ${fmt(wd)} MW and the ground only fits ${fmt(land)} MW, so more acreage — or an
+           adjacent parcel — is what unlocks this site.`}</div>`;
+}
+
 function siteDetail(s) {
   const a = acresOf(s);
   const mi = (x) => x == null ? null : `${Number(x).toFixed(1)} mi`;
@@ -623,6 +698,7 @@ function siteDetail(s) {
 
   const co = siteCoords(s);
   return `<tr class="detailrow"><td colspan="${SCREENER_NCOL}"><div class="detail">
+    ${deliverableBlock(s)}
     <!-- G113: the identity block. Everything a reader needs to take this row somewhere else -
          into a GIS, into an email, or onto the map - without going back to the warehouse. -->
     <table class="dtable" style="margin-bottom:8px">
