@@ -33,10 +33,28 @@
 async function bootMapHarness(timeoutMs = 60000) {
   if (typeof map === "undefined") throw new Error("no `map` in scope - is this index.html?");
 
-  // Already booted (visible pane, or a previous harness run): do not double-apply the style.
-  if (map.isStyleLoaded && map.isStyleLoaded() && Object.keys(map.style.sourceCaches || {}).length) {
-    return { alreadyBooted: true, nLayers: (map.getStyle().layers || []).length };
+  /* ⛔ NEVER CALL setStyle TWICE. THIS GUARD IS THE WHOLE SAFETY OF THE HARNESS.
+     `map.setStyle()` rebuilds the style object and DESTROYS every layer, source and click binding
+     the app added -- app.js carries its own warning about exactly this, which is why the basemap
+     toggle uses `setTiles()` instead.
+
+     The first version guarded only on `isStyleLoaded() && sourceCaches`, and that is not enough:
+     call the harness again while the app is still mid-boot and both are briefly falsy, so setStyle
+     runs a second time and wipes the 40-odd layers the first run had just brought up. Measured
+     2026-08-19b: `map.getStyle().sources` came back as `{basemap: …}` alone while `state.loaded`
+     still held 44,240 parcels, so the data was there and NOTHING was drawn and nothing errored.
+     A sticky flag on `window` is the fix -- it survives the race that the style checks lose. */
+  if (window.__mapHarnessBooted) {
+    return { alreadyBooted: true, reason: "harness already ran in this page",
+             nLayers: (map.getStyle().layers || []).length,
+             sources: Object.keys(map.getStyle().sources || {}).length };
   }
+  if (map.isStyleLoaded && map.isStyleLoaded() && Object.keys(map.style.sourceCaches || {}).length) {
+    window.__mapHarnessBooted = true;
+    return { alreadyBooted: true, reason: "map booted on its own (visible pane)",
+             nLayers: (map.getStyle().layers || []).length };
+  }
+  window.__mapHarnessBooted = true;
 
   if (!window.__rafPatched) {
     window.__rafPatched = true;

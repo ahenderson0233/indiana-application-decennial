@@ -232,7 +232,34 @@ g_d22_violation AS (
             'publisher event date', 'publisher carries no action date') basis,
          'spatial_facility_point' keying,
          'ST_CONTAINS(parcel_geog, ECHO facility point) [D85 excluded]' bridge,
-         CONCAT('echo:', distress_class) source_id, 'publisher table (new in v2)' blk, TRUE severe
+         CONCAT('echo:', distress_class) source_id, 'publisher table (new in v2)' blk,
+         /* ⭐ G84 SEVERITY BAND, added 2026-08-19b. Operator: *"For IDEM enforcement, why does
+            this matter, and how does this signal intent? ... an environmental violation usually
+            doesn't result in a sale, so why do we believe our environmental violations will?"*
+            Taken as a live challenge to the signal, and it survives only in part.
+
+            Measured, the corpus is far smaller than the 58,003-row headline suggests: 50,334
+            rows (86.8%) are `no_distress_marker` and were ALREADY excluded by `WHERE is_distress`.
+            What remains admits under three classes, and only two have a mechanism that reaches
+            a SALE:
+
+              significant_violation  251 parcels - EPA's own SNC/HPV finding. It triggers a
+                                     consent decree or major capital remediation, and a marginal
+                                     facility often divests rather than invest. KEPT.
+              penalised              251 parcels - a monetary penalty was assessed against this
+                                     site, dated and quantified. A cost event on the asset. KEPT.
+              violation              676 parcels - a routine non-compliance finding. ⛔ NO
+                                     DEFENSIBLE MECHANISM TO A SALE. Most violations are corrected
+                                     and the owner carries on; this is the environmental twin of
+                                     the ruling that maintenance activity does not prove a willing
+                                     seller. DEMOTED.
+
+            ⛔ Demoted, NOT deleted. `severe = FALSE` routes it to `excluded_low_severity`, which
+            is already an audited, disclosed bucket, so the rows stay queryable and the exclusion
+            is visible on the Owner-signals page rather than being a silent delete.
+            ⚠ Cost of the demotion, measured before it was made: 885 of 24,277 admitted parcels
+            rest on D22_environmental_violation ALONE. Those leave the flagged set. */
+         (distress_class IN ('penalised', 'significant_violation')) AS severe
   FROM `{DS}.in_si_d22_parcel_join` WHERE is_distress
 ),
 g_d22_inactive AS (

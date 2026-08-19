@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 235 of 316 registered objects reach a surface
+## 237 of 318 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -69,7 +69,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_nrc_reactors` | 0 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
-| `in_pjm_bus_locations_v2` | 1529 | `—` |
+| `in_pjm_bus_locations_v2` | 1475 | `—` |
 | `in_pjm_qs_c23_inj_10` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_15` | 655404 | `—` |
 | `in_pjm_qs_c23_wd_10` | 462654 | `—` |
@@ -324,6 +324,7 @@ headline can be audited rather than taken on trust:
 | `in_screener_candidates` | direct | `scripts/build_land_gates.py`, `scripts/export_screener.py` |
 | `in_sec_cik_registrant_state` | **none** | — |
 | `in_seismic` | **none** | — |
+| `in_si_address_parcel` | direct | `scripts/build_si_funnel.py` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |
 | `in_si_candidates` | direct | `app.js`, `si.html` |
 | `in_si_d11_admitted` | direct | `si.html`, `scripts/checkpoint.py` |
@@ -346,6 +347,7 @@ headline can be audited rather than taken on trust:
 | `in_si_evansville_landbank` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_evansville_taxsale` | direct | `scripts/export_si_sources.py` |
 | `in_si_evansville_taxsale_transfers` | direct | `scripts/export_si_sources.py` |
+| `in_si_funnel` | direct | `si.html` |
 | `in_si_ibtr_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_indy_abandoned_vacant` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_abandoned_vacant_spatial` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
@@ -357,7 +359,7 @@ headline can be audited rather than taken on trust:
 | `in_si_marion_route_check` | direct | `si.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals_county` | direct | `scripts/export_si_v2_surfaces.py` |
-| `in_si_parcel_signals_v2` | direct | `scripts/audit_honesty.py`, `scripts/checkpoint.py` |
+| `in_si_parcel_signals_v2` | direct | `scripts/audit_honesty.py`, `scripts/build_si_funnel.py` |
 | `in_si_plottability` | direct | `scripts/export_spine.py` |
 | `in_si_refresh_brownfield_epa_in` | direct | `scripts/export_si_sources.py` |
 | `in_si_refresh_ibtr_appeals` | direct | `scripts/export_si_sources.py` |

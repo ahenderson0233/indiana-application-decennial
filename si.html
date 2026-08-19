@@ -74,6 +74,91 @@
       <code>scripts/build_d9_absentee_marion.py</code> from <code>in_marion_parcel_crosswalk</code> ×
       <code>in_sites</code>. The owner block was already in the crosswalk we pulled to bridge
       Marion's parcel keys — no acquisition was needed for either signal. One parcel whose published outline covers the entire planet is excluded from the join; leaving it in would match every property in Indiana.</div></div>
+  <!-- G83 + G84, operator 2026-08-19: "we filter by severity on many of the signals, and we
+       should be transparent about which filters were applied, why, and what the severity actually
+       shows"; and "For IDEM enforcement, why does this matter, and how does this signal intent?"
+       A severity threshold is a HIDDEN EDITORIAL DECISION — it changes which parcels appear and
+       the reader cannot see it. There are exactly THREE, and they are named here with the rows
+       each one removed, measured from the live tables. -->
+  <div class="card"><h2>Every severity filter we apply, named &mdash; and what each one removes</h2>
+    <div class="sowhat"><b>A severity threshold decides which parcels you see, and you cannot audit
+      what you cannot see.</b> There are exactly three, plus the standing non-residential rule.
+      Each one is a judgement we made, so each is stated with the vocabulary it acts on, the count
+      it removed, and the reason a surviving row plausibly points at a willing seller. ⛔ Nothing
+      is deleted &mdash; excluded rows keep an <code>admit_status</code> and stay queryable.</div>
+    <table>
+      <tr><th>filter</th><th>what it keeps</th><th>what it removes</th><th>why a survivor means something</th></tr>
+      <tr>
+        <td><b>South Bend code enforcement</b><div class="hint">D12 &middot; <code>Record_Type</code></div></td>
+        <td><code>Sub-standard Housing</code>, <code>Secure Property</code><div class="hint"><b>871 of 20,414 rows (4.3%)</b></div></td>
+        <td class="cannot">19,543 rows &mdash; overwhelmingly <b>litter, grass and weeds, vegetation</b> and graffiti</td>
+        <td>Both surviving types are <b>structural findings against the building itself</b>. A weed
+          citation says a lawn was not mown; a sub-standard-housing order says the structure is
+          failing, which is a repair bill an owner may decline to pay.</td></tr>
+      <tr>
+        <td><b>Evansville demolition permits</b><div class="hint">D21 &middot; <code>USER_Project_Activity</code></div></td>
+        <td><code>BUILDING WRECKING COMMERCIAL</code><div class="hint"><b>419 of 4,190 rows (10.0%)</b></div></td>
+        <td class="cannot">3,771 residential teardowns</td>
+        <td>⚠ This filter also closes a hole: <b>a demolished house leaves a parcel classed
+          <code>no_structure</code></b>, so residential teardowns would slip <i>past</i> the
+          non-residential test on parcel class alone. A commercial wrecking permit is an owner
+          spending money to clear a site &mdash; usually before disposing of it.</td></tr>
+      <tr>
+        <td><b>EPA ECHO environmental</b><div class="hint">D22 &middot; <code>distress_class</code></div></td>
+        <td><code>significant_violation</code> (251 parcels),
+            <code>penalised</code> (251)</td>
+        <td class="cannot">50,334 rows carrying <code>no_distress_marker</code>, excluded upstream;
+          plus <b>676 parcels on a plain <code>violation</code>, demoted 2026-08-19b</b></td>
+        <td>See the challenge below &mdash; this one was re-argued from scratch.</td></tr>
+      <tr>
+        <td><b>Non-residential only</b><div class="hint">standing operator ruling</div></td>
+        <td>every non-residential occupancy class</td>
+        <td class="cannot">76,612 parcels</td>
+        <td>A ~300&nbsp;MW data centre and a ~5&nbsp;MW battery both need land a house does not
+          have. The rows are kept with <code>admit_status='excluded_residential'</code>.</td></tr>
+    </table>
+  </div>
+
+  <div class="card"><h2>⚠ Does an environmental violation really mean someone will sell?</h2>
+    <div class="sowhat">Operator, 2026-08-19: <i>&ldquo;an environmental violation usually
+      doesn&rsquo;t result in a sale, so why do we believe our environmental violations
+      will?&rdquo;</i> <b>Taken as a live challenge to the signal, and it only half survives.</b></div>
+    <div class="hint" style="margin:6px 0"><b>First, the volume was never real.</b> The corpus is
+      often quoted at 58,003 rows, but <b>50,334 of those (86.8%) carry
+      <code>no_distress_marker</code></b> and were never admitted. What is left is small enough to
+      argue about one band at a time &mdash; which is the only honest way to answer the question.</div>
+    <table>
+      <tr><th>band</th><th>parcels</th><th>the mechanism to a SALE</th><th>verdict</th></tr>
+      <tr><td><b>Facility inactive</b><div class="hint">stopped reporting to ECHO</div></td>
+          <td class="num">184</td>
+          <td>The strongest of the four and not really a &ldquo;violation&rdquo; at all: a facility
+            that has <b>stopped reporting</b> has usually stopped operating. That is a vacated
+            industrial site, which is the thing a siter is looking for.</td>
+          <td><b>KEPT</b></td></tr>
+      <tr><td><b>Significant violation</b><div class="hint">EPA SNC / HPV designation</div></td>
+          <td class="num">251</td>
+          <td>EPA&rsquo;s own formal finding of serious non-compliance. It triggers a consent decree
+            or major capital remediation, and a marginal facility often <b>divests rather than
+            invests</b>.</td>
+          <td><b>KEPT</b></td></tr>
+      <tr><td><b>Penalised</b><div class="hint">monetary penalty assessed</div></td>
+          <td class="num">251</td>
+          <td>A dated, quantified cost booked against this specific site. Weaker than the two
+            above, but it is a real financial event on the asset rather than a paperwork finding.</td>
+          <td><b>KEPT</b>, banded lower</td></tr>
+      <tr><td><b>Plain violation</b><div class="hint">routine non-compliance finding</div></td>
+          <td class="num">676</td>
+          <td class="cannot">⛔ <b>No defensible mechanism.</b> Most violations are corrected and the
+            owner carries on. This is the environmental twin of the standing ruling that
+            <i>maintenance activity does not prove a willing seller</i>.</td>
+          <td class="cannot"><b>DEMOTED 2026-08-19b</b></td></tr>
+    </table>
+    <div class="hint" style="margin-top:8px">⚠ <b>The demotion cost 482 admitted parcels</b>
+      &mdash; the flagged total moved from 24,277 to 23,795. The rows were <b>not deleted</b>: they
+      carry <code>admit_status='excluded_low_severity'</code> and remain queryable, so the decision
+      can be reversed with one predicate if you disagree with it.</div>
+  </div>
+
   <div class="card"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
     <div class="hint" style="margin-bottom:6px"><b>held</b> is rows in the corpus and says nothing about
       usability · <b>reached</b> is parcels the signal can be joined to · <b>admitted</b> passes both

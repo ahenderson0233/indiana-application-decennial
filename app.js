@@ -916,7 +916,10 @@ function applyFilters() {
   }
   renderActiveFilters();
   renderDenominator();
-  applyParcelHighlight();     // G95: a newly loaded county must pick up the highlight too
+  /* G96: a ranking painted under the PREVIOUS filters must not survive them, or the reader is
+     looking at last question's answer over this question's parcels. clearRankedPaint() restores
+     through applyParcelHighlight(), so the two never fight over fill-color. */
+  if (state.rankPainted) clearRankedPaint(); else applyParcelHighlight();
 }
 for (const id of ["f-ci", "f-ag", "f-vac", "f-other", "f-mw", "f-mw-val", "f-density", "f-si",
   "f-recent", "f-recent-days", "f-keepundated", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
@@ -1354,6 +1357,17 @@ function renderLayerLegend() {
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
                   `<i class="lg-sw" style="background:${colour}"></i>` +
                   `<span class="hint">${escHtml(label)}</span></div>`);
+  }
+  /* G96: while a ranking is painted, the parcel colour means something completely different from
+     its usual "has an owner signal" — so the key has to say so, or the reader carries the wrong
+     interpretation across. */
+  if (state.rankPainted) {
+    rows.push(`<div class="lg-row lg-metric"><i class="lg-sw lg-banded"></i>` +
+              `<span>parcel colour = <b>your ranking score</b>, not owner signal</span></div>`);
+    for (const [, colour, label] of RANK_BANDS)
+      rows.push(`<div class="lg-row" style="margin-left:14px">` +
+                `<i class="lg-sw" style="background:${colour}"></i>` +
+                `<span class="hint">${escHtml(label)}</span></div>`);
   }
   const metric = $("county-metric") ? $("county-metric").value : "none";
   if (metric && metric !== "none")
@@ -1980,6 +1994,73 @@ function scoreP6(p, fips) {
   return { score: parts.reduce((a, b) => a + b, 0) / parts.length,
            basis: why.join(" · ") + " — COUNTY grain, not parcel" };
 }
+/* ---------- G96: EVERY ranked match on the map, not just the shortlist ------------------------
+   Operator, 2026-08-19: *"beyond the short list of “best” sites, it should also highlight
+   all of the applicable sites to the filters/layers applied to the map"*.
+
+   ⭐ This is a paint change over state we already hold — `sc-rank` has always computed a composite
+   for every matching parcel in view and then thrown all but twelve away. The scores are banded,
+   not ramped, for the same reason the bus layer is (G77): a continuous ramp asks the reader to
+   compare shades, and the useful question is "which tier is this in".
+   ⚠ It paints the parcels that were RANKED, which is not the same set as the parcels that pass
+   the filters — a parcel whose every scoring part is unmeasurable gets no composite and is
+   deliberately left unpainted rather than scored zero. */
+const RANK_BANDS = [
+  [80, "#15803d", "80–100 — strongest on the parts we could measure"],
+  [60, "#65a30d", "60–79"],
+  [40, "#eab308", "40–59"],
+  [0,  "#f97316", "under 40"],
+];
+function paintRanked(rows) {
+  const byBand = new Map(RANK_BANDS.map(([t]) => [t, []]));
+  for (const r of rows) {
+    const band = RANK_BANDS.find(([t]) => r.composite >= t);
+    if (band) byBand.get(band[0]).push(r.p.parcel_key);
+  }
+  /* The parcels are already drawn by their own county layers, so this recolours THEM rather than
+     adding a second geometry source — drawing the same polygon twice is how a map ends up with
+     two disagreeing outlines. */
+  const colourExpr = ["case"];
+  for (const [t, colour] of RANK_BANDS) {
+    const keys = byBand.get(t);
+    if (!keys.length) continue;
+    colourExpr.push(["in", ["get", "parcel_key"], ["literal", keys]], colour);
+  }
+  colourExpr.push("#cbd5e1");
+  let painted = 0;
+  for (const fips of state.loaded.keys()) {
+    const id = `sites-${fips}-fill`;
+    if (!map.getLayer(id)) continue;
+    try {
+      map.setPaintProperty(id, "fill-color", colourExpr.length > 2 ? colourExpr : "#cbd5e1");
+      map.setPaintProperty(id, "fill-opacity", 0.55);
+      painted++;
+    } catch (e) { /* a county mid-load has no layer yet; it will paint on its next rank */ }
+  }
+  /* ⛔ ONLY CLAIM IT IF IT HAPPENED. This was `state.rankPainted = true` unconditionally, so when
+     no parcel layer existed the legend still announced "parcel colour = your ranking score" over
+     a map with no coloured parcel on it — a key describing a paint job that was never applied. */
+  state.rankPainted = painted > 0;
+  renderLayerLegend();
+  return painted;
+}
+/* ⛔ The recolour has to be UNDOABLE, or the map keeps a stale ranking after the filters move and
+   the reader reads last question's answer against this question's parcels.
+   ⚠ Restores through `applyParcelHighlight()`, the function that already owns parcel fill — NOT
+   through a remembered constant. A second copy of the default colour here would drift from
+   `FILL_COLOR` and from the `f-hilite` highlight, and the loser would be invisible. */
+function clearRankedPaint() {
+  if (!state.rankPainted) return;
+  state.rankPainted = false;
+  for (const fips of state.loaded.keys()) {
+    const id = `sites-${fips}-fill`;
+    if (map.getLayer(id)) {
+      try { map.setPaintProperty(id, "fill-opacity", 0.45); } catch (e) { /* mid-load */ }
+    }
+  }
+  applyParcelHighlight();
+}
+
 function currentWeights() {
   const w = {};
   for (const k of Object.keys(SCORE_CFG.weights)) w[k] = Number($(`w-${k}`).value);
@@ -2025,14 +2106,28 @@ $("sc-rank").onclick = () => {
   if (!rows.length) { $("sc-out").innerHTML = `<span class="cannot">No screened sites in view to rank.</span>`; return; }
   rows.sort((a, b) => b.composite - a.composite);
   state.ranked = rows;
-  const top = rows.slice(0, 12);
+  /* G96, operator 2026-08-19: *"beyond the short list of 'best' sites, it should also highlight
+     all of the applicable sites to the filters/layers applied to the map"*.
+     ⛔ `rows.slice(0, 12)` was a silent cap of exactly the G58 shape — it printed "N sites ranked"
+     and then showed twelve, so a reader could not tell whether the 13th was close behind the 12th
+     or nowhere near it. The list is now scrollable and shows up to 250, the count is stated, and
+     EVERY ranked site is painted on the map rather than only the shortlist. */
+  const LIST_CAP = 250;
+  const top = rows.slice(0, LIST_CAP);
+  paintRanked(rows);
   const cannotLine = Object.entries(cannot).filter(([, n]) => n > 0)
     .map(([k, n]) => `${PART_NAME[k]} ${fmt(n)}`).join(" · ");
   $("sc-out").innerHTML =
-    `<b>${fmt(rows.length)}</b> screened sites ranked. Click a row for its score breakdown.
+    `<b>${fmt(rows.length)}</b> screened sites ranked, and <b>every one of them is now painted on
+     the map</b> — the list below is only the readable end of it.
+     ${rows.length > LIST_CAP
+        ? `<div class="hint">Listing the top ${fmt(LIST_CAP)} of ${fmt(rows.length)}; the rest are
+           on the map and in the CSV. <b>Scroll the list.</b></div>` : ""}
+     Click a row for its score breakdown.
+     <div class="scroll" style="max-height:320px">
      <table>${top.map((r, i) => `<tr><td class="rank">${i + 1}</td>
        <td><a data-i="${i}">${r.p.parcel_key}</a><div class="hint">${(state.ctx.by_fips[r.fips]?.posture?.county_name) || r.fips} · ${r.p.occ_group}</div></td>
-       <td class="sc">${Math.round(r.composite)}</td></tr>`).join("")}</table>
+       <td class="sc">${Math.round(r.composite)}</td></tr>`).join("")}</table></div>
      ${cannotLine ? `<div class="cannot" style="margin-top:5px">Left out of the denominator where unmeasurable — ${cannotLine}. These sites are ranked on the parts we could assess, not marked down for the parts we could not.</div>` : ""}
      <div class="prov">weights ${Object.entries(w).map(([k, v]) => `${k.toUpperCase()}:${v}`).join(" ")} · composite = weighted mean of assessable parts only</div>`;
   for (const a of $("sc-out").querySelectorAll("a[data-i]"))

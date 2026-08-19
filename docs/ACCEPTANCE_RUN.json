@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-19T19:56:27.158963+00:00",
+ "run_at": "2026-08-19T20:40:32.403625+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 124 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
+   "detail": "scanned 125 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 235 of 316 registered objects reach a surface \u00b7 81 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry', 'in_commission_posture']"
+   "detail": "MEASURED this run: 237 of 318 registered objects reach a surface \u00b7 81 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry', 'in_commission_posture']"
   },
   {
    "criterion": 2,
@@ -54,218 +54,218 @@
    "criterion": 8,
    "name": "per-part acceptance",
    "state": "PARTIAL",
-   "detail": "P1 24,277 flagged parcels \u00b7 P2 79 facilities carry RTEP upgrades \u00b7 P4 1,200,923 parcels gated \u00b7 P6 132 rate proxies PLUS an itemised rate engine: 668 tariff components across 73 utilities, 22 of them costed from their own books at every service voltage with riders. P6 was recorded as not-achievable because no component-level Indiana tariff existed; one now does."
+   "detail": "P1 23,795 flagged parcels \u00b7 P2 79 facilities carry RTEP upgrades \u00b7 P4 1,200,923 parcels gated \u00b7 P6 132 rate proxies PLUS an itemised rate engine: 668 tariff components across 73 utilities, 22 of them costed from their own books at every service voltage with riders. P6 was recorded as not-achievable because no component-level Indiana tariff existed; one now does."
   }
  ],
  "number_sample": [
   {
    "label": "si_v2.flag_summary.flagged",
-   "value": 24277,
+   "value": 23795,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.dated",
-   "value": 14553,
+   "value": 14264,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r3",
-   "value": 4385,
+   "value": 4320,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r5",
-   "value": 7727,
+   "value": 7646,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ci",
-   "value": 5154,
+   "value": 4962,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.other_nonres",
-   "value": 781,
+   "value": 686,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ag",
-   "value": 330,
+   "value": 320,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.land",
-   "value": 18012,
+   "value": 17827,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_resid",
    "value": 101646,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_lowsev",
-   "value": 6231,
+   "value": 6753,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_bess",
-   "value": 7645,
+   "value": 7183,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_dc",
-   "value": 3121,
+   "value": 2816,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.capability.too_small",
-   "value": 16632,
+   "value": 16612,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "si_v2.capability.median_ac",
-   "value": 0.17,
+   "value": 0.16,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-18 02:11:34",
+   "built_at": "2026-08-19 20:17:15",
    "traced": true
   },
   {
    "label": "coverage[D4_tax_delinquency].parcels_admitted",
    "value": 9459,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D2_foreclosure].parcels_admitted",
    "value": 3571,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D1_tax_sale].parcels_admitted",
    "value": 3322,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D12_code_violation].parcels_admitted",
    "value": 2109,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D26_assessment_appeal].parcels_admitted",
    "value": 1937,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D16_structure_fire].parcels_admitted",
    "value": 1680,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D5_unsafe_building].parcels_admitted",
    "value": 1320,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
-   "traced": true
-  },
-  {
-   "label": "coverage[D22_environmental_violation].parcels_admitted",
-   "value": 1086,
-   "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D14_sba_chargeoff].parcels_admitted",
    "value": 762,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D5_vacant_board_order].parcels_admitted",
    "value": 658,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D5_abandoned_building].parcels_admitted",
    "value": 645,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D21_demolition_order].parcels_admitted",
    "value": 596,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
+   "traced": true
+  },
+  {
+   "label": "coverage[D22_environmental_violation].parcels_admitted",
+   "value": 564,
+   "table": "in_si_signal_coverage",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D7_brownfield].parcels_admitted",
    "value": 311,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D20_loan_maturity].parcels_admitted",
    "value": 129,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D22_facility_inactive].parcels_admitted",
    "value": 113,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
    "label": "coverage[D24_plant_delisting].parcels_admitted",
    "value": 6,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-18 02:11:37",
+   "built_at": "2026-08-19 20:17:25",
    "traced": true
   },
   {
