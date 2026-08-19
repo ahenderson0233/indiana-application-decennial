@@ -22,7 +22,7 @@
         map or matched to a parcel yet.</div>
       <div class="scroll"><table id="t-pjm"><tr><th>bus</th><th>kV</th><th>load headroom MW</th><th>binding facility</th><th>pre-overloads</th></tr></table></div>
       <div class="prov" id="p-pjm"></div></div>
-    <div class="card"><h2>MISO POIs — injection @ a 300 MW request</h2>
+    <div class="card"><h2>MISO POIs — injection detail @ a 300 MW request</h2>
       <div class="hint">⭐ <b>BOTH directions, DPP-2025.</b> MISO's public viewer is
         INJECTION-only &mdash; the generator question &mdash; and publishes no load-side headroom at
         all. The withdrawal figures here come from our <b>licensed Orennia subscription</b>
@@ -32,6 +32,43 @@
       <div class="scroll"><table id="t-miso"><tr><th>POI</th><th>kV</th><th>inj@300 MW</th><th>median (∞ probe)</th><th>best</th></tr></table></div>
       <div class="prov" id="p-miso"></div></div>
   </div>
+  <!-- ==========================================================================================
+       G4 + G7 + G85: EVERY BUS WE HOLD, BOTH DIRECTIONS, BOTH ISOs, IN ONE PLACE.
+
+       G4 has read "PAYLOAD LANDED ... still not a map/dashboard section" since it was opened, and
+       G7 has read "not yet wired to any page". Measured 2026-08-19: data/gridsiting.json.gz holds
+       3,912 buses — MISO 1,731 injection + 1,731 withdrawal, PJM 223 + 227 — EVERY ONE WITH A
+       COORDINATE, and the only page that touched the file read one provenance string off it.
+
+       G85 is why this is one table rather than a third card: the two cards above answer one
+       direction each, so a reader comparing a load site against a generation site had to hold two
+       tables in their head, and the MISO card was titled "injection" while the payload carried
+       withdrawal too. One table, one direction selector, one answer.
+       ========================================================================================== -->
+  <div class="card"><h2>Buses — both directions, both ISOs</h2>
+    <div class="hint">A bus can be <b>wide open one way and full the other</b>, so pick the
+      direction that matches what you are building. <b>Getting power</b> is what a data centre or
+      any large load needs; <b>sending power</b> is what a generator or a battery export needs.
+      Every row links to where the bus sits on the map.</div>
+    <div style="margin:8px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <label>Direction
+        <select id="b-dir">
+          <option value="withdrawal" selected>Getting power (load)</option>
+          <option value="injection">Sending power (generation)</option>
+        </select></label>
+      <label>Operator
+        <select id="b-iso"><option value="">both</option><option>PJM</option><option>MISO</option></select></label>
+      <label>At least <input type="number" id="b-mw" value="0" min="0" step="1" style="width:90px"> MW</label>
+      <label>At least <input type="number" id="b-kv" value="0" min="0" step="1" style="width:80px"> kV</label>
+      <label><input type="checkbox" id="b-hidezero"> hide buses at zero</label>
+      <span class="hint" id="b-count"></span>
+    </div>
+    <div class="scroll"><table id="t-buses">
+      <tr><th>bus</th><th>operator</th><th>kV</th><th>MW available</th><th>binding facility</th>
+          <th>basis</th><th>map</th></tr></table></div>
+    <div class="hint" id="b-zero" style="margin-top:6px"></div>
+    <div class="prov" id="p-buses"></div></div>
+
   <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
     <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
     <div class="prov" id="p-plans"></div></div>
@@ -106,6 +143,71 @@
     return `<tr><td>${p.poi_name}</td><td>${p.kv ?? "—"}</td><td><b>${p.headroom300_mw != null ? fmt(Math.round(p.headroom300_mw)) : "—"}</b></td><td>${fmt(Math.round(p.median_mw || 0))}</td><td>${fmt(Math.round(p.best_mw || 0))}</td></tr>`;
   }).join(""));
   document.getElementById("p-miso").textContent = prov("in_bus_headroom_300");
+  /* ---- G4 + G7 + G85: the bus table -------------------------------------------------------
+     Reads data/gridsiting.json.gz, the payload that has existed since G4 was opened and that no
+     page rendered. Nothing new is fetched for the filters -- every one is a client-side pass over
+     rows already in memory, the same shape as the screener's per-site depth (G39). */
+  const GS = await fetchGz("data/gridsiting.json.gz");
+  const BUS = GS.buses || [];
+  const busEl = (id) => document.getElementById(id);
+  const BUS_CAP = 300;
+  function renderBuses() {
+    const dir = busEl("b-dir").value, iso = busEl("b-iso").value;
+    const minMw = Number(busEl("b-mw").value) || 0, minKv = Number(busEl("b-kv").value) || 0;
+    const hideZero = busEl("b-hidezero").checked;
+    let rows = BUS.filter((b) => b.direction === dir);
+    if (iso) rows = rows.filter((b) => b.src === iso);
+    const measured = rows.length;
+    if (minKv) rows = rows.filter((b) => Number(b.kv) >= minKv);
+    if (minMw) rows = rows.filter((b) => Number(b.mw) >= minMw);
+    if (hideZero) rows = rows.filter((b) => Number(b.mw) > 0);
+    rows.sort((a, b) => (Number(b.mw) || 0) - (Number(a.mw) || 0));
+    const shown = rows.slice(0, BUS_CAP);
+    const t = busEl("t-buses");
+    // keep the header row, replace the body -- rebuilding the whole table drops the <th> row
+    while (t.rows.length > 1) t.deleteRow(1);
+    t.insertAdjacentHTML("beforeend", shown.map((b) => {
+      const mw = Number(b.mw);
+      const zero = b.at_zero || mw === 0;
+      const link = (b.lat != null && b.lon != null)
+        ? `<a href="index.html?lat=${b.lat}&lon=${b.lon}&z=13&label=${encodeURIComponent(b.name || b.bus || b.poi || "bus")}&src=${encodeURIComponent(b.src + " " + (b.conf || ""))}">show</a>`
+        : `<span class="cannot" title="no coordinate held for this bus">—</span>`;
+      return `<tr><td>${escHtml(b.name || b.poi || b.bus || "—")}</td><td>${escHtml(b.src)}</td>
+        <td>${b.kv ?? "—"}</td>
+        <td>${zero ? '<span class="cannot"><b>0</b> — already at or over its limit</span>'
+                   : `<b>${fmt(Math.round(mw))}</b>`}</td>
+        <td>${escHtml(String(b.binding || "").slice(0, 46))}</td>
+        <td>${b.conf === "publisher" ? "published" : "estimated"}</td>
+        <td>${link}</td></tr>`;
+    }).join(""));
+    busEl("b-count").textContent =
+      `${fmt(rows.length)} of ${fmt(measured)} buses match` +
+      (rows.length > BUS_CAP ? ` · showing the top ${BUS_CAP} by MW` : "");
+    /* ⚠ A ZERO IS A STATEMENT ABOUT THE STUDY CASE, NOT THE BUS, and hiding them silently would
+       be the .slice(0,14) defect again -- so the count of what the tick removes is always shown. */
+    const zeros = BUS.filter((b) => b.direction === dir && (!iso || b.src === iso) && (b.at_zero || Number(b.mw) === 0)).length;
+    busEl("b-zero").innerHTML = zeros
+      ? `<b>${fmt(zeros)}</b> of these buses read <b>0 MW</b>. That is a statement about the
+         <b>study case</b>, not about the bus: the network is already at or over its limit there
+         before any new request. They are ${hideZero ? "hidden by your tick" : "shown"}, never dropped.`
+      : "No bus in this view reads zero.";
+  }
+  for (const id of ["b-dir", "b-iso", "b-mw", "b-kv", "b-hidezero"]) {
+    busEl(id).addEventListener("change", renderBuses);
+    busEl(id).addEventListener("input", renderBuses);
+  }
+  renderBuses();
+  busEl("p-buses").innerHTML =
+    `${escHtml(GS.direction_note || "")}<br>MISO ${fmt(BUS.filter(b=>b.src==="MISO"&&b.direction==="injection").length)} injection
+     + ${fmt(BUS.filter(b=>b.src==="MISO"&&b.direction==="withdrawal").length)} withdrawal ·
+     PJM ${fmt(BUS.filter(b=>b.src==="PJM"&&b.direction==="injection").length)} + ${fmt(BUS.filter(b=>b.src==="PJM"&&b.direction==="withdrawal").length)}.
+     Sources: ${Object.values(GS.provenance || {}).map(escHtml).join(" · ")}.
+     <br>⚠ <b>Not every bus we hold appears here</b> — this payload carries only the buses we can
+     place: ${fmt((GS.gaps||{}).pjm_buses_never_located || 0)} PJM buses were never located and
+     ${fmt((GS.gaps||{}).miso_buses_joinable_but_no_coordinates || 0)} MISO buses join but carry no
+     coordinate. They are listed in the payload's own gaps block, never rendered as zero and never
+     dropped. <b>The map console's bus layer is the fuller view.</b>`;
+
   const pl = await fetchGz("data/pipeline.json.gz");
   const plans = pl.grid_plans.filter(r => r.row_type === "project").slice(0, 80)
     .map(r => `<tr><td>${r.utility || ""}</td><td>${(r.project_name || r.location_text || "").slice(0, 60)}</td><td>${r.voltage_kv || "—"}</td><td>${r.in_service_year || "—"}</td><td>${r.cost_usd_m || "—"}</td></tr>`);

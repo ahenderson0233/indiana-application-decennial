@@ -1266,6 +1266,38 @@ async function ensureCountyLoaded(fips) {
    `open=dossier` goes straight to the Power Plan; anything else opens the evidence panel. */
 async function handleDeepLink() {
   const q = new URLSearchParams(location.search);
+  /* ---- G86/G4: fly to a COORDINATE ------------------------------------------------------------
+     Operator, 2026-08-19: *"everything should be clickable to bring the user to the location that
+     the table uses (e.g. buses in grid and capacity should have a link to the map for where they
+     are located)."* G39 built the parcel deep link and drove the county machinery from it; this is
+     the same door for anything that is a point rather than a parcel.
+         index.html?lat=40.6&lon=-86.1&z=13&label=05BROCKG
+     ⚠ A label is a CLAIM about a place, so the marker says where the coordinate came from rather
+     than implying we surveyed it. Most PJM bus positions are estimates (91.9% of the vendor's are),
+     and a link that flies to an estimate without saying so turns a caveat into a coordinate. */
+  const qlat = parseFloat(q.get("lat")), qlon = parseFloat(q.get("lon"));
+  if (Number.isFinite(qlat) && Number.isFinite(qlon)) {
+    const z = Math.min(17, Math.max(4, parseFloat(q.get("z")) || 13));
+    map.flyTo({ center: [qlon, qlat], zoom: z });
+    if (map.getSource("deeplink-pt")) map.getSource("deeplink-pt").setData(
+      { type: "Feature", geometry: { type: "Point", coordinates: [qlon, qlat] }, properties: {} });
+    else {
+      map.addSource("deeplink-pt", { type: "geojson",
+        data: { type: "Feature", geometry: { type: "Point", coordinates: [qlon, qlat] }, properties: {} } });
+      map.addLayer({ id: "deeplink-pt", type: "circle", source: "deeplink-pt",
+        paint: { "circle-radius": 11, "circle-color": "#f59e0b", "circle-opacity": 0.35,
+                 "circle-stroke-color": "#b45309", "circle-stroke-width": 2.5 } });
+    }
+    const label = (q.get("label") || "").trim();
+    const src = (q.get("src") || "").trim();
+    show(label ? `Located: ${escHtml(label)}` : "Located",
+      `<table>${row("coordinate", `${qlat.toFixed(5)}, ${qlon.toFixed(5)}`)}
+        ${row("what it is", label || null)}${row("source", src || null)}</table>
+       <div class="sowhat">You arrived here from a table. ⚠ <b>A bus coordinate is often an
+         ESTIMATE</b> — no operator publishes a public coordinate feed for PJM buses, and the
+         position is derived by matching the bus label to a substation gazetteer. Treat it as
+         "about here", not as a survey.</div>`);
+  }
   const fips = (q.get("fips") || "").trim(), key = (q.get("parcel") || "").trim();
   if (!fips || !key) return;
   show("Opening site…", `<div class="hint">Loading county ${escHtml(fips)} and locating parcel
