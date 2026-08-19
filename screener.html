@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=d42bbc6d">
+<link rel="stylesheet" href="style.css?v=e3cd2fb6">
 </head>
 <body>
 <header id="topbar">
@@ -195,10 +195,12 @@
         <p class="hint">Unticking this hides a large amount of real inventory for a reason that is
           about <i>our</i> data, not about the property.</p>
       
-        <label class="blk">Which signal
-          <select id="s-signal"><option value="">any signal</option></select></label>
-        <div class="hint">Until now this whole taxonomy was one tick box. A scheduled tax sale and a
-          decade-old code violation are not the same lead.</div>
+        <div class="subhead">Which signal <span class="hint" id="s-signal-count"></span></div>
+        <div class="hint" style="margin-bottom:4px">Tick any combination &mdash; a site matches if it
+          carries <b>any</b> ticked signal. Nothing ticked means <b>any signal counts</b>. Each line
+          says what the signal is and whether it is an <b>event</b> (it goes stale) or a
+          <b>state</b> (it does not &mdash; contamination will still be there next year).</div>
+        <div id="s-signal-boxes" class="sigbox"></div>
         <label class="blk">At least <span class="inline"><input type="number" id="s-minevents" value="0" min="0" step="1"> events</span>
           within <select id="s-evwindow" style="width:auto">
             <option value="events_3y">3 years</option>
@@ -381,7 +383,28 @@ function fillSelects() {
   put("s-sitekind", uniq((s) => s.site_kind), siteKindPlain);
   put("s-conf", uniq((s) => s.wd_conf));
   put("s-keying", uniq((s) => s.keying));
-  put("s-signal", split((s) => s.signals), signalPlain);
+  // #7: checkboxes, not a dropdown -- a dropdown is single-select and a siter wants
+  // "tax sale OR foreclosure OR unsafe building". Label AND explanation come from SIGNAL_PLAIN,
+  // the shared vocabulary, never from a second set of descriptions written here.
+  const box = $("s-signal-boxes");
+  if (box) {
+    const codes = split((s) => s.signals);
+    box.innerHTML = codes.map((c) => {
+      let label = signalPlain(c), why = "", kind = "";
+      try {
+        const e = (typeof SIGNAL_PLAIN === "object") ? SIGNAL_PLAIN[c] : null;
+        if (Array.isArray(e)) { label = e[0] || label; why = e[1] || ""; kind = e[2] || ""; }
+      } catch (err) {}
+      const n = DATA.sites.filter((s) => String(s.signals || "").includes(c)).length;
+      return `<label class="sig"><input type="checkbox" class="s-sig" value="${c}">` +
+             `<span><b>${label}</b> <span class="hint">${n.toLocaleString()}` +
+             `${kind ? " &middot; " + kind : ""}</span>` +
+             `${why ? `<br><span class="hint">${why}</span>` : ""}</span></label>`;
+    }).join("");
+    box.querySelectorAll("input.s-sig").forEach((el) => el.addEventListener("change", render));
+    const c = $("s-signal-count");
+    if (c) c.textContent = `(${codes.length} held)`;
+  }
   put("s-bonuskind", split((s) => s.bonus_kinds));
 }
 
@@ -422,7 +445,8 @@ function passes(s) {
   const bind = $("s-binding").value.trim().toLowerCase();
   if (bind && !String((g && g.binding) || "").toLowerCase().includes(bind)) return false;
   if ($("s-conf").value && String(s.wd_conf || "") !== $("s-conf").value) return false;
-  if ($("s-signal").value && !String(s.signals || "").includes($("s-signal").value)) return false;
+  const sigOn = [...document.querySelectorAll("input.s-sig:checked")].map((e) => e.value);
+  if (sigOn.length && !sigOn.some((c) => String(s.signals || "").includes(c))) return false;
   if (N("s-minevents") && !(Number(s[$("s-evwindow").value] || 0) >= N("s-minevents"))) return false;
   if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
   if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
@@ -451,8 +475,13 @@ function activeChips() {
   if ($("s-lineon").checked) c.push("line crosses the parcel");
   if ($("s-si").checked) c.push("owner-motivation signal");
   // G67: the new filters must appear here too, or a collapsed section hides what it is doing.
+  const _sigOn = [...document.querySelectorAll("input.s-sig:checked")];
+  if (_sigOn.length)
+    c.push(`signal: ${_sigOn.length === 1
+      ? _sigOn[0].closest("label").querySelector("b").textContent
+      : _sigOn.length + " selected"}`);
   for (const [id, lbl] of [["s-county", "county"], ["s-sitekind", "land type"],
-                           ["s-conf", "placement"], ["s-signal", "signal"],
+                           ["s-conf", "placement"],
                            ["s-keying", "keyed by"], ["s-bonuskind", "zone"]])
     if ($(id).value) c.push(`${lbl}: ${$(id).selectedOptions[0].text}`);
   if ($("s-binding").value.trim()) c.push(`binding facility ~ "${$("s-binding").value.trim()}"`);
@@ -764,8 +793,9 @@ function toCSV() {
     $("s-submi").value = 0; $("s-subkv").value = 0; $("s-siyears").value = 3;
     $("s-linemi").value = 0; $("s-linekv").value = 0;
     $("s-dir").value = "wd";
-    for (const id of ["s-county", "s-sitekind", "s-conf", "s-signal", "s-keying", "s-bonuskind", "s-binding"])
+    for (const id of ["s-county", "s-sitekind", "s-conf", "s-keying", "s-bonuskind", "s-binding"])
       $(id).value = "";
+    document.querySelectorAll("input.s-sig").forEach((e) => (e.checked = false));
     $("s-outdoor").value = 0; $("s-structmax").value = ""; $("s-buskv").value = 0;
     $("s-minevents").value = 0; $("s-evwindow").value = "events_3y";
     $("s-use-note").innerHTML = USE_NOTE.dc; render();

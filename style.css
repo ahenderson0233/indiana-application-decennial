@@ -319,3 +319,11 @@ table.dtable td.dv { width: 26%; }
 /* a dark or satellite basemap swallows the light outlines; lift them rather than recolour data */
 body.basemap-dark #layer-legend, body.basemap-dark .basemap-pick { background: rgba(17,24,39,.9); color: #e5e7eb; border-color: #374151; }
 body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
+
+/* #7 owner-motivation signal checkboxes — label, count, event/state, and what it means */
+.sigbox { max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 4px 6px; background: #fbfdff; }
+.sigbox label.sig { display: flex; gap: 6px; align-items: flex-start; padding: 3px 0;
+  border-bottom: 1px solid #eef2f7; line-height: 1.35; }
+.sigbox label.sig:last-child { border-bottom: 0; }
+.sigbox label.sig input { margin-top: 2px; flex: 0 0 auto; }
