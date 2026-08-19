@@ -312,6 +312,25 @@ if not _has:
 assert _has, ("county_context.json still has no IOCS block. The Community court-activity table "
               "would render empty. Run scripts/export_signoff_payloads.py.")
 
+# G88/G89 SELF-HEAL, added 2026-08-19b for exactly the same reason and caught the same way. This
+# script rewrites county_context.json wholesale, so the `dc_posture` and `action_expiry` blocks
+# that build_county_dc_wiring.py merges in are DESTROYED every time it runs. Measured immediately:
+# Lake County came back with ['action_summary','actions','existing_dc','iocs','posture','queue']
+# and no dc_posture, which would have emptied the county panel's data-centre and lapse-date
+# sections while every other section kept working -- a partial, silent loss.
+_needs = sum(1 for v in _d.get("by_fips", {}).values()
+             if isinstance(v, dict) and not v.get("dc_posture"))
+if _needs:
+    print(f"county_context.json lost dc_posture on {_needs} counties - re-running the DC wiring")
+    _rc2 = _sp.call([_sys.executable, os.path.join(REPO, "scripts", "build_county_dc_wiring.py")])
+    _d = _json.load(open(_ctx, encoding="utf-8"))
+    _dc = sum(1 for v in _d.get("by_fips", {}).values()
+              if isinstance(v, dict) and v.get("dc_posture"))
+    print(f"  restored: {_dc}/92 counties carry dc_posture (wiring exit {_rc2})")
+    assert _dc, ("county_context.json still has no dc_posture. The county panel's data-centre "
+                 "counts, serving utility and moratorium lapse dates would all render empty. "
+                 "Run scripts/build_county_dc_wiring.py.")
+
 # ---------------------------------------------------------------------------------------------
 # G43 SELF-HEAL. This exporter rewrites grid.geojson.gz and facilities.geojson.gz straight from
 # BigQuery, which SILENTLY UN-CLIPS them at the Indiana border -- measured the first time it ran

@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-19T18:01:24+00:00",
+ "built_at_utc": "2026-08-19T19:54:25+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -29,6 +29,22 @@
    "n_rows": 773,
    "built_at": "2026-08-15 22:53:58.353215+00",
    "notes": "Meta table, not a data feature: the census behind docs/BQ_INDIANA_CENSUS.md. Registered so it stops tripping checkpoint invariant 3 as an unregistered object; it is deliberately not rendered anywhere."
+  },
+  {
+   "table_name": "data/envgates.geojson.gz",
+   "source": "indiana_app.in_flood (FEMA NFHL) + indiana_app.in_wetlands (USFWS NWI)",
+   "method": "flood filtered to SFHA_TF=T; wetlands filtered to ACRES >= 20; both ST_SIMPLIFY(geog, 60) then ST_ASGEOJSON; fetched on first toggle, not at boot. RE-SCRAPE COMMAND: python scripts/export_env_gates.py",
+   "n_rows": 35182,
+   "built_at": "2026-08-19 18:50:22.704808+00",
+   "notes": "G110. Makes a filterable gate VISIBLE - previously LAYER_MAP had no flood or wetland layer at all. Two cuts, both disclosed in the payloads own coverage block and printed on the control: Zone X excluded (not a hazard), wetlands under 20 acres excluded (rendering limit only - the per-parcel filter still uses all 453,995)."
+  },
+  {
+   "table_name": "data/gas_capacity.json.gz",
+   "source": "indiana_app.in_gas_capacity_panhandle_eastern + in_gas_capacity_trunkline (Energy Transfer iPost)",
+   "method": "TRIM(state)=IN and TRIM(requested_gas_day)=current only; capacity read from `oac` (the long-form operationally_available_capacity column is NULL on every Indiana row); keyed by `pipeline`, NOT `operator` (operator is the shipper at the delivery point); MW is a derived estimate at Dth/day/156 and is badged. RE-SCRAPE COMMAND: python scripts/export_gas_capacity.py",
+   "n_rows": 29,
+   "built_at": "2026-08-19 19:35:45.617713+00",
+   "notes": "G92. The gas pipeline popup previously showed operator and type only. Coverage is 2 of the 12 pipelines drawn (34 of 213 segments); the other 179 render an explicit no-feed-captured line rather than a blank, because a missing number must not read as zero capacity."
   },
   {
    "table_name": "in_acs_county",
@@ -75,7 +91,7 @@
    "source": "PJM: indiana_app.in_pjm_qs_c23sens_wd/_inj (our QueueScope harvest, case 23, owner 1568, 100 MW). MISO: indiana_app.in_bus_headroom_miso_vendor (Orennia licensed proxy, DPP-2025, operator-authorised).",
    "method": "One row per (bus, direction). Binding constraint = tightest facility with |dfax| >= 0.05 that is NOT already over its rating; pre-existing overloads are counted and flagged but excluded from the choice of what binds, which is the vendor method verified against their export on bus 243209. PJM capacity is headroom at a 100 MW PROBE and is NOT a bus maximum - measured against the vendor on 283 shared buses: 0 exact, 12 within 20%, Spearman +0.15/+0.25. MISO rows carry provenance_class and are removable when the licence lapses (late 2027). RE-SCRAPE COMMAND: python scripts/build_bus_capacity_tier0_v2.py",
    "n_rows": 7102,
-   "built_at": "2026-08-19 18:00:00.674233+00",
+   "built_at": "2026-08-19 19:49:26.986931+00",
    "notes": "Replaces the 2027-RTEP/DPP-2021 build: PJM moves to the current case and gains the injection direction; MISO gains the WITHDRAWAL direction, which MISO publishes nowhere."
   },
   {
@@ -255,6 +271,14 @@
    "notes": "WIRE-NEXT batch 4 (audit tail)"
   },
   {
+   "table_name": "in_dc_action_expiry",
+   "source": "indiana_app.in_dc_actions_resolved (verified county/municipal data-centre actions)",
+   "method": "duration extracted declaratively from expiry_condition_verbatim + verbatim_snippet with a self-tested pattern list (2y/18m/12m/1y/9m/6m/90d); expiry_date = verified_effective_from + duration ONLY where both exist; open-ended conditions detected separately and left NULL with the condition quoted; no default duration is ever assumed. RE-SCRAPE COMMAND: python scripts/build_dc_action_expiry.py",
+   "n_rows": 12,
+   "built_at": "2026-08-19 19:10:48.291456+00",
+   "notes": "G89. 2 published end dates + 1 derived = 3 dated of 12. expiry_basis distinguishes published / derived / open_ended / duration_without_anchor / not_stated - a derived date MUST be badged and never styled as published. An open-ended moratorium is a stated condition, not a missing value."
+  },
+  {
    "table_name": "in_dc_actions",
    "source": "CORRECTION note (no data change)",
    "method": "source wall record",
@@ -349,6 +373,14 @@
    "n_rows": 23,
    "built_at": "2026-08-19 01:35:35.379326+00",
    "notes": "G48 input. 244 located data centres across 23 counties. Excludes rows with no coordinate."
+  },
+  {
+   "table_name": "in_dc_county_posture",
+   "source": "indiana_app.in_data_centers_located + in_dc_actions_resolved + in_territories, counties from bigquery-public-data.geo_us_boundaries.counties (state_fips_code=18)",
+   "method": "listed data centres placed by ST_CONTAINS on the county polygon (NOT a name match); approved / proposed / denied / withdrawn counted from VERIFIED actions only (posture_renderable), joined by county name with the unmatched set asserted to be empty; serving utilities by ST_INTERSECTION with the county, slivers under 1% dropped. PRIMARY IS BY CUSTOMER COUNT among utilities covering >=50% of the county, NOT by area: the territory polygons OVERLAP (145 sum to 191,328 km2 over a ~94,300 km2 state), so area cannot separate two that both blanket it. RE-SCRAPE COMMAND: python scripts/build_dc_county_posture.py",
+   "n_rows": 92,
+   "built_at": "2026-08-19 19:17:26.379590+00",
+   "notes": "G88. Replaces queued MW, which G35 showed overstates by construction (49 of 87 counties have >=50% of everything ever queued withdrawn). dc_listed and dc_approved come from DIFFERENT sources and must not be summed. dc_listed_city_precision must be shown beside dc_listed - the directories give 92 of 249 pins only city-centroid precision."
   },
   {
    "table_name": "in_dc_docket_tracker",
@@ -1359,6 +1391,14 @@
    "notes": "One row per distinct AEP QueueScope bus (1,475). Located 229 = 15.5%. Methods: none/None=1246; substation_match_prefix/med=91; substation_match_exact/high=91; substation_match_exact/med=34; rtep_bridge/med=13. CANDIDATE table - estimation product, NOT publisher truth; style estimates differently. T0 'pjm_queue_facid' (added method value) uses PJM's own queue-point coordinates keyed by FAC_ID name+state+kV; T0 requires >=5-char name overlap AND a FAC code claimed by exactly one bus-name family (REBUILD: first build's 4-char rule produced false highs - CLIN matched both CLINCHFLD and CLINTO; this row supersedes the prior registry row for this table). No Orennia/commercial data touched."
   },
   {
+   "table_name": "in_pjm_bus_locations_v2",
+   "source": "indiana_app.in_pjm_bus_locations_candidate (kept verbatim) + in_substations_dedup name match",
+   "method": "PSS/E bus label reduced to its station stem (area code and voltage stripped) and matched to substation_name; a match is accepted ONLY if unambiguous in the corpus AND the bus voltage sits inside the substation kV range; ambiguous names and kV mismatches are left UNLOCATED. RE-SCRAPE COMMAND: python scripts/build_pjm_bus_locations_v2.py",
+   "n_rows": 1475,
+   "built_at": "2026-08-19 19:49:16.797472+00",
+   "notes": "G114 non-scraping half. Adds 48 buses the existing matcher missed (8 rejected as ambiguous, 10 on kV). Confidence is med, never high: our substation corpus is an INDIANA clip while PJM case 23 spans the AEP footprint, so a same-named out-of-state station cannot be disambiguated. The remaining ~1,500 need a source we do not hold."
+  },
+  {
    "table_name": "in_pjm_bus_withdrawal",
    "source": "in_pjm_queuescope_aep",
    "method": "MIN(available_mw) per bus, WITHDRAWAL, dfax>=5pct, pre-existing overloads excluded+counted",
@@ -1420,6 +1460,14 @@
    "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
    "n_rows": 462654,
    "built_at": "2026-08-19 14:37:16.717407+00",
+   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_wd_25",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 462654,
+   "built_at": "2026-08-19 19:35:43.992886+00",
    "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
   },
   {
@@ -1651,7 +1699,7 @@
    "source": "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x in_bus_capacity_tier0 (BOTH directions, BOTH ISOs) x in_substations x in_asset_distance_parcel",
    "method": "candidates = fits>=25MW OR carries a v2 owner-motivation signal; nearest bus within 40 km computed SEPARATELY per direction; D85 excluded by key before any spatial join; fan-out asserted < 1.01. REPOINTED 2026-08-19 from in_bus_headroom_miso(300 MW probe, injection only) + vw_pjm_bus_withdrawal_located(PJM only, 227 buses) onto in_bus_capacity_tier0 - the old pair capped wd_mw at 132 MW and inj_mw at exactly 300, and carried NO MISO load-side data at all. Bus coverage is limited by COORDINATES: MISO 1,731 of 1,731 per direction, PJM 227 of 1,826 withdrawal and 223 of 1,814 injection (the G62 gazetteer ceiling)",
    "n_rows": 532870,
-   "built_at": "2026-08-19 18:00:31.424437+00",
+   "built_at": "2026-08-19 19:50:23.532134+00",
    "notes": "Grid capacity, not grid proximity. INJECTION (MISO, generator-side) and WITHDRAWAL (PJM, load-side) are separate columns and must never be fused or compared - a data centre is load and needs withdrawal. Reads the LIVE v2 signal flag, never in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land)."
   },
   {
@@ -2085,6 +2133,14 @@
    "n_rows": 1220,
    "built_at": "2026-08-14 22:49:08.102582+00",
    "notes": "D19_warn extension: Indiana DWD current WARN notice list. Columns verbatim from page table: Company/City/Affected Workers/Notice Date/LO-CL Date/NAICS/Description/Notice Type + notice_pdf_urls. OBSERVED EVENT DATE = 'Notice Date'; 'LO/CL Date' is the announced layoff/closure effective date. Notice Type LO=layoff CL=closure. 1016/1220 rows have parseable Notice Date. Extends held D19 (1,039 rows) with current-period rows; dedupe on company+notice_date downstream."
+  },
+  {
+   "table_name": "in_si_warn_normalised",
+   "source": "indiana_app.in_si_state_warn_notices (Indiana DWD WARN notice list)",
+   "method": "declarative Notice_Type mapping, longest-match-first so LO/CL is not filed as LO; event date parsed %m/%d/%Y with range-start, month and quarter fallbacks, each labelled in event_date_precision; the 204 rows whose type AND date AND worker count are all the literal N/A are classed NOT_STATED and never defaulted to layoff; affected_workers NULL where not stated. RE-SCRAPE COMMAND: python scripts/build_warn_normalised.py",
+   "n_rows": 1220,
+   "built_at": "2026-08-19 18:42:05.958694+00",
+   "notes": "G90(a). Closures are the MAJORITY (CL 564 vs LO 415) and were being read as layoff data. vacates_site marks the ones that free the land; si_strength ranks them. NULL si_strength means unknown, not weak. This does NOT make WARN reach a parcel - the table has no street address and Indiana parcel owner is NULL, so D19_warn stays on 2 parcels until the DLGF Gateway pull."
   },
   {
    "table_name": "in_site_gates",
@@ -2599,6 +2655,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 339,
+ "registry_rows_total": 349,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

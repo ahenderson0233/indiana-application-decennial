@@ -206,7 +206,12 @@ pjm AS (
     {PROBE_MW}                                     AS probe_mw
   FROM pjm_rank b
   JOIN pjm_agg a USING (bus_number, direction)
-  LEFT JOIN `{DS}.in_pjm_bus_locations_candidate` l
+  -- G114: repointed to the v2 locator. It keeps every row of in_pjm_bus_locations_candidate
+  -- verbatim and ADDS 54 buses recovered by matching the PSS/E label stem to a substation name,
+  -- unambiguously and with the voltage checked. Located PJM buses 229 -> 283, and inside Indiana
+  -- 42 -> 99. ⚠ The added rows are match_confidence 'med', never 'high' -- our substation corpus
+  -- is an Indiana clip and PJM case 23 spans the whole AEP footprint.
+  LEFT JOIN `{DS}.in_pjm_bus_locations_v2` l
          ON CAST(l.bus_number AS STRING) = b.bus_number
   WHERE b.rk = 1
 ),
