@@ -72,7 +72,11 @@ for r in client.query(f"""
          sfha_flood, wetland_on_parcel, protected_land, bonus_kinds,
          inj_bus, inj_kv, inj_mw, inj_mw_worst, inj_mw_best, inj_binding, inj_mi,
          wd_bus, wd_kv, wd_mw, wd_binding, wd_conf, wd_mi,
-         sub_name, sub_kv, sub_mi
+         sub_name, sub_kv, sub_mi,
+         -- transmission line, 2026-08-19. A line is the one asset that can run THROUGH a
+         -- parcel rather than near it: 41,986 do. line_on_parcel is a stronger fact than a
+         -- small line_mi and must not be flattened into it.
+         line_mi, line_on_parcel, line_kv, line_volt_class
   FROM ranked
   WHERE has_signal OR rk <= {TOP_PER_COUNTY}
   ORDER BY county_fips, mw_dc DESC"""):

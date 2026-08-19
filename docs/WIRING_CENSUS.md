@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 282 of 301 registered objects reach a surface
+## 283 of 300 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -30,8 +30,6 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_pjm_qs_c23_wd_5000` | 462654 | `—` |
 | `in_pjm_qs_c23sens_inj` | 655404 | `—` |
 | `in_pjm_qs_c23sens_wd` | 462654 | `—` |
-| `in_pjm_qs_tc2phii_inj` | 655404 | `—` |
-| `in_pjm_qs_tc2phii_wd` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
@@ -90,6 +88,7 @@ headline can be audited rather than taken on trust:
 | `in_dc_actions_resweep_walls` | registry panel | `scripts/export_ordinances.py (family `in_dc_actions*`)` |
 | `in_dc_actions_verify_walls` | direct | `scrapers/lane_f/load_verifications.py`, `scripts/export_ordinances.py` |
 | `in_dc_colo_resolved` | direct | `data.html`, `scripts/export_engine_outputs.py` |
+| `in_dc_county_counts` | direct | `scripts/export_grid_sentiment.py` |
 | `in_dc_docket_tracker` | direct | `app.js` |
 | `in_dc_eei_tariffs` | direct | `app.js` |
 | `in_dc_operator_aliases` | direct | `scripts/export_signoff_payloads.py` |
@@ -218,8 +217,6 @@ headline can be audited rather than taken on trust:
 | `in_pjm_qs_c23_wd_5000` | **none** | — |
 | `in_pjm_qs_c23sens_inj` | **none** | — |
 | `in_pjm_qs_c23sens_wd` | **none** | — |
-| `in_pjm_qs_tc2phii_inj` | **none** | — |
-| `in_pjm_qs_tc2phii_wd` | **none** | — |
 | `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
 | `in_pjm_queuescope_aep` | direct | `app.js`, `scripts/build_pjm_withdrawal.py` |
 | `in_pjm_queuescope_injection` | derivative | `feeds `vw_pjm_bus_injection_ladder` via `scripts/build_pjm_injection_rollup.py`` |

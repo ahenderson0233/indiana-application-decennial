@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Insights — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=8ca4da1c">
+<link rel="stylesheet" href="style.css?v=750a28e0">
 </head>
 <body>
 <header id="topbar">
@@ -27,7 +27,7 @@
       <tr><td><b>Site screener</b></td>
           <td>The opposite direction: describe what you want to build, get a ranked list back.
             <b>Start here if you know your requirements.</b></td></tr>
-      <tr><td><b>Power &amp; grid</b></td><td>Substations, lines, connection points and queues.</td></tr>
+      <tr><td><b>Power &amp; grid</b></td><td>Substations, lines, buses and queues.</td></tr>
       <tr><td><b>Market &amp; cost</b></td><td>Electricity rates, gas pipeline capacity, tariffs.</td></tr>
       <tr><td><b>Community &amp; local rules</b></td>
           <td>Which counties have passed rules about data centres, and where opposition is active.
@@ -45,7 +45,7 @@
   <div id="i-gaps"></div>
 </div>
 
-<script src="common.js?v=849a4bcf"></script>
+<script src="common.js?v=a2714694"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -85,9 +85,9 @@ const $ = (id) => document.getElementById(id);
         nothing about the other:</p>
       <table style="margin:8px 0">
         <tr><td style="width:230px"><b>Can this site GET power?</b></td>
-            <td>What a data centre needs. <b>${fmt(wd)}</b> connection points measured.</td></tr>
+            <td>What a data centre needs. <b>${fmt(wd)}</b> buses measured.</td></tr>
         <tr><td><b>Can this site SEND power?</b></td>
-            <td>What a generator needs. <b>${fmt(inj)}</b> connection points measured.</td></tr>
+            <td>What a generator needs. <b>${fmt(inj)}</b> buses measured.</td></tr>
       </table>
       <p><b>Most of Indiana is served by MISO, and MISO publishes only the sending-power
         direction.</b> The getting-power figures we do hold come from PJM, which in Indiana covers
@@ -189,7 +189,7 @@ const $ = (id) => document.getElementById(id);
       <h2>What this tool cannot tell you</h2>
       <table>
         <tr><td style="width:250px"><b>Whether power is actually available</b></td>
-            <td>We can show published headroom at the nearest connection point. Only the utility's
+            <td>We can show published headroom at the nearest bus. Only the utility's
               own study can tell you what you can really get, and when.</td></tr>
         <tr><td><b>What the land costs</b></td>
             <td>We hold no price or valuation data. A motivated owner is not a cheap owner.</td></tr>

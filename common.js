@@ -559,7 +559,7 @@ function tariffCells(q, mw, lf) {
        : `<b>Which schedule you qualify for is worth ${money(spread)} a year here</b> &mdash;
           ${best.cents.toFixed(2)}&cent; on <b>${best.code}</b>${at(best)} against
           ${worst.cents.toFixed(2)}&cent; on <b>${worst.code}</b>${at(worst)}.
-          ${named(best) || named(worst) ? "" : "This utility publishes no service-voltage split, so the choice is the schedule, not the connection point. "}Eligibility
+          ${named(best) || named(worst) ? "" : "This utility publishes no service-voltage split, so the choice is the schedule, not the bus. "}Eligibility
           is set by contract demand and load factor, so confirm which one you actually qualify for.`}
      Every figure includes the schedule's own charges <b>and every rider that
      attaches to it</b>${best.ridersNotHeld

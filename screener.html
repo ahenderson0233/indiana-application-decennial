@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=8ca4da1c">
+<link rel="stylesheet" href="style.css?v=750a28e0">
 </head>
 <body>
 <header id="topbar">
@@ -104,7 +104,7 @@
             <tr><td><b>Can this site SEND power?</b></td>
                 <td>What a power plant or a solar farm needs. The grid calls this <i>injection</i>.</td></tr>
           </table>
-          <p class="hint" style="margin-top:5px">A connection point can be wide open in one
+          <p class="hint" style="margin-top:5px">A bus can be wide open in one
             direction and full in the other. A big number in the wrong direction tells you nothing
             about your project, so we never merge them into one figure.</p>
         </div>
@@ -121,15 +121,22 @@
         <p class="hint" id="s-cover-note"></p>
 
         <label class="blk">At least <span class="inline"><input type="number" id="s-mwavail" value="0" min="0"> MW</span>
-          available at the nearest connection point</label>
+          available at the nearest bus</label>
         <label class="blk">Within <span class="inline"><input type="number" id="s-busmi" value="25" min="1" step="1"> miles</span>
-          of that connection point</label>
-        <p class="hint">We only looked within 25 miles. Past that, a connection point is not a
+          of that bus</label>
+        <p class="hint">We only looked within 25 miles. Past that, a bus is not a
           useful fact about the site.</p>
 
         <div class="subhead">Substation (a different thing again)</div>
         <label class="blk">Within <span class="inline"><input type="number" id="s-submi" value="0" min="0" step="0.5"> miles</span>
           of a substation <span class="inline">of at least <input type="number" id="s-subkv" value="0" min="0"> kV</span></label>
+        <label class="blk">Within <span class="inline"><input type="number" id="s-linemi" value="0" min="0" step="0.1"> miles</span>
+          of a transmission line <span class="inline">of at least <input type="number" id="s-linekv" value="0" min="0"> kV</span></label>
+        <label><input type="checkbox" id="s-lineon"> Only sites with a line <b>running across the parcel</b>
+          <span class="hint">(41,986 of them &mdash; no greenfield line to build)</span></label>
+        <div class="hint">A line is the one asset that can run THROUGH a parcel rather than near it,
+          which is why this is a different question from the substation above. ⚠ A line on the
+          parcel means an easement and conductor clearance that shape where steel can go.</div>
         <p class="hint">Distance to a substation says a wire is nearby. It does <b>not</b> say
           there is capacity to spare. 0 turns this filter off.</p>
         <p class="hint"><b>&#9888; Read the kV filter carefully.</b> <b>1,584 of 3,010 substations
@@ -138,7 +145,7 @@
           they are too small but because nobody published a number. Leave it at 0 unless you
           specifically need a rated substation.</p>
       
-        <label class="blk">Connection point of at least
+        <label class="blk">Bus of at least
           <span class="inline"><input type="number" id="s-buskv" value="0" min="0"> kV</span>
           <span class="hint">(a 138 kV bus and a 34.5 kV bus are not the same on-ramp)</span></label>
         <label class="blk">Binding facility contains
@@ -259,7 +266,7 @@
   </main>
 </div>
 
-<script src="common.js?v=849a4bcf"></script>
+<script src="common.js?v=a2714694"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -398,6 +405,9 @@ function passes(s) {
   } else if (needMW) return false;
 
   if (N("s-submi") && (s.sub_mi == null || s.sub_mi > N("s-submi"))) return false;
+  if (N("s-linemi") && (s.line_mi == null || s.line_mi > N("s-linemi"))) return false;
+  if (N("s-linekv") && (s.line_kv == null || s.line_kv < N("s-linekv"))) return false;
+  if ($("s-lineon").checked && !s.line_on_parcel) return false;
   if (N("s-subkv") && (s.sub_kv == null || s.sub_kv < N("s-subkv"))) return false;
 
   if ($("s-si").checked && signalState(s).qualifies !== true) return false;
@@ -437,9 +447,12 @@ function activeChips() {
   c.push($("s-dir").value === "wd" ? "getting power" : $("s-dir").value === "inj" ? "sending power" : "either direction");
   if ($("s-needbus").checked) c.push("measurement required");
   if (N("s-mwavail")) c.push(`${fmt(N("s-mwavail"))}+ MW available`);
-  if (N("s-busmi") !== 25) c.push(`within ${N("s-busmi")} mi of a connection point`);
+  if (N("s-busmi") !== 25) c.push(`within ${N("s-busmi")} mi of a bus`);
   if (N("s-submi")) c.push(`within ${N("s-submi")} mi of a substation`);
   if (N("s-subkv")) c.push(`substation ${N("s-subkv")}+ kV`);
+  if (N("s-linemi")) c.push(`within ${N("s-linemi")} mi of a transmission line`);
+  if (N("s-linekv")) c.push(`line ${N("s-linekv")}+ kV`);
+  if ($("s-lineon").checked) c.push("line crosses the parcel");
   if ($("s-si").checked) c.push("owner-motivation signal");
   // G67: the new filters must appear here too, or a collapsed section hides what it is doing.
   for (const [id, lbl] of [["s-county", "county"], ["s-sitekind", "land type"],
@@ -449,7 +462,7 @@ function activeChips() {
   if ($("s-binding").value.trim()) c.push(`binding facility ~ "${$("s-binding").value.trim()}"`);
   if (N("s-outdoor")) c.push(`${fmt(N("s-outdoor"))}+ open acres`);
   if ($("s-structmax").value !== "") c.push(`at most ${$("s-structmax").value} structures`);
-  if (N("s-buskv")) c.push(`connection point ${N("s-buskv")}+ kV`);
+  if (N("s-buskv")) c.push(`bus ${N("s-buskv")}+ kV`);
   if (N("s-minevents")) c.push(`${N("s-minevents")}+ events`);
   if ($("s-plottable").checked) c.push("mappable only");
 
@@ -512,7 +525,7 @@ function siteDetail(s) {
       <div>
         <h4>Getting power &mdash; what a data centre needs</h4>
         <table class="dtable">
-          ${detailRow("Nearest connection point", s.wd_bus, "no withdrawal point within 25 miles",
+          ${detailRow("Nearest bus", s.wd_bus, "no withdrawal point within 25 miles",
             "This is the direction a load draws. It is a published screening figure; only the utility's own study binds.")}
           ${detailRow("Published capacity", mw(s.wd_mw), "not published for this location",
             "How much load could connect there today, before upgrades.")}
@@ -551,8 +564,14 @@ function siteDetail(s) {
           ${detailRow("What is on it", landPlain(s.occ_group, s.structure_count), null,
             "Nothing built is a BUILD advantage — no demolition, no tenants — but it is not a signal the owner will sell.")}
           ${detailRow("Nearest substation", s.sub_name
-            ? `${s.sub_name}${s.sub_kv ? ` · ${fmt(s.sub_kv)} kV` : ""}${s.sub_mi != null ? ` · ${Number(s.sub_mi).toFixed(1)} mi` : ""}` : null,
-            null, "Distinct from the connection point above: a substation is where you physically land.")}
+            ? `${s.sub_name}${s.sub_kv ? ` · ${fmt(s.sub_kv)}
+          ${detailRow("Nearest transmission line",
+              s.line_mi == null ? null
+                : (s.line_on_parcel ? `<b>runs across this parcel</b>` : `${s.line_mi} mi`) +
+                  (s.line_kv ? ` · ${s.line_kv} kV` : " · voltage not published"),
+              "no transmission line measured for this parcel",
+              "A line on the parcel means no greenfield line to build - but expect an easement.")} kV` : ""}${s.sub_mi != null ? ` · ${Number(s.sub_mi).toFixed(1)} mi` : ""}` : null,
+            null, "Distinct from the bus above: a substation is where you physically land.")}
         </table>
       </div>
       <div>
@@ -747,6 +766,7 @@ function toCSV() {
     $("s-target").value = "300"; $("s-density").value = "4"; $("s-use").value = "dc";
     $("s-acres").value = 0; $("s-mwavail").value = 0; $("s-busmi").value = 25;
     $("s-submi").value = 0; $("s-subkv").value = 0; $("s-siyears").value = 3;
+    $("s-linemi").value = 0; $("s-linekv").value = 0;
     $("s-dir").value = "wd";
     for (const id of ["s-county", "s-sitekind", "s-conf", "s-signal", "s-keying", "s-bonuskind", "s-binding"])
       $(id).value = "";

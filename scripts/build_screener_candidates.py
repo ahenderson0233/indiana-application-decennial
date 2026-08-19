@@ -138,6 +138,12 @@ SELECT
 
   ns.s.nm AS sub_name, ns.s.max_kv AS sub_kv, ROUND(ns.s.m / 1609.344, 2) AS sub_mi,
 
+  -- TRANSMISSION LINE (2026-08-19). These columns have existed on in_asset_distance_parcel since
+  -- G29 and this build joined only the substation half of the same table. A line is the one asset
+  -- that can run THROUGH a parcel rather than merely near it -- 41,986 parcels have one on them --
+  -- so `line_on_parcel` is a different and stronger fact than a small `line_mi`.
+  ad.line_mi, ad.line_on_parcel, ad.line_kv, ad.line_volt_class, ad.line_kv_unknown,
+
   CURRENT_TIMESTAMP() AS built_at
 FROM cand c
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
@@ -146,6 +152,7 @@ LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)
 LEFT JOIN n_inj ni USING (parcel_source, parcel_key)
 LEFT JOIN n_wd  nw USING (parcel_source, parcel_key)
 LEFT JOIN n_sub ns USING (parcel_source, parcel_key)
+LEFT JOIN `{DS}.in_asset_distance_parcel` ad USING (parcel_source, parcel_key)
 """
 
 # ---- cost gate: never run a spatial join over 3.5M geographies without pricing it first ----

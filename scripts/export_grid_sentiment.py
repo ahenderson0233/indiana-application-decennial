@@ -165,6 +165,55 @@ for r in client.query(f"""
         "instrument": r.instrument, "observed": r.observed, "url": r.official_url})
     n_act += 1
 
+# ---------------------------------------------------------------------------------------------
+# G48 - AN OPERATING DATA CENTRE IS ITSELF A POSITIVE SIGNAL, and until now it never reached the
+# shading. `action_summary.tone` was built from county ACTIONS only, so a county with a live data
+# centre and no recorded approval shaded GREY -- "cannot assess" -- which understates it badly.
+#
+# in_data_centers_all has no county column, only lat/lon, so the county is resolved by a SPATIAL
+# join against the publisher's own boundaries. A name match here would be the CLOUDSCENE_GAP
+# mistake (eight fabricated matches, including two different companies joined on a shared city).
+#
+# The threshold is measured, not chosen: opposition_intensity is 0 on 61 of 92 counties -- the
+# modal value, meaning literally no recorded objection activity.
+#
+# ⛔ The DC is appended as ONE MORE ACTION rather than written straight to the tone, so the
+# existing worst-tone-wins fold below decides. That is what keeps the operator's binding rule --
+# A RESTRICTION OUTRANKS A DEVELOPMENT -- true by construction instead of by a special case.
+DC_GREEN, DC_WATCH, dc_counties = 0, 0, {}
+# ⛔ reads the CLIP, never `energy`. The first version joined energy.county_boundaries here and
+# the checkpoint caught it within one run: "no EXPORT reads energy directly". An export is on the
+# path to what the user sees, so it must read indiana_app only -- otherwise the app cannot be
+# rebuilt without the platform's dataset. The spatial join now lives in a BUILD script.
+for r in client.query(f"SELECT county_geoid, data_centres FROM `{DS}.in_dc_county_counts`"):
+    dc_counties[r.county_geoid] = r.data_centres
+
+for g, n in dc_counties.items():
+    v = ctx.get(g)
+    if not v:
+        continue
+    po = v.get("posture") or {}
+    opp = po.get("opposition_intensity") or 0
+    restricted = bool(po.get("has_local_restriction")) or bool(po.get("local_bans")) \
+        or bool(po.get("local_moratoriums"))
+    if restricted:
+        continue          # a restriction outranks a development; the fold already has that action
+    if opp == 0:
+        tone, why = "open", f"{n} data centre(s) already operating here and no recorded objection"
+        DC_GREEN += 1
+    else:
+        tone, why = "watch", (f"{n} data centre(s) already operating here, but {opp} recorded "
+                              f"objection action(s)")
+        DC_WATCH += 1
+    v.setdefault("actions", []).append({
+        "action": "existing-data-centre", "tone": tone, "why": why,
+        "jurisdiction": po.get("county_name"), "instrument": None,
+        "observed": None, "url": None})
+    v["existing_dc"] = n
+print(f"G48: existing data centres reached the shading in {len(dc_counties)} counties "
+      f"({DC_GREEN} promoted to green, {DC_WATCH} to amber, "
+      f"{len(dc_counties) - DC_GREEN - DC_WATCH} left alone because a restriction outranks them)")
+
 # one rolled-up verdict per county so the map can shade and filter on it. Worst tone wins: a county
 # that has both approved one project and banned another is NOT "open".
 TONE_RANK = {"blocking": 3, "watch": 2, "neutral": 1, "open": 0}
@@ -262,3 +311,18 @@ if not _has:
     print(f"  restored: {_has}/92 counties carry iocs (enricher exit {_rc})")
 assert _has, ("county_context.json still has no IOCS block. The Community court-activity table "
               "would render empty. Run scripts/export_signoff_payloads.py.")
+
+# ---------------------------------------------------------------------------------------------
+# G43 SELF-HEAL. This exporter rewrites grid.geojson.gz and facilities.geojson.gz straight from
+# BigQuery, which SILENTLY UN-CLIPS them at the Indiana border -- measured the first time it ran
+# after G43 landed: grid went 9,020 features back to 10,659, putting 1,639 out-of-state features
+# back on an Indiana-only map.
+#
+# This is the same shape as the IOCS defect directly above, and it earns the same treatment.
+# Remembering an ordering rule is not a control: the exporter re-runs the clip itself and asserts.
+_clip = os.path.join(REPO, "scripts", "clip_payloads_to_indiana.py")
+if os.path.exists(_clip):
+    print("G43: re-clipping the payloads this export just rewrote")
+    _rc = _sp.call([_sys.executable, _clip])
+    assert _rc == 0, ("the border clip failed after an export. grid.geojson.gz is now UNCLIPPED "
+                      "and will draw out-of-state assets. Run scripts/clip_payloads_to_indiana.py.")

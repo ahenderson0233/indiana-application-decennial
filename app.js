@@ -1030,7 +1030,7 @@ function enrichDistances(feats) {
       if (best) { p._dsub_mi = +(best.d / MI).toFixed(2); p._dsub_kv = best.s.kv; p._dsub_name = best.s.name; }
     }
 
-    // ---- connection point (bus). Still client-side: no exact bus distance is shipped yet. ----
+    // ---- bus (bus). Still client-side: no exact bus distance is shipped yet. ----
     // ⚠ GUARDED. enrichDistances runs inside the county fetch's .then(), so if poiList had not
     // loaded yet this loop threw "state.poiList is not iterable" and took the WHOLE function with
     // it — every parcel in that county silently lost EVERY distance, substation and line included,
@@ -1544,6 +1544,11 @@ function naaSoWhat(p) {
  * prompted this. The default stays the honest one, so a caller that says nothing is never taken to
  * be asserting emptiness. */
 function row(k, v, absent) {
+  /* G51 sweep, 2026-08-19. Pass `absent` ONLY when the source covers every parcel, so a null
+     genuinely means "measured, nothing here". in_asset_distance_parcel and in_water_distance_parcel
+     both cover all 532,868 candidates at fan-out 1.000, which is what makes the grid and water rows
+     safe. Anything per-county or per-source keeps the default -- inventing "none" where we never
+     looked is the defect this three-state helper exists to prevent. */
   const val = (v === null || v === undefined || v === "")
     ? `<span class="cannot">${absent || "not measured here"}</span>`
     : (typeof v === "number" ? fmt(v) : String(v));
@@ -1743,7 +1748,7 @@ function territoryAt(lat, lon) {
   return null;
 }
 
-/* nearest connection point IN A NAMED DIRECTION, and IN THE SITE'S OWN GRID.
+/* nearest bus IN A NAMED DIRECTION, and IN THE SITE'S OWN GRID.
    Two constraints, both learned the hard way on the first render:
 
    1. Never "nearest bus" without the direction — a withdrawal number and an injection number
@@ -1960,7 +1965,7 @@ function renderPowerPlan(p, fips) {
          demolition, no tenants to relieve, no structure to work around, and the whole area is
          available for a battery pad. Undeveloped land is the cleanest BESS inventory we hold.`
       : null,
-    wdBus ? `Nearest <b>load-side</b> connection point is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
+    wdBus ? `Nearest <b>load-side</b> bus is <b>${wdBus.name}</b> (${fmt(wdBus.kv)} kV)
         at ${wdBus.mi} mi, with <b>${fmt(wdBus.mw)} MW</b> of published withdrawal capacity.`
       : `<b>No load-side capacity figure could be matched to this site.</b> ${ba === "PJM"
          ? "We hold PJM's current case for 1,826 buses but can place only 227 of them, and none is within 25 miles"
@@ -2078,7 +2083,7 @@ function renderPowerPlan(p, fips) {
     <div class="prov">The parcel's own recorded boundary, drawn to scale. <b>Acreage, the
       distances to transmission, substations and water, and the service territory above are all
       measured against this polygon</b>, never a centroid. ⚠ The one exception is stated rather
-      than hidden: the <b>nearest grid connection point</b> in Figure 3 is measured from the
+      than hidden: the <b>nearest bus</b> in Figure 3 is measured from the
       parcel's interior point, because the bus locations we hold are themselves points.</div>
 
     <!-- ============================ PAGE 2 ============================ -->
@@ -2117,7 +2122,7 @@ function renderPowerPlan(p, fips) {
           ? `<b>${injBus.name}</b> · ${fmt(injBus.kv)} kV · ${injBus.mi} mi<br>
              <b>${fmt(injBus.mw)} MW</b> injection headroom
              <div class="hint">study case: ${escHtml(injBus.vintage || "per publisher")}</div>`
-          : `<span class="cannot">No connection point within 25 miles.</span>`}</td>
+          : `<span class="cannot">No bus within 25 miles.</span>`}</td>
         <td class="hint">Only relevant if you intend to co-locate generation or export.
           <b>It is not a substitute for the withdrawal figure</b> — re-measured on the current
           PJM case across <b>1,826 buses</b>, the two directions agree on <b>none</b> of the 407
@@ -2256,11 +2261,13 @@ function openParcelEvidence(p, fips) {
     <h3>Power &amp; grid — how hard is it to get power here?</h3><table>
       ${row("nearest substation", p._dsub_name
           ? `${p._dsub_name}${p._dsub_kv ? ` (${p._dsub_kv} kV)` : " (voltage not published)"} · ${p._dsub_mi === 0 ? "on this parcel" : `${p._dsub_mi} mi`}`
-          : null)}
+          : "none within the search radius (measured)")}
       ${row("nearest transmission line", p._dline_mi != null
           ? `${p._dline_kv ? `${p._dline_kv} kV` : "voltage not published"} · ${p._dline_on ? "<b>runs across this parcel</b>" : `${p._dline_mi} mi`}`
-          : null)}
-      ${row("nearest connection point", p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · ${fmt(p._dpoi_mw)} MW load headroom` : null)}</table>
+          : "none within the search radius (measured)")}
+      ${row("nearest bus",
+          p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · ${fmt(p._dpoi_mw)} MW load headroom` : null,
+          "no bus within 25 miles (measured)")}</table>
     ${p._dline_mi != null ? `<div class="sowhat">${
       p._dline_on
         ? "A transmission line already crosses this parcel, so there is <b>no greenfield line to build</b> — but expect an easement and conductor-clearance constraint that shapes where you can put steel."
@@ -2309,7 +2316,10 @@ function openParcelEvidence(p, fips) {
     })()}
     ${p.x_wat_mi != null ? `
     <h3>Water — can this site be cooled?</h3><table>
-      ${row("nearest water source", `${p.x_wat_name || "unnamed"} (${p.x_wat_kind || "surface water"}) · ${p.x_wat_on ? "<b>on this parcel</b>" : `${p.x_wat_mi} mi`}`)}
+      ${row("nearest water source",
+          p.x_wat_mi == null ? null
+            : `${p.x_wat_name || "unnamed"} (${p.x_wat_kind || "surface water"}) · ${p.x_wat_on ? "<b>on this parcel</b>" : `${p.x_wat_mi} mi`}`,
+          "no surface-water source within 10 miles (measured)")}
     </table>
     <div class="sowhat">${
       p.x_wat_on

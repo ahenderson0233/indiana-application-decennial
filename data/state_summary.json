@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-18T21:57:13+00:00",
+ "built_at_utc": "2026-08-19T01:36:08+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -341,6 +341,14 @@
    "n_rows": 8,
    "built_at": "2026-08-16 17:24:59.076601+00",
    "notes": "verdicts: 4 RESOLVED (all four already pinned under other names - CenturyLink->Lumen rename x2, DataBank x2 name-form), 1 RESOLVED-in-Carmel (Expedient, already pinned), 2 SAME_BUILDING_AS (365 DC = suite in Netrality 701 W Henry; CenturyLink Indy 3 = numbering ghost), 1 NOT_FOUND (AxiaTP resells partner facilities - no building). ZERO genuinely missing buildings; gb_scanned covers session exploration queries."
+  },
+  {
+   "table_name": "in_dc_county_counts",
+   "source": "indiana_app.in_data_centers_all x energy.county_boundaries (STATEFP='18')",
+   "method": "ST_CONTAINS(county.geom, ST_GEOGPOINT(dc.lon, dc.lat)) -- SPATIAL, never a name match (a name match is the CLOUDSCENE_GAP defect). Exists so that export_grid_sentiment.py can shade a county green for an operating data centre WITHOUT an export reading `energy` directly. RE-SCRAPE COMMAND: python scripts/build_dc_county_counts.py",
+   "n_rows": 23,
+   "built_at": "2026-08-19 01:35:35.379326+00",
+   "notes": "G48 input. 244 located data centres across 23 counties. Excludes rows with no coordinate."
   },
   {
    "table_name": "in_dc_docket_tracker",
@@ -1343,6 +1351,14 @@
    "notes": "THE public machine-readable queue-project -> network-upgrade-cost mapping: network upgrade id -> allocated queue project ids -> cost -> TO -> state. 55 rows all-states, 1 name Indiana. Costs in $M per the page's conventions (same family as RTEP export). PLOTTABILITY: JOINABLE_IDENTITY (upgrade id joins in_pjm_rtep_upgrades/held txexp_pjm_tcic_upgrade_info; queue project ids join the PJM queue/queuescope universe; no coords served). Per-upgrade drilldowns exist at /m/ProjectTransition/NucraProjectDetails|UpgradeProjectsWithCostAlloc?upgradeId={id} (not crawled this run)."
   },
   {
+   "table_name": "in_pjm_qs_c23_wd_5000",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 462654,
+   "built_at": "2026-08-19 01:14:20.472945+00",
+   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
    "table_name": "in_pjm_qs_c23sens_inj",
    "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
    "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
@@ -1356,22 +1372,6 @@
    "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
    "n_rows": 462654,
    "built_at": "2026-08-18 16:34:31.604066+00",
-   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
-  },
-  {
-   "table_name": "in_pjm_qs_tc2phii_inj",
-   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
-   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
-   "n_rows": 655404,
-   "built_at": "2026-08-18 01:27:11.924992+00",
-   "notes": "PJM QueueScope INJECTION direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
-  },
-  {
-   "table_name": "in_pjm_qs_tc2phii_wd",
-   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
-   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
-   "n_rows": 462654,
-   "built_at": "2026-08-18 00:29:55.478052+00",
    "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
   },
   {
@@ -1578,8 +1578,8 @@
    "table_name": "in_screener_candidates",
    "source": "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x in_bus_headroom_miso(injection) x vw_pjm_bus_withdrawal_located(withdrawal) x in_substations",
    "method": "candidates = fits>=25MW OR carries a v2 owner-motivation signal; nearest bus within 40 km computed SEPARATELY per direction; D85 excluded by key before any spatial join; fan-out asserted < 1.01",
-   "n_rows": 532868,
-   "built_at": "2026-08-17 15:27:12.898210+00",
+   "n_rows": 532870,
+   "built_at": "2026-08-19 01:30:31.656359+00",
    "notes": "Grid capacity, not grid proximity. INJECTION (MISO, generator-side) and WITHDRAWAL (PJM, load-side) are separate columns and must never be fused or compared - a data centre is load and needs withdrawal. Reads the LIVE v2 signal flag, never in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land)."
   },
   {
