@@ -1731,6 +1731,79 @@ function msIndex() {
   return out;
 }
 
+/* G121b: one route from a parcel key to an opened parcel, shared by the parcel-ID search and the
+   Marion address search. ⛔ Written once: the ?parcel= deep link, the id search and the address
+   search all have to fit the parcel's own OUTLINE and open the same panel, and three copies of
+   that would drift — which is the defect this codebase hits most often. */
+async function msOpenParcel(pk, typedAs, nMulti, say) {
+  const cc = parseInt(String(pk).slice(0, 2), 10);
+  const fips = cc >= 1 && cc <= 92 ? String(18001 + (cc - 1) * 2) : null;
+  if (fips) await ensureCountyLoaded(fips);
+  for (const [f, feats] of state.loaded) {
+    const ft = feats.find((x) => x.properties && x.properties.parcel_key === pk);
+    if (!ft) continue;
+    const pts = [];
+    (function walk(c) { if (typeof c[0] === "number") { pts.push(c); return; }
+                        for (const x of c) walk(x); })(ft.geometry.coordinates);
+    if (pts.length) {
+      const xs = pts.map((v) => v[0]), ys = pts.map((v) => v[1]);
+      const pad = Math.max(40, Math.min(110, Math.round(
+        Math.min(map.getContainer().clientWidth, map.getContainer().clientHeight) * 0.12)));
+      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+                    { padding: pad, maxZoom: 17.5, duration: 900 });
+    }
+    highlightParcel(ft);
+    openParcelEvidence(ft.properties, f);
+    /* ⚠ 16,087 Marion addresses cover MORE THAN ONE parcel — condominiums, split lots, campuses.
+       We open the first, because something has to open, but the reader is told rather than left
+       to assume the parcel they are looking at is the whole site. */
+    if (nMulti > 1) {
+      const p = document.querySelector("#ev-body") || document.body;
+      const n = document.createElement("div");
+      n.className = "cannot";
+      n.innerHTML = `\u26a0 <b>${fmt(nMulti)} parcels share the address ` +
+        `${escHtml(String(typedAs || ""))}.</b> This is one of them — the county register lists ` +
+        `the rest under the same street address, so check the neighbours before assuming this ` +
+        `parcel is the whole site.`;
+      p.insertBefore(n, p.firstChild);
+    }
+    return true;
+  }
+  if (say) {
+    say(`<div class="ms-note">\u26d4 <b>Parcel <code>${escHtml(String(pk))}</code> was not
+      found</b>${fips ? ` in county ${escHtml(fips)}, which its first two digits point to.` : "."}
+      That is a measured absence, not a rejection of the id — the parcel may sit outside the
+      screened set this map draws.</div>`);
+  }
+  return false;
+}
+
+/* Must match `norm_addr()` in export_marion_addresses.py and build_si_address_to_parcel.py.
+   Three normalisers over one corpus would disagree about which addresses exist. */
+const MS_DIRS = /^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)\s+/;
+const MS_DIRS_END = /\s+(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)$/;
+const MS_SUFFIX = /\s+(STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR|LANE|LN|BOULEVARD|BLVD|COURT|CT|PLACE|PL|CIRCLE|CIR|PARKWAY|PKWY|TERRACE|TER|WAY|TRAIL|TRL|HIGHWAY|HWY|PIKE|SQUARE|SQ)$/;
+const MS_UNIT = /\b(SUITE|STE|UNIT|APT|APARTMENT|FLOOR|FL|BLDG|BUILDING|ROOM|RM|#).*$/;
+function msNormAddr(raw) {
+  let s2 = String(raw || "").toUpperCase().replace(/[.,]/g, " ").replace(MS_UNIT, " ")
+    .replace(/\s+/g, " ").trim();
+  const m = s2.match(/^(\d+)\s+(.*)$/);
+  if (!m) return [null, null];
+  let rest = m[2].replace(MS_DIRS, " ").replace(MS_DIRS_END, " ").replace(MS_SUFFIX, " ")
+    .replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return rest ? [m[1], rest] : [m[1], null];
+}
+
+state.addrIdx = null; state.addrLoading = null;
+async function msAddressIndex() {
+  if (state.addrIdx) return state.addrIdx;
+  if (state.addrLoading) return state.addrLoading;
+  state.addrLoading = fetchGz("data/marion_addresses.json.gz")
+    .then((d) => { state.addrIdx = d; return d; })
+    .catch(() => { state.addrIdx = { idx: null, n: 0, _failed: true }; return state.addrIdx; });
+  return state.addrLoading;
+}
+
 async function msRun(q) {
   const out = $("ms-out");
   const say = (html) => { out.innerHTML = html; out.classList.remove("hidden"); };
@@ -1766,47 +1839,44 @@ async function msRun(q) {
 
   // 2. a parcel id -- resolve its own county from the first two digits
   if (/^\d{12,20}$/.test(q)) {
-    const cc = parseInt(q.slice(0, 2), 10);
-    const fips = cc >= 1 && cc <= 92 ? String(18001 + (cc - 1) * 2) : null;
-    say(`<div class="ms-note">Loading ${fips ? `county ${escHtml(fips)}` : "the loaded counties"}
-      to find parcel <code>${escHtml(q)}</code>…</div>`);
-    if (fips) await ensureCountyLoaded(fips);
-    for (const [f, feats] of state.loaded) {
-      const ft = feats.find((x) => x.properties && x.properties.parcel_key === q);
-      if (ft) {
-        out.classList.add("hidden");
-        /* Fit the parcel's own OUTLINE, the same way the ?parcel= deep link does — flying to a
-           point at a fixed zoom is what made "show this site on the map" arrive as a speck. */
-        const pts = [];
-        (function walk(c) { if (typeof c[0] === "number") { pts.push(c); return; }
-                            for (const x of c) walk(x); })(ft.geometry.coordinates);
-        if (pts.length) {
-          const xs = pts.map((v) => v[0]), ys = pts.map((v) => v[1]);
-          const pad = Math.max(40, Math.min(110, Math.round(
-            Math.min(map.getContainer().clientWidth, map.getContainer().clientHeight) * 0.12)));
-          map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
-                        { padding: pad, maxZoom: 17.5, duration: 900 });
-        }
-        highlightParcel(ft);
-        openParcelEvidence(ft.properties, f);
-        return;
-      }
-    }
-    say(`<div class="ms-note">⛔ <b>Parcel <code>${escHtml(q)}</code> was not found</b>
-      ${fips ? `in county ${escHtml(fips)}, which its first two digits point to.` : "."}
-      That is a measured absence, not a rejection of the id — the parcel may sit outside the
-      screened set this map draws.</div>`);
+    say(`<div class="ms-note">Locating parcel <code>${escHtml(q)}</code>…</div>`);
+    out.classList.add("hidden");
+    await msOpenParcel(q, null, 0, say);
     return;
   }
-
-  // 3. something address-shaped -- decline, and say exactly why
+  /* 3. AN ADDRESS. ⭐ G121b: this WORKS for Marion County, and it is not a geocode — it is a
+     lookup of the county's own published address-to-parcel crosswalk, so the answer is a PARCEL
+     rather than a point near one. Everywhere else it is declined with the reason, because no
+     other Indiana county publishes an equivalent and a street centreline is not a parcel. */
   if (MS_ADDRESSY.test(q)) {
-    say(`<div class="ms-note">⛔ <b>Street addresses cannot be searched here, by design.</b>
-      This tool holds no geocoder: an address resolves to a street <i>centreline</i>, and a
-      centreline is not a parcel — siting from one would put your site in the road.
-      <br><b>What works instead:</b> paste the <b>coordinates</b> (e.g.
-      <code>39.7684, -86.1581</code>) or the <b>parcel ID</b>. You can also search a county,
-      substation, bus, data centre or utility by name.</div>`);
+    const [num, stem] = msNormAddr(q);
+    if (!num || !stem) {
+      say(`<div class="ms-note">That does not parse as a street address. Try
+        <code>1200 N Meridian St</code>, a coordinate pair, or a parcel ID.</div>`);
+      return;
+    }
+    say(`<div class="ms-note">Looking up <b>${escHtml(q)}</b> in Marion County's address
+      register…</div>`);
+    const ai = await msAddressIndex();
+    const pk = ai.idx ? ai.idx[`${num}|${stem}`] : null;
+    if (!pk) {
+      say(`<div class="ms-note">⛔ <b>Not found among the addresses we can open.</b>
+        Two separate reasons, and it is worth knowing which one you have hit.
+        <br><b>1. Only Marion County publishes an address register we can use</b>, and we search
+        it directly — <b>${fmt(ai.n || 0)} addresses</b>. The other 91 counties publish no
+        equivalent, and this application has <b>no geocoder</b> on purpose: an address would
+        resolve to a street <i>centreline</i>, and a centreline is not a parcel — siting from one
+        puts your site in the road.
+        <br><b>2. Even in Marion, only SITING CANDIDATES are indexed.</b> The map draws
+        ${fmt(ai.drawn_parcels || 0)} of Marion's 340,765 parcels — the screened, non-residential
+        set. A house has no entry here because a house is not a site.
+        <br><b>What works everywhere:</b> the <b>coordinates</b> (e.g.
+        <code>39.7684, -86.1581</code>) or the <b>parcel ID</b>.</div>`);
+      return;
+    }
+    const nMulti = (ai.multi && ai.multi[`${num}|${stem}`]) || 0;
+    out.classList.add("hidden");
+    await msOpenParcel(pk, q, nMulti);
     return;
   }
 
@@ -1841,9 +1911,33 @@ if ($("ms-q")) {
     // debounce: msIndex() walks several payloads, and rebuilding it per keystroke is wasteful
     msT = setTimeout(() => msRun(v), 180);
   });
+  /* Keyboard navigation. A search box you have to reach for the mouse to use is half a search
+     box — and the result list is the only place the ESTIMATED-position badge appears before you
+     commit, so arrowing through it has to be possible. */
   $("ms-q").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { clearTimeout(msT); msRun(e.target.value); }
-    if (e.key === "Escape") { $("ms-out").classList.add("hidden"); e.target.blur(); }
+    const out = $("ms-out");
+    const rows = [...out.querySelectorAll(".ms-row")];
+    const cur = rows.findIndex((r) => r.classList.contains("on"));
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!rows.length) return;
+      e.preventDefault();
+      const next = e.key === "ArrowDown"
+        ? Math.min(rows.length - 1, cur + 1)
+        : Math.max(0, (cur < 0 ? 0 : cur - 1));
+      rows.forEach((r) => r.classList.remove("on"));
+      rows[next].classList.add("on");
+      rows[next].scrollIntoView({ block: "nearest" });
+      return;
+    }
+    if (e.key === "Enter") {
+      clearTimeout(msT);
+      // Enter takes the highlighted row if there is one, otherwise the first, otherwise re-runs
+      const pick = cur >= 0 ? rows[cur] : rows[0];
+      if (pick) { e.preventDefault(); pick.click(); return; }
+      msRun(e.target.value);
+      return;
+    }
+    if (e.key === "Escape") { out.classList.add("hidden"); e.target.blur(); }
   });
   document.addEventListener("click", (e) => {
     if (!e.target.closest("#mapsearch")) $("ms-out").classList.add("hidden");

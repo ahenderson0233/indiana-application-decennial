@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-19T20:40:32.403625+00:00",
+ "run_at": "2026-08-19T21:52:10.245592+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,7 +12,7 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 237 of 318 registered objects reach a surface \u00b7 81 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry', 'in_commission_posture']"
+   "detail": "MEASURED this run: 237 of 320 registered objects reach a surface \u00b7 83 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_300', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry']"
   },
   {
    "criterion": 2,
