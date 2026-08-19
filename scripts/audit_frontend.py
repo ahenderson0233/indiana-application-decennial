@@ -253,15 +253,34 @@ try:
                                                               errors="ignore").read()
 
     SUCCESSOR = ("_v2", "_v3", "_widened", "_resolved", "_dated", "_reconciled")
+
+    def _strip_py_prose(s):
+        """Remove the MODULE DOCSTRING and # comments — the places a script legitimately NAMES a
+        table it does not read ("in_ordinances_dc (v1, 4 rows) was not touched").
+
+        ⛔ Only the module docstring, never all triple-quoted blocks: the SQL in these scripts
+        lives in triple-quoted f-strings, so stripping them all would delete the very table names
+        this check exists to find. And regular quoted strings are left alone for the same reason.
+        """
+        s = re.sub(r"\A\s*(?:[rRuUbBfF]{0,2})(\"\"\"|''').*?\1", "", s, count=1, flags=re.S)
+        return re.sub(r"(?m)^\s*#.*$", "", s)
+
     for rel, src in sorted(scripts.items()):
         rel = rel.replace("\\", "/")
-        # SURFACES ONLY. A loader legitimately names its own predecessor in a note ("in_ordinances_dc
-        # (v1, 4 rows) was not touched"), and audits read everything by design. This check asks
-        # whether something the USER SEES is a generation behind, so it looks at exports only.
-        if not rel.startswith("scripts/export_"):
+        base = os.path.basename(rel)
+        # ⛔ G108: THIS USED TO BE EXPORTS ONLY, AND THAT IS WHY IT MISSED THE REAL ONE.
+        # `build_screener_candidates.py` read `vw_pjm_bus_withdrawal_located` and a 300 MW MISO
+        # probe for days after G63 replaced both — the screener's primary siting number was broken
+        # and this check could not see it, because a BUILD script is not an export. But a build
+        # feeding an export is on the path to the user just as surely; the export was reading the
+        # right table and being handed the wrong data.
+        # Builds are now included, with the prose stripped so a script that merely MENTIONS its
+        # predecessor in its header is not accused of reading it.
+        if not (base.startswith("export_") or base.startswith("build_")):
             continue
-        if rel.startswith("scripts\\audit") or "audit_" in rel:
+        if "audit_" in base or "checkpoint" in base:
             continue
+        src = _strip_py_prose(src)
         for tbl in sorted(set(re.findall(r"\{DS\}\.(\w+)", src)) & set(sizes)):
             better = [(tbl + s, sizes[tbl + s]) for s in SUCCESSOR
                       if tbl + s in sizes and sizes[tbl + s] > sizes.get(tbl, 0)]

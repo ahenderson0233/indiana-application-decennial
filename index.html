@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=e3cd2fb6">
+<link rel="stylesheet" href="style.css?v=e0291edb">
 </head>
 <body>
 <header id="topbar">
@@ -429,6 +429,17 @@
          Never collapsible, always reflects live control state. -->
     <div id="m-active"></div>
     <div id="map"><div id="tooltip" class="hidden"></div>
+      <!-- G121, operator 2026-08-19: a search bar in the upper-left taking an address,
+           coordinates or a parcel ID, zooming to the site and opening the popup.
+           ⛔ ADDRESS IS DECLINED AND SAYS SO. There is no geocoder here and a street centreline
+           is not a parcel; the only address-to-parcel corpus in the estate is Marion's crosswalk
+           (347,049 rows), far too large to ship. Everything else we hold WITH a coordinate is
+           searchable instead, which is a wider net than an address anyway. -->
+      <div id="mapsearch">
+        <input id="ms-q" type="search" autocomplete="off"
+               placeholder="Parcel ID, 39.77 -86.15, county, substation, bus…">
+        <div id="ms-out" class="hidden"></div>
+      </div>
       <!-- G52: a key for what is CURRENTLY drawn. Built from ALL_LAYER_BOXES and coloured by
            asking the map for each layer's own paint property, so it cannot drift from what is on
            screen - a hand-maintained legend would be a second copy of the palette, which is the
@@ -462,6 +473,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=e4d8d20b"></script>
-<script src="app.js?v=a6eaed95"></script>
+<script src="app.js?v=71d952e7"></script>
 </body>
 </html>

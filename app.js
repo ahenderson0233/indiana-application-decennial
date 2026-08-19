@@ -1640,6 +1640,216 @@ async function ensureCountyLoaded(fips) {
   } finally { state.loading.delete(fips); }
 }
 
+/* ---------- G121: THE MAP SEARCH BAR ----------------------------------------------------------
+   Operator, 2026-08-19: *"add in a search bar in the upper left hand corner of the map where an
+   address, coordinates, or parcel ID (or similar for locating a site) can be inputted by the user
+   and they immediately get zoomed into the site and the popup displays."*
+
+   ⛔ ADDRESS CANNOT BE DONE AS ASKED, AND THE BOX SAYS SO INSTEAD OF FAILING QUIETLY. There is no
+   geocoder in this application, deliberately: an address resolves to a street CENTRELINE and a
+   centreline is not a parcel. The only address-to-parcel corpus we hold is Marion County's
+   crosswalk, 347,049 rows, far too large to ship to a browser. Typing something address-shaped
+   returns an explanation and the two routes that do work, rather than "no results".
+
+   ⭐ WHAT IS SEARCHABLE IS WIDER THAN AN ADDRESS, because it is everything we hold WITH a
+   coordinate: a parcel id, a coordinate pair, a county, a substation, a transmission bus, a data
+   centre, a utility territory.
+
+   ⭐ A BARE PARCEL ID RESOLVES ITS OWN COUNTY. The first two digits of an Indiana state parcel
+   number are the county's alphabetical index, so fips = 18001 + (n-1)*2. Measured against the
+   candidate corpus: the rule holds on 532,235 of 532,691 keys (99.9%). The 456 exceptions start
+   '00' and fall back to searching whatever counties are already loaded.
+
+   ⚠ AN ESTIMATED POSITION IS BADGED IN THE RESULT LIST, not only after you fly there. 91.9% of
+   PJM bus positions are estimates and 92 of 249 data-centre pins are city centroids; a search
+   that flies to an estimate without saying so converts a caveat into a coordinate. */
+const MS_ADDRESSY = /\d+\s+[A-Za-z].*\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|blvd|boulevard|ct|court|hwy|highway|pike|way|pkwy)\b/i;
+
+function msFlyTo(lat, lon, label, src, estimate) {
+  map.flyTo({ center: [lon, lat], zoom: 15 });
+  const gj = { type: "Feature", geometry: { type: "Point", coordinates: [lon, lat] }, properties: {} };
+  if (map.getSource("deeplink-pt")) map.getSource("deeplink-pt").setData(gj);
+  else {
+    map.addSource("deeplink-pt", { type: "geojson", data: gj });
+    map.addLayer({ id: "deeplink-pt", type: "circle", source: "deeplink-pt",
+      paint: { "circle-radius": 11, "circle-color": "#f59e0b", "circle-opacity": 0.35,
+               "circle-stroke-color": "#b45309", "circle-stroke-width": 2.5 } });
+  }
+  show(`Found: ${escHtml(label)}`, `
+    <table>${row("Coordinate", `${lat.toFixed(5)}, ${lon.toFixed(5)}`)}
+      ${row("What it is", src)}</table>
+    ${estimate ? `<div class="cannot">⚠ <b>This position is an ESTIMATE.</b> ${escHtml(estimate)}
+      Treat it as "about here", not as a survey.</div>` : ""}
+    <div class="hint">Searched from the box at the top left. Everything drawn on the map is still
+      clickable — this only moved you to the place.</div>`);
+}
+
+/** Build the searchable index from payloads already in memory. Nothing new is fetched. */
+function msIndex() {
+  const out = [];
+  /* ⚠ DEDUPED ON (kind, name, position). `bus_poi` carries ONE FEATURE PER DIRECTION (G111), so
+     every bus would otherwise appear twice in the results — searching "DEQUIN" returned the
+     substation and then the same bus listed two times, which reads as two different buses. */
+  const seen = new Set();
+  const push = (kind, name, lat, lon, est) => {
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    const k = `${kind}|${String(name).toLowerCase()}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({ kind, name: String(name), lat, lon, est });
+  };
+  for (const f of ((state.counties && state.counties.features) || [])) {
+    const b = state.countyBbox[f.properties.fips];
+    if (b) push("county", f.properties.county_name, (b[1] + b[3]) / 2, (b[0] + b[2]) / 2, null);
+  }
+  for (const f of ((state.grid && state.grid.features) || [])) {
+    const p = f.properties, c = (f.geometry || {}).coordinates;
+    if (!c) continue;
+    if (p.layer === "substation") push("substation", p.substation_name, c[1], c[0], null);
+    else if (p.layer === "bus_poi")
+      push("bus", p.bus_name || p.poi_name, c[1], c[0],
+           "Bus positions are derived by matching the bus label to a substation gazetteer.");
+  }
+  for (const f of ((state.fac && state.fac.features) || [])) {
+    const p = f.properties, c = (f.geometry || {}).coordinates;
+    if (!c || p.layer !== "dc") continue;
+    push("data centre", p.name, c[1], c[0], p.location_precision === "city"
+      ? "The publisher gives CITY precision for this record — this is a town centroid, not the facility."
+      : null);
+  }
+  for (const f of ((state.terr && state.terr.features) || [])) {
+    const p = f.properties, g = f.geometry;
+    // ⚠ `bboxOf` walks geom.coordinates and throws on a feature that has none. A payload can
+    // legitimately carry a properties-only feature, and a search box must not take the map down
+    // because one row lacks geometry.
+    if (!g || !g.coordinates || !p || !p.utility) continue;
+    let bb;
+    try { bb = bboxOf(g); } catch (e) { continue; }
+    push("utility territory", p.utility, (bb[1] + bb[3]) / 2, (bb[0] + bb[2]) / 2,
+         "Territory centre, not an office or an asset.");
+  }
+  return out;
+}
+
+async function msRun(q) {
+  const out = $("ms-out");
+  const say = (html) => { out.innerHTML = html; out.classList.remove("hidden"); };
+  q = (q || "").trim();
+  if (!q) { out.classList.add("hidden"); return; }
+
+  // 1. a coordinate pair -- "39.77, -86.15" or "39.77 -86.15"
+  const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (m) {
+    let a = parseFloat(m[1]), b = parseFloat(m[2]);
+    // ⚠ accept either order: a lon/lat paste is at least as common as lat/lon, and Indiana's
+    // longitude is unambiguously negative, so the pair can be sorted out rather than refused.
+    if (Math.abs(a) > 90 && Math.abs(b) <= 90) { const t = a; a = b; b = t; }
+    const qual = coordQuality(m[1], m[2]);
+    /* ⛔ TESTED AGAINST THE COUNTY POLYGONS, NOT A BOUNDING BOX. The first version used a
+       rectangle (lat 37.5-42, lon -88.5..-84.5) and a rectangle around Indiana contains a large
+       piece of Illinois: pasting Chicago's 41.88, -87.63 sailed through the guard and the map
+       flew to it. `countyOf()` already does the exact point-in-polygon test and is what
+       `ingestRecords()` uses, so the two paths now agree on what "in Indiana" means. */
+    const cty = (state.counties && state.countyBbox) ? countyOf(b, a) : null;
+    if (!cty) {
+      say(`<div class="ms-note">⚠ <b>${a.toFixed(4)}, ${b.toFixed(4)} is not inside any Indiana
+        county.</b> This tool holds Indiana only, so there is nothing there to describe. Check the
+        order of the pair if you meant somewhere in the state.</div>`);
+      return;
+    }
+    out.classList.add("hidden");
+    msFlyTo(a, b, `${a.toFixed(5)}, ${b.toFixed(5)}`,
+      `a coordinate you typed — ${cty.county_name}`,
+      qual.trust === "site" ? null : qual.why);
+    return;
+  }
+
+  // 2. a parcel id -- resolve its own county from the first two digits
+  if (/^\d{12,20}$/.test(q)) {
+    const cc = parseInt(q.slice(0, 2), 10);
+    const fips = cc >= 1 && cc <= 92 ? String(18001 + (cc - 1) * 2) : null;
+    say(`<div class="ms-note">Loading ${fips ? `county ${escHtml(fips)}` : "the loaded counties"}
+      to find parcel <code>${escHtml(q)}</code>…</div>`);
+    if (fips) await ensureCountyLoaded(fips);
+    for (const [f, feats] of state.loaded) {
+      const ft = feats.find((x) => x.properties && x.properties.parcel_key === q);
+      if (ft) {
+        out.classList.add("hidden");
+        /* Fit the parcel's own OUTLINE, the same way the ?parcel= deep link does — flying to a
+           point at a fixed zoom is what made "show this site on the map" arrive as a speck. */
+        const pts = [];
+        (function walk(c) { if (typeof c[0] === "number") { pts.push(c); return; }
+                            for (const x of c) walk(x); })(ft.geometry.coordinates);
+        if (pts.length) {
+          const xs = pts.map((v) => v[0]), ys = pts.map((v) => v[1]);
+          const pad = Math.max(40, Math.min(110, Math.round(
+            Math.min(map.getContainer().clientWidth, map.getContainer().clientHeight) * 0.12)));
+          map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+                        { padding: pad, maxZoom: 17.5, duration: 900 });
+        }
+        highlightParcel(ft);
+        openParcelEvidence(ft.properties, f);
+        return;
+      }
+    }
+    say(`<div class="ms-note">⛔ <b>Parcel <code>${escHtml(q)}</code> was not found</b>
+      ${fips ? `in county ${escHtml(fips)}, which its first two digits point to.` : "."}
+      That is a measured absence, not a rejection of the id — the parcel may sit outside the
+      screened set this map draws.</div>`);
+    return;
+  }
+
+  // 3. something address-shaped -- decline, and say exactly why
+  if (MS_ADDRESSY.test(q)) {
+    say(`<div class="ms-note">⛔ <b>Street addresses cannot be searched here, by design.</b>
+      This tool holds no geocoder: an address resolves to a street <i>centreline</i>, and a
+      centreline is not a parcel — siting from one would put your site in the road.
+      <br><b>What works instead:</b> paste the <b>coordinates</b> (e.g.
+      <code>39.7684, -86.1581</code>) or the <b>parcel ID</b>. You can also search a county,
+      substation, bus, data centre or utility by name.</div>`);
+    return;
+  }
+
+  // 4. a named thing we hold with a coordinate
+  const needle = q.toLowerCase();
+  const idx = msIndex();
+  const hits = idx.filter((x) => x.name.toLowerCase().includes(needle))
+    .sort((a, b) => a.name.length - b.name.length).slice(0, 12);
+  if (!hits.length) {
+    say(`<div class="ms-note">Nothing matching <b>${escHtml(q)}</b> among the counties,
+      substations, buses, data centres and territories currently loaded.
+      ${state.grid ? "" : "<b>The grid layers are still loading</b> — try again in a moment."}</div>`);
+    return;
+  }
+  say(hits.map((h, i) => `<div class="ms-row" data-i="${i}">
+      <div><b>${escHtml(h.name)}</b>${h.est ? ` <span class="ms-est">estimated position</span>` : ""}</div>
+      <div class="ms-kind">${escHtml(h.kind)}</div></div>`).join(""));
+  for (const el of out.querySelectorAll(".ms-row")) {
+    el.onclick = () => {
+      const h = hits[Number(el.dataset.i)];
+      out.classList.add("hidden");
+      msFlyTo(h.lat, h.lon, h.name, h.kind, h.est);
+    };
+  }
+}
+
+if ($("ms-q")) {
+  let msT = null;
+  $("ms-q").addEventListener("input", (e) => {
+    clearTimeout(msT);
+    const v = e.target.value;
+    // debounce: msIndex() walks several payloads, and rebuilding it per keystroke is wasteful
+    msT = setTimeout(() => msRun(v), 180);
+  });
+  $("ms-q").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { clearTimeout(msT); msRun(e.target.value); }
+    if (e.key === "Escape") { $("ms-out").classList.add("hidden"); e.target.blur(); }
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#mapsearch")) $("ms-out").classList.add("hidden");
+  });
+}
+
 /* ?fips=18163&parcel=8206...&open=dossier
    `open=dossier` goes straight to the Power Plan; anything else opens the evidence panel. */
 async function handleDeepLink() {

@@ -327,3 +327,22 @@ body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
   border-bottom: 1px solid #eef2f7; line-height: 1.35; }
 .sigbox label.sig:last-child { border-bottom: 0; }
 .sigbox label.sig input { margin-top: 2px; flex: 0 0 auto; }
+
+/* ---------- G121: the map search bar ---------------------------------------------------------
+   Upper-left, over the map, above the layer legend's z-index so a result list is never hidden by
+   it. Deliberately narrow on small viewports: it must not cover the basemap picker. */
+#mapsearch { position: absolute; left: 10px; top: 10px; z-index: 5; width: 320px; max-width: 46vw; }
+#ms-q { width: 100%; padding: 6px 9px; font-size: 12px; border: 1px solid #ccd3de;
+  border-radius: 7px; background: rgba(255,255,255,.96); box-shadow: 0 1px 6px rgba(16,32,56,.14); }
+#ms-q:focus { outline: 2px solid #7fa8d9; outline-offset: -1px; }
+#ms-out { margin-top: 4px; background: rgba(255,255,255,.97); border: 1px solid #ccd3de;
+  border-radius: 7px; box-shadow: 0 1px 6px rgba(16,32,56,.18); max-height: 46vh;
+  overflow-y: auto; font-size: 11.5px; }
+#ms-out.hidden { display: none; }
+#ms-out .ms-row { padding: 5px 9px; cursor: pointer; border-bottom: 1px solid #eef1f6; }
+#ms-out .ms-row:last-child { border-bottom: none; }
+#ms-out .ms-row:hover, #ms-out .ms-row.on { background: #eef4fb; }
+#ms-out .ms-kind { color: #7b8aa1; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .03em; }
+#ms-out .ms-note { padding: 6px 9px; color: #6b7280; }
+#ms-out .ms-est { color: #b45309; font-weight: 600; }
