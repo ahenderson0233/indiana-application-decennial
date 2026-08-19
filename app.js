@@ -292,6 +292,42 @@ map.on("load", async () => {
     filter: ["==", ["get", "layer"], "nonattainment"], layout: { visibility: "none" },
     paint: { "fill-color": "#9f1239", "fill-opacity": 0.18, "fill-outline-color": "#881337" } });
 
+  /* ---------- G72: LAND-STATUS AND AIRSPACE GATES -------------------------------------------
+     Operator, 2026-08-19: "we should add datasets from BQ like military bases, tribal land, and
+     similar datasets that give us more contextual information about the land and environment."
+
+     All four objects were already clipped in BigQuery and NONE reached a control -- app.js named
+     them only inside the provenance dictionary, tagged "PAGE-NEXT". They answer one question the
+     console could not ask before: WHO ELSE ALREADY HOLDS A SAY OVER THIS LAND.
+
+     ⚠ `in_tribal_land` held 14 rows and NOT ONE was in Indiana -- it had been clipped by a
+     geoid key join rather than spatially, so it carried Laguna Pueblo (NM), L'Anse (MI),
+     Kootenai (ID) and eleven more. Re-clipped in scripts/build_land_gates.py; Indiana holds
+     exactly ONE tribal feature, Pokagon Off-Reservation Trust Land. Drawing the old table would
+     have rendered New Mexico on an Indiana map, or drawn nothing and read as "no tribal land
+     here" -- a negative finding we never measured, which is the G51 defect exactly.
+
+     Small enough to fetch at boot: 33 polygons + 4,591 points = 150 KB. */
+  state.gates = await fetchGz("data/gates.geojson.gz");
+  map.addSource("gates", { type: "geojson", data: state.gates });
+  for (const [layer, id, colour, op] of [
+    ["military", "gate-mil",    "#b45309", 0.30],
+    ["tribal",   "gate-tribal", "#0f766e", 0.34],
+    ["sua",      "gate-sua",    "#4338ca", 0.14],
+  ]) {
+    map.addLayer({ id, type: "fill", source: "gates",
+      filter: ["==", ["get", "layer"], layer], layout: { visibility: "none" },
+      paint: { "fill-color": colour, "fill-opacity": op, "fill-outline-color": colour } });
+  }
+  // Height is the whole point of this layer, so it is the thing the radius encodes. 200 ft is the
+  // FAA Part 77 NOTICE threshold -- every point here already had to tell the FAA it exists.
+  map.addLayer({ id: "gate-obst", type: "circle", source: "gates",
+    filter: ["==", ["get", "layer"], "obstacle"], layout: { visibility: "none" },
+    paint: { "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "agl_ft"], 200],
+                               200, 2.5, 500, 5, 1200, 9],
+             "circle-color": "#78716c", "circle-opacity": 0.75,
+             "circle-stroke-color": "#292524", "circle-stroke-width": 0.5 } });
+
   state.fac = await fetchGz("data/facilities.geojson.gz");
   map.addSource("fac", { type: "geojson", data: state.fac });
   // 92 of the 242 data-centre pins are census-gazetteer CITY centroids (datacentermap
@@ -391,7 +427,10 @@ map.on("load", async () => {
     // G65: the six tax-credit geographies each need their own evidence popup, or splitting the
     // layer would have silently removed the click that explained it.
     "env-bonus-lit": miscEv, "env-bonus-qct": miscEv, "env-bonus-coal": miscEv,
-    "env-bonus-oz": miscEv, "env-bonus-ec": miscEv, "env-bonus-hab": miscEv };
+    "env-bonus-oz": miscEv, "env-bonus-ec": miscEv, "env-bonus-hab": miscEv,
+    // G72: every gate layer gets its click in the SAME statement that draws it. Adding a layer
+    // without its handler is how three logistics layers spent weeks visible and unexplainable.
+    "gate-mil": miscEv, "gate-tribal": miscEv, "gate-sua": miscEv, "gate-obst": miscEv };
   for (const [id, fn] of Object.entries(clickable)) {
     map.on("click", id, (e) => { if (!state.measure.on) fn(e.features[0].properties); });
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
@@ -733,7 +772,13 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
   "L-watershed": ["water-ws-fill", "water-ws-line"], "L-waterstress": ["water-stress-fill"],
   "L-dc": ["fac-dc", "fac-dc-city"],
   "L-fac-plant": ["fac-plant"], "L-fac-solar": ["fac-solar"], "L-fac-wind": ["fac-wind"],
-  "L-log-rail": ["log-lines-rail"], "L-log-road1": ["log-road1"], "L-log-road2": ["log-road2"] };
+  "L-log-rail": ["log-lines-rail"], "L-log-road1": ["log-road1"], "L-log-road2": ["log-road2"],
+  // G72 land-status and airspace gates. One control per KIND, never one "land constraints" tick:
+  // a military installation, a sovereign boundary and an altitude ceiling are three different
+  // conversations with three different bodies, and collapsing them is the same volume-over-value
+  // failure that put an energy-community adder and a critical-habitat blocker on one checkbox.
+  "L-mil": ["gate-mil"], "L-tribal": ["gate-tribal"], "L-sua": ["gate-sua"],
+  "L-obst": ["gate-obst"] };
 /* ---------- context layers: 1 MB of geometry, so fetched on FIRST USE, not at boot ----------
    Six layers share one payload. The first toggle loads it and builds all six; later toggles
    just flip visibility. A layer that has not loaded yet reports so rather than silently
@@ -1246,6 +1291,11 @@ function tipText(p) {
   if (p.layer === "gas") return `gas pipeline · ${p.operator || ""}`;
   if (p.layer === "dc") return `EXISTING DC: ${p.name || ""} (${p.src})`;
   if (["plant", "plant_hifld", "solar", "wind"].includes(p.layer)) return `${p.layer}: ${p.name || p.plant_name || ""}`;
+  // G72 gates
+  if (p.layer === "military") return `MILITARY: ${p.name} — DoD review territory`;
+  if (p.layer === "tribal") return `TRIBAL TRUST: ${p.name} — a separate sovereign`;
+  if (p.layer === "sua") return `SPECIAL-USE AIRSPACE: ${p.name} · ${p.detail || ""}`;
+  if (p.layer === "obstacle") return `${p.obstacle_type || "obstruction"} · ${p.agl_ft} ft AGL${p.city ? " · " + p.city : ""}`;
   return p.name || p.kind || p.utility || "";
 }
 function showTip(e, text) {
@@ -2508,6 +2558,44 @@ function miscEv(p) {
       ${row("classification effective", p.classification_effective_date)}</table>
       ${naaSoWhat(p)}
       <div class="prov">${prov("in_nonattainment")} · air-permitting gate for on-site generation</div>`);
+  /* G72. Each gate says WHO you would be negotiating with and WHAT it costs you in time --
+     not what the polygon is. A reader who cannot act on it does not need it on the map. */
+  } else if (p.layer === "military") {
+    show(`Military installation: ${p.name}`, `
+      <table>${row("component", p.detail)}${row("note", p.note)}</table>
+      <div class="sowhat"><b>What this changes:</b> a large load or a tall structure near an
+        active installation can draw a <b>DoD Siting Clearinghouse</b> review — an energy-project
+        review that runs on the Department's clock, not the county's. It rarely says no outright;
+        it adds months, and it is the one gate here that can move a schedule without ever
+        producing a refusal. Find out early, not at permitting.</div>
+      <div class="prov">${prov("in_land_gates")} · 13 installations, all verified inside Indiana</div>`);
+  } else if (p.layer === "tribal") {
+    show(`Tribal trust land: ${p.name}`, `
+      <table>${row("extent", p.detail)}${row("status", p.note)}</table>
+      <div class="sowhat"><b>What this changes:</b> this is a <b>different sovereign</b>. County
+        zoning and the state permitting path do not apply the way they do one field over —
+        the counterparty is the tribal government. Indiana holds exactly one such holding.</div>
+      <div class="prov">${prov("in_land_gates")} · re-clipped 2026-08-19: the previous table held
+        14 rows and none of them were in Indiana</div>`);
+  } else if (p.layer === "sua") {
+    show(`Special-use airspace: ${p.name}`, `
+      <table>${row("airspace", p.detail)}${row("controlling agency", p.note)}</table>
+      <div class="sowhat"><b>What this changes:</b> this governs what may be built <b>tall</b> and
+        what radar must keep seeing — cooling towers, stacks, met masts and construction cranes,
+        not the slab. A data hall almost never conflicts; the plant on top of it can.</div>
+      <div class="prov">${prov("in_land_gates")} · 19 MOAs and restricted areas</div>`);
+  } else if (p.layer === "obstacle") {
+    show(`${p.obstacle_type || "Obstruction"} — ${fmt(p.agl_ft)} ft AGL`, `
+      <table>${row("height above ground", p.agl_ft != null ? `${fmt(p.agl_ft)} ft` : null)}
+      ${row("height above sea level", p.amsl_ft != null ? `${fmt(p.amsl_ft)} ft` : null)}
+      ${row("nearest place", p.city, "not stated by the FAA")}
+      ${row("lighting", p.lighting)}${row("FAA verification", p.verified)}</table>
+      <div class="sowhat"><b>What this changes:</b> everything drawn here is at or above the
+        <b>200 ft FAA notice threshold</b>, so it has already been through an airspace review at
+        this location. A cluster of them is a cheap prior that a tall structure of your own will
+        clear. ⚠ It is <b>not</b> a transmission trace — only 44 of these are line towers, because
+        almost every tower is shorter than 200 ft. Use the transmission layer for that.</div>
+      <div class="prov">${prov("in_faa_obstacles_tall")} · 4,591 of 15,638 Indiana obstructions</div>`);
   } else {
     show(`Bonus geography: ${p.kind}`, `
       <table>${row("kind", p.kind)}${row("key", p.key)}${row("attributes", p.attrs_json)}</table>

@@ -39,6 +39,11 @@ COUNTED = {
     "L-gas-pipe":   ("gas.geojson.gz", ["gas"]),
     "L-gas-comp":   ("gas.geojson.gz", ["compressor"]),
     "L-gas-stor":   ("gas.geojson.gz", ["storage"]),
+    # G72 land-status and airspace gates
+    "L-mil":        ("gates.geojson.gz", ["military"]),
+    "L-tribal":     ("gates.geojson.gz", ["tribal"]),
+    "L-sua":        ("gates.geojson.gz", ["sua"]),
+    "L-obst":       ("gates.geojson.gz", ["obstacle"]),
     "L-fac-plant":  ("facilities.geojson.gz", ["plant", "plant_hifld"]),
     "L-fac-solar":  ("facilities.geojson.gz", ["solar"]),
     "L-fac-wind":   ("facilities.geojson.gz", ["wind"]),

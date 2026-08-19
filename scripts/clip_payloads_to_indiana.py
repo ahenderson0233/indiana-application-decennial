@@ -54,7 +54,11 @@ DATA = os.path.join(REPO, "data")
 # Every payload the map DRAWS. county/site files are already Indiana-only by construction.
 LAYERS = ["grid.geojson.gz", "overlays.geojson.gz", "logistics.geojson.gz",
           "gas.geojson.gz", "water.geojson.gz", "facilities.geojson.gz",
-          "pjm.geojson.gz", "territories.geojson.gz", "context.geojson.gz"]
+          "pjm.geojson.gz", "territories.geojson.gz", "context.geojson.gz",
+          # G72. Built already-clipped (in_land_gates intersects the state boundary in SQL), but it
+          # is listed here anyway: a payload that is clipped by CONSTRUCTION is one refactor away
+          # from not being, and remembering an ordering rule is not a control.
+          "gates.geojson.gz"]
 
 
 def indiana():

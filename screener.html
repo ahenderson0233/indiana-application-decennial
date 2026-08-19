@@ -232,6 +232,30 @@
           <select id="s-bonuskind"><option value="">any zone</option></select></label>
         <div class="hint">Six different federal geographies sit behind the tick above. The
           <b>energy community</b> adder is the one most projects are chasing.</div>
+
+        <!-- G72: land-status and airspace gates. These say who ELSE holds a say over the land,
+             which is a different question from whether the ground itself is buildable. Free
+             numeric entry per G68 - a review radius is a judgement call, not a preset. -->
+        <div class="subhead">Who else holds a say over the land</div>
+        <label><input type="checkbox" id="s-nomil"> Exclude land within
+          <input type="number" id="s-milmi" value="3" min="0" step="0.5"> miles of a military
+          installation</label>
+        <p class="hint">A large load or a tall structure near an active installation can draw a
+          <b>DoD Siting Clearinghouse</b> review. It runs on the Department&rsquo;s clock, not the
+          county&rsquo;s &mdash; it rarely refuses outright, it adds months. Three miles is a
+          starting radius, not a rule; type your own. <b>1,695</b> of the sites listed here sit
+          within three miles of one (13,193 across all 532,870 candidates).</p>
+        <label><input type="checkbox" id="s-nosua"> Exclude land under special-use airspace</label>
+        <p class="hint">Governs what may be built <b>tall</b> &mdash; cooling towers, stacks, met
+          masts and construction cranes, not the slab. <b>2,940</b> of the sites listed here sit
+          under a MOA or restricted area (40,785 across all candidates).</p>
+        <label><input type="checkbox" id="s-notribal"> Exclude tribal trust land</label>
+        <p class="hint">A separate sovereign: the counterparty is the tribal government rather
+          than the county. Indiana holds exactly one such holding &mdash; Pokagon
+          Off-Reservation Trust Land, 178 acres near South Bend &mdash; and it touches <b>13</b>
+          candidate parcels, <b>none of which reach this list</b>. So this filter will not change
+          the count today; it is here because the gate is real and the map draws it, and a control
+          that correctly finds nothing is not the same as one that was never measured.</p>
 </div>
     </details>
 
@@ -433,6 +457,12 @@ function passes(s) {
   if ($("s-noflood").checked && s.sfha_flood) return false;
   if ($("s-nowet").checked && s.wetland_on_parcel) return false;
   if ($("s-noprot").checked && s.protected_land) return false;
+  // G72 gates. mil_mi is NULL past 25 miles, and NULL means "measured, nothing in range" -- so a
+  // missing value PASSES the exclusion rather than failing it. Treating absent as 0 here would
+  // reject every parcel in the state, which is the inverse of the unpublished-is-not-zero rule.
+  if ($("s-nomil").checked && s.mil_mi != null && s.mil_mi <= N("s-milmi")) return false;
+  if ($("s-nosua").checked && s.sua_name) return false;
+  if ($("s-notribal").checked && s.tribal_name) return false;
   if ($("s-bonus").checked && !s.bonus_kinds) return false;
 
   // ---- G67: the filters the payload always supported and the page never offered ----
@@ -499,6 +529,9 @@ function activeChips() {
   if ($("s-nowet").checked) c.push("no wetland");
   if ($("s-noprot").checked) c.push("no protected land");
   if ($("s-bonus").checked) c.push("tax-credit eligible");
+  if ($("s-nomil").checked) c.push(`>${N("s-milmi")} mi from a military installation`);
+  if ($("s-nosua").checked) c.push("not under special-use airspace");
+  if ($("s-notribal").checked) c.push("not tribal trust land");
   $("s-active").innerHTML = `<div class="chipbar"><b>Filters in effect</b>${
     c.map((x) => `<span class="chip">${x}</span>`).join("")}</div>`;
 }
@@ -620,6 +653,14 @@ function siteDetail(s) {
             null, "Overlap usually ends the conversation.")}
           ${detailRow("Federal tax-credit zone", s.bonus_kinds, "none — this parcel is in no bonus zone",
             "An energy-community or low-income bonus can be worth 10 percentage points of ITC.")}
+          ${detailRow("Nearest military installation", s.mil_mi != null
+              ? `${s.mil_mi} mi — ${s.mil_name}` : null,
+            "none within 25 miles (measured)",
+            "Inside a few miles, a large load can draw a DoD Siting Clearinghouse review. It runs on the Department's clock, not the county's — it rarely refuses, it adds months.")}
+          ${detailRow("Special-use airspace", s.sua_name, "none overhead (measured)",
+            "Governs what may be built TALL — cooling towers, stacks, met masts and cranes, not the slab.")}
+          ${detailRow("Tribal trust land", s.tribal_name, "no (measured)",
+            "A separate sovereign: the counterparty is the tribal government, not the county.")}
         </table>
       </div>
     </div>

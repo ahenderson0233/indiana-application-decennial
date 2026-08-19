@@ -59,9 +59,14 @@ for r in client.query(f"""
 rows = []
 for r in client.query(f"""
   WITH ranked AS (
-    SELECT *, ROW_NUMBER() OVER (PARTITION BY county_fips ORDER BY mw_dc DESC) AS rk
-    FROM `{DS}.in_screener_candidates`
-    WHERE county_fips IS NOT NULL
+    SELECT c.*, g.mil_mi, g.mil_name, g.sua_name, g.tribal_name,
+           ROW_NUMBER() OVER (PARTITION BY c.county_fips ORDER BY c.mw_dc DESC) AS rk
+    FROM `{DS}.in_screener_candidates` c
+    -- G72 land-status and airspace gates. LEFT JOIN, because a parcel with no installation
+    -- within 25 miles must come back NULL ("measured, nothing in range"), never 0 -- the same
+    -- rule that stopped 95 false "below floor" tariff violations.
+    LEFT JOIN `{DS}.in_land_gate_parcel` g USING (parcel_source, parcel_key)
+    WHERE c.county_fips IS NOT NULL
   )
   SELECT parcel_source, parcel_key, county_fips, county_name, occ_group, site_kind,
          structure_count, parcel_acres, exact_parcel_acres, outdoor_acres, exact_outdoor_acres,
@@ -76,7 +81,9 @@ for r in client.query(f"""
          -- transmission line, 2026-08-19. A line is the one asset that can run THROUGH a
          -- parcel rather than near it: 41,986 do. line_on_parcel is a stronger fact than a
          -- small line_mi and must not be flattened into it.
-         line_mi, line_on_parcel, line_kv, line_volt_class
+         line_mi, line_on_parcel, line_kv, line_volt_class,
+         -- G72 gates: who ELSE holds a say over this land. mil_mi is NULL past 25 miles.
+         mil_mi, mil_name, sua_name, tribal_name
   FROM ranked
   WHERE has_signal OR rk <= {TOP_PER_COUNTY}
   ORDER BY county_fips, mw_dc DESC"""):

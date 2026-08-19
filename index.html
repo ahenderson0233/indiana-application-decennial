@@ -184,6 +184,28 @@
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
           <span class="hint">(34 basins)</span></label>
+        <!-- G72: four objects that were clipped in BigQuery and reached no control at all. They
+             answer a question the console could not ask before: who ELSE already holds a say over
+             this land. One control per kind - a base, a sovereign boundary and an altitude ceiling
+             are three different conversations with three different bodies. -->
+        <label><input type="checkbox" id="L-mil"> Military installations
+          <span class="hint">(13)</span></label>
+        <label><input type="checkbox" id="L-tribal"> Tribal trust land
+          <span class="hint">(1 &mdash; Pokagon)</span></label>
+        <label><input type="checkbox" id="L-sua"> Special-use airspace
+          <span class="hint">(19 &mdash; MOAs &amp; restricted)</span></label>
+        <label><input type="checkbox" id="L-obst"> Tall obstructions &ge;200 ft
+          <span class="hint">(4,591)</span></label>
+        <div class="sowhat">These four say <b>who else already holds a say over the
+          land</b>, which is not something zoning or the environmental gates will tell you.
+          A large load near an active <b>installation</b> can draw a DoD Siting Clearinghouse
+          review that runs on the Department&rsquo;s clock, not the county&rsquo;s &mdash; it
+          rarely refuses, it adds months. <b>Tribal trust land</b> is a different sovereign
+          entirely, so the counterparty is the tribal government rather than the county.
+          <b>Special-use airspace</b> governs what may be built tall &mdash; cooling towers,
+          stacks and cranes, not the slab. And every <b>obstruction</b> drawn here is at or above
+          the 200 ft FAA notice threshold, so a cluster of them is cheap evidence that a tall
+          structure of your own will clear the same review.</div>
         <div class="sowhat">A watershed is the unit water is actually allocated and
           argued over in &mdash; two parcels a mile apart in different subbasins can face different
           objections and different permitting bodies. Click one to see the rivers, reservoirs and
@@ -328,6 +350,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=a2714694"></script>
-<script src="app.js?v=02e6e502"></script>
+<script src="app.js?v=88cd3abf"></script>
 </body>
 </html>
