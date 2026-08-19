@@ -124,9 +124,17 @@ for k, v in PAGES.items():
     if not v:
         continue
     body = re.sub(r"<script[\s\S]*?</script>", "", v)
+    body = re.sub(r"<!--[\s\S]*?-->", "", body)          # a comment is not user-facing
+    # WIDENED 2026-08-19. This probe reported "none" while si.html led a dozen headings with bare
+    # codes and its <title> read "SI Feed". The old pattern required an UNDERSCORE SUFFIX, so it
+    # caught D4_tax_delinquency and sailed past D22, A6, D11, D18 and "Lane D" -- which is the form
+    # the operator actually complained about (G91). A check that catches only the tidy case and
+    # then reports DONE on the untidy one is worse than having no check at all.
     hits = set(re.findall(r"\b([AD]\d{1,2}_[a-z_]+)\b", body))
+    hits |= set(re.findall(r"(?<![\w-])([AD]\d{1,2})(?![\w-])", body))
+    hits |= set(re.findall(r"\b(Lane [A-F])\b", body))
     if hits:
-        leaks[k] = sorted(hits)[:3]
+        leaks[k] = sorted(hits)
 verdict("G8", "plain language everywhere (no codenames in the UI)",
         "DONE" if not leaks else "PARTIAL",
         f"raw D-codes in page markup: {leaks or 'none'}")

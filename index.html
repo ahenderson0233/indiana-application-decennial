@@ -82,6 +82,13 @@
         <div class="hint" id="L-screener-note" style="margin:-2px 0 6px 18px">Loads on first use
           &mdash; 3.7&nbsp;MB. Not every screener site carries a location; the count is stated
           once it loads.</div>
+        <div class="sowhat"><b>These two are the shortlist itself, drawn geographically.</b>
+          Parcels are everything passing the filters you set on the left; the <b>Site Screener
+          results</b> layer is the ranked shortlist from the <a href="screener.html">screener</a>.
+          Seeing them on a map answers what a table cannot: whether your best sites
+          <i>cluster</i>, and how they sit against transmission, water and county posture. A
+          shortlist that scatters across eight counties is a different plan from one that
+          concentrates in two.</div>
         <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,115)</span></label>
         <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(217 &mdash; interstates and US routes)</span></label>
         <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(855)</span></label>
@@ -120,9 +127,32 @@
           </select></label>
         <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
         <label><input type="checkbox" id="L-bus" checked> Buses</label>
+        <!-- G21, operator 2026-08-19: a layer does not have to say the words "so what", but it
+             must outline why the dataset matters to an energy developer. Section 3 carried 14
+             layers and one line, and that line was about voltage colour. -->
+        <div class="sowhat"><b>Substations, lines and buses are three different answers, and only
+          one of them is about capacity.</b> A line tells you power passes nearby; a substation
+          tells you it is transformed nearby; a <b>bus</b> is the only one of the three that
+          carries a number for <i>how much you could actually take</i>. A parcel beside a full
+          substation is a worse site than one three miles from a bus with headroom &mdash; so use
+          distance to decide construction cost, and the bus to decide whether the project is
+          possible at all. See the <a href="grid.html">Power &amp; grid</a> page for every bus in
+          both directions.</div>
         <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(315 &mdash; projects competing for the same study slots)</span></label>
         <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(42 &mdash; estimated positions, not published)</span></label>
+        <div class="sowhat"><b>The queue is your competition for the same study slots and the same
+          headroom.</b> Every point here is a project that got there first; a cluster of them
+          around a bus is a warning that the number you are reading may already be spoken for by
+          the time your study runs. &#9888; <b>Candidate buses are ESTIMATED positions</b> &mdash;
+          no operator publishes a public coordinate feed for PJM buses, so these are matched from a
+          substation gazetteer. Treat them as &ldquo;about here&rdquo;, never as surveyed.</div>
         <label><input type="checkbox" id="L-terr"> Utility service territories</label>
+        <div class="sowhat"><b>This decides who you negotiate with, and it is the first phone call
+          you make.</b> The territory owning your parcel sets the tariff you pay, runs the load
+          study, and determines whether the state commission is involved at all &mdash; an
+          investor-owned utility answers to the IURC, a municipal or a REMC largely does not.
+          &#9888; A parcel straddling two territories is <b>reported as straddling</b> rather than
+          assigned to one, because guessing which one serves it would decide your rate for you.</div>
         <label><input type="checkbox" id="L-gas-pipe"> Gas pipelines <span class="hint">(213 &mdash; can you feed on-site generation)</span></label>
         <label><input type="checkbox" id="L-gas-comp"> Gas compressor stations <span class="hint">(24)</span></label>
         <label><input type="checkbox" id="L-gas-stor"> Gas storage fields <span class="hint">(22 &mdash; buffered supply nearby)</span></label>
@@ -180,6 +210,13 @@
         <label><input type="checkbox" id="L-bonus-qct"> Qualified census tract <span class="hint">(337)</span></label>
         <label><input type="checkbox" id="L-bonus-oz"> Opportunity zone <span class="hint">(156)</span></label>
         <label><input type="checkbox" id="L-bonus-hab"> Critical habitat <span class="hint">(10 &mdash; a CONSTRAINT, not a credit)</span></label>
+        <div class="sowhat"><b>Five of these six are money and the sixth can stop the project.</b>
+          An <b>energy community</b> or <b>low-income</b> designation adds up to 10 percentage
+          points to the investment tax credit, which on a capital-heavy build is the largest single
+          swing on this whole console &mdash; worth chasing deliberately rather than discovering
+          later. <b>Critical habitat is the opposite</b>: a federal consultation that can add a
+          year or end the siting outright. They were one checkbox until 2026-08-19, which meant a
+          developer chasing the adder could not separate it from the blocker.</div>
         <label><input type="checkbox" id="L-watershed"> Watersheds
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
@@ -358,7 +395,7 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
-<script src="common.js?v=f94b14ff"></script>
+<script src="common.js?v=be1a3d27"></script>
 <script src="app.js?v=1aab1843"></script>
 </body>
 </html>

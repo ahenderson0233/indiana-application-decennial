@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SI Feed — Indiana Siting Intelligence</title>
+<title>Owner signals — Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="style.css?v=e3cd2fb6"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
@@ -34,12 +34,12 @@
       <span id="lead-of">&hellip;</span> flagged parcels, ranked by distinct signal types
       &middot; residential excluded by ruling, never counted as zero</div></div>
 
-  <div class="card"><h2>D9 absentee ownership &amp; D18 owner contact — <span class="hint">Marion County</span></h2>
+  <div class="card"><h2>Absentee owners, and how to reach them — <span class="hint">Marion County</span></h2>
     <div class="hint cannot" id="d9-note" style="margin-bottom:8px"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="d9-oos">…</div><div class="hint">out-of-state owners</div></div>
       <div class="card"><div class="bigstat" id="d9-oosnr">…</div><div class="hint">…and non-residential — the addressable set</div></div>
-      <div class="card"><div class="bigstat" id="d9-named">…</div><div class="hint">distinct owners named (D18)</div></div>
+      <div class="card"><div class="bigstat" id="d9-named">…</div><div class="hint">distinct owners named</div></div>
     </div>
     <div class="hint" style="margin:6px 0"><b>Absentee is graduated, not binary.</b> A landlord one
       suburb away and a fund in another country are not the same lead, so the distance between the
@@ -53,7 +53,7 @@
     <div class="prov"><code>in_si_d9_absentee_marion</code>, built by
       <code>scripts/build_d9_absentee_marion.py</code> from <code>in_marion_parcel_crosswalk</code> ×
       <code>in_sites</code>. The owner block was already in the crosswalk we pulled to bridge
-      Marion's parcel keys — no acquisition was needed for either signal. D85 excluded from the join.</div></div>
+      Marion's parcel keys — no acquisition was needed for either signal. One parcel whose published outline covers the entire planet is excluded from the join; leaving it in would match every property in Indiana.</div></div>
   <div class="card"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
     <div class="hint" style="margin-bottom:6px"><b>held</b> is rows in the corpus and says nothing about
       usability · <b>reached</b> is parcels the signal can be joined to · <b>admitted</b> passes both
@@ -61,7 +61,7 @@
       in silence.</div>
     <div class="scroll" style="max-height:460px"><table id="t-cov"><tr><th>signal</th><th>held</th><th>reached</th><th>admitted</th><th>C/I</th><th>event range</th><th>excl. resid</th><th>excl. low-sev</th></tr></table></div>
     <div class="prov">indiana_app.in_si_signal_coverage</div></div>
-  <div class="card"><h2>Owner-grain signals — D11, D27 and D19, which cannot reach a parcel</h2>
+  <div class="card"><h2>Signals about an OWNER, not a parcel — and why they cannot yet be placed on the map</h2>
     <div class="hint" id="own-note"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="scroll" style="max-height:280px"><table id="t-owncounty"><tr><th>county</th><th>dissolutions</th><th>UCC lapses</th><th>WARN</th><th>in 3 yrs</th></tr></table></div>
@@ -69,7 +69,7 @@
       <div class="card"><div class="scroll" style="max-height:280px"><table id="t-own"><tr><th>signal</th><th>party</th><th>event</th><th>city</th></tr></table></div>
         <div class="prov">indiana_app.in_si_owner_signals</div></div>
     </div></div>
-  <div class="card"><h2>IDEM enforcement — dated at last <span class="hint">(A6)</span></h2>
+  <div class="card"><h2>State environmental enforcement — <span class="hint">now with real dates</span></h2>
     <div class="hint cannot" id="idem-note" style="margin-bottom:8px"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="idem-n">…</div><div class="hint">actions now carrying an event date</div></div>
@@ -109,13 +109,13 @@
       those are the leads, and they are at the top of this page.</div>
     <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
     <div class="prov" id="p-sig"></div></div>
-  <div class="card"><h2>D22 — environmental compliance (EPA ECHO)</h2>
+  <div class="card"><h2>Federal environmental compliance — facilities on EPA's enforcement record</h2>
     <div class="hint" id="d22-note"></div>
     <div class="scroll" style="max-height:320px;margin-top:8px"><table id="t-d22"><tr><th>county</th><th>facilities</th><th>in distress</th><th>significant violation</th><th>high-priority</th><th>inactive</th><th>penalties</th></tr></table></div>
     <div class="prov">indiana_app.in_si_d22_echo_indiana + in_si_d22_county_rollup · source: EPA ECHO
       <b>bulk export</b> (echo_exporter.zip), not the REST service — the county walk needed ~25,000
       requests against a 1,500/day quota. 133 columns kept.</div></div>
-  <div class="card"><h2>D16 candidate — structure fires that would actually move an owner to sell</h2>
+  <div class="card"><h2>Structure fires severe enough to move an owner to sell</h2>
     <div class="hint" style="margin-bottom:6px"><b>A signal only counts when it plausibly produces
       seller intent.</b> A contained kitchen fire does not, and a house is not a hyperscale site.
       So the raw file is narrowed three times: to structure fires, to <b>non-residential</b>
@@ -153,7 +153,7 @@
     <div class="scroll" style="margin-top:8px"><table id="t-v2class"><tr><th>class</th><th>parcels with an admitted signal</th></tr></table></div>
     <div class="prov">indiana_app.in_si_sites_flags_v2 · built by scripts/build_si_signal_v2.py ·
       full per-signal detail in <code>docs/SI_COVERAGE.md</code></div></div>
-  <div class="card"><h2>Lane D — columns that were pulled and never wired</h2>
+  <div class="card"><h2>Columns we pulled and never wired — held, not lost</h2>
     <div class="hint">Six sources were pulled with ALL columns, which turned up signal-bearing
       fields nobody had asked for. Two were <b>placement</b>, not enrichment: SRI publishes its own
       lat/lon (24,948 parcels) and IBTR publishes <code>stateParcelNumber</code> (3,338 parcels) —
@@ -161,7 +161,7 @@
     <div class="scroll" style="max-height:200px;margin-top:8px"><table id="t-laned-sum"><tr><th>source</th><th>column</th><th>distinct values</th><th>rows covered</th></tr></table></div>
     <div class="scroll" style="max-height:280px;margin-top:8px"><table id="t-laned"><tr><th>source</th><th>column</th><th>value</th><th>rows</th></tr></table></div>
     <div class="prov">indiana_app.in_si_lane_d_enrichment · built by scripts/wire_lane_d_columns.py</div></div>
-  <div class="card"><h2>D5 — vacancy is two different things, and only one is a signal</h2>
+  <div class="card"><h2>Vacancy is two different things, and only one of them is a signal</h2>
     <div class="hint" id="d5-note"></div>
     <div class="scroll" style="max-height:220px;margin-top:8px"><table id="t-d5"><tr><th>source</th><th>rows</th><th>parcel-keyed</th></tr></table></div>
     <div class="prov">indiana_app.in_si_d5_abandoned_buildings + in_si_d5_vacant_land_NOT_A_SIGNAL ·
@@ -187,15 +187,15 @@
     <div class="scroll"><table id="t-adm"><tr><th>signal</th><th>admitted</th><th>of source</th><th>rule applied</th></tr></table></div>
     <div class="prov">operator sign-off 2026-08-15 · docs/SIGNOFF_PACKET.md · built by scripts/build_signoff_wiring.py</div></div>
   <div class="gridcards">
-    <div class="card"><h2>D11 — entity dissolutions (983 terminal)</h2>
+    <div class="card"><h2>Dissolved companies — 983 that reached a terminal status</h2>
       <div class="scroll" style="max-height:300px"><table id="t-d11"><tr><th>entity</th><th>status</th><th>observed</th><th>city</th></tr></table></div>
       <div class="prov">indiana_app.in_si_d11_admitted · <b>excludes</b> 1,146 'withdrawn' rows — surrendered
         or reinstatable authority is weaker evidence a property is coming free</div></div>
-    <div class="card"><h2>D27 — UCC lapses (all 156)</h2>
+    <div class="card"><h2>Lapsed security filings — all 156</h2>
       <div class="scroll" style="max-height:300px"><table id="t-d27"><tr><th>debtor</th><th>lapse</th><th>city</th></tr></table></div>
       <div class="prov">indiana_app.in_si_d27_admitted · every row address-keyed at quality 0.8</div></div>
   </div>
-  <div class="card"><h2>D25 — rail abandonment EVENTS (127 of 874)</h2>
+  <div class="card"><h2>Rail abandonment — 127 real events out of 874 filings</h2>
     <div class="scroll" style="max-height:280px"><table id="t-d25"><tr><th>docket</th><th>filing type</th><th>filed</th><th>title</th></tr></table></div>
     <div class="prov" id="p-d25">indiana_app.in_si_d25_admitted · <b>excludes</b> 747 procedural filings
       (Reply, Extension, Certificate Of Service…) — correspondence about a docket is not an abandonment</div></div>
@@ -210,14 +210,14 @@
     <div class="scroll" style="max-height:460px"><table id="t-src">
       <tr><th>source</th><th>signal</th><th>rows</th><th>one row is</th><th>publisher event range</th><th>we pulled</th></tr></table></div>
     <div class="prov" id="p-src"></div></div>
-  <div class="card"><h2>Freshness &amp; remediation (Lane D)</h2>
+  <div class="card"><h2>Freshness and what still needs repair</h2>
     <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
     (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
     (an unwired MF mortgage-foreclosure code found in the same workbook) · WARN 1,220 · brownfields 1,483.
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=f94b14ff"></script>
+<script src="common.js?v=be1a3d27"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -300,7 +300,7 @@
   const d5 = V2.d5_split;
   document.getElementById("d5-note").innerHTML =
     `A parcel with <b>no building</b> and an <b>abandoned building</b> are not the same claim.
-     D5 held <b>${fmt(d5.abandoned_buildings.n + d5.vacant_land.n)}</b> rows, of which
+     The vacancy source held <b>${fmt(d5.abandoned_buildings.n + d5.vacant_land.n)}</b> rows, of which
      <b>${fmt(d5.vacant_land.n)}</b> (${Math.round(100*d5.vacant_land.n/(d5.abandoned_buildings.n+d5.vacant_land.n))}%)
      were footprint absence — a land state we already carry as <code>occ_group='no_structure'</code>,
      not intent to sell. Only <b>${fmt(d5.abandoned_buildings.n)}</b> rows across
@@ -439,8 +439,8 @@
      1-family dwelling, 429 multifamily; 500s mercantile, 600s utility/industrial, 700s
      manufacturing, 800s storage). Codes that are blank, <code>NNN</code> or <code>UUU</code> are
      shown as <i>unknown</i>, never assumed non-residential to inflate the signal.
-     <b>Two defects fixed on the way in.</b> (1) Admitting the raw tables would have inflated D16
-     roughly fivefold, since ~79% of incidents are not structure fires. (2)
+     <b>Two defects fixed on the way in.</b> (1) Admitting the raw tables would have inflated the
+     fire signal roughly fivefold, since ~79% of incidents are not structure fires. (2)
      <code>in_nfirs_fireincident_2024</code> is <b>not Indiana-clipped</b> — 407 of its 1,255 rows
      (32%) come from 43 other states — so <code>STATE='IN'</code> is enforced on every input rather
      than trusting the <code>in_</code> prefix. Keying quality is carried per row; roughly 91% have
@@ -464,7 +464,10 @@
         : `${s.first_event} → <b>${s.last_event}</b>${staleness(s.last_event)}` +
           (s.date_status === "partial"
             ? `<br><span class="hint">only ${fmt(s.dated_rows)} of ${fmt(s.rows)} rows carry a usable date</span>` : "");
-    return `<tr><td><code>${s.table}</code></td><td>${s.family}</td><td>${fmt(s.rows)}</td>
+    // G91: `family` arrives as "D1 tax sale" -- the codename in front of the plain name it
+    // already carries. signalsPlain() strips it and leaves the name; a bare code with no name
+    // after it survives untouched rather than becoming an empty cell.
+    return `<tr><td><code>${s.table}</code></td><td>${signalsPlain(s.family)}</td><td>${fmt(s.rows)}</td>
       <td class="hint">${s.unit}</td><td>${range}</td><td class="hint">${s.pulled_at || "—"}</td></tr>`;
   }).join(""));
   const w = SRC.warn_dup;

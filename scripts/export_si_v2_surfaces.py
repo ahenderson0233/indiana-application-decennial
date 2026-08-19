@@ -76,9 +76,13 @@ out["owner_signals"] = rows(f"""
 out["owner_county"] = rows(f"""
   SELECT county_fips, dissolutions, ucc_lapses, warn_notices, events_3y, events_total, last_event
   FROM `{DS}.in_si_owner_signals_county` ORDER BY events_total DESC""")
+# G91: these note strings are USER-FACING PROSE that travels in the payload, so the internal
+# codenames must not be in them. A markup-only check cannot see a string that arrives as data --
+# which is exactly how "D11 entity dissolutions..." survived a probe reporting "no D-codes".
 out["owner_note"] = (
-  "D11 entity dissolutions, D27 UCC lapses and D19 WARN notices are OWNER-grain, not parcel-grain. "
-  "Measured: the address bridge matches 6 of 983 (D11) and 0 of 156 (D27). These are BUSINESS "
+  "Dissolved companies, lapsed security filings and mass-layoff notices are recorded against an "
+  "OWNER, not against a parcel. "
+  "Measured: the address bridge matches 6 of 983 dissolutions and 0 of 156 lapses. These are BUSINESS "
   "REGISTRY addresses — a dissolved entity's address of record is often its registered agent's "
   "office, so a street match would frequently flag the wrong parcel. The route that would work is "
   "the OWNER NAME, and mat_parcel_attrs.parcel_owner is NULL on all 3,553,381 Indiana parcels "
@@ -187,8 +191,8 @@ out["d9_portfolios"] = rows(f"""
 out["d9_note"] = (
     "MARION ONLY — 1 of 92 counties, so this is a PUBLISHING footprint, not statewide coverage. "
     "Its absence elsewhere is our gap, not the absence of absentee owners, and a statewide "
-    "ranking must not weight it as though it were evenly available. Statewide D9 still needs the "
-    "DLGF Gateway owner pull. "
+    "ranking must not weight it as though it were evenly available. Statewide absentee-owner "
+    "coverage still needs the DLGF Gateway owner pull. "
     "These parcels are NOT flagged as seller-intent: absentee ownership is APPROACHABILITY, not "
     "distress, and the standing ruling admits only distress that would plausibly move an owner "
     "to sell. Whether to admit it is an open question for the operator.")

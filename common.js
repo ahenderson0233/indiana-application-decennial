@@ -116,8 +116,15 @@ function signalsPlain(csv) {
   if (!csv) return "";
   return String(csv).split(",").map((s) => {
     const k = s.trim(), e = SIGNAL_PLAIN[k];
-    return e ? `<span title="${e[1]}">${e[0]}</span>`
-             : k.replace(/^[A-Z]\d+_/, "").replace(/_/g, " ");
+    // ⚠ TWO SHAPES REACH HERE. `D11_entity_dissolution` (underscore) came from the warehouse;
+    // `D11 entity dissolution` (space) comes from the sign-off payload, and the original pattern
+    // only stripped the first -- so 19 cells on the Owner signals page rendered the codename in
+    // front of the plain name it already carried. A markup-only check cannot see these, because
+    // they arrive as DATA rather than as text in the page (G91).
+    // A bare code with NOTHING after it is left as-is: an empty cell would be worse than a code.
+    if (e) return `<span title="${e[1]}">${e[0]}</span>`;
+    const stripped = k.replace(/^[A-Z]\d{1,2}[_ ]+(?=\S)/, "").replace(/_/g, " ");
+    return stripped || k;
   }).join(" · ");
 }
 
