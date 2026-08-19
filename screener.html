@@ -316,7 +316,7 @@
   </main>
 </div>
 
-<script src="common.js?v=09dd4143"></script>
+<script src="common.js?v=e4d8d20b"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -912,16 +912,25 @@ function render() {
     const la = parseFloat(r._lat), lo = parseFloat(r._lon);
     const ok = Number.isFinite(la) && Number.isFinite(lo);
     const label = r._name || r.name || `row ${r._row ?? i + 1}`;
+    /* G120(c): a coordinate that LOOKS precise and is not is the dangerous case, so its quality
+       is judged and shown rather than assumed. 3 dp is ~110 m, which is how a "site" ends up on
+       the road outside it. */
+    const q = ok ? coordQuality(r._lat, r._lon) : null;
+    const qBadge = q && q.trust !== "site"
+      ? ` <span class="warn" title="${escHtml(q.why)}">&#9888; ${escHtml(q.trust)}</span>` : "";
     return `<tr class="siterow">
       <td class="exp" style="visibility:hidden">&#9656;</td>
       <td><b>${escHtml(String(label))}</b>
         <div class="sub2"><span class="bdg bdg-st">YOURS</span></div></td>
       <td colspan="4" class="hint">${ok
-        ? `Loaded from your list. Grid distances and scoring are computed on the
-           <a href="index.html">map console</a>, which reads the same saved list.`
+        ? (q.trust === "site"
+            ? `Loaded from your list. Grid distances and scoring are computed on the
+               <a href="index.html">map console</a>, which reads the same saved list.`
+            : `<span class="cannot">⚠ ${escHtml(q.why)}</span> Anything we report against this
+               point inherits that error — including whether a structure is on it.`)
         : `<span class="cannot">No usable coordinates on this row — kept, not dropped.</span>`}</td>
       <td>${ok
-        ? `<a href="index.html?lat=${la}&lon=${lo}&z=15&label=${encodeURIComponent(String(label))}&src=your-list">${la.toFixed(5)}, ${lo.toFixed(5)}</a>`
+        ? `<a href="index.html?lat=${la}&lon=${lo}&z=15&label=${encodeURIComponent(String(label))}&src=your-list">${la.toFixed(5)}, ${lo.toFixed(5)}</a>${qBadge}`
         : `<span class="cannot">no coordinate</span>`}</td>
     </tr>`;
   }).join("");

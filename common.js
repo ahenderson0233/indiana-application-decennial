@@ -691,6 +691,60 @@ const SiteStore = (() => {
   };
 })();
 
+/* ---------- G120(c): HOW MUCH SHOULD WE TRUST A SUPPLIED COORDINATE? --------------------------
+   Operator, 2026-08-19: *"the application should prioritize coordinates over addresses when the
+   decimal point is accurate enough (maybe somewhere around 4-6 digits - I will defer the decision
+   to you, so we can maintain the greatest amount of accuracy)."*
+
+   ⭐ THE PRIORITY IS ALREADY ABSOLUTE, AND THAT IS WORTH SAYING FIRST: this application does not
+   geocode an address at all, ever. `ingestRecords()` places a row from lat/lon or leaves it
+   unplaced. A street address resolves to a CENTRELINE, a centreline is not a parcel, and the
+   project bans deriving one. So a coordinate is not merely preferred - it is the only thing that
+   places a site.
+
+   ⚠ WHICH MAKES THE REAL RISK THE OPPOSITE ONE: a coordinate that LOOKS precise and is not.
+   Decimal places on a WGS84 degree, at Indiana's latitude:
+
+        2 dp  ~1.1 km    a town
+        3 dp  ~110 m     a street block - this is what a centreline geocode rounds to
+        4 dp  ~11 m      the right building, usually, but not a point on it
+        5 dp  ~1.1 m     a site coordinate
+        6 dp  ~0.11 m    survey-grade, and finer than an assessor boundary is drawn
+
+   THE THRESHOLD, since the operator deferred it: **5 is the floor for treating a supplied
+   coordinate as a SITE point.** 4 is flagged as coarse but usable. 3 or fewer is reported as an
+   approximate location and must not be presented as the site - at 110 m a point routinely lands
+   on the road, the neighbour, or the parking lot, which is exactly the roadway attachment the
+   operator saw (G120(b)).
+   ⚠ Held parcels are unaffected: they carry 13 decimals by ruling (G30b). This is about the
+   numbers a USER supplies. */
+const COORD_TRUST_FLOOR = 5;
+function coordDecimals(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  const dot = s.indexOf(".");
+  if (dot < 0) return 0;
+  // ⚠ trailing zeros are NOT precision: "39.77000" is 39.77, a 2-dp value dressed as 5.
+  return s.slice(dot + 1).replace(/0+$/, "").length;
+}
+/** -> {dp, metres, trust: 'site'|'coarse'|'approximate'|'unusable', why} */
+function coordQuality(lat, lon) {
+  const a = coordDecimals(lat), b = coordDecimals(lon);
+  if (a == null || b == null) return { dp: null, trust: "unusable", why: "not a number" };
+  const dp = Math.min(a, b);            // the WEAKER of the pair governs the pair
+  const metres = Math.round(111320 / Math.pow(10, dp));
+  if (dp >= COORD_TRUST_FLOOR)
+    return { dp, metres, trust: "site", why: `${dp} decimal places (about ${metres} m) - a site coordinate` };
+  if (dp === 4)
+    return { dp, metres, trust: "coarse",
+             why: `only 4 decimal places (about ${metres} m). Usually the right building, but not a point on it.` };
+  return { dp, metres, trust: "approximate",
+           why: `only ${dp} decimal place${dp === 1 ? "" : "s"} (about ${metres} m). At this precision a `
+                + `point routinely lands on the road, the neighbouring parcel or the car park rather than `
+                + `the building - which is how a site ends up attributed to a right-of-way with no structure on it.` };
+}
+
 /* ---------- G74: header detection and column mapping -----------------------------------------
    "ANY Excel sheet" means the column names CANNOT be hardcoded. Two things go wrong in real
    files and both are handled here:
