@@ -191,9 +191,16 @@ map.on("load", async () => {
   map.addLayer({ id: "gas-lines", type: "line", source: "gas",
     filter: ["==", ["get", "layer"], "gas"], layout: { visibility: "none" },
     paint: { "line-color": "#b45309", "line-width": 1.6, "line-dasharray": [3, 2] } });
-  map.addLayer({ id: "gas-pts", type: "circle", source: "gas",
-    filter: ["in", ["get", "layer"], ["literal", ["compressor", "storage"]]], layout: { visibility: "none" },
-    paint: { "circle-radius": 5, "circle-color": ["case", ["==", ["get", "layer"], "compressor"], "#b45309", "#78350f"],
+  // G65: a compressor station and a storage field answer different questions -- one is whether the
+  // pipe can push more gas to you, the other is whether there is buffered supply nearby -- so they
+  // no longer share a checkbox.
+  map.addLayer({ id: "gas-compressor", type: "circle", source: "gas",
+    filter: ["==", ["get", "layer"], "compressor"], layout: { visibility: "none" },
+    paint: { "circle-radius": 5, "circle-color": "#b45309",
+             "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
+  map.addLayer({ id: "gas-storage", type: "circle", source: "gas",
+    filter: ["==", ["get", "layer"], "storage"], layout: { visibility: "none" },
+    paint: { "circle-radius": 5, "circle-color": "#78350f",
              "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
 
   state.terr = await fetchGz("data/territories.geojson.gz");
@@ -234,9 +241,24 @@ map.on("load", async () => {
   map.addLayer({ id: "env-padus", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "padus"], layout: { visibility: "none" },
     paint: { "fill-color": "#15803d", "fill-opacity": 0.32, "fill-outline-color": "#14532d" } });
-  map.addLayer({ id: "env-bonus", type: "fill", source: "overlays",
-    filter: ["==", ["get", "layer"], "bonus"], layout: { visibility: "none" },
-    paint: { "fill-color": "#7c3aed", "fill-opacity": 0.2, "fill-outline-color": "#5b21b6" } });
+  /* G65: "Tax-credit areas" was ONE checkbox over SIX different federal geographies, and they do
+     not point the same way. An energy community is a 10% adder you are chasing; critical habitat
+     is a constraint that can stop the project. Collapsing a benefit and a blocker into one tick is
+     the volume-over-value failure the governing principle names. One control each, coloured apart:
+     benefits violet, the habitat constraint red. */
+  for (const [kind, id, colour] of [
+    ["low_income_tract",  "env-bonus-lit",  "#7c3aed"],
+    ["qct",               "env-bonus-qct",  "#8b5cf6"],
+    ["coal_closure",      "env-bonus-coal", "#6d28d9"],
+    ["opportunity_zone",  "env-bonus-oz",   "#a78bfa"],
+    ["energy_community",  "env-bonus-ec",   "#4c1d95"],
+    ["critical_habitat",  "env-bonus-hab",  "#b91c1c"],
+  ]) {
+    map.addLayer({ id, type: "fill", source: "overlays",
+      filter: ["all", ["==", ["get", "layer"], "bonus"], ["==", ["get", "kind"], kind]],
+      layout: { visibility: "none" },
+      paint: { "fill-color": colour, "fill-opacity": 0.2, "fill-outline-color": colour } });
+  }
   map.addLayer({ id: "env-nonatt", type: "fill", source: "overlays",
     filter: ["==", ["get", "layer"], "nonattainment"], layout: { visibility: "none" },
     paint: { "fill-color": "#9f1239", "fill-opacity": 0.18, "fill-outline-color": "#881337" } });
@@ -260,14 +282,21 @@ map.on("load", async () => {
     paint: { "circle-radius": ["interpolate", ["linear"], ["get", "pins_at_this_point"], 1, 7, 32, 15],
              "circle-color": "#f59e0b", "circle-opacity": 0.12,
              "circle-stroke-color": "#b45309", "circle-stroke-width": 1.6 } });
-  map.addLayer({ id: "fac-gen", type: "circle", source: "fac",
-    filter: ["in", ["get", "layer"], ["literal", ["plant", "plant_hifld", "solar", "wind"]]],
+  /* G65: solar, wind and thermal plant were one checkbox called "Power plants - solar - wind".
+     They are three different siting facts: an operating thermal plant is an interconnection and a
+     possible retirement, a wind farm is a competitor for the same queue slots, and solar is
+     neither. Split, keeping the colours the combined layer already used so nothing moves on screen. */
+  map.addLayer({ id: "fac-plant", type: "circle", source: "fac",
+    filter: ["in", ["get", "layer"], ["literal", ["plant", "plant_hifld"]]],
     layout: { visibility: "none" },
-    paint: { "circle-radius": ["case", ["==", ["get", "layer"], "wind"], 2.5, 4.5],
-             "circle-color": ["case", ["==", ["get", "layer"], "solar"], "#eab308",
-               ["==", ["get", "layer"], "wind"], "#38bdf8", "#6b7280"],
-             "circle-opacity": 0.75 } });
-  for (const id of ["fac-dc", "fac-dc-city", "fac-gen"]) {
+    paint: { "circle-radius": 4.5, "circle-color": "#6b7280", "circle-opacity": 0.75 } });
+  map.addLayer({ id: "fac-solar", type: "circle", source: "fac",
+    filter: ["==", ["get", "layer"], "solar"], layout: { visibility: "none" },
+    paint: { "circle-radius": 4.5, "circle-color": "#eab308", "circle-opacity": 0.75 } });
+  map.addLayer({ id: "fac-wind", type: "circle", source: "fac",
+    filter: ["==", ["get", "layer"], "wind"], layout: { visibility: "none" },
+    paint: { "circle-radius": 2.5, "circle-color": "#38bdf8", "circle-opacity": 0.75 } });
+  for (const id of ["fac-dc", "fac-dc-city", "fac-plant", "fac-solar", "fac-wind"]) {
     map.on("click", id, (e) => {
       if (state.measure.on) return;
       const p = e.features[0].properties;
@@ -299,13 +328,18 @@ map.on("load", async () => {
   map.addSource("log", { type: "geojson", data: state.log });
   // line-dasharray is data-CONSTANT in MapLibre — a ["case", …] here makes addLayer reject the
   // whole layer (silently: the toggle then does nothing). Split rail/road into two layers.
-  map.addLayer({ id: "log-lines", type: "line", source: "log", layout: { visibility: "none" },
-    filter: ["!=", ["get", "layer"], "rail"],
+  // G65: primary and secondary roads were both "log-lines". An interstate is an access fact; a
+  // county road is not the same claim, so they get their own controls and their own weights.
+  map.addLayer({ id: "log-road1", type: "line", source: "log", layout: { visibility: "none" },
+    filter: ["==", ["get", "layer"], "road1"],
+    paint: { "line-color": "#78716c", "line-width": 1.6 } });
+  map.addLayer({ id: "log-road2", type: "line", source: "log", layout: { visibility: "none" },
+    filter: ["==", ["get", "layer"], "road2"],
     paint: { "line-color": "#a8a29e", "line-width": 1 } });
   map.addLayer({ id: "log-lines-rail", type: "line", source: "log", layout: { visibility: "none" },
     filter: ["==", ["get", "layer"], "rail"],
     paint: { "line-color": "#57534e", "line-width": 1.4, "line-dasharray": [4, 2] } });
-  for (const id of ["log-lines", "log-lines-rail"]) {
+  for (const id of ["log-road1", "log-road2", "log-lines-rail"]) {
     map.on("mousemove", id, (e) => showTip(e, `${e.features[0].properties.layer}: ${e.features[0].properties.name || e.features[0].properties.fullname || ""}`));
     map.on("mouseleave", id, hideTip);
   }
@@ -316,8 +350,13 @@ map.on("load", async () => {
 
   // clicks + hover for every non-parcel layer
   const clickable = { "grid-bus": gridEv, "grid-subs": gridEv, "grid-subs-fp": gridEv, "grid-lines": gridEv,
-    "pjm-queue": miscEv, "pjm-bus-est": miscEv, "gas-lines": miscEv, "gas-pts": miscEv,
-    "env-padus": miscEv, "env-bonus": miscEv, "env-nonatt": miscEv, "cand-line": candEv };
+    "pjm-queue": miscEv, "pjm-bus-est": miscEv, "gas-lines": miscEv,
+    "gas-compressor": miscEv, "gas-storage": miscEv,
+    "env-padus": miscEv, "env-nonatt": miscEv, "cand-line": candEv,
+    // G65: the six tax-credit geographies each need their own evidence popup, or splitting the
+    // layer would have silently removed the click that explained it.
+    "env-bonus-lit": miscEv, "env-bonus-qct": miscEv, "env-bonus-coal": miscEv,
+    "env-bonus-oz": miscEv, "env-bonus-ec": miscEv, "env-bonus-hab": miscEv };
   for (const [id, fn] of Object.entries(clickable)) {
     map.on("click", id, (e) => { if (!state.measure.on) fn(e.features[0].properties); });
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
@@ -639,12 +678,27 @@ $("f-usecase").addEventListener("change", () => {
 $("f-cand").addEventListener("change", syncLayers);
 
 /* ---------- layers panel ---------- */
+/* G65 — ONE CONTROL PER FEATURE CLASS. Operator, 2026-08-19, after a management review:
+   "every map feature should be togglable by nature."
+   Measured before the change: 19 checkboxes covered 33 drawable classes, because five boxes were
+   BUNDLES -- power plants with wind and solar, rail with two road classes, pipelines with
+   compressors and storage, queue points with candidate buses, and six federal tax-credit
+   geographies behind the single word "Tax-credit areas".
+   This registry stays the single source of truth for layer state (G34): syncLayers() iterates it,
+   so a layer added here without a box, or a box added without a layer, is the one thing that can
+   still break "off means hidden". Add both, together, always. */
 const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-lines", "grid-lines-unknown"],
-  "L-bus": ["grid-bus", "grid-bus-label"], "L-pjm": ["pjm-queue", "pjm-bus-est"],
-  "L-gas": ["gas-lines", "gas-pts"], "L-terr": ["terr-fill"],
-  "L-padus": ["env-padus"], "L-bonusgeo": ["env-bonus"], "L-nonatt": ["env-nonatt"],
+  "L-bus": ["grid-bus", "grid-bus-label"],
+  "L-pjm-queue": ["pjm-queue"], "L-pjm-bus": ["pjm-bus-est"],
+  "L-gas-pipe": ["gas-lines"], "L-gas-comp": ["gas-compressor"], "L-gas-stor": ["gas-storage"],
+  "L-terr": ["terr-fill"], "L-padus": ["env-padus"], "L-nonatt": ["env-nonatt"],
+  "L-bonus-lit": ["env-bonus-lit"], "L-bonus-qct": ["env-bonus-qct"],
+  "L-bonus-coal": ["env-bonus-coal"], "L-bonus-oz": ["env-bonus-oz"],
+  "L-bonus-ec": ["env-bonus-ec"], "L-bonus-hab": ["env-bonus-hab"],
   "L-watershed": ["water-ws-fill", "water-ws-line"], "L-waterstress": ["water-stress-fill"],
-  "L-dc": ["fac-dc", "fac-dc-city"], "L-fac": ["fac-gen"], "L-log": ["log-lines", "log-lines-rail"] };
+  "L-dc": ["fac-dc", "fac-dc-city"],
+  "L-fac-plant": ["fac-plant"], "L-fac-solar": ["fac-solar"], "L-fac-wind": ["fac-wind"],
+  "L-log-rail": ["log-lines-rail"], "L-log-road1": ["log-road1"], "L-log-road2": ["log-road2"] };
 /* ---------- context layers: 1 MB of geometry, so fetched on FIRST USE, not at boot ----------
    Six layers share one payload. The first toggle loads it and builds all six; later toggles
    just flip visibility. A layer that has not loaded yet reports so rather than silently
@@ -835,51 +889,26 @@ function syncLayers() {
 }
 for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListener("change", syncLayers);
 
-/* ---------- the four part-presets (the dashboard's original pages) ----------
- * Each sets the county shading + the layer defaults for that analysis; every layer
- * stays user-toggleable afterwards — a preset frames the page, it never locks it. */
-const PRESETS = {
-  land: { metric: "class_union",
-    layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
-              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
-  grid: { metric: "queue_active_mw",
-    layers: { "L-parcels": 1, "L-subs": 1, "L-lines": 1, "L-bus": 1, "L-pjm": 1, "L-gas": 1,
-              "L-terr": 1, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0, "L-dc": 1, "L-fac": 1,
-              "L-watershed": 0, "L-waterstress": 0, "L-log": 0, "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
-  env: { metric: "class_union",
-    layers: { "L-parcels": 1, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 1, "L-bonusgeo": 1, "L-nonatt": 1,
-              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
-  sentiment: { metric: "opposition_intensity",
-    layers: { "L-parcels": 0, "L-subs": 0, "L-lines": 0, "L-bus": 0, "L-pjm": 0, "L-gas": 0,
-              "L-terr": 0, "L-padus": 0, "L-bonusgeo": 0, "L-nonatt": 0,
-              "L-watershed": 0, "L-waterstress": 0, "L-dc": 0, "L-fac": 0, "L-log": 0,
-              "L-ghgrp": 0, "L-frpp": 0, "L-screener": 0 } },
-};
-/* Loud on a gap, rather than silently persisting a layer the way the bug did. A layer added to
-   LAYER_MAP or CONTEXT_LAYERS but forgotten in a preset shows up here the moment the page loads. */
-const PRESET_GAPS = Object.entries(PRESETS)
-  .map(([k, pr]) => [k, ALL_LAYER_BOXES.filter((b) => !(b in pr.layers))])
-  .filter(([, miss]) => miss.length);
-if (PRESET_GAPS.length)
-  console.error("G34: preset(s) do not state every layer -", JSON.stringify(PRESET_GAPS));
-document.querySelectorAll("#presets button").forEach((b) => b.onclick = () => {
-  const pr = PRESETS[b.dataset.p]; if (!pr) return;
-  document.querySelectorAll("#presets button").forEach((x) => x.classList.toggle("active", x === b));
-  // G34: iterate the REGISTRY, not the preset. Iterating pr.layers was the bug -- a box the preset
-  // did not mention kept whatever the previous preset left it as, and syncLayers then faithfully
-  // redrew it. Unstated now means OFF.
-  for (const id of ALL_LAYER_BOXES) {
-    const el = $(id); if (el) el.checked = !!pr.layers[id];
-  }
-  $("county-metric").value = pr.metric;
-  if (map.getLayer("county-fill"))
-    map.setPaintProperty("county-fill", "fill-color", countyPaint(pr.metric));
-  syncLayers(); applyFilters();
-});
+/* ---------- G66: THE FOUR PART-PRESETS ARE GONE ----------------------------------------------
+ * Operator, 2026-08-19: "remove the JUMP TO A VIEW section, since we want the user to toggle
+ * these things on and off." The presets set a county metric and a full layer state in one click;
+ * with G65 splitting 19 boxes into 26, a preset would be deciding 26 answers on the reader's
+ * behalf, which is the opposite of the ask.
+ *
+ * ⛔ WHAT MUST NOT GO WITH THEM. `ALL_LAYER_BOXES` and `syncLayers()` STAY. The registry is what
+ * enforces "off means hidden" -- G34 was exactly this bug: `grid` set "L-fac": 1, no other preset
+ * mentioned it, and wind and solar stayed drawn after a preset switch because nothing set them
+ * back to 0. Deleting the registry along with the presets would reintroduce it with 26 boxes
+ * instead of 17. What is retired is PRESETS, the preset applier, and PRESET_GAPS (which existed
+ * only to check that every preset stated every layer -- with no presets there is nothing to check).
+ *
+ * The county-shading selector `#county-metric` survives on its own; it was never a preset, the
+ * presets merely set it.
+ *
+ * Historical note, kept because the shape recurs: the removed applier iterated the REGISTRY rather
+ * than the preset, precisely so an unstated box turned OFF instead of persisting. That principle
+ * now lives in syncLayers() alone.
+ * -------------------------------------------------------------------------------------------- */
 
 /* ---------- parcels ---------- */
 const FILL_COLOR = ["case", ["==", ["get", "has_si_signal"], true], "#d97706",
@@ -1319,10 +1348,13 @@ const PART_NAME = { p1: "Seller intent", p2: "Grid access", p3: "Land & size",
 $("sc-on").addEventListener("change", (e) => {
   $("sc-weights").classList.toggle("hidden", !e.target.checked);
 });
-for (const k of Object.keys(SCORE_CFG.weights))
-  $(`w-${k}`).addEventListener("input", (e) => { $(`wv-${k}`).textContent = e.target.value; });
+/* G68: the weights were range sliders capped at 5, with a read-only `wv-*` span mirroring each
+   one. A user could neither type a weight nor set one above 5 -- and a cap on a weight is a silent
+   filter on the ranking, the same shape as G58's .slice(0,14). They are now number inputs with no
+   max, so the input IS the readout and the mirror spans are gone. `scoreSite()` still reads
+   `w-${k}`, unchanged. */
 $("sc-reset").onclick = () => {
-  for (const [k, v] of Object.entries(SCORE_CFG.weights)) { $(`w-${k}`).value = v; $(`wv-${k}`).textContent = v; }
+  for (const [k, v] of Object.entries(SCORE_CFG.weights)) $(`w-${k}`).value = v;
 };
 $("sc-rank").onclick = () => {
   const w = currentWeights();

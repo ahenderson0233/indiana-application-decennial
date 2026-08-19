@@ -37,15 +37,11 @@
         filter that is changing what you see.</p>
     </div>
 
-    <div class="railcard">
-      <h2>Jump to a view <span class="hint">(sets sensible layers — you can still change anything)</span></h2>
-      <div id="presets">
-        <button data-p="land" class="active">Land</button>
-        <button data-p="grid">Power</button>
-        <button data-p="env">Environment</button>
-        <button data-p="sentiment">Local rules</button>
-      </div>
-    </div>
+<!-- G66: "Jump to a view" removed 2026-08-19 on the operator's instruction. Four buttons decided
+     the county metric and every layer in one click; with G65 splitting the layer list into one
+     control per feature class, a preset would be answering 26 questions on the reader's behalf.
+     The layer registry and syncLayers() are deliberately kept in app.js -- they are what enforce
+     "off means hidden", and removing them with the presets would reintroduce G34. -->
 
     <details class="acc" open>
       <summary><span class="step">1</span> What are you building?</summary>
@@ -60,7 +56,7 @@
           buildings, so it uses <b>open ground</b> (parcel &minus; building footprints).</div>
         <label><input type="checkbox" id="f-mw" checked> Fits at least
           <input type="number" id="f-mw-val" value="25" min="1"> MW</label>
-        <div class="hint">at <input type="number" id="f-density" value="4" min="1" max="20" step="0.5">
+        <div class="hint">at <input type="number" id="f-density" value="4" min="0.1" step="0.1">
           MW per acre &mdash; 4 for a data centre, 10 for batteries. <b>Your assumption</b>, not
           something we measured.</div>
         <div class="hint" style="margin-top:5px">this is the first cut. A motivated
@@ -86,7 +82,9 @@
         <div class="hint" id="L-screener-note" style="margin:-2px 0 6px 18px">Loads on first use
           &mdash; 3.7&nbsp;MB. Not every screener site carries a location; the count is stated
           once it loads.</div>
-        <label><input type="checkbox" id="L-log"> Rail and major roads</label>
+        <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,117)</span></label>
+        <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(225 &mdash; interstates and US routes)</span></label>
+        <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(861)</span></label>
         <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
         <div class="sowhat">Rail and highway access decide how construction loads and
           transformers reach the site. Federal surplus is land a government body has already declared
@@ -122,10 +120,15 @@
           </select></label>
         <div class="hint" style="margin-left:18px" id="line-kv-legend"></div>
         <label><input type="checkbox" id="L-bus" checked> Grid connection points</label>
-        <label><input type="checkbox" id="L-pjm"> PJM queue points</label>
+        <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(425 &mdash; projects competing for the same study slots)</span></label>
+        <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(229 &mdash; estimated positions, not published)</span></label>
         <label><input type="checkbox" id="L-terr"> Utility service territories</label>
-        <label><input type="checkbox" id="L-gas"> Natural gas</label>
-        <label><input type="checkbox" id="L-fac"> Power plants &middot; solar &middot; wind</label>
+        <label><input type="checkbox" id="L-gas-pipe"> Gas pipelines <span class="hint">(215 &mdash; can you feed on-site generation)</span></label>
+        <label><input type="checkbox" id="L-gas-comp"> Gas compressor stations <span class="hint">(24)</span></label>
+        <label><input type="checkbox" id="L-gas-stor"> Gas storage fields <span class="hint">(22 &mdash; buffered supply nearby)</span></label>
+        <label><input type="checkbox" id="L-fac-plant"> Power plants <span class="hint">(2,671 &mdash; an existing interconnection, and a possible retirement)</span></label>
+        <label><input type="checkbox" id="L-fac-solar"> Solar farms <span class="hint">(114)</span></label>
+        <label><input type="checkbox" id="L-fac-wind"> Wind farms <span class="hint">(1,652 &mdash; competing for the same queue slots)</span></label>
         <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
           <span class="hint">(neighbours already holding air permits)</span></label>
         <div class="sowhat">Voltage class is the fastest read on the map &mdash; a
@@ -168,7 +171,15 @@
         <div class="subhead">Shown on the map</div>
         <label><input type="checkbox" id="L-padus"> Protected land</label>
         <label><input type="checkbox" id="L-nonatt"> Air-quality nonattainment areas</label>
-        <label><input type="checkbox" id="L-bonusgeo"> Tax-credit areas <span class="hint">(incl. coal closures)</span></label>
+        <!-- G65: these six were ONE checkbox called "Tax-credit areas". Five are benefits you are
+             chasing; critical habitat is a constraint that can stop the project. One tick cannot
+             mean both. -->
+        <label><input type="checkbox" id="L-bonus-ec"> Energy community <span class="hint">(8 &mdash; the 10% adder)</span></label>
+        <label><input type="checkbox" id="L-bonus-coal"> Coal-closure area <span class="hint">(221)</span></label>
+        <label><input type="checkbox" id="L-bonus-lit"> Low-income tract <span class="hint">(662)</span></label>
+        <label><input type="checkbox" id="L-bonus-qct"> Qualified census tract <span class="hint">(337)</span></label>
+        <label><input type="checkbox" id="L-bonus-oz"> Opportunity zone <span class="hint">(156)</span></label>
+        <label><input type="checkbox" id="L-bonus-hab"> Critical habitat <span class="hint">(10 &mdash; a CONSTRAINT, not a credit)</span></label>
         <label><input type="checkbox" id="L-watershed"> Watersheds
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
@@ -222,12 +233,15 @@
         <div class="hint" style="margin:4px 0 6px">Weights are yours to set — these are defaults, not
           an answer. A part with no data for a site is <b>left out of that site's average</b>, never
           scored zero, so a site is never punished for our coverage gap.</div>
-        <label>Owner motivation <input type="range" id="w-p1" min="0" max="5" step="1" value="2"><span class="wv" id="wv-p1">2</span></label>
-        <label>Power &amp; grid <input type="range" id="w-p2" min="0" max="5" step="1" value="5"><span class="wv" id="wv-p2">5</span></label>
-        <label>Land &amp; size <input type="range" id="w-p3" min="0" max="5" step="1" value="4"><span class="wv" id="wv-p3">4</span></label>
-        <label>Environmental <input type="range" id="w-p4" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p4">3</span></label>
-        <label>Community &amp; rules <input type="range" id="w-p5" min="0" max="5" step="1" value="3"><span class="wv" id="wv-p5">3</span></label>
-        <label>Market &amp; cost <input type="range" id="w-p6" min="0" max="5" step="1" value="1"><span class="wv" id="wv-p6">1</span></label>
+        <!-- G68: these were sliders 0-5 with a read-only number beside them, so a weight could be
+             neither typed nor set above 5. Type any weight you like; a cap on a weight is a silent
+             filter on the ranking. -->
+        <label>Owner motivation <input type="number" class="wv" id="w-p1" min="0" step="0.5" value="2"></label>
+        <label>Power &amp; grid <input type="number" class="wv" id="w-p2" min="0" step="0.5" value="5"></label>
+        <label>Land &amp; size <input type="number" class="wv" id="w-p3" min="0" step="0.5" value="4"></label>
+        <label>Environmental <input type="number" class="wv" id="w-p4" min="0" step="0.5" value="3"></label>
+        <label>Community &amp; rules <input type="number" class="wv" id="w-p5" min="0" step="0.5" value="3"></label>
+        <label>Market &amp; cost <input type="number" class="wv" id="w-p6" min="0" step="0.5" value="1"></label>
         <div class="rowbtns" style="margin-top:6px"><button id="sc-rank">Rank sites in view</button>
           <button id="sc-reset">Reset weights</button></div>
         <div id="sc-out" class="hint"></div>
@@ -296,6 +310,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=849a4bcf"></script>
-<script src="app.js?v=0c508054"></script>
+<script src="app.js?v=dd99cb12"></script>
 </body>
 </html>

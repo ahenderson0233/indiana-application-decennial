@@ -51,7 +51,7 @@
           roughly 300&ndash;1,000&nbsp;MW; a battery site here is 5&nbsp;MW or less.</p>
 
         <label class="blk">Land needed per megawatt
-          <span class="inline"><input type="number" id="s-density" value="4" min="1" max="20" step="0.5"> MW per acre</span></label>
+          <span class="inline"><input type="number" id="s-density" value="4" min="0.1" step="0.1"> MW per acre</span></label>
         <p class="hint">How much power you assume you can fit on an acre. <b>4</b> is a common
           planning figure for a data centre, <b>10</b> for batteries. This is your assumption to
           change &mdash; it is not something we measured.</p>
@@ -78,7 +78,17 @@
             completely different things to a buyer.</p>
         </div>
         <label class="blk">Minimum size <span class="inline"><input type="number" id="s-acres" value="0" min="0"> acres</span></label>
-      </div>
+      
+        <div class="subhead">Where</div>
+        <label class="blk">County
+          <select id="s-county"><option value="">any of the 92</option></select></label>
+        <label class="blk">Land record type
+          <select id="s-sitekind"><option value="">any</option></select></label>
+        <label class="blk">At least <span class="inline"><input type="number" id="s-outdoor" value="0" min="0" step="0.5"> acres</span>
+          of open ground <span class="hint">(parcel &minus; building footprints &mdash; the BESS basis)</span></label>
+        <label class="blk">At most <span class="inline"><input type="number" id="s-structmax" value="" min="0" step="1"> structures</span>
+          on the parcel <span class="hint">(blank = any; 0 = bare land, nothing to demolish)</span></label>
+</div>
     </details>
 
     <!-- STEP 3 — the differentiator ---------------------------------------------------------- -->
@@ -127,7 +137,18 @@
           them &mdash; so you would be discarding half the substations in the state, not because
           they are too small but because nobody published a number. Leave it at 0 unless you
           specifically need a rated substation.</p>
-      </div>
+      
+        <label class="blk">Connection point of at least
+          <span class="inline"><input type="number" id="s-buskv" value="0" min="0"> kV</span>
+          <span class="hint">(a 138 kV bus and a 34.5 kV bus are not the same on-ramp)</span></label>
+        <label class="blk">Binding facility contains
+          <span class="inline"><input type="text" id="s-binding" value="" placeholder="e.g. REYNOLDS" style="width:120px"></span>
+          <span class="hint">(the constraint that sets the headroom &mdash; free text, case-insensitive)</span></label>
+        <label class="blk">Placement confidence
+          <select id="s-conf"><option value="">any, including unplaced</option></select></label>
+        <div class="hint">⚠ Confidence describes how we located the BUS, not how good the site is.
+          An unplaced bus is honest; a misplaced one would corrupt every distance on this row.</div>
+</div>
     </details>
 
     <!-- STEP 4 -------------------------------------------------------------------------------- -->
@@ -149,7 +170,7 @@
             <option value="2024">January 2024</option>
           </select></label>
         <label><input type="checkbox" id="s-sirecent"> Tighter: something happened in the last
-          <span class="inline"><input type="number" id="s-siyears" value="3" min="1" max="10"> years</span></label>
+          <span class="inline"><input type="number" id="s-siyears" value="3" min="0.5" step="0.5"> years</span></label>
 
         <div class="explain" style="background:#f1f5f9;border-color:#cbd5e1">
           <b>Some signals go stale. Others never do.</b>
@@ -170,7 +191,21 @@
           date <span class="hint">(shown as &ldquo;date unknown&rdquo;, never as recent)</span></label>
         <p class="hint">Unticking this hides a large amount of real inventory for a reason that is
           about <i>our</i> data, not about the property.</p>
-      </div>
+      
+        <label class="blk">Which signal
+          <select id="s-signal"><option value="">any signal</option></select></label>
+        <div class="hint">Until now this whole taxonomy was one tick box. A scheduled tax sale and a
+          decade-old code violation are not the same lead.</div>
+        <label class="blk">At least <span class="inline"><input type="number" id="s-minevents" value="0" min="0" step="1"> events</span>
+          within <select id="s-evwindow" style="width:auto">
+            <option value="events_3y">3 years</option>
+            <option value="events_5y">5 years</option>
+            <option value="events_10y">10 years</option>
+            <option value="signal_events">any time</option>
+          </select></label>
+        <label class="blk">How the signal reached the parcel
+          <select id="s-keying"><option value="">any route</option></select></label>
+</div>
     </details>
 
     <!-- STEP 5 -------------------------------------------------------------------------------- -->
@@ -187,8 +222,24 @@
           tax credits</label>
         <p class="hint">Areas the federal government designates because a coal plant or mine
           closed there &mdash; projects built in them can claim a larger tax credit.</p>
+      
+        <label class="blk">Which tax-credit zone
+          <select id="s-bonuskind"><option value="">any zone</option></select></label>
+        <div class="hint">Six different federal geographies sit behind the tick above. The
+          <b>energy community</b> adder is the one most projects are chasing.</div>
+</div>
+    </details>
+
+    <details class="acc">
+      <summary><span class="step">6</span> What we can show you <span class="acount" id="c-cov"></span></summary>
+      <div class="accbody">
+        <div class="hint">These filter on OUR coverage, not on the site. Use them to see what is
+          demonstrable, never to conclude a site is bad because we have not measured it.</div>
+        <label><input type="checkbox" id="s-plottable"> Only sites we can put on the map
+          <span class="hint">(20,040 of 51,493 carry a coordinate)</span></label>
       </div>
     </details>
+
 
     <div class="railcard">
       <div class="rowbtns">
@@ -247,10 +298,10 @@ function busLabel(g) {
 /* the grid number that matches what the user said they need */
 function gridOf(s) {
   const d = $("s-dir").value;
-  if (d === "wd") return s.wd_mw != null ? { mw: s.wd_mw, mi: s.wd_mi, bus: s.wd_bus, kv: s.wd_kv, dir: "getting power" } : null;
-  if (d === "inj") return s.inj_mw != null ? { mw: s.inj_mw, mi: s.inj_mi, bus: s.inj_bus, kv: s.inj_kv, dir: "sending power" } : null;
-  if (s.wd_mw != null) return { mw: s.wd_mw, mi: s.wd_mi, bus: s.wd_bus, kv: s.wd_kv, dir: "getting power" };
-  if (s.inj_mw != null) return { mw: s.inj_mw, mi: s.inj_mi, bus: s.inj_bus, kv: s.inj_kv, dir: "sending power" };
+  if (d === "wd") return s.wd_mw != null ? { mw: s.wd_mw, mi: s.wd_mi, bus: s.wd_bus, kv: s.wd_kv, binding: s.wd_binding, dir: "getting power" } : null;
+  if (d === "inj") return s.inj_mw != null ? { mw: s.inj_mw, mi: s.inj_mi, bus: s.inj_bus, kv: s.inj_kv, binding: s.inj_binding, dir: "sending power" } : null;
+  if (s.wd_mw != null) return { mw: s.wd_mw, mi: s.wd_mi, bus: s.wd_bus, kv: s.wd_kv, binding: s.wd_binding, dir: "getting power" };
+  if (s.inj_mw != null) return { mw: s.inj_mw, mi: s.inj_mi, bus: s.inj_bus, kv: s.inj_kv, binding: s.inj_binding, dir: "sending power" };
   return null;
 }
 
@@ -288,6 +339,49 @@ function classOK(s) {
   return $("s-oth").checked;
 }
 
+
+/* G67 helpers. `outdoorOf` prefers the EXACT measure and falls back, the same precedence
+   `acresOf` already uses -- two acreage rules on one page would disagree about one parcel. */
+function outdoorOf(s) {
+  const v = [s.exact_outdoor_acres, s.outdoor_acres].find((x) => x != null && x > 0);
+  return v == null ? 0 : v;
+}
+/* Populate every enumerated filter FROM THE DATA, so an option can never drift from what the
+   payload actually contains -- a hand-written option list is a second copy of the vocabulary. */
+/* G8: never let a codename reach the UI. SIGNAL_PLAIN is a top-level const in common.js, so it is
+   NOT on window -- test the binding itself, not a window property. */
+function signalPlain(v) {
+  try {
+    const e = (typeof SIGNAL_PLAIN === "object") ? SIGNAL_PLAIN[v] : null;
+    if (e) return Array.isArray(e) ? e[0] : e;      // [label, explanation, kind]
+  } catch (err) {}
+  return String(v).replace(/^[A-Z]\d+_/, "").replace(/_/g, " ");
+}
+/* site_kind is `building` / `no_structure`. It is NOT occ_group, so landPlain() must not be used
+   on it -- neither value is in LAND_PLAIN, so both fall through to "undeveloped land" and the
+   dropdown offers the same words for a parcel with a building and one without. */
+const SITE_KIND_PLAIN = { building: "has a building on it",
+                          no_structure: "bare land - no structure" };
+const siteKindPlain = (v) => SITE_KIND_PLAIN[v] || String(v).replace(/_/g, " ");
+function fillSelects() {
+  const put = (id, vals, label) => {
+    const el = $(id); if (!el) return;
+    for (const v of vals) {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = label ? label(v) : v; el.appendChild(o);
+    }
+  };
+  const uniq = (f) => [...new Set(DATA.sites.map(f).filter((v) => v != null && v !== ""))].sort();
+  const split = (f) => [...new Set(DATA.sites.flatMap((s) =>
+    String(f(s) || "").split(/[|,;]/).map((x) => x.trim()).filter(Boolean)))].sort();
+  put("s-county", uniq((s) => s.county_name));
+  put("s-sitekind", uniq((s) => s.site_kind), siteKindPlain);
+  put("s-conf", uniq((s) => s.wd_conf));
+  put("s-keying", uniq((s) => s.keying));
+  put("s-signal", split((s) => s.signals), signalPlain);
+  put("s-bonuskind", split((s) => s.bonus_kinds));
+}
+
 function passes(s) {
   if (!classOK(s)) return false;
   const a = acresOf(s).acres;
@@ -311,6 +405,22 @@ function passes(s) {
   if ($("s-nowet").checked && s.wetland_on_parcel) return false;
   if ($("s-noprot").checked && s.protected_land) return false;
   if ($("s-bonus").checked && !s.bonus_kinds) return false;
+
+  // ---- G67: the filters the payload always supported and the page never offered ----
+  if ($("s-county").value && s.county_name !== $("s-county").value) return false;
+  if ($("s-sitekind").value && s.site_kind !== $("s-sitekind").value) return false;
+  if (N("s-outdoor") && !(outdoorOf(s) >= N("s-outdoor"))) return false;
+  const smax = $("s-structmax").value;
+  if (smax !== "" && !(Number(s.structure_count || 0) <= Number(smax))) return false;
+  if (N("s-buskv") && !((g && g.kv != null ? g.kv : -1) >= N("s-buskv"))) return false;
+  const bind = $("s-binding").value.trim().toLowerCase();
+  if (bind && !String((g && g.binding) || "").toLowerCase().includes(bind)) return false;
+  if ($("s-conf").value && String(s.wd_conf || "") !== $("s-conf").value) return false;
+  if ($("s-signal").value && !String(s.signals || "").includes($("s-signal").value)) return false;
+  if (N("s-minevents") && !(Number(s[$("s-evwindow").value] || 0) >= N("s-minevents"))) return false;
+  if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
+  if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
+  if ($("s-plottable").checked && (s.lat == null || s.lon == null)) return false;
   return true;
 }
 
@@ -331,6 +441,18 @@ function activeChips() {
   if (N("s-submi")) c.push(`within ${N("s-submi")} mi of a substation`);
   if (N("s-subkv")) c.push(`substation ${N("s-subkv")}+ kV`);
   if ($("s-si").checked) c.push("owner-motivation signal");
+  // G67: the new filters must appear here too, or a collapsed section hides what it is doing.
+  for (const [id, lbl] of [["s-county", "county"], ["s-sitekind", "land type"],
+                           ["s-conf", "placement"], ["s-signal", "signal"],
+                           ["s-keying", "keyed by"], ["s-bonuskind", "zone"]])
+    if ($(id).value) c.push(`${lbl}: ${$(id).selectedOptions[0].text}`);
+  if ($("s-binding").value.trim()) c.push(`binding facility ~ "${$("s-binding").value.trim()}"`);
+  if (N("s-outdoor")) c.push(`${fmt(N("s-outdoor"))}+ open acres`);
+  if ($("s-structmax").value !== "") c.push(`at most ${$("s-structmax").value} structures`);
+  if (N("s-buskv")) c.push(`connection point ${N("s-buskv")}+ kV`);
+  if (N("s-minevents")) c.push(`${N("s-minevents")}+ events`);
+  if ($("s-plottable").checked) c.push("mappable only");
+
   if ($("s-si").checked && Number($("s-since").value))
     c.push(`events since ${$("s-since").value}`);
   if ($("s-si").checked && $("s-sirecent").checked) c.push(`activity in ${N("s-siyears")} yrs`);
@@ -598,6 +720,7 @@ function toCSV() {
   renderNav();
   $("s-headline").innerHTML = '<div class="card">Loading sites…</div>';
   DATA = await fetchGz("data/screener.json.gz");
+  fillSelects();
   const wd = DATA.sites.filter((s) => s.wd_mw != null).length;
   $("s-cover-note").innerHTML = `We hold the <b>getting-power</b> figure for
     ${fmt(wd)} of ${fmt(DATA.sites.length)} sites loaded here, and the <b>sending-power</b> figure
@@ -624,7 +747,12 @@ function toCSV() {
     $("s-target").value = "300"; $("s-density").value = "4"; $("s-use").value = "dc";
     $("s-acres").value = 0; $("s-mwavail").value = 0; $("s-busmi").value = 25;
     $("s-submi").value = 0; $("s-subkv").value = 0; $("s-siyears").value = 3;
-    $("s-dir").value = "wd"; $("s-use-note").innerHTML = USE_NOTE.dc; render();
+    $("s-dir").value = "wd";
+    for (const id of ["s-county", "s-sitekind", "s-conf", "s-signal", "s-keying", "s-bonuskind", "s-binding"])
+      $(id).value = "";
+    $("s-outdoor").value = 0; $("s-structmax").value = ""; $("s-buskv").value = 0;
+    $("s-minevents").value = 0; $("s-evwindow").value = "events_3y";
+    $("s-use-note").innerHTML = USE_NOTE.dc; render();
   };
   $("s-export").onclick = toCSV;
 })();
