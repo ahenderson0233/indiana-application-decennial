@@ -50,10 +50,50 @@ async function fetchGz(url) {
     const man = await payloadVersions();
     v = man[url.replace(/^\.?\//, "")] || null;
   } catch (e) { v = null; }
-  const res = await fetch(v ? `${url}?v=${v}` : url);
+  /* ⚠ A DEAD SERVER MUST NOT LOOK LIKE A HANG. `fetch` rejects with a bare "Failed to fetch"
+     TypeError when nothing is listening, which says nothing about WHICH file or WHY — and every
+     page in this app awaits its payload at boot with no catch, so the reader is left staring at
+     "Loading sites…" forever. Reported by the operator 2026-08-19b, whose local server had died:
+     the cached HTML rendered, the payload did not, and the page looked broken rather than
+     disconnected. Name the file and the cause here; the global handler below turns it into
+     something on screen. */
+  let res;
+  try {
+    res = await fetch(v ? `${url}?v=${v}` : url);
+  } catch (e) {
+    throw new Error(`${url}: the server did not respond (${e.message}). If you are running this `
+                    + `locally, the local web server has probably stopped.`);
+  }
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).json();
 }
+
+/* ---------- A FAILED BOOT SAYS SO, ON EVERY PAGE --------------------------------------------
+   ⛔ Measured 2026-08-19b: NOT ONE page wraps its boot payload fetch in a catch. screener.html
+   sets "Loading sites…" and awaits; grid, data and insights have no catch at all. So any payload
+   failure — server down, file missing, a bad gzip — renders as a placeholder that never resolves,
+   which is indistinguishable from a code bug and sends the reader (and the next session) hunting
+   in the wrong place.
+
+   One listener, in the shared file, covers every page including ones not written yet. It does not
+   swallow the error: it still reaches the console, and the banner names the file so the cause is
+   actionable rather than "something went wrong". */
+function reportBootFailure(err) {
+  const msg = (err && (err.message || err)) || "unknown error";
+  if (document.getElementById("boot-failure")) return;      // one banner, not one per rejection
+  const el = document.createElement("div");
+  el.id = "boot-failure";
+  el.style.cssText = "margin:12px;padding:12px 14px;border:1px solid #f0b4b4;border-radius:8px;"
+    + "background:#fff5f5;color:#7f1d1d;font-size:12.5px;line-height:1.5";
+  el.innerHTML = "<b>&#9888; This page could not load its data.</b><br>"
+    + "<code style='font-size:11.5px'>" + String(msg).replace(/[<>&]/g, "") + "</code><br>"
+    + "<span style='color:#6b7280'>Nothing on the page below this point is missing because the "
+    + "data is missing &mdash; it never arrived. If you are running locally, restart the web "
+    + "server and reload. The figures already on screen, if any, are from before the failure.</span>";
+  const host = document.querySelector(".page, #scr-layout, #layout, body");
+  if (host) host.insertBefore(el, host.firstChild);
+}
+window.addEventListener("unhandledrejection", (e) => reportBootFailure(e.reason));
 async function fetchJson(url) { return (await fetch(url + "?v=" + Date.now())).json(); }
 /* HTML escape, shared. ⚠ NOT named `esc`: market.html declares its own `const esc` at module
    scope, and a second top-level `esc` here would be a duplicate declaration that takes that page
