@@ -56,7 +56,20 @@ except Exception:
 #                     "data/grid.geojson.gz". Fix: strip string literals before scanning for
 #                     property access.
 def strip_strings(js):
-    """Remove string and template literals so property-access scanning cannot match inside them."""
+    """Remove string/template literals AND comments so property scanning cannot match inside them.
+
+    ⚠ COMMENTS WERE THE GAP, and it produced a false PAYLOAD_KEY_ABSENT on 2026-08-19b. This
+    codebase comments heavily and those comments name payloads: a note reading
+    "…whatever pjm.geojson.gz holds…" sits beside `const pjm = await fetchGz("data/pjm.geojson.gz")`,
+    and the scan read it as a property access `pjm.geojson`, then reported that the export never
+    writes a `geojson` key. The finding was pure prose. An audit that cries wolf gets ignored
+    (rule 9), so comments come out before any property is matched.
+    ⛔ Comments are stripped BEFORE strings, because a `//` inside a URL literal ("https://…") must
+    not be mistaken for the start of a comment - so URLs are protected by removing block comments
+    first, then line comments only where they are not preceded by a colon.
+    """
+    js = re.sub(r"/\*.*?\*/", " ", js, flags=re.S)          # block comments
+    js = re.sub(r"(?<!:)//[^\n]*", " ", js)                  # line comments, sparing "https://"
     js = re.sub(r"`(?:[^`\\]|\\.)*`", "``", js, flags=re.S)
     js = re.sub(r'"(?:[^"\\]|\\.)*"', '""', js)
     js = re.sub(r"'(?:[^'\\]|\\.)*'", "''", js)

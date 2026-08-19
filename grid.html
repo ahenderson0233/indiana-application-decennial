@@ -29,7 +29,7 @@
         (<code>provenance_class = vendor_licensed_proxy</code>), which is the only source that
         carries them: <b>1,731 buses, 1,079 with non-zero load headroom</b>, every one located.
         ⚠ Licensed, not ours, and the licence lapses <b>late 2027</b>.</div>
-      <div class="scroll"><table id="t-miso"><tr><th>POI</th><th>kV</th><th>inj@300 MW</th><th>median (∞ probe)</th><th>best</th></tr></table></div>
+      <div class="scroll"><table id="t-miso"><tr><th>bus</th><th>kV</th><th>withdrawal MW</th><th>injection MW</th><th>first constraint to bind</th></tr></table></div>
       <div class="prov" id="p-miso"></div></div>
   </div>
   <!-- ==========================================================================================
@@ -127,22 +127,49 @@
   const pjm = await fetchGz("data/pjm.geojson.gz");
   const rows = pjm.features.filter(f => f.properties.layer === "bus_candidate")
     .sort((a, b) => (b.properties.withdrawal_mw || 0) - (a.properties.withdrawal_mw || 0));
+  /* G86: every row that names a located thing links to it. These features carry their own
+     coordinates, so the link is exact rather than a lookup. */
   document.getElementById("t-pjm").insertAdjacentHTML("beforeend", rows.slice(0, 120).map(f => {
-    const p = f.properties;
-    return `<tr><td>${p.bus_label || p.bus_number}</td><td>${p.bus_kv ?? "—"}</td><td><b>${p.withdrawal_mw != null ? fmt(Math.round(p.withdrawal_mw)) : "—"}</b></td><td>${(p.wd_binding || "").slice(0, 44)}</td><td>${p.wd_existing_overloads ?? "—"}</td></tr>`;
+    const p = f.properties, c = (f.geometry || {}).coordinates;
+    const label = p.bus_label || p.bus_number;
+    const link = c ? `<a href="index.html?lat=${c[1]}&lon=${c[0]}&z=13&label=${encodeURIComponent(label)}&src=${encodeURIComponent("PJM bus, " + (p.location_method || "located"))}">${escHtml(String(label))}</a>` : escHtml(String(label));
+    return `<tr><td>${link}</td><td>${p.bus_kv ?? "—"}</td><td><b>${p.withdrawal_mw != null ? fmt(Math.round(p.withdrawal_mw)) : "—"}</b></td><td>${escHtml((p.wd_binding || "").slice(0, 44))}</td><td>${p.wd_existing_overloads ?? "—"}</td></tr>`;
   }).join(""));
+  /* ⚠ The count here is READ from the payload. It used to say "only the 227 we can place are
+     shown here" while this table renders whatever pjm.geojson.gz holds -- which is 42 rows, not
+     227. A caption that states a number the table does not contain is worse than no caption. */
   document.getElementById("p-pjm").textContent = prov("in_bus_capacity_tier0")
-    + " · case 23 (2028 TC2 Phase II), 1,826 AEP buses in both directions; only the 227 we can"
-    + " place are shown here. Capacity is derived the way the vendor derives it —"
-    + " (rating − base flow) / |shift factor| on the tightest non-overloaded facility.";
+    + ` · case 23 (2028 TC2 Phase II), 1,826 AEP buses in both directions. `
+    + `${rows.length} estimated-location buses are drawn here; see the unified bus table below `
+    + `for every bus we hold, located or not. Capacity is derived the way the vendor derives it — `
+    + `(rating − base flow) / |shift factor| on the tightest non-overloaded facility.`;
   const grid = await fetchGz("data/grid.geojson.gz");
-  const pois = grid.features.filter(f => f.properties.layer === "bus_poi")
-    .sort((a, b) => (b.properties.median_mw || 0) - (a.properties.median_mw || 0));
-  document.getElementById("t-miso").insertAdjacentHTML("beforeend", pois.slice(0, 120).map(f => {
+  /* ⛔ THIS TABLE WAS READING THREE FIELDS THAT DO NOT EXIST. `headroom300_mw`, `median_mw` and
+     `best_mw` are present on 0 of 3,638 bus_poi features, so three of its five columns rendered
+     "—" on EVERY row and the sort key was constant. The payload carries `headroom_mw` per
+     DIRECTION (G111), which is the real figure. Paired here so one row answers both questions,
+     the same shape as the map popup. */
+  const poiPairs = new Map();
+  for (const f of grid.features) {
     const p = f.properties;
-    return `<tr><td>${p.poi_name}</td><td>${p.kv ?? "—"}</td><td><b>${p.headroom300_mw != null ? fmt(Math.round(p.headroom300_mw)) : "—"}</b></td><td>${fmt(Math.round(p.median_mw || 0))}</td><td>${fmt(Math.round(p.best_mw || 0))}</td></tr>`;
+    if (p.layer !== "bus_poi") continue;
+    const k = `${p.iso}|${p.bus_number}`;
+    const e = poiPairs.get(k) || { name: p.poi_name, kv: p.kv, iso: p.iso, c: (f.geometry || {}).coordinates };
+    if (p.direction === "Withdrawal") { e.wd = p.headroom_mw; e.wdBind = p.worst_binding_facility; }
+    else { e.inj = p.headroom_mw; e.injBind = p.worst_binding_facility; }
+    poiPairs.set(k, e);
+  }
+  const pois = [...poiPairs.values()].sort((a, b) => (b.wd ?? -1) - (a.wd ?? -1));
+  document.getElementById("t-miso").insertAdjacentHTML("beforeend", pois.slice(0, 120).map(e => {
+    const link = e.c ? `<a href="index.html?lat=${e.c[1]}&lon=${e.c[0]}&z=13&label=${encodeURIComponent(e.name || "bus")}&src=${encodeURIComponent((e.iso || "") + " bus")}">${escHtml(String(e.name || ""))}</a>` : escHtml(String(e.name || ""));
+    const mw = (v) => v == null ? '<span class="cannot">not published</span>' : `<b>${fmt(Math.round(v))}</b>`;
+    return `<tr><td>${link}<div class="sub2">${escHtml(e.iso || "")}</div></td><td>${e.kv ?? "—"}</td>`
+         + `<td>${mw(e.wd)}</td><td>${mw(e.inj)}</td>`
+         + `<td>${escHtml(String(e.wdBind || e.injBind || "").slice(0, 40))}</td></tr>`;
   }).join(""));
-  document.getElementById("p-miso").textContent = prov("in_bus_headroom_300");
+  document.getElementById("p-miso").textContent = prov("in_bus_capacity_tier0")
+    + ` · ${pois.length} located buses, both directions on one row. MISO load-side figures are the`
+    + ` LICENSED Orennia DPP-2025 proxy — MISO publishes no public load-side headroom.`;
   /* ---- G4 + G7 + G85: the bus table -------------------------------------------------------
      Reads data/gridsiting.json.gz, the payload that has existed since G4 was opened and that no
      page rendered. Nothing new is fetched for the filters -- every one is a client-side pass over
