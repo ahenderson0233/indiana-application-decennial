@@ -2,36 +2,43 @@
 
 Continue the Indiana siting-intelligence application.
 Repo: `C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial`
-(GitHub `ahenderson0233/indiana-application-decennial`, branch `main`, last commit `226bcb7`)
+(GitHub `ahenderson0233/indiana-application-decennial`, branch `main`)
 
 ---
 
-## ⛔ FIRST, IN THIS ORDER. Do not propose anything before you have.
+## ⛔ FIRST, IN THIS ORDER. Propose nothing before you have.
 
-### 1. Is the harvest still alive?
+### 1. Is the harvest alive?
 
 ```bash
 powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | Where-Object { $_.CommandLine -like '*pull_pjm*' }).Count"
 ```
 
-**A PJM MW-ladder harvest is running and has already survived one shutdown.** If that returns `0`
-and the ladder is unfinished, resume it — this is the only command needed, and it is safe to run
-even if one IS already going:
+**A 26-rung PJM ladder is running.** If that returns `0` and rungs remain, resume — this is the
+only command needed and it is safe to run even if one IS going, because it polls for the ABSENCE
+of a QueueScope process:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts\run_pjm_ladder.ps1
 ```
 
-State at handover: **5,000 MW WITHDRAWAL, 51 of ~74 batches, 321,283 rows, 1,275 of 1,826 buses**.
-Queued behind it: 5,000 INJECTION, then 1,000 and 500 MW in both directions.
+State at handover: **5,000 MW INJECTION, ~53 of 74 batches.** 5,000 MW withdrawal is complete and
+registered. Queued: **10/15/25/50/100/200/300/500/1000/1500/2000/3000 MW, both directions** (the
+operator's list). 100 MW auto-skips — already held as `in_pjm_qs_c23sens_{wd,inj}`.
 
-⛔ **NEVER start a second QueueScope process.** That rule was broken on 2026-08-18 by a chained job
-whose `Wait-Process` failed open and launched injection 7 minutes into a withdrawal run. The runner
-polls for the ABSENCE of a process instead.
-⛔ **NEVER delete `data/`.** Progress lives in `data/_ckpt_pjm_qs_case23_{withdrawal,injection}/`.
-The MW is IN the marker filename, so rungs cannot skip each other's work. Archive, never delete.
-⛔ **Owner is 1568, not 739.** 739 is AEP in the *default* case: it loads 0 rows and exits
-**successfully**.
+⛔ **Never a second QueueScope process.** ⛔ **Never delete `data/`** — archive. ⛔ **Owner 1568,
+not 739** (739 loads 0 rows and exits *successfully*).
+
+### ⭐ Two things that will otherwise cost you hours
+
+**The ladder probably will not close parity, and that is measured.** 5,000 MW vs 100 MW, same case
+and direction: **1,029 facilities vs 1,029, 410,947 constraint keys vs 410,947, ZERO only at
+5,000 MW.** The monitored set is a property of the STUDY CASE, not the request size. It is queued
+because the operator asked; do not expect it to surface the 146 missing vendor binders.
+
+**`SHORT ... read 176 of 588` in the harvest log is NOT data loss.** I believed it was and stopped
+the harvest unnecessarily. `python scripts/audit_pjm_short_reads.py` compares every bus against the
+complete 100 MW reference — both tables are clean. **Run that before believing the log.**
 
 ### 2. Checkpoint
 
@@ -39,198 +46,140 @@ The MW is IN the marker filename, so rungs cannot skip each other's work. Archiv
 python scripts/checkpoint.py
 ```
 
-**Expect exactly 3 failures and expect them to be correct:**
+**Expect exactly 3 failures:** wiring census (~286 of 300, standing), honesty audit 1 failure, and
+1 unregistered table — **which IS the running harvest.** ⛔ Anything else is real, especially
+`shipped payload agrees with the warehouse`, the five D85 guards, and **`no EXPORT reads energy
+directly`** (that one caught a live regression yesterday).
 
-| failing check | why |
-|---|---|
-| `wiring census: 282 of 300` | new tables not yet on a surface. Standing state. |
-| `honesty audit: 1 failure` + `1 unregistered` | **that unregistered table IS the running harvest.** It registers on completion; registering early would assert a moving row count. |
-
-⛔ **Anything else failing is real.** In particular `shipped payload agrees with the warehouse`, the
-five `D85` guards, `no shipped payload is older than the table it reads` and `no payload has lost a
-key a surface depends on` must all PASS — each exists because it already broke once.
-
-### 3. Read, in this order, and no further
+### 3. Read, in this order
 
 | # | file | what it is |
 |---|---|---|
-| 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
-| 2 | **`docs/FEATURE_INVENTORY.md`** | ⭐ **EVERY feature, what it does, how it works, and its BigQuery table.** The fastest orientation in the repo |
-| 3 | `docs/HANDOFF_2026-08-18b.md` | the session that just ended — §1 the harvest, §8 the status board, §9 the methodologies |
-| 4 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row first, then the G-index |
-| 5 | `scripts/tariff_adapters.py` | each utility's tariff conventions in its own words — before any tariff work |
+| 1 | `docs/SESSION_START.md` | standing rules, the governing principle |
+| 2 | ⭐ **`docs/HANDOFF_2026-08-19.md`** | **THE CURRENT ONE.** Everything below in full detail |
+| 3 | ⭐ **`docs/TABLE_PURPOSE_INDEX.md`** | **generated.** All 301 objects → purpose → the control that exposes it. **This is G72's worklist** |
+| 4 | `docs/REFERENCE_TOOL_GAP.md` | our screening vs the operator's own two tools |
+| 5 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row first, then the G-index |
+| 6 | `docs/FEATURE_INVENTORY.md` | every feature and its BigQuery table |
 
-⚠ `docs/HANDOFF_2026-08-18.md` (no `b`) is the MORNING session and is marked SUPERSEDED. `GAMEPLAN`,
-`HANDOFF`, `PATH_TO_COMPLETE` and `NATIONAL_HANDOVER` are HISTORY — read them for *how*, never for
-*what is true now*.
-
----
-
-## ⭐ YOUR FIRST ACTION ITEM — when the ladder lands, look for NEW FACILITIES, not new numbers
-
-This is the single most important thing in this prompt.
-
-**Measured:** a 1-batch probe at 5,000 MW matched the existing 100 MW harvest on **4,673 of 4,673
-constraint keys, max delta 0.0**. `available_mw` does not vary with the requested MW. So the ladder
-will NOT change the numbers on rows we already have.
-
-**The operator's reasoning for running it anyway is sound and is what to test:** a larger request
-may cause QueueScope to *report facilities* that a 100 MW request never binds. The evidence that
-this matters:
-
-- we monitor **89.5 facilities per bus**; the vendor reports **9.4**
-- yet **146 of their 298 binding facilities are absent from our harvest entirely**
-- 134 are present and pass our filters → a genuine ranking problem
-- 18 are cut by our `|dfax| ≥ 0.05` filter
-
-**Re-run the comparison when each rung lands.** If the new rungs surface those 146, PJM parity
-follows. If they do not, the gap is the monitored-facility *scope* and needs a different attack.
+⚠ Everything else in `docs/` is HISTORY. Read it for *how*, never for *what is true now*.
 
 ---
 
-## WHERE THE TWO OPEN BUS PROBLEMS STAND
+## ⭐ THE FINDING THAT SHOULD SHAPE YOUR WORK
 
-### Capacity parity — the derivation is SOLVED, selection is open (G61)
+The operator was burned in a management review: **data exists that has no control, so it does not
+exist to the person in the room.** `TABLE_PURPOSE_INDEX.md` measured it across all 301 objects:
 
-Orennia's figure is `(rating − base flow) / |shift factor|` on the binding facility. Verified
-against their own published row for bus 243209: 2844 MVA, 2550 MW, −0.0745 → **3,946 against their
-3,943.59**. We do not ship the rating but can recover it:
-`rating = impact_mw / ((post_loading_pct − pre_loading_pct) / 100)`.
+| verdict | n |
+|---|---:|
+| **TOGGLE** — the user can operate a control that reaches it | **38** |
+| **PAGE ONLY** — reaches a filterable page, no control names it | **79** |
+| **READ-ONLY** — rendered, nothing you can ask a question with | **152** |
+| NO SURFACE | 20 |
+| INFRASTRUCTURE — correctly not a control | 12 |
 
-| on the 283 shared buses | exact | within 20% | median ratio |
-|---|---|---|---|
-| `MIN(available_mw)` — what shipped that morning | 0 | 0 | **0.136** |
-| the derived formula — shipped now | 1 | 84 | **1.010** |
-
-Centred instead of seven times low. The binding rule, verified against them: **the tightest facility
-that is not already over its rating**. They still report 0 when the whole bus is overloaded (147 of
-their 152 flagged rows are exactly 0) — they drop the overloaded FACILITY from the choice, never the
-bus.
-
-### Placement — the method is PROVEN, the gazetteer is the ceiling (G62)
-
-Bus label → substation name, stripping the AEP area prefix (`05EUGENE` → `EUGENE`) and the trailing
-bus index (`05DELAWR1` → `DELAWR`), reproduces the vendor's coordinates at a **median 0.03 miles**.
-Topology from the branch graph — every `transmission_facility` string names both endpoint buses —
-adds a hop-1 tier at ~5.3 mi. **Hop-3 is junk at 33 mi and is not used.** Coverage 82 → **111 of
-283**.
-
-⛔ **The blocker is data, not code.** `in_substations` does not contain MODOC, FOWLER, STUDEBAKER,
-BOUNDARY or ADAMS, while DELAWARE and SOUTH BEND are present and match cleanly. **Extending the
-gazetteer is the unlock.**
-
-⚠ **The denominator is 283, not 1,826.** Our harvest is owner=AEP, whose footprint spans Ohio, WV,
-VA, KY and Michigan; `in_substations` is Indiana-only. Most non-matches are correctly non-Indiana.
+The wiring census says **286 of 300 "reach a surface"**. Both are true — a surface counts a
+provenance line nobody can click. **231 objects are the gap, and that is G72.**
 
 ---
 
-## ⚠ THE ONE PLACE WE DEPEND ON A PRIVATE SOURCE
+## THE OPERATOR'S SIX REMAINING ITEMS — G70 to G75
 
-Operator: *"we want to use Orennia as a yardstick, and do not want to use their data verbatim, since
-we ideally don't want to ever rely on a private source for our data."*
+Ten were ordered on 2026-08-19; four shipped (**#1** basemap, **#5** free MW entry, **#7** signal
+checkboxes, **#10** map clicks). These six remain, in the order I would do them:
 
-**MISO headroom is the deliberate exception.** MISO publishes no load-side figure anywhere and four
-independent sweeps found no public route, so without the licensed proxy the tool cannot answer the
-load question across two thirds of Indiana. Every such row carries
-`provenance_class = 'vendor_licensed_proxy'`, the dossier says so in words, and **the licence lapses
-late 2027** — after which those rows return to "not published".
+| # | item | the one thing to know |
+|---|---|---|
+| **G72** | **Wire the datasets we hold and do not show** | ⭐ **Biggest, and the worklist is already generated.** Work by OBJECTIVE using the index, not alphabetically. Both tables the operator named — `in_land_military_bases` (13) and `in_tribal_land` — are clipped and unshown. ⚠ G21 binds each one: a layer without its "so what" is volume standing in for value |
+| **G70** | **More about the parcel** — address, coordinates, building use | ⭐ `nat_usa_structures` holds **3,377,472 Indiana rows**, is the largest genuinely-unwired object we hold, and carries occupancy class — the "building use" asked for. Join on `build_id`. ⛔ **Do NOT promise owner name or email:** `parcel_owner` is NULL on all 3,553,381 parcels; the only owner data is Marion's (340,765, from the county's own crosswalk) |
+| **G74** | **Any Excel in, rich Excel out, persisted across pages** | `sessionStorage` is exactly the requested semantics — survives navigation, clears on refresh. Vendor SheetJS (this repo vendors, see `vendor/`). ⚠ "ANY sheet" means column mapping cannot be hardcoded: detect the header, let the user map to lat/lon or address, and **keep failing rows labelled** — §13(2) was closed on that behaviour |
+| **G73** | **Rewrite the dossier around OUR data** | It currently follows a PDF the operator supplied only as an example. What we hold that the borrowed format has no room for: the **priced tariff at this parcel's own utility**, 25 owner-motivation signals with dates and keying, county posture with receipts, exact distances, the buildable-area basis. ⛔ Verify by RENDERING — a parse check once passed `esc is not defined` |
+| **G71** | **Zoning from BQ** | ⚠ Two different things wear this name. The ordinance corpus answers *does this county permit a data centre*; parcel-grain zoning is metro-only (`agis_*`). Probably two surfaces, clearly labelled. Do not blend them |
+| **G75** | **Polish; no stale tables** | Run the instruments first: `audit_backlog_truth.py`, `audit_wiring_census.py`, `audit_frontend.py`, `sync_layer_counts.py --check`, `audit_map_clicks.py`. Retire what is stale, *then* make what remains legible |
 
-**Nothing in PJM is theirs.** The capacity is our harvest through our own derivation; the placement
-is our own name match; their file is only the scoring set.
-
----
-
-## HOW TO WORK HERE — the seven moves that actually worked
-
-1. **Probe before committing hours.** A 1-batch probe killed a multi-hour harvest that would have
-   duplicated existing data.
-2. **Measure the blast radius before changing shared logic.** *"Adding these two words changes
-   exactly 1 of 31 eligibility rows"* is what made that edit safe to ship.
-3. **Use the vendor as a scoring set, never a source.** Their file has a labelled answer per bus.
-4. **A count is not a total.** `n_riders_attached` reported 8–13 riders correctly attached while
-   every one contributed **$0**. That defect survived a full session of auditing.
-5. **Render the document; do not read the code.** A parse check passed `esc is not defined`, which
-   would have made the Dossier button do nothing.
-6. **An alarming number is a claim about your INSTRUMENT first.** All three of that day's shocks
-   were join bugs: "0 of 298 match" (int vs string), "1,419 of 1,826 agree" (mutual zeros), "max
-   delta 1,841 MW" (fan-out).
-7. **Turn each fixed defect into a standing check.** `audit_tariff_costing.py` and
-   `tariff_fingerprint.py` are exactly that.
-
-⭐ **Per-utility adapters, never a generic rule** (tariffs). If you find yourself editing shared
-logic to satisfy one publisher, stop. Run `python scripts/tariff_fingerprint.py` after any change —
-it names which publishers moved, and a change to one adapter must move exactly one utility.
+Also open and small: **G76** — the acceptance run's "public-data-only" criterion fails on the
+Orennia **disclosures G50 requires**, so it is permanently red and a genuine leak would look
+identical. Fix it to test for vendor VALUES, not the vendor's name in prose.
 
 ---
 
-## ⛔ THE RULES, and the failure that earned each one
+## THE BACKLOG, AS IT ACTUALLY STANDS
 
-**Write boundary.** `energy-platfrom.energy` is **READ-ONLY**. Everything goes to
-`energy-platfrom.indiana_app`. The one permitted write is an APPEND to `energy.registry_sources`.
-**Restate this in every agent brief — agents do not inherit it.**
+**46 DONE · 17 OPEN · 15 PARTIAL.** Ten items closed on 2026-08-19 and every row's state was
+re-synced to what shipped, so the index can be trusted today.
 
-**Every table gets a `_registry` row in the same run**, carrying `source` AND `method`, with a
-verbatim `RE-SCRAPE COMMAND:` sufficient for a stranger to re-run it.
+**Open beyond the six above:** G53 withdrawn-queue signal (blocked on recovering an address from
+late-stage filings) · G46 own placement methodology · G45 the MW ladder · G40 PJM grain parity
+(owned by the parallel session) · G6 polish · G11 sentiment vocabulary diff · G15 future capacity
+(618 rows, county on **0**; 227 IURC documents identified and public) · G17/G18 · G30b repo pack.
 
-**⛔ CHECK THE WAREHOUSE BEFORE YOU EXPLORE OR SCRAPE.** Enumerate `energy.__TABLES__` and
-`indiana_app._registry` first. It has now paid for itself six times.
+**Partial, and the interesting ones:** **G61** capacity derivation solved (ratio 0.136 → **1.010**),
+binding-facility *selection* open — 146 of 298 vendor binders absent from our harvest · **G62**
+placement proven at **0.03 mi median**, blocked on the substation gazetteer (MODOC, FOWLER,
+STUDEBAKER, BOUNDARY, ADAMS missing) · **G55** 21 of 22 priced utilities now have an adapter; the
+50 URDB-floor utilities need books that **are not published** · **G21** measured at **45** `.sowhat`
+blocks, not the 4 the row claimed — what remains is the map layers · **G14** reframed: the D4 source
+is **fully dated**, so it is a propagation loss, not a re-scrape · **G20** 526 taps and dead ends
+are already typed, so half that row may be moot.
+
+---
+
+## ⛔ THE RULES, AND THE FAILURE THAT EARNED EACH
+
+**Write boundary.** `energy` is READ-ONLY; the one permitted write is an APPEND to
+`energy.registry_sources`. **Builds may read `energy`; EXPORTS MAY NOT** — an export is on the path
+to the user, so the app must rebuild from `indiana_app` alone. This caught a live regression on
+2026-08-19.
+
+**Every table gets a `_registry` row in the same run**, with `source`, `method`, and a verbatim
+`RE-SCRAPE COMMAND:`.
+
+**⛔ Check the warehouse before you explore or scrape.** It has paid for itself seven times.
 
 **Never quote a count from a document, including this one.** Run the checkpoint.
 
-**Read the schema. Never guess a column name or type.** `bus_number` is a **STRING**; `rows` and
-`nulls` are reserved words; `registry_sources.object_names` is `ARRAY<STRING>`; `in_substations` has
-`lat`/`lon`, not `geog`.
+**Read the schema. Never guess a column name or type.** Four guesses cost four dead queries in one
+session: `geog` (it is `geom`), `asset_class` (`substation_type`), `saleDate` (`auctionDate`), and a
+signal that has no rows in the table probed — which returned "0 of 0" and read as DONE.
 
-**⚠ NEVER write a regex through a shell heredoc.** Three times now a pattern has reached disk
-mangled — twice as literal backspace bytes, once with unbalanced parens — and `grep` showed the line
-as clean. Write via the Write tool and self-test at import.
+**⚠ Never write a regex through a shell heredoc.** Three reached disk mangled. Use the Write tool.
 
-**Unpublished is NULL, never 0.**
+**Use a commit-message FILE.** Backticks in `-m` get eaten by the shell.
 
-**⚠ EXCLUDE `parcels_in/080500000047000018` from EVERY spatial join** — D85, an inverted whole-Earth
-polygon, live upstream.
+**⭐ `git config http.sslBackend openssl`** — the 224 MB `data/sites` push uploads fully and then
+fails with a Windows schannel `SEC_E_MESSAGE_ALTERED`. OpenSSL fixes it.
 
-**⛔ No centroid where a footprint exists.** Acreage, asset distances and service territory all
-measure against the polygon. The one exception — bus distance, because buses *are* points — is named
-on the page.
+**Unpublished is NULL, never 0** — but a **STATED** zero is not an absent value (G57: I&M's book
+literally prints `0.000`).
 
-**Never `git add -A`.** Stage explicit paths, and use a commit-message FILE.
+**⚠ Exclude `parcels_in/080500000047000018`** from every spatial join — D85, an inverted
+whole-Earth polygon, live upstream.
 
-**After ANY front-end change:** `python scripts/stamp_assets.py`, then
-`python scripts/audit_frontend.py`, then verify in a browser, then check the deployed site at
-`https://ahenderson0233.github.io/indiana-application-decennial/index.html` (~1 min for Pages).
+**⛔ No centroid where a footprint exists.** The one exception — bus distance, because buses *are*
+points — is named on the page.
 
-⚠ **`app.js` is boot-critical** and the map console **does not boot in a headless sandbox** —
-confirmed four times, including against the live site. Verify the dossier by populating `state` by
-hand and calling `openDossier()` with a real parcel from `data/sites/{fips}.geojson.gz`. That is how
-the two bugs introduced during the dossier fix were caught.
+**After ANY front-end change:** `stamp_assets.py` → `audit_frontend.py` → **render it in a
+browser** → check the deployed site. ⚠ `app.js` is boot-critical and **the map does not boot
+headless** (confirmed five times). Verify by calling functions directly — that is how four defects
+were caught on 2026-08-19.
+
+**The standing checks:** `checkpoint.py` · `audit_backlog_truth.py` · `audit_map_clicks.py` ·
+`audit_pjm_short_reads.py` · `sync_layer_counts.py` · `build_table_purpose_index.py` ·
+`audit_frontend.py` · `tariff_fingerprint.py` · `audit_tariff_costing.py`.
 
 ---
 
-## WHAT IS DONE — do not re-do these
-
-**G54** tariff costing (17 defects; right for the five IOUs) · **G56** per-utility adapters, proven
-isolated · **G58** the silent cap · **G60** dossier audit (9 of 10 closed) · **G39** screener depth,
-deep link, dossier link, map layer · **G63** the bus rebuild · **G64** the IOCS self-heal · **§13(8)**
-which was recorded as impossible for months and is now closed.
-
-## WHAT IS NOT STARTED
-
-**G43** border clipping · **G48** existing-DC-reads-green · **G50** the dossier's "not resolved"
-utility rows · **G51** caller sweep · **G52** map legend · **G53** withdrawn queue as a signal ·
-**G57** two I&M rows with `rate = 0.0` marked `published` · **G59** retire the duplicate PJM pair
-(~1.1M identical rows) · **G55** 50 utilities still on a URDB floor.
-
 ## DO NOT RE-LITIGATE
 
-- **MISO parity is not publicly reachable.** DPP-2025 is CEII; four sweeps proved it. Do not
-  re-probe CartoVista or giqueue, and do not buy a trial.
-- **The G26 headroom method is settled** — pre-existing overloads are flagged and reported, not
-  dropped. It is implemented.
-- **The case-23 re-harvest produced byte-identical data** to `in_pjm_qs_tc2phii_*`. PJM did not
-  refresh the powerflow file; the two pairs are duplicates (G59).
+- **MISO parity is not publicly reachable.** DPP-2025 is CEII; four sweeps proved it.
+- **The 5,000 MW rung surfaced nothing new** — 0 facilities, 0 keys, measured.
+- **G57 was never a defect** — the publisher prints the zero.
+- **The screener already had five sections**; an earlier claim that it had none counted `<h2>` and
+  missed `<summary>`.
+- **G50 and G8 are closed** — probed, not assumed.
 
 ---
 
 **Start by** telling me whether the harvest is alive and what the checkpoint printed, then what you
-read, then your plan.
+read, then your plan — and lead with **G72**, because the index is already its worklist.
