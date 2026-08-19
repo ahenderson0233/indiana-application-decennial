@@ -51,9 +51,14 @@ $log = Join-Path $repo "data\_harvest_c23_ladder.log"
 #
 # 100 MW is already held as in_pjm_qs_c23sens_{wd,inj} (74 markers each, registered
 # complete), so Test-RungComplete skips it. It is listed for completeness only.
+# ⭐ 2026-08-19 06:5x: 5,000 MW INJECTION is FIRST because it is a REPAIR, not a fresh run.
+# The table holds 1,801 of 1,826 buses -- batch index 30 was marked done at 23:05 and its
+# rows never landed (that harvest was killed at 23:10). Its marker is archived to
+# data/_ARCHIVED_short_batches/, so the loader skips the 73 good batches and re-does only
+# the one that is missing. Everything after it keeps the operator's ascending order.
 $plan = @(
-    @{ mw = 5000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_5000" },
     @{ mw = 5000; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_5000" },
+    @{ mw = 5000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_5000" },
     @{ mw = 10; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_10" },
     @{ mw = 10; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_10" },
     @{ mw = 15; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_15" },
