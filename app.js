@@ -1771,9 +1771,9 @@ function openWaterEvidence(p) {
     return show(`Water stress — basin ${p.basin_id}`, `
       <div class="hint" style="margin-bottom:8px">${verdict}</div>
       <table>
-        ${row("Baseline water stress", p.stress_label)}
-        ${row("Water depletion", p.depletion_label)}
-        ${row("Groundwater decline", p.groundwater_decline_label)}
+        ${row("Baseline water stress", p.stress_label, "WRI Aqueduct does not rate this basin")}
+        ${row("Water depletion", p.depletion_label, "WRI Aqueduct does not rate this basin")}
+        ${row("Groundwater decline", p.groundwater_decline_label, "WRI Aqueduct does not rate this basin")}
       </table>
       <div class="prov"><b>What this is:</b> the share of available surface water already
         allocated, from the WRI Aqueduct dataset, published per hydrological basin. It measures
@@ -1799,7 +1799,10 @@ function openWaterEvidence(p) {
       ${row("Named rivers", rivers)}
       ${row("Reservoirs", res)}
       ${row("Lakes over 10 hectares", lakes)}
-      ${row("Largest waterbody", p.largest_waterbody_sqkm ? `${fmt(p.largest_waterbody_sqkm)} km²` : null)}
+      ${/* G51: the NHD clip is COMPLETE for Indiana (163,976 flowlines, 7,430 waterbodies at
+             100% state-cut completeness), so an empty here is a measured finding, not a gap. */
+        row("Largest waterbody", p.largest_waterbody_sqkm ? `${fmt(p.largest_waterbody_sqkm)} km²` : null,
+            "no waterbody recorded in this watershed (measured)")}
     </table>
     <div class="prov"><b>Why a watershed and not a county:</b> water is allocated, contested and
       permitted by watershed. Two parcels a mile apart in different subbasins can face different
@@ -1985,8 +1988,22 @@ function bindingPlain(s) {
    used to decide whether to RAISE the question, never to answer it, so erring long is the safe
    direction -- and the dossier says the review is triggered by the DoD, not by our number. */
 function gatesForPoint(lat, lon) {
-  const out = { mil: null, milMi: null, sua: [], tribal: null, tall1mi: 0 };
-  if (!state.gates || !isFinite(lat) || !isFinite(lon)) return out;
+  const out = { mil: null, milMi: null, sua: [], tribal: null, tall1mi: 0, measurable: false };
+  /* ⛔ `Number(null)` IS 0, AND 0 IS FINITE. The first version guarded with isFinite() alone, so a
+     parcel carrying lat = null measured from (0, 0) -- the Gulf of Guinea -- and reported the
+     nearest military installation as "5966.75 mi, Fort Wayne IAP-2". Not every parcel in the
+     county payload carries a coordinate, so this was reachable, and it produced a garbage number
+     that looks exactly like a measurement.
+     ⚠ `measurable` is the third state: without it every coordinate-less parcel would render
+     "none within reach (measured)", which invents a negative finding we never made -- the same
+     defect as printing "none" where we never looked (G51). */
+  const la = (lat === null || lat === undefined || lat === "") ? NaN : Number(lat);
+  const lo = (lon === null || lon === undefined || lon === "") ? NaN : Number(lon);
+  if (!state.gates || !Number.isFinite(la) || !Number.isFinite(lo)) return out;
+  // Indiana's bounding box. A coordinate outside it is a bad row, not a distant site.
+  if (la < 37.5 || la > 42.1 || lo < -88.6 || lo > -84.4) return out;
+  out.measurable = true;
+  lat = la; lon = lo;
   for (const f of state.gates.features) {
     const g = f.properties.layer;
     if (g === "obstacle") {
@@ -2184,7 +2201,9 @@ function renderPowerPlan(p, fips) {
       ? gateRow("Land status", `TRIBAL TRUST — ${gt.tribal}`, "A different sovereign. County zoning is not the path; the tribal government is the counterparty.", "cannot")
       : (gt.milMi != null && gt.milMi <= 3)
         ? gateRow("Land status", `${gt.milMi} mi from ${gt.mil}`, "Close enough that a DoD Siting Clearinghouse review is likely. It adds months rather than refusing. Raise it in the first utility conversation, not at permitting.")
-        : gateRow("Land status", "no federal or tribal interest within 3 mi", "Measured against military installations and tribal trust land."),
+        : !gt.measurable
+          ? gateRow("Land status", "not measured", "This parcel carries no coordinate, so the federal and tribal gates could not be tested against it.", "cannot")
+          : gateRow("Land status", "no federal or tribal interest within 3 mi", "Measured against military installations and tribal trust land."),
     (() => {
       const mwAvail = wdBus && wdBus.mw != null ? Math.round(wdBus.mw) : null;
       if (!wdBus) return gateRow("Getting power", "no bus measured within 25 mi", "We looked and found none in this balancing authority. That is a finding about the site, not a gap.", "cannot");
@@ -2294,8 +2313,21 @@ function renderPowerPlan(p, fips) {
           p.si_last_event_date ? ` (latest ${p.si_last_event_date})` : " — date not recorded"}.`
       : `<b>No owner-motivation signal.</b> This is a cold approach — the land is capable, but
          nothing suggests the owner is looking to transact.`,
-    po.posture ? `County posture is <b>${po.posture}</b>${po.local_moratoriums
-      ? ` with ${po.local_moratoriums} moratorium(s) recorded` : ""}.` : null,
+    /* G11: this takeaway printed the stale 4-value posture, so it said "County posture is quiet"
+       for CASS, which holds a ban. It now reads the same resolver as the score and the filter. */
+    (() => {
+      const cp = countyPosture(fips);
+      if (cp.blocking) return `<b class="cannot">This county has a verified ${cp.headline}
+        on record.</b> ${cp.why}`;
+      if (cp.legacyRestricted) return `<b class="cannot">A local restriction is recorded for this
+        county</b> and no verified action supersedes it — read the instrument before committing.`;
+      if (cp.approved) return `<b>This county has already APPROVED a data centre.</b> That is the
+        strongest positive precedent available to you; find the approval and read its conditions.`;
+      if (cp.verified) return `County has ${cp.nActions} verified action(s) on record, led by
+        <b>${cp.headline}</b>. ${cp.why || ""}`;
+      return po.posture ? `County posture is <b>${po.posture}</b>, with no verified action on
+        record — which is not the same as welcoming.` : null;
+    })(),
   ].filter(Boolean);
 
   /* Next steps - the actual calls to make, in order */
@@ -2453,9 +2485,20 @@ function renderPowerPlan(p, fips) {
         <td class="hint">${tariffMeans}</td></tr>
 
       <tr><td><b>Local rules</b></td>
-        <td>${po.posture || '<span class="cannot">not assessed</span>'}
-          ${po.local_moratoriums != null ? `<div class="hint">${po.local_moratoriums} moratorium(s),
-            ${po.local_bans ?? 0} ban(s) recorded</div>` : ""}</td>
+        ${/* G11: this cell printed the stale 4-value posture AND `local_bans ?? 0`, which is 0 on
+             all 92 counties -- so for CASS it read "quiet ... 0 ban(s) recorded" beside a verified
+             ban. It was the FIFTH surface still on the legacy vocabulary, found by grepping for
+             the label rather than trusting that the earlier four were all of them. */
+          (() => {
+            const cp = countyPosture(fips);
+            const detail = cp.nActions
+              ? `<div class="hint">${cp.nActions} verified action(s) on record${cp.why ? ` &mdash; ${cp.why}` : ""}</div>`
+              : `<div class="hint">no verified county action on record</div>`;
+            if (cp.blocking) return `<td><span class="cannot"><b>${String(cp.headline).toUpperCase()}</b></span>${detail}</td>`;
+            if (cp.legacyRestricted) return `<td><span class="cannot"><b>restriction recorded</b></span>${detail}</td>`;
+            if (cp.approved) return `<td><b>has approved a data centre</b>${detail}</td>`;
+            return `<td>${cp.headline || '<span class="cannot">not assessed</span>'}${detail}</td>`;
+          })()}
         <td class="hint">Indiana's decision-relevant data-centre regulation is mostly county
           moratoria published on county websites, which no code library contains.
           <b>Absence here is not evidence of absence.</b></td></tr>
@@ -2478,20 +2521,20 @@ function renderPowerPlan(p, fips) {
       <tr><th style="width:27%">Interest</th><th style="width:20%">Here</th><th>Why it matters</th></tr>
       ${row("Military installation", gt.milMi == null ? null
              : (gt.milMi === 0 ? `ON ${gt.mil}` : `${gt.milMi} mi — ${gt.mil}`),
-             "none within reach (measured)")}
+             gt.measurable ? "none within reach (measured)" : "this parcel carries no coordinate, so this was not measured")}
       <tr><td colspan="2"></td><td class="hint">A large load or a tall structure near an active
         installation can draw a <b>DoD Siting Clearinghouse</b> review. It runs on the
         Department's clock, not the county's — it rarely refuses, it adds months. Ask early.</td></tr>
       ${row("Special-use airspace", gt.sua.length ? gt.sua.join("; ") : null,
-             "none overhead (measured)")}
+             gt.measurable ? "none overhead (measured)" : "this parcel carries no coordinate, so this was not measured")}
       <tr><td colspan="2"></td><td class="hint">Governs what may be built <b>tall</b> — cooling
         towers, stacks, met masts and construction cranes. The data hall is rarely the problem;
         the plant on top of it can be.</td></tr>
-      ${row("Tribal trust land", gt.tribal, "no (measured)")}
+      ${row("Tribal trust land", gt.tribal, gt.measurable ? "no (measured)" : "this parcel carries no coordinate, so this was not measured")}
       <tr><td colspan="2"></td><td class="hint">A <b>different sovereign</b>: the counterparty is
         the tribal government, not the county.</td></tr>
       ${row("Tall obstructions within 1 mile", gt.tall1mi ? `${gt.tall1mi} at or above 200 ft` : null,
-             "none within a mile (measured)")}
+             gt.measurable ? "none within a mile (measured)" : "this parcel carries no coordinate, so this was not measured")}
       <tr><td colspan="2"></td><td class="hint">Everything counted here already cleared an FAA
         review at 200 ft or more, so a cluster is cheap evidence that a tall structure of your own
         will clear one too.</td></tr>
@@ -2680,6 +2723,26 @@ function openParcelEvidence(p, fips) {
       ${row("protected land", p.protected_land === undefined ? null : (p.protected_land ? "YES — flag" : "clear (measured)"))}
       ${row("bonus credits", p.bonus_kinds === undefined ? null : (p.bonus_kinds || "none intersecting"))}</table>
     <div class="prov">${prov("in_site_gates")}</div>
+    ${/* G72/G92: the gates reach the PARCEL POPUP too, not only the dossier and the screener.
+         G51 applies cleanly here because in_land_gates is a COMPLETE Indiana clip - 33 polygons
+         covering every square metre we care about - so "none" is a measured finding rather than
+         an absence of measurement, and each row says which it is. */
+      (() => {
+        const g = gatesForPoint(Number(p.lat), Number(p.lon));
+        return `<h3>Who else holds a say over this land</h3><table>
+          ${row("nearest military installation", g.milMi == null ? null
+                 : (g.milMi === 0 ? `ON ${g.mil}` : `${g.milMi} mi &mdash; ${g.mil}`),
+                 g.measurable ? "none within reach (measured)" : "this parcel carries no coordinate, so this was not measured")}
+          ${row("special-use airspace", g.sua.length ? g.sua.join("; ") : null,
+                 g.measurable ? "none overhead (measured)" : "this parcel carries no coordinate, so this was not measured")}
+          ${row("tribal trust land", g.tribal, g.measurable ? "no (measured)" : "this parcel carries no coordinate, so this was not measured")}
+          ${row("tall obstructions within 1 mi", g.tall1mi || null,
+                 g.measurable ? "none at or above 200 ft (measured)" : "this parcel carries no coordinate, so this was not measured")}
+        </table>
+        <div class="prov">${prov("in_land_gates")} &middot; ${prov("in_faa_obstacles_tall")} &middot;
+          a DoD review runs on the Department's clock, not the county's; airspace governs what may
+          be built TALL; tribal trust land is a different sovereign.</div>`;
+      })()}
     <h3>County context (P3b/P4/P5/P6)</h3><table>
       ${row("wetlands (county)", c.wetlands ? `${fmt(c.wetlands.wetland_features)} features / ${fmt(c.wetlands.wetland_acres)} ac` : null)}
       ${row("fibre-served locations", c.fibre ? `${fmt(c.fibre.fiber_locations)} of ${fmt(c.fibre.locations)} (${c.fibre.fiber_providers} providers)` : null)}
