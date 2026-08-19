@@ -28,6 +28,21 @@
       <!-- G74: the uploaded sheet follows the user between pages, so it has to be VISIBLE here.
            A store that silently persists is indistinguishable from one that lost the file. -->
       <div id="s-usersites" class="hint" style="margin-top:6px"></div>
+      <!-- G119, operator 2026-08-19: "I need to have the ability to load and save sites to the
+           screener as I'm able to do for the map console, such that the user is able to map
+           against their own prospecting lists." The reader is IN the screener; sending them to
+           another page to load a list they want to screen was the defect. -->
+      <div class="subhead" style="margin-top:8px">Your own prospecting list</div>
+      <input type="file" id="s-upload" accept=".xlsx,.xlsm,.csv,.tsv,.txt"
+             style="font-size:11.5px;width:100%">
+      <div class="hint"><b>Excel or CSV, any layout.</b> Read in your browser — nothing is
+        uploaded anywhere. Your sites appear in the table below marked <b>YOURS</b>, and travel
+        with you to the map console and the exports.</div>
+      <div id="s-upload-map" class="hint" style="margin-top:6px"></div>
+      <div id="s-upload-status" class="hint" style="margin-top:6px"></div>
+      <div class="rowbtns" style="margin-top:6px">
+        <button id="s-upload-clear" disabled>Clear my sites</button>
+      </div>
     </div>
 
     <!-- STEP 1 -------------------------------------------------------------------------------- -->
@@ -885,7 +900,40 @@ function render() {
     </tr>${siteDetail(s)}`;
   }).join("");
 
+  /* G119: the user's OWN sites, above the held parcels and visibly marked. ⛔ They are NOT
+     interleaved into the ranking — they have no composite score on this page (see the note at
+     the picker), and sorting them in among scored parcels would imply a comparison we have not
+     made. They sit in their own block, in the order the user supplied them. */
+  const mine = (typeof SiteStore !== "undefined" && SiteStore.has()) ? SiteStore.rows() : [];
+  // keep the Clear button honest on every render, not only at init and on the two handlers
+  if ($("s-upload-clear")) $("s-upload-clear").disabled = mine.length === 0;
+  const mineMeta = mine.length ? SiteStore.meta() : null;
+  const mineRows = mine.map((r, i) => {
+    const la = parseFloat(r._lat), lo = parseFloat(r._lon);
+    const ok = Number.isFinite(la) && Number.isFinite(lo);
+    const label = r._name || r.name || `row ${r._row ?? i + 1}`;
+    return `<tr class="siterow">
+      <td class="exp" style="visibility:hidden">&#9656;</td>
+      <td><b>${escHtml(String(label))}</b>
+        <div class="sub2"><span class="bdg bdg-st">YOURS</span></div></td>
+      <td colspan="4" class="hint">${ok
+        ? `Loaded from your list. Grid distances and scoring are computed on the
+           <a href="index.html">map console</a>, which reads the same saved list.`
+        : `<span class="cannot">No usable coordinates on this row — kept, not dropped.</span>`}</td>
+      <td>${ok
+        ? `<a href="index.html?lat=${la}&lon=${lo}&z=15&label=${encodeURIComponent(String(label))}&src=your-list">${la.toFixed(5)}, ${lo.toFixed(5)}</a>`
+        : `<span class="cannot">no coordinate</span>`}</td>
+    </tr>`;
+  }).join("");
+
   $("s-results").innerHTML = `
+    ${mine.length ? `<div class="card">
+      <h2>Your own sites <span class="hint">(${fmt(mine.length)}${
+        mineMeta && mineMeta.filename ? ` from ${escHtml(mineMeta.filename)}` : ""})</span></h2>
+      <div class="hint">These are yours, not ours. They are listed separately because they carry
+        <b>no composite score on this page</b> — open the map console to have them measured
+        against grid, gates and county posture through the same pipeline a held parcel uses.</div>
+      <table class="rtable">${mineRows}</table></div>` : ""}
     <div class="card">
       <h2>Matching sites</h2>
       ${VIEW.length > 500 ? `<p class="hint">Showing the first 500 of ${fmt(VIEW.length)} matches,
@@ -1044,37 +1092,163 @@ function toXLSX() {
     for ${fmt(DATA.sites.filter((s) => s.inj_mw != null).length)}. Where it is missing, the site is
     not disqualified — we simply have not measured it, and it is shown as such.`;
   $("s-use-note").innerHTML = USE_NOTE.dc;
+
+  /* ---------- G117: THE SCREENER MUST NOT RESET WHEN YOU CHANGE PAGES -------------------------
+     Operator, 2026-08-19: *"The screener should NOT reset when switching pages, and should be
+     saved locally until the screener page is reset."*
+
+     ⛔ localStorage, NOT sessionStorage, and the distinction is the whole item. `SiteStore` (G74)
+     deliberately uses sessionStorage and drops itself on refresh, because the operator asked for
+     exactly that lifetime for UPLOADED SITES. This is a DIFFERENT lifetime for a DIFFERENT thing:
+     filter state survives until the reader presses Reset. Reusing the wrong store would give a
+     screener that quietly forgot on refresh, which looks identical to one that never saved.
+
+     ⭐ CONTROLS ARE ENUMERATED, NEVER LISTED. The same rule the map's wsCapture() already follows.
+     A hardcoded id list is correct until someone adds a filter and then silently saves an
+     incomplete state -- and the Reset handler below USED to carry exactly such a list, with every
+     default typed out. Defaults are now captured from the DOM before anything is restored, so a
+     new control is covered the day it ships without touching this code. */
+  const SCR_KEY = "in_screener_state";
+  const scrControls = () => [...document.querySelectorAll("#scr-rail input, #scr-rail select")];
+  const SCR_DEFAULTS = Object.fromEntries(scrControls().map((el) =>
+    [el.id || el.name || el.value,
+     el.type === "checkbox" || el.type === "radio" ? { checked: el.checked } : { value: el.value }]));
+
+  function scrKeyOf(el) { return el.id || `sig:${el.value}`; }   // signal boxes share a class, not an id
+  function scrSave() {
+    const st = {};
+    for (const el of scrControls()) {
+      st[scrKeyOf(el)] = (el.type === "checkbox" || el.type === "radio")
+        ? { checked: el.checked } : { value: el.value };
+    }
+    try { localStorage.setItem(SCR_KEY, JSON.stringify(st)); } catch (e) { /* private mode */ }
+  }
+  function scrRestore() {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem(SCR_KEY) || "null"); } catch (e) { st = null; }
+    if (!st) return false;
+    let n = 0;
+    for (const el of scrControls()) {
+      const v = st[scrKeyOf(el)];
+      if (!v) continue;
+      if (el.type === "checkbox" || el.type === "radio") el.checked = !!v.checked;
+      else if (v.value !== undefined) el.value = v.value;
+      n++;
+    }
+    return n > 0;
+  }
+  const scrRestored = scrRestore();
+  if (scrRestored) $("s-use-note").innerHTML = USE_NOTE[$("s-use").value] || USE_NOTE.dc;
+
   renderCoverage();
   render();
+  if (scrRestored) {
+    const el = document.createElement("div");
+    el.className = "hint";
+    el.style.margin = "6px 0";
+    el.innerHTML = "↩ <b>Your filters were restored</b> from your last visit — they are kept in "
+      + "this browser until you press <b>Reset all filters</b>.";
+    $("s-reset").parentElement.insertBefore(el, $("s-reset"));
+  }
 
-  for (const el of document.querySelectorAll("#scr-rail input, #scr-rail select")) {
+  for (const el of scrControls()) {
     el.addEventListener("change", () => {
       if (el.id === "s-use") {
         $("s-use-note").innerHTML = USE_NOTE[$("s-use").value];
         $("s-density").value = $("s-use").value === "bess" ? 10 : 4;
       }
+      scrSave();
       render();
     });
-    el.addEventListener("input", render);
+    el.addEventListener("input", () => { scrSave(); render(); });
   }
+  /* G117: Reset now restores the DEFAULTS CAPTURED FROM THE DOM at load, and clears the saved
+     state. It used to hardcode every default value in this handler -- a second copy of the
+     markup's own defaults, which drifts the moment a control's default changes in the HTML and
+     silently resets to a value the page never actually starts with. */
   $("s-reset").onclick = () => {
-    for (const el of document.querySelectorAll("#scr-rail input[type=checkbox]"))
-      el.checked = ["s-ci", "s-ag", "s-vac", "s-oth", "s-keepundated"].includes(el.id);
-    $("s-since").value = "2020";
-    $("s-target").value = "300"; $("s-density").value = "4"; $("s-use").value = "dc";
-    $("s-acres").value = 0; $("s-mwavail").value = 0; $("s-busmi").value = 25;
-    $("s-submi").value = 0; $("s-subkv").value = 0; $("s-siyears").value = 3;
-    $("s-linemi").value = 0; $("s-linekv").value = 0;
-    $("s-dir").value = "wd";
-    for (const id of ["s-county", "s-sitekind", "s-conf", "s-keying", "s-bonuskind", "s-binding"])
-      $(id).value = "";
-    document.querySelectorAll("input.s-sig").forEach((e) => (e.checked = false));
-    $("s-outdoor").value = 0; $("s-structmax").value = ""; $("s-buskv").value = 0;
-    $("s-minevents").value = 0; $("s-evwindow").value = "events_3y";
-    $("s-use-note").innerHTML = USE_NOTE.dc; render();
+    for (const el of scrControls()) {
+      const d = SCR_DEFAULTS[scrKeyOf(el)] || SCR_DEFAULTS[el.id];
+      if (!d) continue;
+      if (el.type === "checkbox" || el.type === "radio") el.checked = !!d.checked;
+      else if (d.value !== undefined) el.value = d.value;
+    }
+    try { localStorage.removeItem(SCR_KEY); } catch (e) { /* private mode */ }
+    $("s-use-note").innerHTML = USE_NOTE[$("s-use").value] || USE_NOTE.dc;
+    render();
   };
   $("s-export").onclick = toCSV;
   $("s-export-xlsx").onclick = toXLSX;
+
+  /* ---------- G119: LOAD YOUR OWN LIST HERE, NOT ONLY ON THE MAP -----------------------------
+     Everything needed is already on this page: `vendor/xlsx-lite.js` reads any workbook and
+     `findHeaderRow` / `guessColumns` / `mapSheetRows` are in common.js. Only the picker was
+     missing, and `SiteStore` already carries the rows between pages.
+
+     ⛔ WHAT THIS DELIBERATELY DOES NOT DO. It does not compute grid distances or a composite
+     score here. That work lives in `ingestRecords()` in app.js and depends on the map's loaded
+     county geometry, distance bins and context — none of which this page holds. Reimplementing
+     it here would be a SECOND copy of the same maths, and the last time this codebase had two
+     copies of that calculation they drifted so far that every uploaded row went unscored.
+     So: loaded and saved here, scored on the map, and the row says which. */
+  let scrUp = null;
+  function scrRenderMapper() {
+    if (!scrUp) return;
+    const hdr = scrUp.sheets[scrUp.chosen].rows[scrUp.headerRow] || [];
+    const opts = (sel) => `<option value="">—</option>` + hdr.map((h, i) =>
+      `<option value="${i}"${String(sel) === String(i) ? " selected" : ""}>${escHtml(String(h))}</option>`).join("");
+    $("s-upload-map").innerHTML = `
+      <div><b>Which column is which?</b> We propose; you decide.</div>
+      <label class="blk">Latitude <select id="s-up-lat">${opts(scrUp.mapping.lat)}</select></label>
+      <label class="blk">Longitude <select id="s-up-lon">${opts(scrUp.mapping.lon)}</select></label>
+      <label class="blk">Name / label <select id="s-up-name">${opts(scrUp.mapping.name)}</select></label>
+      <button id="s-up-apply" style="margin-top:5px">Load these
+        ${Math.max(0, scrUp.sheets[scrUp.chosen].rows.length - scrUp.headerRow - 1)} rows</button>`;
+    for (const k of ["lat", "lon", "name"])
+      $(`s-up-${k}`).addEventListener("change", (ev) => {
+        scrUp.mapping[k] = ev.target.value === "" ? undefined : Number(ev.target.value);
+      });
+    $("s-up-apply").onclick = () => {
+      const recs = mapSheetRows(scrUp.sheets[scrUp.chosen].rows, scrUp.headerRow, scrUp.mapping);
+      const res = SiteStore.save(recs, { filename: scrUp.filename,
+        sheet: scrUp.sheets[scrUp.chosen].name, mapping: scrUp.mapping });
+      $("s-upload-status").innerHTML = res.ok
+        ? `<b>${recs.length} of your sites loaded.</b> They are in the table below and travel with
+           you to the <a href="index.html">map console</a>, which adds grid distances and scoring.`
+        : `<span class="cannot">Loaded on this page only — ${escHtml(res.error)}</span>`;
+      $("s-upload-map").innerHTML = "";
+      $("s-upload-clear").disabled = false;
+      render();
+    };
+  }
+  $("s-upload").addEventListener("change", async (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    $("s-upload-status").textContent = "reading…";
+    let wb;
+    try { wb = await XLSXLite.readAny(file); }
+    catch (err) {
+      $("s-upload-status").innerHTML =
+        `<span class="cannot">Could not read that file: ${escHtml(err.message)}</span>`;
+      return;
+    }
+    // the sheet with the most rows beats sheet 1 far more often -- workbooks open on a cover tab
+    const chosen = wb.sheets.reduce((b, s2, i, a) => (s2.rows.length > a[b].rows.length ? i : b), 0);
+    scrUp = { sheets: wb.sheets, chosen, filename: file.name,
+              headerRow: findHeaderRow(wb.sheets[chosen].rows), mapping: {} };
+    scrUp.mapping = guessColumns(wb.sheets[chosen].rows[scrUp.headerRow] || []);
+    scrRenderMapper();
+    $("s-upload-status").innerHTML = (scrUp.mapping.lat !== undefined && scrUp.mapping.lon !== undefined)
+      ? "Found coordinates automatically. Check the mapping and load."
+      : `<span class="cannot">No coordinate columns recognised — pick them above.</span>`;
+  });
+  $("s-upload-clear").onclick = () => {
+    SiteStore.clear();
+    $("s-upload-status").textContent = "Your sites were cleared.";
+    $("s-upload-clear").disabled = true;
+    render();
+  };
+  if (typeof SiteStore !== "undefined" && SiteStore.has()) $("s-upload-clear").disabled = false;
   // G74: say whether the user's own sheet is still loaded, and say plainly what clears it.
   if (typeof SiteStore !== "undefined") {
     const el = $("s-usersites"), m = SiteStore.meta();
