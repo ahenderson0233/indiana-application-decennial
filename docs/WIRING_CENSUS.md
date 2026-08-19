@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 290 of 307 registered objects reach a surface
+## 291 of 308 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -144,6 +144,7 @@ headline can be audited rather than taken on trust:
 | `in_gov_surplus_frpp` | direct | `app.js`, `scripts/export_context_layers.py` |
 | `in_gov_surplus_nces` | direct | `app.js` |
 | `in_grid_plans` | direct | `app.js`, `grid.html` |
+| `in_grid_plans_located` | direct | `scripts/audit_backlog_truth.py` |
 | `in_groundwater_sites` | direct | `app.js` |
 | `in_huc8_boundaries` | direct | `scripts/export_water.py` |
 | `in_iocs_county_context` | direct | `community.html`, `scripts/checkpoint.py` |

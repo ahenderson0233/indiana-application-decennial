@@ -149,18 +149,31 @@ verdict("G53", "withdrawn interconnection request as a seller signal",
 # ---------------------------------------------------------------- BigQuery probes
 print("\n  -- warehouse probes --")
 
-r = q1(f"""SELECT COUNTIF(rate = 0.0 AND value_status = 'published') zeros, COUNT(*) n
+# ⚠ THIS PROBE CONTRADICTED ITSELF AND IT TOOK A MEASUREMENT TO SEE IT. The rule is "unpublished
+# is NULL, never 0", so the breach is a zero standing in for a rate WE NEVER GOT. The old test
+# flagged every demand/energy zero whose value_status was 'published' as "the actual breach" while
+# its own prose said, correctly, that "a STATED zero is not an absent value". Both cannot be true.
+#
+# Measured 2026-08-19: all 11 published zeros carry value_status='published', and the two the probe
+# called a breach are I&M Tariff GS demand charges at subtransmission (code 236) and transmission
+# (code 239) -- which G57 already verified against I&M's own book, and which the DO-NOT-RE-LITIGATE
+# list records as never having been a defect. The other nine are Duke FMCA, Duke EE opt-out, I&M
+# RAR/TAX, NIPSCO FAC/DSMA/FMCA and SIGECO DSMA/SRR: factors that are currently zero.
+#
+# The honest test is the rule itself -- a 0.0 whose status is NOT 'published' is an absent value
+# wearing a number, and that is the thing to catch.
+r = q1(f"""SELECT COUNTIF(rate = 0.0 AND value_status = 'published') stated,
+                  COUNTIF(rate = 0.0 AND (value_status IS NULL OR value_status != 'published')) breaches,
+                  COUNT(*) n
            FROM `{DS}.in_utility_tariff_riders`""")
-r2 = q1(f"""SELECT COUNT(*) legs FROM `{DS}.in_utility_tariff_riders`
-            WHERE rate = 0.0 AND value_status = 'published'
-              AND component_type IN ('demand', 'energy')""")
-verdict("G57", "a published rate of 0.0 violates 'unpublished is NULL, never 0'",
-        "OPEN" if getattr(r2, "legs", 1) else "DONE",
-        (f"{getattr(r2,'legs','?')} BILLING-LEG zeros (the actual breach) out of "
-         f"{getattr(r,'zeros','?')} published zeros overall. ⚠ Most of the rest are legitimate: the "
-         f"books literally print $0.000000 for Duke FMCA, Duke EE opt-out, I&M RAR/TAX and NIPSCO "
-         f"FAC -- a STATED zero is not an absent value.")
-        if not isinstance(r2, Exception) else f"probe failed: {r2}")
+verdict("G57", "a rate of 0.0 standing in for one we never got ('unpublished is NULL, never 0')",
+        "OPEN" if getattr(r, "breaches", 1) else "DONE",
+        (f"{getattr(r,'breaches','?')} zeros NOT marked published (the actual breach) out of "
+         f"{getattr(r,'stated','?')} zeros overall. The rest are STATED zeros -- the books literally "
+         f"print $0.000000 for Duke FMCA, Duke EE opt-out, I&M RAR/TAX, NIPSCO FAC and I&M's "
+         f"Tariff GS demand charge at transmission and subtransmission. A stated zero is a fact, "
+         f"not a gap.")
+        if not isinstance(r, Exception) else f"probe failed: {r}")
 
 r = q1(f"""SELECT COUNTIF(table_id LIKE 'in_pjm_qs_tc2phii%') dupes,
                   COUNTIF(table_id LIKE 'in_pjm_qs_c23sens%') keeps
@@ -170,14 +183,24 @@ verdict("G59", "retire the duplicate PJM pair (~1.1M identical rows)",
         f"{getattr(r,'dupes','?')} tc2phii tables still present alongside "
         f"{getattr(r,'keeps','?')} c23sens." if not isinstance(r, Exception) else f"probe failed: {r}")
 
+# Probes the LOCATED table, because that is where the work landed. Probing in_grid_plans alone
+# would keep reporting "county on 0" forever -- the raw table is deliberately left as captured.
 r = q1(f"""SELECT COUNT(*) n, COUNTIF(county IS NOT NULL) with_county,
                   COUNTIF(cost_usd_m IS NOT NULL) with_cost,
-                  COUNTIF(in_service_year IS NOT NULL) with_year
-           FROM `{DS}.in_grid_plans`""")
-verdict("G15", "future capacity: location/cost/date extracted at 0%",
+                  COUNTIF(in_service_year IS NOT NULL) with_year,
+                  COUNTIF(voltage_kv IS NOT NULL) with_kv,
+                  COUNTIF(asset_name IS NOT NULL) parsed,
+                  COUNTIF(location_method = 'not in the gazetteer') gaz_miss
+           FROM `{DS}.in_grid_plans_located`""")
+verdict("G15", "future capacity: locate the projects, and cost them",
         "OPEN" if getattr(r, "with_county", 0) == 0 else "PROGRESSED",
-        (f"{getattr(r,'n','?')} rows: county on {getattr(r,'with_county','?')}, "
-         f"cost on {getattr(r,'with_cost','?')}, in-service year on {getattr(r,'with_year','?')}.")
+        (f"{getattr(r,'n','?')} rows: county on {getattr(r,'with_county','?')} (was 0), "
+         f"kV on {getattr(r,'with_kv','?')}, in-service year on {getattr(r,'with_year','?')}, "
+         f"asset name parsed on {getattr(r,'parsed','?')}. Cost stays on "
+         f"{getattr(r,'with_cost','?')} DELIBERATELY - the workpaper's numeric columns are "
+         f"unlabelled in our table and guessing which is dollars would print a coin flip. "
+         f"{getattr(r,'gaz_miss','?')} rows name a station the gazetteer does not hold, which is "
+         f"the same ceiling as G62 and needs an acquisition, not a better matcher.")
         if not isinstance(r, Exception) else f"probe failed: {r}")
 
 r = q1(f"""SELECT COUNT(DISTINCT utility) utils,
