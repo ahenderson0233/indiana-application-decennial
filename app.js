@@ -59,9 +59,38 @@ const map = new maplibregl.Map({
       attribution: "© OpenStreetMap contributors © CARTO" } },
     layers: [{ id: "basemap", type: "raster", source: "basemap" }] },
 });
+/* #1 BASEMAP TOGGLE, 2026-08-19. Operator: the Illinois tool has one and this did not.
+   ⛔ SWAPS THE RASTER SOURCE'S TILES, NEVER THE STYLE. map.setStyle() rebuilds the style object
+   and would destroy all 42 layers, every per-county parcel source and every click binding we have
+   added -- the map would go blank and nothing would error. setTiles() changes only the URLs the
+   basemap raster reads, leaving everything drawn on top of it untouched.
+   Satellite is the one that earns its place: a siter looking at 600 acres wants to know whether it
+   is row crop, woodland or already cleared, and a road map cannot answer that. */
+const BASEMAPS = {
+  light:     { t: ["https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png"],
+               a: "© OpenStreetMap contributors © CARTO" },
+  voyager:   { t: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"],
+               a: "© OpenStreetMap contributors © CARTO" },
+  dark:      { t: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"],
+               a: "© OpenStreetMap contributors © CARTO" },
+  satellite: { t: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+               a: "Imagery © Esri, Maxar, Earthstar Geographics" },
+};
+function setBasemap(key) {
+  const b = BASEMAPS[key] || BASEMAPS.light;
+  const src = map.getSource("basemap");
+  if (src && src.setTiles) src.setTiles(b.t);
+  // the attribution is a legal requirement, not decoration -- it has to follow the tiles
+  const el = document.querySelector(".maplibregl-ctrl-attrib-inner");
+  if (el) el.innerHTML = b.a;
+  // satellite is dark: the parcel outline and the legend need to stay readable on it
+  document.body.classList.toggle("basemap-dark", key === "satellite" || key === "dark");
+}
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-left");
 
+if (document.getElementById("basemap"))
+  document.getElementById("basemap").addEventListener("change", (e) => setBasemap(e.target.value));
 map.on("load", async () => {
   state.summary = await (await fetch("data/state_summary.json?v=" + Date.now())).json();
   for (const p of state.summary.provenance) state.provenance[p.table_name] = p;
@@ -351,6 +380,12 @@ map.on("load", async () => {
   // clicks + hover for every non-parcel layer
   const clickable = { "grid-bus": gridEv, "grid-subs": gridEv, "grid-subs-fp": gridEv, "grid-lines": gridEv,
     "pjm-queue": miscEv, "pjm-bus-est": miscEv, "gas-lines": miscEv,
+    // #10, 2026-08-19: these four were DRAWN and unclickable. grid-lines-unknown carries the 270
+    // lines whose voltage the publisher does not state -- its own class since G13, and the reader
+    // could see it and never ask what it was. The three logistics layers had a hover tooltip and
+    // no click at all, which is the same shape as the logistics layer being invisible for weeks.
+    "grid-lines-unknown": gridEv,
+    "log-lines-rail": miscEv, "log-road1": miscEv, "log-road2": miscEv,
     "gas-compressor": miscEv, "gas-storage": miscEv,
     "env-padus": miscEv, "env-nonatt": miscEv, "cand-line": candEv,
     // G65: the six tax-credit geographies each need their own evidence popup, or splitting the

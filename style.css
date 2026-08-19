@@ -310,3 +310,12 @@ table.dtable td.dv { width: 26%; }
 .lg-metric { border-top: 1px solid #e6ebf2; margin-top: 4px; padding-top: 4px; }
 @media (max-width: 760px) { #layer-legend { max-width: 168px; font-size: 11px; }
   #legend-body { max-height: 24vh; } }
+
+/* #1 basemap picker — sits above the key, same corner, same visual weight */
+.basemap-pick { position: absolute; left: 10px; bottom: 0; z-index: 3;
+  background: rgba(255,255,255,.94); border: 1px solid #ccd3de; border-radius: 7px;
+  padding: 3px 8px; font-size: 11.5px; box-shadow: 0 1px 6px rgba(16,32,56,.14); }
+.basemap-pick select { font-size: 11.5px; padding: 1px 3px; }
+/* a dark or satellite basemap swallows the light outlines; lift them rather than recolour data */
+body.basemap-dark #layer-legend, body.basemap-dark .basemap-pick { background: rgba(17,24,39,.9); color: #e5e7eb; border-color: #374151; }
+body.basemap-dark #layer-legend > summary { color: #e5e7eb; }

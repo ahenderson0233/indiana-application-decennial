@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=750a28e0">
+<link rel="stylesheet" href="style.css?v=d42bbc6d">
 </head>
 <body>
 <header id="topbar">
@@ -39,14 +39,10 @@
         <p class="hint" id="s-use-note"></p>
 
         <label class="blk">Size you need
-          <select id="s-target">
-            <option value="0">Any size</option>
-            <option value="25">25 MW and up</option>
-            <option value="100">100 MW and up</option>
-            <option value="300" selected>300 MW and up &mdash; typical hyperscale campus</option>
-            <option value="500">500 MW and up</option>
-            <option value="1000">1,000 MW and up</option>
-          </select></label>
+          <span class="inline"><input type="number" id="s-target" value="300" min="0" step="1"> MW and up</span></label>
+        <p class="hint">⭐ Type any figure. This was a six-option dropdown, so 240 MW had to be
+          rounded to 100 or 300 &mdash; a fixed option list is a silent filter on the answer, the
+          same defect class as a capped input (G68). <b>0 = any size.</b></p>
         <p class="hint">Megawatts (MW) of electrical demand. A large data centre campus is
           roughly 300&ndash;1,000&nbsp;MW; a battery site here is 5&nbsp;MW or less.</p>
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=750a28e0">
+<link rel="stylesheet" href="style.css?v=d42bbc6d">
 </head>
 <body>
 <header id="topbar">
@@ -300,6 +300,15 @@
            asking the map for each layer's own paint property, so it cannot drift from what is on
            screen - a hand-maintained legend would be a second copy of the palette, which is the
            defect this project hits most. Collapsible, and it never covers the evidence panel. -->
+      <div class="basemap-pick">
+        <label>Basemap
+          <select id="basemap">
+            <option value="light">Light</option>
+            <option value="voyager">Streets</option>
+            <option value="satellite">Satellite</option>
+            <option value="dark">Dark</option>
+          </select></label>
+      </div>
       <details id="layer-legend" open>
         <summary>Key <span id="legend-count" class="hint"></span></summary>
         <div id="legend-body"></div>
@@ -319,6 +328,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="common.js?v=a2714694"></script>
-<script src="app.js?v=0949752e"></script>
+<script src="app.js?v=02e6e502"></script>
 </body>
 </html>
