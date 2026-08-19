@@ -1118,7 +1118,20 @@ function toXLSX() {
      default typed out. Defaults are now captured from the DOM before anything is restored, so a
      new control is covered the day it ships without touching this code. */
   const SCR_KEY = "in_screener_state";
-  const scrControls = () => [...document.querySelectorAll("#scr-rail input, #scr-rail select")];
+  /* ⛔ A FILE INPUT CANNOT HAVE ITS VALUE RESTORED, AND TRYING TOOK THE WHOLE PAGE DOWN.
+     Setting `.value` on `<input type="file">` to anything but "" throws:
+       "Failed to set the 'value' property on 'HTMLInputElement': This input element accepts a
+        filename, which may only be programmatically set to the empty string."
+     G117 enumerated every input in the rail; G119 then ADDED a file picker to that rail. The two
+     were fine separately and fatal together — scrRestore() runs at boot BEFORE render(), so the
+     throw aborted the boot and the page sat on "Loading sites…" forever. Reported by the operator
+     2026-08-19b, and it is exactly the class of break that enumeration is supposed to prevent:
+     the loop was right to find the new control, and wrong about what could be done to it.
+     ⚠ Browsers also refuse a value on button/submit/reset/image in the same spirit, so the
+     exclusion is by TYPE rather than by id — an id list would rot the next time a control lands. */
+  const SCR_UNRESTORABLE = new Set(["file", "button", "submit", "reset", "image"]);
+  const scrControls = () => [...document.querySelectorAll("#scr-rail input, #scr-rail select")]
+    .filter((el) => !SCR_UNRESTORABLE.has(el.type));
   const SCR_DEFAULTS = Object.fromEntries(scrControls().map((el) =>
     [el.id || el.name || el.value,
      el.type === "checkbox" || el.type === "radio" ? { checked: el.checked } : { value: el.value }]));
@@ -1140,9 +1153,17 @@ function toXLSX() {
     for (const el of scrControls()) {
       const v = st[scrKeyOf(el)];
       if (!v) continue;
-      if (el.type === "checkbox" || el.type === "radio") el.checked = !!v.checked;
-      else if (v.value !== undefined) el.value = v.value;
-      n++;
+      /* ⛔ ONE BAD CONTROL MUST NOT COST THE PAGE. Restoring saved state is a convenience; the
+         screener working is not. The type filter above already excludes the input that broke this,
+         but a future control could throw for a reason nobody predicted, and the cost of that is
+         the entire boot — this runs before render(). Skip the control, keep the page. */
+      try {
+        if (el.type === "checkbox" || el.type === "radio") el.checked = !!v.checked;
+        else if (v.value !== undefined) el.value = v.value;
+        n++;
+      } catch (e) {
+        console.warn("screener: could not restore", el.id || el.type, e.message);
+      }
     }
     return n > 0;
   }
