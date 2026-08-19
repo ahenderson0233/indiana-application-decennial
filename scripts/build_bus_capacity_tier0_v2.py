@@ -113,19 +113,43 @@ pjm_scoped AS (
              * (1 - pre_loading_pct / 100),
            ABS(dfax))                                    AS capacity_mw_derived
   FROM pjm_raw
-  WHERE ABS(dfax) >= 0.05
+  -- ⭐ THE VENDOR'S CUTOFF IS NOT ONE NUMBER, AND THEIR OWN FILE SAYS SO. 2026-08-19: their
+  -- capacity export carries a `Shift Factor Cutoff Ratio` column we had never read, and on the
+  -- 297 Indiana tier-0 PJM withdrawal rows it takes exactly two values, perfectly correlated with
+  -- the overload flag:
+  --      Existing Overload Flag = false  ->  cutoff 0.05   (279 rows)
+  --      Existing Overload Flag = true   ->  cutoff 0.20   ( 18 rows)
+  -- A facility already over its rating only counts as binding if the bus STRONGLY drives it. That
+  -- is a physically sensible rule -- you do not blame a weakly-coupled bus for a pre-existing
+  -- overload -- and adopting it is matching the METHOD, which G22 requires, rather than tuning to
+  -- their answer.
+  WHERE (NOT (pre_loading_pct >= 100) AND ABS(dfax) >= 0.05)
+     OR (    (pre_loading_pct >= 100) AND ABS(dfax) >= 0.20)
 ),
 pjm_rank AS (
+  -- ⛔ AND AN OVERLOADED BINDER MEANS ZERO, NOT "SKIP TO THE NEXT ONE". The old ORDER BY led with
+  -- `facility_overloaded ASC`, which DEPRIORITISED an over-rating facility and took the next
+  -- healthy one instead -- so we reported a positive number for every bus in the state and NEVER
+  -- said zero, while the vendor says zero on 6.1% of Indiana PJM buses. Those 18 buses are exactly
+  -- their 18 overload-flagged rows. If the tightest qualifying facility is already over its
+  -- rating, there is no room to sell and the honest answer is 0.
+  -- ⚠ The row still CARRIES the overload flag and the facility name, so "0 because the network is
+  -- already full" stays distinguishable from "0 not measured" (G26: flag and report, never hide).
   SELECT *, ROW_NUMBER() OVER (
       PARTITION BY bus_number, direction
-      ORDER BY facility_overloaded ASC, capacity_mw_derived ASC, ABS(dfax) DESC) AS rk
+      ORDER BY IF(facility_overloaded, 0.0, capacity_mw_derived) ASC, ABS(dfax) DESC) AS rk
   FROM pjm_scoped
 ),
 pjm_agg AS (
   SELECT bus_number, direction,
          COUNT(*)                                        AS n_scoped,
          COUNTIF(facility_overloaded)                    AS n_overloaded,
-         MIN(IF(facility_overloaded, NULL, capacity_mw_derived)) AS mw_clean,
+         -- ⛔ THIS WAS `IF(facility_overloaded, NULL, ...)`, WHICH SKIPPED OVERLOADED FACILITIES
+         -- ENTIRELY when choosing the value. Fixing only the ORDER BY above would have left the
+         -- ranking and the number disagreeing: the row would NAME an overloaded binder and then
+         -- report the capacity of a different, healthy facility. An overloaded facility now
+         -- contributes 0, so the MIN collapses to 0 exactly when the vendor's does.
+         MIN(IF(facility_overloaded, 0.0, capacity_mw_derived)) AS mw_clean,
          MIN(IF(facility_overloaded, NULL, available_mw)) AS mw_probe
   FROM pjm_scoped GROUP BY 1, 2
 ),

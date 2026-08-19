@@ -77,6 +77,12 @@ for r in client.query(f"""
          sfha_flood, wetland_on_parcel, protected_land, bonus_kinds,
          inj_bus, inj_kv, inj_mw, inj_binding, inj_mi,
          wd_bus, wd_kv, wd_mw, wd_binding, wd_conf, wd_mi, wd_iso, inj_iso, inj_conf,
+         -- ⚠ INVERTED ON PURPOSE. The payload drops False to stay lean, so a boolean
+         -- `in_state` would silently drop exactly the case worth reporting. Emitting the
+         -- EXCEPTION as a truthy flag means the notable rows survive and the ordinary ones
+         -- cost nothing. 3,993 parcels currently match a bus outside Indiana.
+         IF(wd_bus_in_state = FALSE, TRUE, NULL) AS wd_bus_out_of_state,
+         IF(inj_bus_in_state = FALSE, TRUE, NULL) AS inj_bus_out_of_state,
          sub_name, sub_kv, sub_mi,
          -- transmission line, 2026-08-19. A line is the one asset that can run THROUGH a
          -- parcel rather than near it: 41,986 do. line_on_parcel is a stronger fact than a

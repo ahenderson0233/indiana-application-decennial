@@ -599,6 +599,12 @@ function siteDetail(s) {
         <table class="dtable">
           ${detailRow("Nearest bus", s.wd_bus, "no withdrawal point within 25 miles",
             "This is the direction a load draws. It is a published screening figure; only the utility's own study binds.")}
+          ${s.wd_bus_out_of_state
+              ? `<tr><td>Bus location</td><td class="cannot"><b>OUTSIDE INDIANA</b></td>
+                 <td class="hint">This bus sits across the state line. A border parcel can genuinely
+                 interconnect there, but it means a different state commission and often a different
+                 utility — treat it as a lead, not a plan.</td></tr>`
+              : ""}
           ${detailRow("Grid operator", s.wd_iso, null,
             "Which RTO runs the study behind this figure. PJM covers the east and north-east of the state; MISO the rest.")}
           ${/* G50: a vendor-derived figure must name its source WHERE IT RENDERS, not only in a

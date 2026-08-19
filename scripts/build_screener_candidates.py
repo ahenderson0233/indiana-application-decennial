@@ -79,6 +79,15 @@ bus_inj AS (
          bus_interconnection_capacity_mw AS mw,
          primary_limiting_constraint AS binding,
          provenance_class AS conf,
+         -- ⚠ OUR PJM HARVEST IS THE WHOLE AEP FOOTPRINT, NOT INDIANA. Measured 2026-08-19: of the
+         -- 227 located PJM withdrawal buses, only 42 are inside the state line - the rest sit in
+         -- Ohio, West Virginia, Virginia, Kentucky and Michigan. A border parcel CAN genuinely
+         -- interconnect across a state line, so these are kept rather than dropped, but crossing
+         -- one means a different state commission and often a different utility. That is a fact
+         -- the reader must be told, not one we quietly absorb into a distance.
+         ST_INTERSECTS(ST_GEOGPOINT(longitude, latitude),
+           (SELECT ANY_VALUE(geom) FROM `energy-platfrom.energy.state_boundaries`
+            WHERE UPPER(stusps) = 'IN'))                 AS in_state,
          ST_GEOGPOINT(longitude, latitude) AS g
   FROM `{DS}.in_bus_capacity_tier0`
   WHERE interconnection_type = 'Injection'
@@ -91,6 +100,15 @@ bus_wd AS (
          bus_interconnection_capacity_mw AS mw,
          primary_limiting_constraint AS binding,
          provenance_class AS conf,
+         -- ⚠ OUR PJM HARVEST IS THE WHOLE AEP FOOTPRINT, NOT INDIANA. Measured 2026-08-19: of the
+         -- 227 located PJM withdrawal buses, only 42 are inside the state line - the rest sit in
+         -- Ohio, West Virginia, Virginia, Kentucky and Michigan. A border parcel CAN genuinely
+         -- interconnect across a state line, so these are kept rather than dropped, but crossing
+         -- one means a different state commission and often a different utility. That is a fact
+         -- the reader must be told, not one we quietly absorb into a distance.
+         ST_INTERSECTS(ST_GEOGPOINT(longitude, latitude),
+           (SELECT ANY_VALUE(geom) FROM `energy-platfrom.energy.state_boundaries`
+            WHERE UPPER(stusps) = 'IN'))                 AS in_state,
          ST_GEOGPOINT(longitude, latitude) AS g
   FROM `{DS}.in_bus_capacity_tier0`
   WHERE interconnection_type = 'Withdrawal'
@@ -103,7 +121,7 @@ subs AS (
 ),
 n_inj AS (
   SELECT c.parcel_source, c.parcel_key,
-         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf,
+         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf, b.in_state,
                           ST_DISTANCE(c.parcel_geog, b.g) AS m)
                    ORDER BY ST_DISTANCE(c.parcel_geog, b.g) LIMIT 1)[OFFSET(0)] AS b
   FROM cand c JOIN bus_inj b ON ST_DWITHIN(c.parcel_geog, b.g, {RADIUS_M})
@@ -111,7 +129,7 @@ n_inj AS (
 ),
 n_wd AS (
   SELECT c.parcel_source, c.parcel_key,
-         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf,
+         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf, b.in_state,
                           ST_DISTANCE(c.parcel_geog, b.g) AS m)
                    ORDER BY ST_DISTANCE(c.parcel_geog, b.g) LIMIT 1)[OFFSET(0)] AS b
   FROM cand c JOIN bus_wd b ON ST_DWITHIN(c.parcel_geog, b.g, {RADIUS_M})
@@ -147,10 +165,12 @@ SELECT
   -- reader pick the flattering one. Fabricating them from a single value would undo that ruling.
   ni.b.nm AS inj_bus, ni.b.kv AS inj_kv, ROUND(ni.b.mw, 1) AS inj_mw,
   ni.b.iso AS inj_iso, ni.b.binding AS inj_binding, ni.b.conf AS inj_conf,
+  ni.b.in_state AS inj_bus_in_state,
   ROUND(ni.b.m / 1609.344, 2) AS inj_mi,
 
   nw.b.nm AS wd_bus, nw.b.kv AS wd_kv, ROUND(nw.b.mw, 1) AS wd_mw,
   nw.b.iso AS wd_iso, nw.b.binding AS wd_binding, nw.b.conf AS wd_conf,
+  nw.b.in_state AS wd_bus_in_state,
   ROUND(nw.b.m / 1609.344, 2) AS wd_mi,
 
   ns.s.nm AS sub_name, ns.s.max_kv AS sub_kv, ROUND(ns.s.m / 1609.344, 2) AS sub_mi,
