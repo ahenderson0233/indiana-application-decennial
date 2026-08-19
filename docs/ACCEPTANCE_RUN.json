@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-19T16:38:11.010612+00:00",
+ "run_at": "2026-08-19T17:01:43.356662+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
-   "state": "FAIL",
-   "detail": "scanned 122 payloads + pages \u00b7 4 leaks: ['app.js', 'data.html', 'grid.html']"
+   "state": "PASS",
+   "detail": "scanned 122 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 291 of 308 registered objects reach a surface \u00b7 17 unwired: ['in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail', 'in_miso_poi_ladder']"
+   "detail": "MEASURED this run: 292 of 308 registered objects reach a surface \u00b7 16 unwired: ['in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail', 'in_miso_poi_ladder', 'in_miso_poi_state']"
   },
   {
    "criterion": 2,
@@ -48,7 +48,7 @@
    "criterion": 7,
    "name": "adjustables are config-driven",
    "state": "PASS",
-   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 16 literal MW mentions remain in prose/labels, which are copy not thresholds"
+   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 21 literal MW mentions remain in prose/labels, which are copy not thresholds"
   },
   {
    "criterion": 8,

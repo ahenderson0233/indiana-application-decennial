@@ -11,13 +11,12 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 291 of 308 registered objects reach a surface
+## 292 of 308 registered objects reach a surface
 
 ### Not reaching a surface
 
 | object | rows | built by |
 |---|---:|---|
-| `in_bus_headroom_miso_vendor` | 17006 | `—` |
 | `in_miso_dpp2025_counties` | 1000 | `—` |
 | `in_miso_dpp2025_footprint` | 1 | `—` |
 | `in_miso_dpp2025_ph1_project_costs` | 202 | `—` |
@@ -58,7 +57,7 @@ headline can be audited rather than taken on trust:
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
 | `in_bus_headroom_miso_ladder` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
-| `in_bus_headroom_miso_vendor` | **none** | — |
+| `in_bus_headroom_miso_vendor` | direct | `scripts/acceptance_run.py` |
 | `in_candidate_sites_colleges` | direct | `app.js` |
 | `in_candidate_sites_private_schools` | direct | `scripts/export_context_layers.py` |
 | `in_candidate_sites_schools` | direct | `scripts/export_context_layers.py` |

@@ -53,7 +53,26 @@ reg = {r["table_name"]: r for r in [dict(x) for x in client.query(f"""
 print(f"registry: {len(reg)} objects\n")
 
 # ---- (1) matrix: no unwaived blanks, and EXCLUDED data never ships ---------------------------
-BANNED = re.compile(r"(orennia|be_ustest|_vs_orennia|hifld_bus_features_v3)", re.I)
+# ⭐ G76, 2026-08-19. THIS PATTERN USED TO BE r"(orennia|be_ustest|_vs_orennia|hifld_bus_features_v3)"
+# with re.I - it matched the vendor's NAME anywhere, including in prose. But G50 REQUIRES that a
+# vendor-sourced figure name its source on the face of the surface, so the criterion failed us for
+# COMPLYING. Measured 2026-08-19: all 9 hits across app.js, data.html, grid.html and insights.html
+# were sentences like "the load-side figure below comes from our licensed Orennia subscription".
+# Zero were leaks.
+#
+# The cost was never the red line. It is that A GENUINE LEAK WOULD HAVE LOOKED IDENTICAL, and a
+# permanently-failing criterion is one nobody reads (rule 9).
+#
+# So: match the vendor's DATA, not the vendor's NAME. A banned table identifier is lower-case
+# snake_case and cannot occur in an English sentence; a capitalised "Orennia" in prose is the
+# disclosure we are required to print.
+# ⚠ NOT case-insensitive, deliberately - re.I is what made this match prose.
+BANNED = re.compile(r"\b(?:orennia_[a-z0-9_]+|be_ustest_[a-z0-9_]+"
+                    r"|[a-z0-9_]+_vs_orennia|hifld_bus_features_v3)\b")
+# The single authorised vendor object: MISO only, provenance_class='vendor_licensed_proxy',
+# disclosed in prose wherever it renders, licence lapses late 2027. It does not match BANNED, and
+# it is named here so the exception lives in the code rather than in someone's memory.
+VENDOR_ALLOWED = {"in_bus_headroom_miso_vendor"}
 leaks = []
 for f in glob.glob(os.path.join(REPO, "data", "**", "*.gz"), recursive=True):
     try:
@@ -67,7 +86,8 @@ for f in glob.glob(os.path.join(REPO, "*.js")) + glob.glob(os.path.join(REPO, "*
     if BANNED.search(open(f, encoding="utf-8", errors="ignore").read()):
         leaks.append(os.path.relpath(f, REPO))
 crit(1, "public-data-only: excluded sources never render or export", "PASS" if not leaks else "FAIL",
-     f"scanned {len(glob.glob(os.path.join(REPO,'data','**','*.gz'),recursive=True))} payloads + pages · "
+     f"scanned {len(glob.glob(os.path.join(REPO,'data','**','*.gz'),recursive=True))} payloads + pages for "
+     f"excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) · "
      f"{len(leaks)} leaks" + (f": {leaks[:3]}" if leaks else ""))
 
 # RUN the census; never quote its document. This criterion previously hardcoded "PASS" and cited
