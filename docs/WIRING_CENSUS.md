@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 283 of 300 registered objects reach a surface
+## 286 of 300 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -27,9 +27,6 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nhd_flowline_geom` | 163976 | `—` |
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
-| `in_pjm_qs_c23_wd_5000` | 462654 | `—` |
-| `in_pjm_qs_c23sens_inj` | 655404 | `—` |
-| `in_pjm_qs_c23sens_wd` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
@@ -214,9 +211,9 @@ headline can be audited rather than taken on trust:
 | `in_pjm_bus_withdrawal` | direct | `app.js` |
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
-| `in_pjm_qs_c23_wd_5000` | **none** | — |
-| `in_pjm_qs_c23sens_inj` | **none** | — |
-| `in_pjm_qs_c23sens_wd` | **none** | — |
+| `in_pjm_qs_c23_wd_5000` | direct | `scripts/audit_pjm_short_reads.py` |
+| `in_pjm_qs_c23sens_inj` | direct | `scripts/audit_pjm_short_reads.py` |
+| `in_pjm_qs_c23sens_wd` | direct | `scripts/audit_pjm_short_reads.py` |
 | `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
 | `in_pjm_queuescope_aep` | direct | `app.js`, `scripts/build_pjm_withdrawal.py` |
 | `in_pjm_queuescope_injection` | derivative | `feeds `vw_pjm_bus_injection_ladder` via `scripts/build_pjm_injection_rollup.py`` |
@@ -242,7 +239,7 @@ headline can be audited rather than taken on trust:
 | `in_rtep_bus_summary` | direct | `grid.html`, `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `app.js`, `grid.html` |
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
-| `in_screener_candidates` | direct | `scripts/export_screener.py` |
+| `in_screener_candidates` | direct | `scripts/export_screener.py`, `scripts/export_sites_exact.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
 | `in_seismic` | direct | `app.js` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |

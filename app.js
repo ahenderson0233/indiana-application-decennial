@@ -1030,7 +1030,23 @@ function enrichDistances(feats) {
       if (best) { p._dsub_mi = +(best.d / MI).toFixed(2); p._dsub_kv = best.s.kv; p._dsub_name = best.s.name; }
     }
 
-    // ---- bus (bus). Still client-side: no exact bus distance is shipped yet. ----
+    // ---- bus ----
+    // G29 CLOSED 2026-08-19. The exact value now ships, so prefer it and keep the client-side
+    // measurement only as the fallback for rows that never had one (uploaded CSVs).
+    if (p.x_bus_wd_mi != null || p.x_bus_inj_mi != null) {
+      // withdrawal is the default: a data centre asks the LOAD question (G63). Both are carried
+      // so the panel can show them apart -- never fused into one "bus headroom".
+      const wd = p.x_bus_wd_mi != null;
+      p._dpoi_mi   = wd ? p.x_bus_wd_mi   : p.x_bus_inj_mi;
+      p._dpoi_name = wd ? p.x_bus_wd_name : p.x_bus_inj_name;
+      p._dpoi_mw   = wd ? p.x_bus_wd_mw   : p.x_bus_inj_mw;
+      p._dpoi_kv   = wd ? p.x_bus_wd_kv   : p.x_bus_inj_kv;
+      p._dpoi_dir  = wd ? "getting power" : "sending power";
+      p._dpoi_exact = true;
+      continue;
+    }
+    p._dpoi_exact = false;
+    // ---- fallback: client-side, first-vertex. Overstates, and can never return 0. ----
     // ⚠ GUARDED. enrichDistances runs inside the county fetch's .then(), so if poiList had not
     // loaded yet this loop threw "state.poiList is not iterable" and took the WHOLE function with
     // it — every parcel in that county silently lost EVERY distance, substation and line included,
@@ -2266,7 +2282,12 @@ function openParcelEvidence(p, fips) {
           ? `${p._dline_kv ? `${p._dline_kv} kV` : "voltage not published"} · ${p._dline_on ? "<b>runs across this parcel</b>" : `${p._dline_mi} mi`}`
           : "none within the search radius (measured)")}
       ${row("nearest bus",
-          p._dpoi_name ? `${p._dpoi_name} · ${p._dpoi_mi} mi · ${fmt(p._dpoi_mw)} MW load headroom` : null,
+          p._dpoi_name
+            ? `${p._dpoi_name}${p._dpoi_kv ? ` (${p._dpoi_kv} kV)` : ""} · ` +
+              `${p._dpoi_mi === 0 ? "on this parcel" : `${p._dpoi_mi} mi`} · ` +
+              `${fmt(p._dpoi_mw)} MW ${p._dpoi_dir === "sending power" ? "injection" : "load"} headroom` +
+              (p._dpoi_exact ? "" : ` <span class="cannot">(approximate &mdash; measured from a point)</span>`)
+            : null,
           "no bus within 25 miles (measured)")}</table>
     ${p._dline_mi != null ? `<div class="sowhat">${
       p._dline_on

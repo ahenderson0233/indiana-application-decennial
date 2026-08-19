@@ -45,14 +45,39 @@ $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 $log = Join-Path $repo "data\_harvest_c23_ladder.log"
 
-# rung, mode, target table
+# Operator, 2026-08-19: the 5,000 MW pair, then every rung QueueScope offers, both
+# directions. 26 harvests. Each rung is skipped on re-run once its markers are
+# complete, so this list is a QUEUE, not a commitment -- stopping is free.
+#
+# 100 MW is already held as in_pjm_qs_c23sens_{wd,inj} (74 markers each, registered
+# complete), so Test-RungComplete skips it. It is listed for completeness only.
 $plan = @(
     @{ mw = 5000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_5000" },
     @{ mw = 5000; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_5000" },
+    @{ mw = 10; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_10" },
+    @{ mw = 10; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_10" },
+    @{ mw = 15; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_15" },
+    @{ mw = 15; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_15" },
+    @{ mw = 25; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_25" },
+    @{ mw = 25; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_25" },
+    @{ mw = 50; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_50" },
+    @{ mw = 50; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_50" },
+    @{ mw = 100; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_100" },
+    @{ mw = 100; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_100" },
+    @{ mw = 200; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_200" },
+    @{ mw = 200; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_200" },
+    @{ mw = 300; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_300" },
+    @{ mw = 300; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_300" },
+    @{ mw = 500; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_500" },
+    @{ mw = 500; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_500" },
     @{ mw = 1000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_1000" },
     @{ mw = 1000; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_1000" },
-    @{ mw = 500;  mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_500" },
-    @{ mw = 500;  mode = "INJECTION";  table = "in_pjm_qs_c23_inj_500" }
+    @{ mw = 1500; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_1500" },
+    @{ mw = 1500; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_1500" },
+    @{ mw = 2000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_2000" },
+    @{ mw = 2000; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_2000" },
+    @{ mw = 3000; mode = "WITHDRAWAL"; table = "in_pjm_qs_c23_wd_3000" },
+    @{ mw = 3000; mode = "INJECTION";  table = "in_pjm_qs_c23_inj_3000" }
 )
 
 function Write-Log($msg) {

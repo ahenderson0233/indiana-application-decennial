@@ -75,6 +75,14 @@ SELECT sc.county_fips, s.* EXCEPT(parcel_geog, {", ".join(V1_SI)}),
        -- fall back to its approximation only where one was never computed (e.g. uploaded rows).
        d.line_mi AS x_line_mi, d.line_kv AS x_line_kv, d.line_on_parcel AS x_line_on,
        d.sub_mi  AS x_sub_mi,  d.sub_kv  AS x_sub_kv,  d.sub_name AS x_sub_name,
+       -- G29 final piece: EXACT bus distance, both directions, never fused. The map console was
+       -- the last surface still measuring this client-side from the parcel's first vertex. These
+       -- come from in_screener_candidates, which has carried exact ST_DISTANCE per direction for
+       -- all 532,868 candidates since it was built -- the screener was always right.
+       b.wd_mi  AS x_bus_wd_mi,  b.wd_bus  AS x_bus_wd_name,
+       b.wd_kv  AS x_bus_wd_kv,  b.wd_mw   AS x_bus_wd_mw,
+       b.inj_mi AS x_bus_inj_mi, b.inj_bus AS x_bus_inj_name,
+       b.inj_kv AS x_bus_inj_kv, b.inj_mw  AS x_bus_inj_mw,
        -- WATER, at parcel grain and by the same exact method (G12d). Cooling is a first-order
        -- constraint for a hyperscale DC, and this is the half of G12 that never reached a surface.
        w.water_mi AS x_wat_mi, w.water_on_parcel AS x_wat_on, w.water_name AS x_wat_name,
@@ -86,6 +94,7 @@ LEFT JOIN `{DS}.in_site_gates` g USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2` f USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_asset_distance_parcel` d USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_water_distance_parcel`  w USING (parcel_source, parcel_key)
+LEFT JOIN `{DS}.in_screener_candidates`     b USING (parcel_source, parcel_key)
 WHERE s.occ_group='ci' OR s.mw_datacenter_4_per_acre>=25
    OR s.has_vacancy_signal OR s.has_si_signal OR IFNULL(f.has_si_signal, FALSE)
 ORDER BY sc.county_fips"""
@@ -125,7 +134,9 @@ SI_DETAIL = ("si_signal_types", "si_signal_events", "si_signals", "si_first_even
 # of "not computed for this parcel" and lets app.js fall back to its own measurement; emitting six
 # nulls on 700k features would add megabytes and say nothing.
 X_DIST = ("x_line_mi", "x_line_kv", "x_line_on", "x_sub_mi", "x_sub_kv", "x_sub_name",
-          "x_wat_mi", "x_wat_on", "x_wat_name", "x_wat_kind", "x_wat_greatlake")
+          "x_wat_mi", "x_wat_on", "x_wat_name", "x_wat_kind", "x_wat_greatlake",
+          "x_bus_wd_mi", "x_bus_wd_name", "x_bus_wd_kv", "x_bus_wd_mw",
+          "x_bus_inj_mi", "x_bus_inj_name", "x_bus_inj_kv", "x_bus_inj_mw")
 
 counts, no_geom, n_si, n_exact, n_online, n_wat, n_waton = {}, 0, 0, 0, 0, 0, 0
 def flush(fips, buf):
