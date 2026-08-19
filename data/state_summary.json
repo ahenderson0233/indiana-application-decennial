@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-19T17:45:28+00:00",
+ "built_at_utc": "2026-08-19T18:01:24+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -75,7 +75,7 @@
    "source": "PJM: indiana_app.in_pjm_qs_c23sens_wd/_inj (our QueueScope harvest, case 23, owner 1568, 100 MW). MISO: indiana_app.in_bus_headroom_miso_vendor (Orennia licensed proxy, DPP-2025, operator-authorised).",
    "method": "One row per (bus, direction). Binding constraint = tightest facility with |dfax| >= 0.05 that is NOT already over its rating; pre-existing overloads are counted and flagged but excluded from the choice of what binds, which is the vendor method verified against their export on bus 243209. PJM capacity is headroom at a 100 MW PROBE and is NOT a bus maximum - measured against the vendor on 283 shared buses: 0 exact, 12 within 20%, Spearman +0.15/+0.25. MISO rows carry provenance_class and are removable when the licence lapses (late 2027). RE-SCRAPE COMMAND: python scripts/build_bus_capacity_tier0_v2.py",
    "n_rows": 7102,
-   "built_at": "2026-08-19 17:43:21.939359+00",
+   "built_at": "2026-08-19 18:00:00.674233+00",
    "notes": "Replaces the 2027-RTEP/DPP-2021 build: PJM moves to the current case and gains the injection direction; MISO gains the WITHDRAWAL direction, which MISO publishes nowhere."
   },
   {
@@ -1651,7 +1651,7 @@
    "source": "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x in_bus_capacity_tier0 (BOTH directions, BOTH ISOs) x in_substations x in_asset_distance_parcel",
    "method": "candidates = fits>=25MW OR carries a v2 owner-motivation signal; nearest bus within 40 km computed SEPARATELY per direction; D85 excluded by key before any spatial join; fan-out asserted < 1.01. REPOINTED 2026-08-19 from in_bus_headroom_miso(300 MW probe, injection only) + vw_pjm_bus_withdrawal_located(PJM only, 227 buses) onto in_bus_capacity_tier0 - the old pair capped wd_mw at 132 MW and inj_mw at exactly 300, and carried NO MISO load-side data at all. Bus coverage is limited by COORDINATES: MISO 1,731 of 1,731 per direction, PJM 227 of 1,826 withdrawal and 223 of 1,814 injection (the G62 gazetteer ceiling)",
    "n_rows": 532870,
-   "built_at": "2026-08-19 17:44:36.211350+00",
+   "built_at": "2026-08-19 18:00:31.424437+00",
    "notes": "Grid capacity, not grid proximity. INJECTION (MISO, generator-side) and WITHDRAWAL (PJM, load-side) are separate columns and must never be fused or compared - a data centre is load and needs withdrawal. Reads the LIVE v2 signal flag, never in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land)."
   },
   {

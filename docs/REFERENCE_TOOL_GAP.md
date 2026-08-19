@@ -61,6 +61,17 @@ Worth stating, because the audit should not read as a deficit list.
 
 ---
 
+## ⛔ OPERATOR RULING 2026-08-19 — RADIUS-FROM-A-POINT IS DECLINED
+
+> Operator, 2026-08-19: *"We do NOT need radius from a point in this analysis."*
+
+**This document ranked it #1 and starred it as the single biggest missing mechanism, and both the
+handoff and the session prompt repeated that.** It is not wanted. Do not re-propose it, and do not
+treat its absence as a gap when auditing us against the reference tools.
+
+⚠ The ranked list below is left intact rather than silently rewritten, because the *reasoning* for
+each item is still useful — but item 1 is dead. Everything else stands.
+
 ## THE ORDER I WOULD BUILD THEM IN
 
 1. **Radius-from-a-point search** — biggest capability gap, zero acquisition, both tools have it and we have none.

@@ -18,11 +18,11 @@ filters on everything).
 |---|---|---:|
 | **TOGGLE** | a checkbox or layer control the user can operate reaches it | **43** |
 | **PAGE ONLY** | it reaches a filterable page, but no control names it — a G67 candidate | **78** |
-| **READ-ONLY** | rendered, but nothing the user can ask a question with | **156** |
-| **NO SURFACE** | reaches nothing at all | **19** |
+| **READ-ONLY** | rendered, but nothing the user can ask a question with | **157** |
+| **NO SURFACE** | reaches nothing at all | **20** |
 | **INFRASTRUCTURE** | registries, censuses and join views — correctly not a control | **12** |
 
-**308 objects.** ⭐ **43 of them can be turned on and off by the reader.**
+**310 objects.** ⭐ **43 of them can be turned on and off by the reader.**
 Everything in PAGE ONLY and READ-ONLY is data we hold and the user cannot ask about.
 
 ## By objective
@@ -30,7 +30,7 @@ Everything in PAGE ONLY and READ-ONLY is data we hold and the user cannot ask ab
 | objective | the developer question it answers | objects |
 |---|---|---:|
 | **P1 owner motivation** | who might sell, and how strongly we believe it | 74 |
-| **P2 power & grid** | can I get power here, in the direction I need, and when | 62 |
+| **P2 power & grid** | can I get power here, in the direction I need, and when | 64 |
 | **P4 environmental** | what could stop or slow the permit | 39 |
 | **P5 community & rules** | will the county let me build, and what have they done before | 36 |
 | **P6 market & cost** | what will power actually cost me here | 35 |
@@ -75,14 +75,14 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_transmission_lines` | 2,623 | P2 power & grid | `L-frpp`, `L-ghgrp` | energy.transmission_lines (HIFLD), spatial clip |
 | `in_wind_turbines` | 1,652 | P2 power & grid | `L-frpp`, `L-ghgrp` | energy.wind_turbines |
 | `in_pjm_bus_locations_candidate` | 1,475 | P2 power & grid | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-publ |
-| `in_sites` | 3,553,194 | P3 land & size | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | energy.vw_parcel_sites (all parcels, SI-agnostic) |
+| `in_sites` | 3,553,194 | P3 land & size | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | energy.vw_parcel_sites (now incl. mat_parcel_outdoor_exact) |
 | `in_parcel_attrs` | 1,143,873 | P3 land & size | `L-terr` | energy.mat_parcel_attrs x in_sites |
 | `in_screener_candidates` | 532,870 | P3 land & size | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_c |
 | `in_county_rollup` | 92 | P3 land & size | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | in_sites + in_sites_county |
 | `in_land_gate_parcel` | 532,870 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_screener_candidates x in_sites x in_land_gate |
 | `in_padus` | 4,736 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.padus |
 | `in_faa_obstacles_tall` | 4,591 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_faa_obstacles |
-| `in_bonus_geo` | 1,394 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy communities + LIC tracts + opportunity zones + critic |
+| `in_bonus_geo` | 1,394 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.coal_closure_communities |
 | `in_water_cwns_2022` | 404 | P4 environmental | `L-frpp`, `L-ghgrp` | energy.water_cwns_2022 |
 | `in_nonattainment` | 62 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.nonattainment_areas |
 | `in_land_gates` | 33 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_land_military_bases + in_tribal_land + in_lan |
@@ -90,7 +90,7 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_news_dc` | 283 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | CORRECTION note (no data change) |
 | `in_ordinances_dc_v2` | 153 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | https://api.municode.com/search ; https://codelibrary.amlega |
 | `in_iocs_county_context` | 92 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_refresh_iocs_eviction x energy.county_boun |
-| `in_dc_actions_resolved` | 86 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | Indiana county/municipal government websites — official-sour |
+| `in_dc_actions_resolved` | 86 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | Indiana county/municipal government websites - F3/F4 clock r |
 | `in_dc_actions` | 79 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | CORRECTION note (no data change) |
 | `in_ordinances_dc` | 4 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | https://api.municode.com/search (public JSON API of library. |
 | `in_gas_capacity_panhandle_eastern` | 1,979 | P6 market & cost | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | Energy Transfer Messenger ipost, https://peplmessenger.energ |
@@ -193,7 +193,7 @@ mis-file some rows; it no longer invents whole categories of them.
 
 ---
 
-## READ-ONLY — 156 objects
+## READ-ONLY — 157 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
@@ -246,15 +246,16 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_pjm_qs_c23sens_wd` | 462,654 | P2 power & grid | direct: scripts/audit_pjm_short_reads.py | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_queuescope_aep` | 303,671 | P2 power & grid | app.js | energy.pjm_queuescope_results (AEP = the I&M sliver) |
 | `in_miso_poi_300mw` | 40,007 | P2 power & grid | app.js | giqueue.misoenergy.org POI/api/poi_mf?pMaxValue=300 |
+| `in_bus_headroom_miso_vendor` | 17,146 | P2 power & grid | direct: scripts/acceptance_run.py | Orennia 'Greenfield Interconnection Capacity, Buses' extract |
 | `in_pjm_rtep_upgrades` | 15,443 | P2 power & grid | app.js | PJM Project Status & Cost Allocation (RTEP upgrades) - publi |
 | `in_miso_poi_identity` | 12,845 | P2 power & grid | app.js | MISO giqueue legacy POI viewer https://giqueue.misoenergy.or |
 | `in_bus_headroom_miso` | 11,820 | P2 power & grid | app.js | energy.miso_poi_monitored_facilities x indiana_app.in_miso_p |
 | `in_operating_generators` | 11,795 | P2 power & grid | app.js | energy.operating_generators |
-| `in_bus_headroom_miso_ladder` | 3,852 | P2 power & grid | derivative: feeds `in_screener_candidates` via `scri | rollup of indiana_app.in_miso_poi_ladder | endpoint_kind=bq_ |
 | `in_transmission_voltage` | 3,737 | P2 power & grid | direct: scripts/export_grid_sentiment.py | energy-platfrom.indiana_app.in_transmission_union |
 | `in_osm_power_substations` | 2,873 | P2 power & grid | direct: scripts/export_context_layers.py | energy.osm_power_substations |
 | `in_eia_plants` | 2,675 | P2 power & grid | app.js | energy.eia_plants |
 | `in_pjm_bus_withdrawal` | 1,475 | P2 power & grid | app.js | in_pjm_queuescope_aep |
+| `in_grid_plans_located` | 618 | P2 power & grid | direct: scripts/audit_backlog_truth.py | indiana_app.in_grid_plans x in_substations |
 | `in_queue_miso` | 456 | P2 power & grid | app.js | energy.queue_miso |
 | `in_txexp_miso_mtep_appendix_a_status` | 328 | P2 power & grid | app.js | energy.txexp_miso_mtep_appendix_a_status |
 | `in_generation_union` | 283 | P2 power & grid | direct: scripts/export_si_v2_surfaces.py | indiana_app.in_eia_plants + in_power_plants |
@@ -356,24 +357,25 @@ mis-file some rows; it no longer invents whole categories of them.
 
 ---
 
-## NO SURFACE — 19 objects
+## NO SURFACE — 20 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | 945,896 | P1 owner motivation | — | indiana_app.in_si_signals WHERE source_id='si_d5_vacancy_der |
 | `in_pjm_qs_c23_inj_10` | 655,404 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23_inj_15` | 655,404 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_qs_c23_wd_10` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_qs_c23_wd_15` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_miso_poi_ladder` | 230,286 | P2 power & grid | — | MISO giqueue POI transfer analysis | endpoint_kind=json_api  |
 | `in_miso_facility_detail` | 40,007 | P2 power & grid | — | energy.miso_poi_headroom / energy.miso_poi_monitored_facilit |
-| `in_bus_headroom_miso_vendor` | 17,146 | P2 power & grid | — | Orennia 'Greenfield Interconnection Capacity, Buses' extract |
+| `in_pjm_qs_c23_wd_25` | 37,852 | P2 power & grid | — |  |
 | `in_pjm_qs_withdrawal_rungcheck` | 4,686 | P2 power & grid | — | PJM Queue Scope | endpoint_kind=html_page | https://queuesco |
+| `in_bus_headroom_miso_ladder` | 3,852 | P2 power & grid | — | rollup of indiana_app.in_miso_poi_ladder | endpoint_kind=bq_ |
 | `in_miso_dpp2025_counties` | 1,000 | P2 power & grid | — | cloud.cartovista.com/miso/api/v2/DataTable/98af4e3b-1772-4cf |
 | `in_miso_poi_state` | 642 | P2 power & grid | — | energy.miso_poi_headroom / energy.miso_poi_monitored_facilit |
 | `in_miso_dpp2025_ph1_project_costs` | 202 | P2 power & grid | — | https://cdn.misoenergy.org/GI-DPP-2025-ALL_SIS_Ph1_FINAL_v1. |
 | `in_pjm_bus_injection` | 200 | P2 power & grid | — | rollup of indiana_app.in_pjm_queuescope_injection | endpoint |
 | `in_miso_dpp2025_footprint` | 1 | P2 power & grid | — | cloud.cartovista.com/miso/api/v2/DataTable/421ee8c5-939e-426 |
-| `in_pjm_qs_c23_inj_15` | 0 | P2 power & grid | — |  |
 | `in_water_parcel` | 532,868 | P4 environmental | — | in_screener_candidates x energy.water_aqueduct (geometry_geo |
 | `in_nhd_flowline_geom` | 163,976 | P4 environmental | — | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapSe |
 | `in_nhd_waterbody_geom` | 7,430 | P4 environmental | — | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapSe |

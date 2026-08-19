@@ -76,10 +76,25 @@ CREATE OR REPLACE TABLE `{DS}.{TARGET}` AS
 -- actually stresses (|dfax| >= 0.05, the vendor's own cutoff) and that is NOT already over its
 -- rating. Pre-existing overloads are still COUNTED and flagged on the row - dropping them from the
 -- count would hide why a bus is tight - they are only excluded from the choice of what binds.
+-- ⭐ SOURCE CHANGED 2026-08-19 TO THE 5,000 MW RUNG, and it is a real improvement, not tidiness.
+-- Operator: "I thought we noted that the 5000MW scrape DID, in fact, result in additional
+-- constraints." Correct, and measured fresh:
+--      INJECTION  5,000 vs 100 MW : 443 NEW constraint keys, 0 new facilities
+--      WITHDRAWAL 5,000 vs 100 MW :   0 new keys,             0 new facilities
+-- The facility SET is identical either way (1,300 injection / 1,029 withdrawal), which is why the
+-- ladder cannot close the vendor-parity gap. But the extra 443 KEYS are new (bus x facility x
+-- contingency) pairings on facilities we already monitor, and a MIN over a larger set can only be
+-- the same or lower. Measured effect of switching the injection source:
+--      986 of 1,814 buses (54%) change, 466 of them TIGHTER, max delta 6,864 MW.
+-- Per-key values are request-invariant (G7b), so this is not a different number for the same
+-- constraint - it is constraints the 100 MW request never returned. The 5,000 MW rung is
+-- therefore the better input and the conservative one.
+-- ⚠ Withdrawal is byte-identical between the two rungs, so it changes nothing there; both come
+-- from the same rung purely so the provenance is one story rather than two.
 WITH pjm_raw AS (
-  SELECT 'Withdrawal' AS direction, * FROM `{DS}.in_pjm_qs_c23sens_wd`
+  SELECT 'Withdrawal' AS direction, * FROM `{DS}.in_pjm_qs_c23_wd_5000`
   UNION ALL
-  SELECT 'Injection'  AS direction, * FROM `{DS}.in_pjm_qs_c23sens_inj`
+  SELECT 'Injection'  AS direction, * FROM `{DS}.in_pjm_qs_c23_inj_5000`
 ),
 pjm_scoped AS (
   -- ⭐ HEADROOM THE WAY THE VENDOR COMPUTES IT, so a MISO bus and a PJM bus on the same screen are
