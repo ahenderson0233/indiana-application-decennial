@@ -25,7 +25,8 @@ Then read, in this order — and no further than this, because it is enough:
 | 1 | `docs/BACKLOG.md` | the ledger. The block at the top is **generated**; everything below is the plan, the operator rulings, and the rules earned by getting things wrong |
 | 2 | `docs/TABLE_INVENTORY.md` | **generated.** All ~269 objects and, per object, whether it carries OWNER data, a real DATE, a STATUS vocabulary, coordinates or a parcel key |
 | 2b | **`docs/FEATURE_INVENTORY.md`** | ⭐ **EVERY feature, what it does, how it works, and which BigQuery table it comes from.** The fastest way to get oriented |
-| 3 | **`docs/HANDOFF_2026-08-18b.md`** | ⭐ **THE CURRENT ONE.** Tariffs, the dossier audit, the bus rebuild, and ⚠ **the PJM ladder harvest that may still be running** — with its resume command |
+| 3 | **`docs/HANDOFF_2026-08-19.md`** | ⭐ **THE CURRENT ONE** — the management-review session: the 26-rung ladder, the 38-of-301 control finding, and the six items still open |
+| 3a | `docs/HANDOFF_2026-08-18b.md` | ⭐ **THE CURRENT ONE.** Tariffs, the dossier audit, the bus rebuild, and ⚠ **the PJM ladder harvest that may still be running** — with its resume command |
 | 3b | `docs/HANDOFF_2026-08-17.md` | **the front-end revamp session.** ⚠ Lists the AGENTS that were still running, and every file/reference the operator supplied |
 | 4 | `docs/SIGNAL_REALITY.json` | **generated.** Every SI signal classed as done / not-split / wrong-grain / blocked / awaiting-operator, so you stop re-recommending finished or impossible work |
 
