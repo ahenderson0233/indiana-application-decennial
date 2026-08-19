@@ -15,8 +15,42 @@ function renderNav(active) {
   el.innerHTML = NAV.map(([href, label], i) =>
     `<a href="${href}" class="${href === here ? "active" : ""}"><span class="num">0${i + 1}</span>${label}</a>`).join("");
 }
+/* G101 — PAYLOADS MUST BE CACHE-BUSTED THE SAME WAY THE SCRIPTS ARE.
+   `stamp_assets.py` has stamped app.js/common.js/style.css with a content hash since 2026-08-17,
+   but `fetchGz` requested `data/*.gz` with NO version at all. So a rebuilt payload kept serving
+   from cache, and -- this is the nasty part -- the page then renders the OLD figures while every
+   provenance line on it swears they are fresh. It masquerades as a build failure: you rebuild,
+   reload, see the old value, and go debugging the build. That cost real time on 2026-08-19.
+
+   ⚠ `fetchJson` already appended `?v=Date.now()`, so the code knew the problem existed and had
+   solved it for exactly one of the two loaders.
+
+   WHY A MANIFEST AND NOT `Date.now()`. `data/` is 247 MB across 122 files and the 92 county files
+   in `data/sites/` are fetched on demand while panning. `Date.now()` would defeat caching
+   ENTIRELY and re-download them on every visit -- correct freshness bought with an unusable map.
+   The manifest gives each file its own token, so an unchanged payload stays cached and a rebuilt
+   one is fetched exactly once.
+
+   The token is mtime+size, not a content hash, because hashing 247 MB on every stamp run is a
+   cost paid for a distinction that does not matter here: a rebuild that produces identical bytes
+   re-downloading once is harmless, a stale payload is not. */
+let _PAYLOAD_VER = null;
+function payloadVersions() {
+  if (!_PAYLOAD_VER) {
+    _PAYLOAD_VER = fetchJson("data/payload_manifest.json").catch(() => ({}));
+  }
+  return _PAYLOAD_VER;
+}
 async function fetchGz(url) {
-  const res = await fetch(url);
+  /* A missing or unreadable manifest must never take a page down -- it degrades to the old
+     behaviour (possibly stale) rather than throwing, because a map that renders yesterday's
+     figures beats a map that does not render. */
+  let v = null;
+  try {
+    const man = await payloadVersions();
+    v = man[url.replace(/^\.?\//, "")] || null;
+  } catch (e) { v = null; }
+  const res = await fetch(v ? `${url}?v=${v}` : url);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).json();
 }

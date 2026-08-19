@@ -147,6 +147,15 @@ for page in PAGES:
     for prefix in re.findall(r'[$]\(\s*`([A-Za-z][\w-]*?)\$\{', js) + \
                   re.findall(r'getElementById\(\s*`([A-Za-z][\w-]*?)\$\{', js):
         mentioned |= {i for i in html_ids if i.startswith(prefix)}
+    # ⚠ AND THE MIRROR CASE, added 2026-08-19b: a template whose VARIABLE COMES FIRST,
+    # `$(`${box}-note`)`, has no static prefix at all, so the rule above cannot see it and every
+    # id it reaches is reported dead. That is how G110's `L-flood-note` and `L-wet-note` were
+    # flagged while both are written on every toggle. Same wildcard treatment, same reason: this
+    # check exists to find ids NOTHING touches, and two false findings would get all of them
+    # ignored (rule 9).
+    for suffix in re.findall(r'[$]\(\s*`\$\{[^}]+\}([\w-]+)`', js) + \
+                  re.findall(r'getElementById\(\s*`\$\{[^}]+\}([\w-]+)`', js):
+        mentioned |= {i for i in html_ids if i.endswith(suffix)}
     # ⚠ AN ID CAN BE LOAD-BEARING WITHOUT ANY JAVASCRIPT TOUCHING IT. Found 2026-08-19: this check
     # reported `evidence-head` as dead while `style.css` carries TWO rules for it
     # (`#evidence-head { display:flex ... }`), so acting on the finding would have broken the

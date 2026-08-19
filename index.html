@@ -209,16 +209,27 @@
             <option value="protected_land">highlight parcels overlapping protected land</option>
           </select></label>
         <div class="hint" id="f-hilite-note"></div>
-        <div class="hint">⚠ <b>We highlight the PARCELS, not the hazard polygons.</b> The flood and
-          wetland source layers are 804&nbsp;MB and 1.3&nbsp;GB &mdash; far too large to send to a
-          browser &mdash; so what we ship is a per-parcel flag measured against them. That answers
-          &ldquo;is this site affected&rdquo;, which is the siting question; it will not draw you
-          the floodplain itself.</div>
+        <!-- G110. This hint used to end "it will not draw you the floodplain itself", which was
+             an honest refusal based on the 804 MB / 1.3 GB raw sources - and the wrong test.
+             Nobody had measured the decision-relevant SUBSET: SFHA-only flood plus wetlands of
+             20+ acres, simplified to 60 m, is 4.7 MB gzipped for both. They now draw. -->
+        <div class="hint">⚠ <b>Two different questions, two different answers.</b> The
+          <b>filters above</b> use a per-parcel flag measured against the full-resolution sources
+          (all 66,140 flood polygons, all 453,995 wetlands) &mdash; that is what decides whether a
+          specific site is affected. The <b>layers below</b> draw a simplified subset so you can
+          see where the constraint lies. Use the flag to judge a parcel; use the layer to read the
+          landscape.</div>
         <label><input type="checkbox" id="f-bonus"> Only federal energy-community tax-credit areas</label>
         <div class="sowhat">The first three are hard constraints that can stop a
           project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
           larger federal tax credit.</div>
         <div class="subhead">Shown on the map</div>
+        <!-- G110: the two gates that had no layer at all. Loaded on first tick (4.7 MB together),
+             and each prints its own coverage from the payload rather than a hardcoded claim. -->
+        <label><input type="checkbox" id="L-flood"> Flood hazard areas (FEMA)</label>
+        <div class="hint" id="L-flood-note"></div>
+        <label><input type="checkbox" id="L-wet"> Wetlands (NWI)</label>
+        <div class="hint" id="L-wet-note"></div>
         <label><input type="checkbox" id="L-padus"> Protected land</label>
         <label><input type="checkbox" id="L-nonatt"> Air-quality nonattainment areas</label>
         <!-- G65: these six were ONE checkbox called "Tax-credit areas". Five are benefits you are
@@ -292,7 +303,13 @@
           <option value="class_union">how many screened sites</option>
           <option value="action_tone">what the county has DONE about data centres</option>
           <option value="opposition_intensity">opposition intensity</option>
-          <option value="queue_active_mw">active queue MW</option>
+          <!-- G88: "active queue MW" removed as a county shading on the operator's instruction.
+               It was an interconnection-queue figure standing in for development activity, and
+               G35 measured that 49 of 87 counties have had >=50% of everything ever queued
+               withdrawn. The figure is still held and still shown in the parcel evidence panel,
+               where it is framed as competition for study slots rather than as demand. -->
+          <option value="dc_listed">data centres operating here</option>
+          <option value="dc_pipeline">data centres approved or proposed</option>
           <option value="ge25mw">parcels fitting 25 MW+</option>
           <option value="none">no shading</option>
         </select>
@@ -415,7 +432,7 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
-<script src="common.js?v=be1a3d27"></script>
-<script src="app.js?v=e12cb53f"></script>
+<script src="common.js?v=e1ec1feb"></script>
+<script src="app.js?v=a36a1c2c"></script>
 </body>
 </html>

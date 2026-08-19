@@ -23,10 +23,46 @@ try:
 except Exception:
     pass
 
-import hashlib, os, re, glob
+import hashlib, os, re, glob, json
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = ["app.js", "common.js", "style.css"]
+
+
+def stamp_payloads():
+    """G101 - give every gzipped payload a version token, for the SAME reason the scripts have one.
+
+    `fetchGz` asked for `data/*.gz` with no version, so a rebuilt payload kept serving from cache
+    and the page rendered stale figures while its provenance line claimed they were fresh. That is
+    worse than an error, because it looks like the BUILD failed.
+
+    ⚠ The token is mtime+size, deliberately NOT a content hash. `data/` is ~247 MB across 122
+    files, most of it the 92 on-demand county files, and re-reading all of it on every stamp run
+    buys only one thing: not re-downloading a payload that was rebuilt to identical bytes. That is
+    rare and harmless. A stale payload is neither.
+    """
+    man, root = {}, os.path.join(REPO, "data")
+    for path in glob.glob(os.path.join(root, "**", "*.gz"), recursive=True):
+        st = os.stat(path)
+        rel = os.path.relpath(path, REPO).replace(os.sep, "/")
+        man[rel] = f"{int(st.st_mtime):x}-{st.st_size:x}"
+    out = os.path.join(root, "payload_manifest.json")
+    prev = None
+    if os.path.exists(out):
+        try:
+            prev = json.load(open(out, encoding="utf-8"))
+        except Exception:
+            prev = None
+    # Written every run, but only REPORTED as changed when it actually differs -- so the line in
+    # the console means something.
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(man, f, separators=(",", ":"), sort_keys=True)
+    n_new = 0 if prev is None else sum(1 for k, v in man.items() if prev.get(k) != v)
+    if prev is None:
+        print(f"  payload manifest -> {len(man)} payloads (created)")
+    else:
+        print(f"  payload manifest -> {len(man)} payloads, {n_new} changed since last stamp")
+    return man
 
 
 def digest(path):
@@ -54,5 +90,7 @@ for html in sorted(glob.glob(os.path.join(REPO, "*.html"))):
         open(html, "w", encoding="utf-8").write(out)
         changed += 1
         print(f"  stamped {os.path.basename(html)}")
+
+stamp_payloads()
 
 print(f"ASSET STAMP COMPLETE - {changed} page(s) updated")

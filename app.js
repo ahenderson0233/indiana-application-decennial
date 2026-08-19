@@ -7,7 +7,7 @@
 const PARCEL_ZOOM = 10;
 const MI = 1609.344;
 const state = {
-  summary: null, provenance: {}, counties: null, countyBbox: {}, ctx: null,
+  summary: null, counties: null, countyBbox: {}, ctx: null,
   loaded: new Map(), loading: new Set(), receipts: null,
   grid: null, gas: null, pjm: null, terr: null, overlays: null, cand: null,
   subBins: null, lineBins: null, poiList: null,
@@ -16,12 +16,15 @@ const state = {
 };
 
 /* ---------- helpers ---------- */
-async function fetchGz(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).json();
-}
-/* fmt + fetchGz come from common.js (loaded first) */
+/* fmt + fetchGz come from common.js (loaded first).
+   ⛔ DO NOT RE-DECLARE `fetchGz` HERE. It was declared in this file too, four lines above this
+   very comment, for long enough that the comment and the code contradicted each other in plain
+   sight. app.js loads AFTER common.js, so the copy here silently WON on every page that includes
+   it -- which is the map console, the heaviest payload consumer in the application and the only
+   page that fetches the 92 on-demand county files.
+   The cost was measured on 2026-08-19b: the G101 cache-bust was added to common.js, verified as
+   present (`payloadVersions` was defined), and still did nothing here, because `fetchGz` in the
+   page was the other one. Two copies of one thing WILL drift, and the loser is invisible. */
 function bboxOf(geom) {
   let w = 180, s = 90, e = -180, n = -90;
   const walk = (c) => { if (typeof c[0] === "number") { w = Math.min(w, c[0]); e = Math.max(e, c[0]); s = Math.min(s, c[1]); n = Math.max(n, c[1]); } else c.forEach(walk); };
@@ -93,7 +96,10 @@ if (document.getElementById("basemap"))
   document.getElementById("basemap").addEventListener("change", (e) => setBasemap(e.target.value));
 map.on("load", async () => {
   state.summary = await (await fetch("data/state_summary.json?v=" + Date.now())).json();
-  for (const p of state.summary.provenance) state.provenance[p.table_name] = p;
+  /* Fills common.js's PROV, which is the ONE provenance store. This page used to keep a second
+     one (`state.provenance`) read by a second `prov()` declared in this file -- identical output,
+     different backing store, and app.js loads last so its copy silently won. Both are gone. */
+  for (const p of state.summary.provenance) PROV[p.table_name] = p;
   state.ctx = await (await fetch("data/county_context.json?v=" + Date.now())).json();
   renderStatebar(); renderLedger(); renderShortlistCount();
 
@@ -105,6 +111,14 @@ map.on("load", async () => {
       f.properties.opposition_intensity = c.posture?.opposition_intensity ?? null;
       f.properties.has_restriction = c.posture?.has_local_restriction ?? null;
       f.properties.queue_active_mw = c.queue?.active_mw ?? null;
+      /* G88, operator 2026-08-19: *"instead of having queued MW, we should put the number of DC
+         developments that are either completed/in progress (maybe one field for each)"*.
+         ⛔ TWO FIELDS, NEVER SUMMED. `dc_listed` is a DIRECTORY listing (baxtel / datacentermap /
+         OSM / PeeringDB) and `dc_pipeline` is a VERIFIED act of a county body. They come from
+         different sources, mean different things, and a project can appear in both. */
+      f.properties.dc_listed = c.dc_posture?.listed ?? null;
+      f.properties.dc_pipeline = c.dc_posture
+        ? (c.dc_posture.approved || 0) + (c.dc_posture.proposed || 0) : null;
       // G11: the VERIFIED action, which the map previously could not see at all. Measured
       // 2026-08-17: 33 counties carry one and the map called 13 of them "quiet" — Cass has a BAN,
       // Floyd/Huntington/Whitley have moratoriums, all with has_local_restriction = false. And 10
@@ -154,6 +168,23 @@ map.on("load", async () => {
     }
   }
   map.addSource("grid", { type: "geojson", data: state.grid });
+  /* G111, operator 2026-08-19: *"The buses should show both withdrawal and injection amounts,
+     since a developer may be concerned with co-locating their site prospect with generation."*
+     The payload holds ONE FEATURE PER BUS PER DIRECTION (3,542 features, 1,772 withdrawal +
+     1,770 injection) and the map draws only the withdrawal half -- deliberately, because two
+     stacked dots per station is unreadable. So the reader could never see the injection number
+     at all. Pair them here, by bus, and let ONE popup answer both questions.
+     ⚠ The pairing key is `${iso}|${bus_number}` and NOT bus_number alone: the two ISOs number
+     their buses independently and a collision would silently merge two different buses. */
+  state.busPairs = new Map();
+  for (const f of (state.grid.features || [])) {
+    const p = f.properties;
+    if (!p || p.layer !== "bus_poi") continue;
+    const k = `${p.iso}|${p.bus_number}`;
+    const e = state.busPairs.get(k) || {};
+    e[p.direction] = p;
+    state.busPairs.set(k, e);
+  }
   map.addLayer({ id: "grid-lines", type: "line", source: "grid",
     filter: ["==", ["get", "layer"], "line"],
     /* G13: coloured by the AUDITED voltage class, not by a raw number.
@@ -378,6 +409,15 @@ map.on("load", async () => {
 
   state.fac = await fetchGz("data/facilities.geojson.gz");
   map.addSource("fac", { type: "geojson", data: state.fac });
+  /* G112: count the two precision tiers FROM THE PAYLOAD, for the legend. ⛔ Do not hand-type
+     these. The comment below and the popup both said "92 of 242" while the shipped payload holds
+     249 pins (157 site + 92 city) -- the 242 came from a table row count and drifted. A legend is
+     the last place a stale denominator should live. */
+  state.dcTiers = { site: 0, city: 0 };
+  for (const f of (state.fac.features || [])) {
+    if (f.properties && f.properties.layer === "dc")
+      state.dcTiers[f.properties.location_precision === "city" ? "city" : "site"]++;
+  }
   // 92 of the 242 data-centre pins are census-gazetteer CITY centroids (datacentermap
   // publishes precision='city'), not facility locations — 32 of them land on one point near
   // New Carlisle, Microsoft Mishawaka among them, ~15 km from where it is drawn. A city
@@ -392,7 +432,18 @@ map.on("load", async () => {
   map.addLayer({ id: "fac-dc-city", type: "circle", source: "fac",
     filter: ["all", ["==", ["get", "layer"], "dc"], ["==", ["get", "location_precision"], "city"]],
     layout: { visibility: "none" },
-    paint: { "circle-radius": ["interpolate", ["linear"], ["get", "pins_at_this_point"], 1, 7, 32, 15],
+    /* G112, operator 2026-08-19: *"Why do some data centers show as different colors and have
+       different sizes? Regardless, they should all be the same size."*
+       ⛔ THE SIZE RAMP IS GONE. It interpolated the radius 7->15 on `pins_at_this_point`, which
+       asked the reader to compare circle AREAS to recover a count -- the exact channel G77 just
+       removed from the bus layer for being the worst way to encode a quantity. The count is
+       already stated in words in the popup, where it can be read instead of estimated.
+       ⭐ THE COLOUR STAYS, because it is not decoration: hollow amber means the coordinate is a
+       CITY CENTROID, not the facility. 92 of 242 records are like this and 32 of them share one
+       point near New Carlisle -- Microsoft Mishawaka among them, ~15 km from where it draws.
+       Painting an approximate position like a surveyed one is the failure the estimate-badging
+       rule exists to prevent. The legend now names both tiers so it need not be clicked to learn. */
+    paint: { "circle-radius": 6.5,
              "circle-color": "#f59e0b", "circle-opacity": 0.12,
              "circle-stroke-color": "#b45309", "circle-stroke-width": 1.6 } });
   /* G65: solar, wind and thermal plant were one checkbox called "Power plants - solar - wind".
@@ -511,10 +562,19 @@ function countyPaint(metric) {
     return ["case", ["==", ["get", "opposition_intensity"], null], "#f2f2f0",
       ["interpolate", ["linear"], ["to-number", ["get", "opposition_intensity"], 0],
        0, "#eef6ee", 1, "#fde68a", 3, "#f59e0b", 6, "#b91c1c"]];
-  if (metric === "queue_active_mw")
-    return ["case", ["==", ["get", "queue_active_mw"], null], "#f2f2f0",
-      ["interpolate", ["linear"], ["to-number", ["get", "queue_active_mw"], 0],
-       0, "#f4f7fb", 200, "#c7d9f0", 1000, "#7fa8d9", 3000, "#3b6bb5"]];
+  /* G88: the two data-centre metrics that replaced "active queue MW" as a county shading.
+     ⛔ Queue MW was standing in for DEVELOPMENT ACTIVITY and overstated it by construction -- G35
+     measured that 49 of 87 counties have had >=50% of everything ever queued WITHDRAWN. The queue
+     figure is still held and still rendered, but in the parcel evidence panel, where it is framed
+     as what it actually is: competition for study slots. It is not a proxy for demand. */
+  if (metric === "dc_listed")
+    return ["case", ["==", ["get", "dc_listed"], null], "#f2f2f0",
+      ["interpolate", ["linear"], ["to-number", ["get", "dc_listed"], 0],
+       0, "#f7f4fb", 1, "#e0d3f0", 5, "#b79ada", 20, "#8b5cf6", 70, "#5b21b6"]];
+  if (metric === "dc_pipeline")
+    return ["case", ["==", ["get", "dc_pipeline"], null], "#f2f2f0",
+      ["interpolate", ["linear"], ["to-number", ["get", "dc_pipeline"], 0],
+       0, "#f4faf6", 1, "#cbead8", 3, "#6ec9a0", 6, "#15803d"]];
   // G11: shade by what the county has ACTUALLY DONE about data centres, verified at an official
   // source. Deliberately a 4-colour categorical rather than a gradient - "has a ban" and "has
   // approved one" are not two ends of one scale, they are different facts. Counties with no
@@ -567,12 +627,22 @@ const METRIC_LEGEND = {
     buildable. A high reading says start community engagement before you file, and plan for a longer
     hearing process. <b>Context only — it never disqualifies a parcel</b>; for something that can,
     switch to <i>what the county has DONE</i>.`,
-  queue_active_mw: `Active interconnection queue megawatts, summed per county.
-    <br>It reads two ways at once, and both matter. Queued generation is future
-    <b>supply</b> being built near you. But every project in that queue is also <b>competition</b>
-    for the same study slots, the same upgrade dollars and the same substation capacity. A high
-    number beside a high withdrawal rate is a congested queue, not a healthy one — open a parcel's
-    evidence panel to see that county's queue attrition before reading this as good news.`,
+  dc_listed: `<b>Data centres a directory already lists in this county.</b> The closest thing we
+    hold to "completed" — but it is a listing, not a certificate of occupancy.
+    <br>It cuts both ways and both matter. A county with operating data centres has
+    <b>demonstrated it will permit one</b>, and usually has the transmission and fibre to match.
+    It is also <b>competition</b> for the same substation capacity and the same local goodwill.
+    <br>⚠ <b>92 of our 249 pins are city centroids</b>, not facility locations, and 32 of those sit
+    on a single point. Open a county to see how many of ITS pins are city-precision before reading
+    a high number as a dense cluster.`,
+  dc_pipeline: `<b>Data centres approved or proposed but not yet listed as operating</b> —
+    approvals and pending petitions from county and municipal bodies, each verified at the
+    authority's own published record.
+    <br>This is the forward-looking half, and it is the better predictor of
+    posture: an approval is a county saying yes <i>recently</i>, under its current board.
+    ⚠ It is not a construction count — the permission exists, the building may not.
+    ⛔ <b>Never add this to the operating count.</b> They come from different sources and one
+    project can appear in both.`,
   class_union: `How many parcels passed the screen. A dense county is not a better county — it is a
     bigger one.
     <br>Use this to choose <b>where to look</b>, never to rank. A county with 4,000
@@ -881,6 +951,19 @@ const TERR_TYPES = [
   ["MUNICIPAL",      "#059669", "Municipal utility"],
   ["NOT AVAILABLE",  "#94a3b8", "type not published by the source (74 of 145)"],
 ];
+/* G112. The two data-centre pin tiers, named for the legend. ⚠ Colours must MATCH the fac-dc /
+   fac-dc-city paint below; they are literals here because those layers are created inside the
+   facilities loader, long after this runs. If a paint colour changes, change it here too.
+   ⛔ The COUNTS are read from state.dcTiers, measured off the payload at load time -- never typed.
+   The hardcoded "242" that used to sit here was already wrong: the payload ships 249. */
+function dcTiers() {
+  const t = state.dcTiers, n = t ? t.site + t.city : 0;
+  const of = (x) => (t ? ` (${fmt(x)} of ${fmt(n)})` : "");
+  return [
+    ["#0ea5e9", `solid — the publisher gave a site coordinate${of(t && t.site)}`],
+    ["#f59e0b", `hollow — CITY CENTROID only, not the facility${of(t && t.city)}`],
+  ];
+}
 const TERR_FILL = ["match", ["get", "utility_type"],
                    ...TERR_TYPES.flatMap(([v, c]) => [v, c]), "#cbd5e1"];
 const BUS_BANDS = [
@@ -916,6 +999,21 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
 // for a separate Illinois experiment, and a GHCN station location is not something a siter acts
 // on. Both are recorded as waivers on the Data page rather than silently dropped.
 const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
+
+/* ---------- G110: THE ENVIRONMENTAL GATES YOU CAN FILTER ON, YOU CAN NOW SEE ------------------
+   Operator, 2026-08-19: *"The flood zones, wetlands, and the protected land should also show the
+   map layer when checked, not just used as a filtering tool."*
+
+   ⛔ IT WAS WORSE THAN "NOT SHOWN". `LAYER_MAP` had NO flood layer and NO wetland layer at all, so
+   a reader could exclude every parcel touching a floodplain and had no way to look at one. The
+   page even carried a hint explaining why: the sources are 804 MB and 1.3 GB. That was true and
+   it was the wrong test -- nobody had measured the DECISION-RELEVANT SUBSET, which is 4.7 MB
+   gzipped for both layers together.
+
+   4.7 MB is real weight, so it is fetched on FIRST TOGGLE like the context layers, never at boot.
+   ⚠ Both layers are SUBSETS and both cuts are printed on the control from the payload's own
+   `coverage` block -- never restated here, or the disclosure and the data would drift. */
+const ENVGATE_LAYERS = { "L-flood": "env-flood", "L-wet": "env-wet" };
 
 /* ---------- G39: THE SCREENER, ON THE MAP ----------------------------------------------------
    Operator, 2026-08-18: *"we essentially need to wire the Site Screener to the map, since we
@@ -998,7 +1096,7 @@ async function openScreenerSite(fips, key, fallback) {
    which is exactly what the operator reported. Every preset now states every layer, unstated boxes
    default to OFF rather than persisting, and a gap is reported loudly at boot. */
 const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS),
-                         "L-parcels", "L-screener"];
+                         ...Object.keys(ENVGATE_LAYERS), "L-parcels", "L-screener"];
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
   if (state.ctxLoaded) return true;
@@ -1065,6 +1163,111 @@ $("L-screener").addEventListener("change", async (e) => {
   syncLayers();
 });
 
+/* ---------- G110: the flood / wetland geometry, loaded on first use ---------------------------
+   ⚠ FILL-ONLY WOULD BE UNREADABLE. A translucent fill over a translucent fill (these two overlap
+   constantly - river floodplains ARE wetlands) reads as one muddy colour, so each carries a line
+   as well and the fills stay light. */
+state.envLoaded = false; state.envLoading = null; state.envCoverage = null;
+async function ensureEnvGateLayers() {
+  if (state.envLoaded) return true;
+  if (state.envLoading) return state.envLoading;
+  state.envLoading = (async () => {
+    /* ⚠ NOT named `fc`. `ensureContextLayers()` above uses `const fc` for a DIFFERENT payload,
+       and audit_frontend.py resolves `<var>.<key>` reads against whichever payload that variable
+       name was last bound to -- so a second `fc` made it report `.coverage` as a missing key on
+       context.geojson.gz. The audit is right to be simple here; the fix is a distinct name. */
+    const envFc = await fetchGz("data/envgates.geojson.gz");
+    state.envCoverage = envFc.coverage || null;
+    map.addSource("envgates", { type: "geojson", data: envFc });
+    /* ⛔ Drawn UNDER the parcel layers, never over them. These are context for a site, and a
+       hazard polygon painted on top of the parcel you are evaluating hides the subject. */
+    const before = map.getLayer("county-line") ? "county-line" : undefined;
+    map.addLayer({ id: "env-flood", type: "fill", source: "envgates",
+      filter: ["==", ["get", "layer"], "flood"], layout: { visibility: "none" },
+      paint: { "fill-color": "#38bdf8", "fill-opacity": 0.28,
+               "fill-outline-color": "#0369a1" } }, before);
+    map.addLayer({ id: "env-wet", type: "fill", source: "envgates",
+      filter: ["==", ["get", "layer"], "wetland"], layout: { visibility: "none" },
+      paint: { "fill-color": "#14b8a6", "fill-opacity": 0.3,
+               "fill-outline-color": "#0f766e" } }, before);
+    for (const id of Object.values(ENVGATE_LAYERS)) {
+      map.on("mousemove", id, (e) => showTip(e, envGateTip(e.features[0].properties)));
+      map.on("mouseleave", id, hideTip);
+      map.on("click", id, (e) => { if (!state.measure.on) envGateEvidence(e.features[0].properties); });
+    }
+    state.envLoaded = true;
+    return true;
+  })();
+  return state.envLoading;
+}
+/* FEMA's zone codes are the vocabulary of the source, not of the reader. A is the 1% floodplain
+   with no studied elevation; AE is the same with a Base Flood Elevation published; AO is sheet
+   flow; V/VE is coastal wave action (Indiana has 83 VE polygons, all on Lake Michigan). */
+const FLD_ZONE_PLAIN = {
+  A: "1% annual-chance floodplain (no base flood elevation published)",
+  AE: "1% annual-chance floodplain, base flood elevation published",
+  AH: "1% annual-chance shallow flooding, 1-3 ft ponding",
+  AO: "1% annual-chance shallow flooding, sheet flow",
+  VE: "coastal high-hazard area - wave action, base flood elevation published",
+  V: "coastal high-hazard area - wave action",
+};
+function envGateTip(p) {
+  if (p.layer === "flood")
+    return `Flood: ${FLD_ZONE_PLAIN[p.zone] || `zone ${p.zone || "?"}`}`;
+  return `Wetland${p.acres != null ? ` · ${fmt(p.acres)} acres` : ""}` +
+         (p.wetland_type ? ` · ${p.wetland_type}` : "");
+}
+function envGateEvidence(p) {
+  const cov = state.envCoverage || {};
+  const c = p.layer === "flood" ? (cov.flood || {}) : (cov.wetland || {});
+  const rows_ = p.layer === "flood"
+    ? row("Zone", FLD_ZONE_PLAIN[p.zone] || p.zone) +
+      row("FEMA zone code", p.zone) +
+      /* ⚠ -9999 IS FEMA'S NULL SENTINEL, and it arrives as the STRING "-9999.0". A literal
+         `!== "-9999"` test sailed straight past the decimal form and printed a base flood
+         elevation of minus 9,999 feet -- the same shape as the `00/00/0000` date sentinel.
+         Compare numerically, and treat anything at or below -9000 as not published. */
+      row("Base flood elevation",
+          (p.bfe != null && Number(p.bfe) > -9000) ? `${p.bfe} ft` : null,
+          "not published for this polygon") +
+      row("County", p.county)
+    : row("Size", p.acres != null ? `${fmt(p.acres)} acres` : null, "not stated") +
+      row("NWI class", p.wetland_type);
+  const what = p.layer === "flood"
+    ? "A mapped Special Flood Hazard Area. Building here triggers floodplain permitting, " +
+      "elevation or floodproofing requirements, and federal flood insurance obligations on a " +
+      "federally-backed loan. It is a cost and a schedule item, not usually an absolute stop."
+    : "A National Wetlands Inventory polygon. Disturbing it needs a Clean Water Act section 404 " +
+      "permit from the Army Corps, which is the single slowest federal approval most sites meet.";
+  show(envGateTip(p), `<table>${rows_}</table>
+    <div class="sowhat">${what}</div>
+    <div class="hint">⚠ <b>Boundaries are simplified to about ${escHtml(String(cov.simplify_m || 60))} m</b>
+      for drawing, so an edge here can sit that far from the surveyed line. To decide whether a
+      SPECIFIC parcel is affected, use the per-parcel flag in the site's evidence panel, which is
+      measured against the full-resolution source.</div>
+    <div class="prov">${prov(p.layer === "flood" ? "in_flood" : "in_wetlands")}<br>
+      Drawn: ${fmt(c.drawn)} of ${fmt(c.source_rows)} — ${escHtml(c.rule || "")}</div>`);
+}
+for (const [box, layerId] of Object.entries(ENVGATE_LAYERS)) {
+  if (!$(box)) continue;
+  $(box).addEventListener("change", async (e) => {
+    const note = $(`${box}-note`);
+    if (e.target.checked) {
+      if (note) note.textContent = "loading…";
+      try { await ensureEnvGateLayers(); } catch (err) {
+        if (note) note.textContent = "could not load the layer";
+        e.target.checked = false; syncLayers(); return;
+      }
+      /* The cut is printed from the payload, so the control cannot claim coverage the data does
+         not have. This is the G58 rule: a subset that does not announce itself is a lie. */
+      const c = (state.envCoverage || {})[box === "L-flood" ? "flood" : "wetland"] || {};
+      if (note) note.innerHTML = `Drawing <b>${fmt(c.drawn)}</b> of ${fmt(c.source_rows)}. ` +
+        `${escHtml(c.rule || "")}. <span class="hint">${escHtml(c.excluded || "")}</span>`;
+    } else if (note) note.textContent = "";
+    syncLayers();
+  });
+}
+
 for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
   $(box).addEventListener("change", async (e) => {
     if (e.target.checked) {
@@ -1116,6 +1319,7 @@ function renderLayerLegend() {
     let name = lbl ? lbl.textContent.replace(/\s+/g, " ").trim() : box;
     name = name.replace(/\s*\((?:[\d,]+|[\d,]+\s*[^)]*)\)\s*$/, "").trim();
     const ids = LAYER_MAP[box] || (CONTEXT_LAYERS[box] ? [CONTEXT_LAYERS[box]]
+              : ENVGATE_LAYERS[box] ? [ENVGATE_LAYERS[box]]
               : box === "L-screener" ? ["scr-pts"] : []);
     const sw = ids.length ? layerSwatch(ids) : null;
     const chip = sw === null
@@ -1139,6 +1343,14 @@ function renderLayerLegend() {
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
                   `<i class="lg-sw" style="background:${b.colour}"></i>` +
                   `<span class="hint">${escHtml(b.label)}</span></div>`);
+    /* G112: the data-centre pins are TWO colours and the reader had to click one to find out why.
+       The distinction is a claim about how much the coordinate can be trusted, which is exactly
+       the sort of thing a key is for. Sizes are now equal, so colour is the only channel left. */
+    if (box === "L-dc")
+      for (const [colour, label] of dcTiers())
+        rows.push(`<div class="lg-row" style="margin-left:14px">` +
+                  `<i class="lg-sw" style="background:${colour}"></i>` +
+                  `<span class="hint">${escHtml(label)}</span></div>`);
   }
   const metric = $("county-metric") ? $("county-metric").value : "none";
   if (metric && metric !== "none")
@@ -1164,6 +1376,10 @@ function syncLayers() {
   for (const [box, id] of Object.entries(CONTEXT_LAYERS))
     if (map.getLayer(id) && $(box))
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
+  // G110: the env-gate layers are lazy in exactly the same way and go through the same path
+  for (const [box, id] of Object.entries(ENVGATE_LAYERS))
+    if (map.getLayer(id) && $(box))
+      map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
   const showP = $("L-parcels").checked;
   for (const fips of state.loaded.keys())
     for (const suf of ["fill", "line"])
@@ -1174,8 +1390,30 @@ function syncLayers() {
 }
 for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListener("change", syncLayers);
 // the context and screener boxes are wired elsewhere, but the KEY must still update for them
-for (const id of [...Object.keys(CONTEXT_LAYERS), "L-screener"])
+for (const id of [...Object.keys(CONTEXT_LAYERS), ...Object.keys(ENVGATE_LAYERS), "L-screener"])
   if ($(id)) $(id).addEventListener("change", () => setTimeout(renderLayerLegend, 0));
+
+/* ---------- G110b: TICKING A GATE FILTER REVEALS THE GATE --------------------------------------
+   Operator: the layers "should also show the map layer when checked, not just used as a filtering
+   tool" -- and, separately, "maybe it should be an option to filter down sites".
+
+   Those are two verbs that were sharing one control, so they are now two controls that COOPERATE:
+   excluding sites on a gate switches that gate's layer on, so the reader can see what they just
+   removed. ⚠ It is deliberately ONE-WAY and non-sticky: turning the filter off does NOT turn the
+   layer off, because by then the reader may be using the layer for its own sake, and yanking it
+   away would be the tool overriding a choice the reader made. */
+const GATE_FILTER_TO_LAYER = { "f-noflood": "L-flood", "f-nowet": "L-wet", "f-noprot": "L-padus" };
+for (const [filterBox, layerBox] of Object.entries(GATE_FILTER_TO_LAYER)) {
+  const f = $(filterBox), l = $(layerBox);
+  if (!f || !l) continue;
+  f.addEventListener("change", () => {
+    if (!f.checked || l.checked) return;
+    l.checked = true;
+    // dispatch, do not call directly: the lazy loaders hang off the change event, and L-padus
+    // and L-flood reach the map by different routes
+    l.dispatchEvent(new Event("change"));
+  });
+}
 if ($("county-metric")) $("county-metric").addEventListener("change", renderLayerLegend);
 
 /* ---------- G66: THE FOUR PART-PRESETS ARE GONE ----------------------------------------------
@@ -1827,10 +2065,8 @@ $("ev-print").onclick = () => window.print(); // print stylesheet isolates the p
 $("ev-dossier").onclick = () => {
   if (state.dossierFor) openDossier(state.dossierFor.p, state.dossierFor.fips);
 };
-function prov(t) {
-  const p = state.provenance[t];
-  return p ? `source: indiana_app.${t} · rows ${fmt(p.n_rows)} · built ${String(p.built_at).slice(0, 16)}Z` : `source: ${t}`;
-}
+/* `prov()` lives in common.js. ⛔ Do not re-declare it here -- see the fetchGz note at the top of
+   this file; `scripts/audit_js_duplicates.py` fails the build on a second declaration. */
 /* G21 + G27 -- the severity BAND is what changes a decision, not the yes/no flag. "You are in a
    nonattainment area" is a fact; "you are in a SERIOUS ozone nonattainment area" is a permitting
    cost and a schedule. Ranked so the bad end is obvious without parsing EPA's vocabulary. The band
@@ -2910,28 +3146,77 @@ function openParcelEvidence(p, fips) {
     <div class="prov">source: county aggregates (see Inventory) · per-parcel water/fibre are the tile-pipeline milestone</div>`,
     `${p.parcel_source}|${p.parcel_key}`);
 }
+/* ---------- G111: ONE BUS, BOTH DIRECTIONS -----------------------------------------------------
+   Operator, 2026-08-19: *"The buses should show both withdrawal and injection amounts, since a
+   developer may be concerned with co-locating their site prospect with generation."*
+
+   ⭐ The reason matters as much as the ask. A data centre that brings its own generation asks TWO
+   questions of one bus -- how much load can I pull OUT, and how much can I push IN -- and they are
+   genuinely different numbers, not two views of one. A bus can be wide open one way and full the
+   other. Answering them on separate surfaces made the co-location case impossible to evaluate.
+
+   ⛔ WHAT THIS REPLACED, because it was worse than incomplete:
+     * every bus was titled "MISO POI", including the 41 PJM ones;
+     * a whole section headed "Injection headroom at a 300 MW request" read `headroom300_mw` and
+       `binding_300`, and BOTH ARE ABSENT FROM ALL 3,542 FEATURES -- the section rendered empty on
+       every bus in the state, the same defect shape as the dossier's hardcoded "Not started" rows;
+     * it cited `in_bus_headroom_miso`, a table G63 superseded, as its provenance.
+
+   ⚠ THE MISSING DIRECTION IS A THREE-STATE, NOT A ZERO (G51). PJM holds 1,814 injection buses and
+   1,826 withdrawal -- a real 12-bus asymmetry, not rounding -- so a bus present one way and absent
+   the other says so in words. */
+function busTitle(p) {
+  return `${p.iso || "?"} bus: ${p.bus_name || p.poi_name || p.bus_number}`;
+}
+function busSourceLine(d) {
+  if (!d) return "";
+  return d.provenance === "vendor_licensed_proxy"
+    ? "licensed Orennia DPP-2025 proxy — MISO publishes no public load-side figure at all, " +
+      "and this licence lapses late 2027"
+    : `our own PJM QueueScope harvest${d.probe_mw ? ` at a ${fmt(d.probe_mw)} MW probe` : ""}`;
+}
+function busDirectionBlock(d, label, whatItMeans) {
+  if (!d) {
+    return `<h3>${label}</h3>
+      <div class="cannot">Not published for this bus in this study case. ⚠ This is a MEASURED
+      ABSENCE, not zero capacity — PJM's case carries 1,814 injection buses and 1,826 withdrawal,
+      so a bus really can appear in one direction and not the other.</div>`;
+  }
+  return `<h3>${label}</h3>
+    <div class="sowhat">${whatItMeans}</div>
+    <table>
+    ${row("Available", d.headroom_mw != null ? `${fmt(Math.round(d.headroom_mw))} MW` : null,
+          "no capacity published at this bus")}
+    ${row("First constraint to bind", d.worst_binding_facility)}
+    ${row("Monitored facilities", d.monitored_facilities)}
+    ${row("Already over their rating", d.facilities_at_zero, "not counted for this bus")}
+    ${row("Already overloaded before any request", d.existing_overload_flag === true ? "yes" : null,
+          "no")}
+    ${row("Study case", d.vintage)}
+    ${row("Source", busSourceLine(d))}</table>`;
+}
+function busBothDirections(p) {
+  const pair = (state.busPairs && state.busPairs.get(`${p.iso}|${p.bus_number}`)) || {};
+  // fall back to the clicked feature, so the panel still works if the index is missing
+  const wd = pair.Withdrawal || (p.direction === "Withdrawal" ? p : null);
+  const inj = pair.Injection || (p.direction === "Injection" ? p : null);
+  return `
+    <h3>Bus identity</h3><table>
+    ${row("Bus number", p.bus_number)}${row("Bus name", p.bus_name)}
+    ${row("kV", p.kv)}${row("Area", p.area_name)}${row("Grid operator", p.iso)}</table>
+    ${busDirectionBlock(wd, "Withdrawal — what a LOAD can pull out",
+      "This is the data-centre question. It is what the site itself can draw.")}
+    ${busDirectionBlock(inj, "Injection — what a GENERATOR can push in",
+      "This is the co-location question. If you intend to build your own generation on or beside " +
+      "the site, this is the number that decides whether it can reach the grid here.")}
+    <div class="prov">${prov("in_bus_capacity_tier0")} · one table, both ISOs, both directions.
+      ⚠ The two directions are independent: a bus wide open for load can be closed for
+      generation, and the reverse. Do not read one as a proxy for the other.</div>`;
+}
+
 function gridEv(p) {
   if (p.layer === "bus_poi") {
-    show(`MISO POI: ${p.poi_name}`, `
-      <h3>Bus identity</h3><table>
-      ${row("bus number", p.bus_number)}${row("bus name", p.bus_name)}${row("kV", p.kv)}${row("area", p.area_name)}</table>
-      <h3>Injection headroom at a 300 MW request (bounded re-harvest)</h3><table>
-      ${row("available for a 300MW-class INJECTION", p.headroom300_mw != null ? `${fmt(Math.round(p.headroom300_mw))} MW` : null)}
-      ${row("binding facility @300MW", p.binding_300)}</table>
-      <div class="prov">${prov("in_bus_capacity_tier0")} · ⚠ MISO's PUBLIC viewer is INJECTION-only (generators) and cannot answer the data-centre LOAD question; the load-side figures here come from our licensed Orennia DPP-2025 subscription. Formerly this panel could only question — PJM buses carry the withdrawal number; a MISO load-direction source is an open lane</div>
-      <h3>Transfer capability at infinite request (study detail)</h3><table>
-      ${row(`${p.iso === "PJM" ? "Load" : "Interconnection"} headroom (MW)`, p.headroom_mw,
-             "no capacity published at this bus")}
-      ${row("direction", p.direction)}
-      ${row("study case", p.vintage)}
-      ${row("source", p.provenance === "vendor_licensed_proxy"
-             ? "licensed Orennia DPP-2025 proxy — MISO publishes no load-side figure, and this licence lapses late 2027"
-             : `our own PJM QueueScope harvest${p.probe_mw ? ` at a ${fmt(p.probe_mw)} MW probe` : ""}`)}
-      ${row("monitored facilities", p.monitored_facilities)}${row("at zero", p.facilities_at_zero)}
-      ${row("first constraint to bind", p.worst_binding_facility)}
-      ${row("facilities already over their rating", p.facilities_at_zero,
-             "not counted for this bus")}</table>
-      <div class="prov">${prov("in_bus_headroom_miso")} · probe ran at an effectively infinite request — read the three numbers together</div>`);
+    show(busTitle(p), busBothDirections(p));
   } else if (p.layer === "substation") {
     const S = { "HIFLD+OSM": "both HIFLD and OpenStreetMap describe this substation, matched to each other at 0.5 m on average (2,354 of 3,858)",
                 "OSM": "OpenStreetMap ONLY — HIFLD does not carry this substation. 933 of 3,858 are visible only because OSM was merged in.",
@@ -3046,6 +3331,97 @@ function candEv(p) {
     ${row("observed date", p.observed_date)}${row("owner (permit)", p.owner)}${row("source", p.candidate_source)}</table>
     <div class="prov">${prov("in_si_candidates")} · 99.5% of permit parcels placed (exact + parent-family, methods labeled)</div>`);
 }
+/* ---------- G88: what this county has ACTUALLY built and permitted, and who serves it ----------
+   Operator, 2026-08-19: *"For county posture, instead of having queued MW, we should put the
+   number of DC developments that are either completed/in progress (maybe one field for each), and
+   the utility should be able to be determined."*
+
+   ⛔ TWO NUMBERS, NEVER ONE, AND NEVER ADDED. `listed` is what a commercial directory says exists
+   today; `approved` is a county body's own verified decision. Different sources, different
+   meanings, and a single project can be in both.
+   ⚠ The city-precision caveat travels WITH the count, because a county whose pins are gazetteer
+   centroids has a different evidence base from one with surveyed coordinates and the number alone
+   cannot show that. */
+function dcPostureBlock(c) {
+  const d = c.dc_posture;
+  if (!d) return "";
+  const cityNote = d.listed > 0 && d.listed_city_precision > 0
+    ? ` <span class="hint">⚠ ${fmt(d.listed_city_precision)} of these are city-centroid
+        positions, not facility locations</span>`
+    : "";
+  /* ⚠ The territory polygons OVERLAP -- 145 of them cover 2.03x the state -- so "the utility" is
+     a tiebreak, not a fact. Where more than one utility blankets the county, say so. */
+  const util = d.primary_utility
+    ? `${escHtml(d.primary_utility)}${d.n_utilities_covering_half > 1
+        ? ` <span class="hint">⚠ ${d.n_utilities_covering_half} utilities' service areas each
+            cover most of this county; this is the largest by customers, not an exclusive
+            franchise</span>` : ""}`
+    : null;
+  return `
+    <h3>Data centres in this county</h3><table>
+      ${row("Operating (directory-listed)", d.listed ? `${fmt(d.listed)}${cityNote}` : null,
+            "none listed by any of our four directories")}
+      ${row("Approved by a local body", d.approved || null, "none recorded")}
+      ${row("Proposed / pending", d.proposed || null, "none recorded")}
+      ${row("Denied", d.denied || null, "none recorded")}
+      ${row("Withdrawn by the applicant", d.withdrawn || null, "none recorded")}
+      ${row("Operators present", d.operators && d.operators.length
+            ? escHtml(d.operators.slice(0, 6).join(", ")) : null, "not named by the source")}
+      ${row("Serving utility", util, "no territory resolved for this county")}
+      ${row("Utilities whose area touches this county", d.n_utilities)}
+    </table>
+    <div class="sowhat">${d.listed || d.approved
+      ? "<b>This county has said yes before.</b> An operating or approved data centre is the " +
+        "strongest evidence that a board will permit one — and simultaneously competition for " +
+        "the same substation capacity."
+      : (d.denied
+        ? "<b>This county has refused one.</b> That is a posture signal a queue figure cannot give you."
+        : "No data centre is recorded here either way. That is <b>not</b> evidence of a welcome — " +
+          "it means no precedent exists in either direction.")}</div>
+    <div class="prov">${prov("in_dc_county_posture")} · operating counts are a spatial join of
+      directory listings; approvals are verified at the authority's own record.
+      ⛔ Do not add the two — different sources, and one project can appear in both.</div>`;
+}
+/* ---------- G89: when does the restriction LAPSE? --------------------------------------------
+   ⛔ A DERIVED DATE MUST NEVER STYLE AS A PUBLISHED ONE, and an open-ended moratorium is a stated
+   CONDITION rather than a missing value. Both are badged from `expiry_basis`. */
+const EXPIRY_BADGE = {
+  published: ["published", "The instrument itself states this end date."],
+  derived: ["DERIVED", "Computed from the effective date plus the duration written into the " +
+                       "instrument. Indicative only — a body that adopted a moratorium can extend it."],
+  open_ended: ["open-ended", "No calendar end: the instrument ties the lapse to a condition."],
+  duration_without_anchor: ["no start date", "A duration is stated but we hold no verified " +
+                            "effective date to count from, so no end can be computed."],
+  not_stated: ["not stated", "Neither an end date nor a duration appears in the verified record."],
+};
+function actionExpiryBlock(c) {
+  const xs = c.action_expiry;
+  if (!xs || !xs.length) return "";
+  const items = xs.map((x) => {
+    const [badge, why] = EXPIRY_BADGE[x.expiry_basis] || ["", ""];
+    const when = x.expiry_date
+      ? `<b>${escHtml(x.expiry_date)}</b>${x.days_remaining != null
+          ? ` — ${fmt(x.days_remaining)} days away` : ""}${x.is_expired ? " — <b>ALREADY LAPSED</b>" : ""}`
+      : "no end date";
+    return `<tr><td>${escHtml(x.jurisdiction || "")}<br>
+        <span class="hint">${escHtml(x.action_type || "")}${x.effective_from
+          ? ` · effective ${escHtml(x.effective_from)}` : ""}</span></td>
+      <td>${when} <span class="est-badge">${escHtml(badge)}</span><br>
+        <span class="hint">${escHtml(why)}</span>
+        ${x.condition ? `<br><span class="hint">Condition, verbatim: “${escHtml(x.condition)}”</span>` : ""}
+      </td></tr>`;
+  }).join("");
+  return `
+    <h3>When does the restriction lapse?</h3>
+    <table>${items}</table>
+    <div class="sowhat">A moratorium with a date is a <b>schedule</b> problem; an open-ended one is
+      a <b>siting</b> problem. Which of the two you are looking at changes whether this county
+      belongs on a shortlist at all.</div>
+    <div class="prov">${prov("in_dc_action_expiry")} · ⚠ only 3 of 12 restrictions we hold carry
+      any end date at all. We do not assume a default duration — inventing a lapse date a
+      developer might plan around is worse than admitting there is none.</div>`;
+}
+
 async function openCountyEvidence(p) {
   const c = state.ctx.by_fips[p.fips] || {};
   let html = `
@@ -3066,7 +3442,9 @@ async function openCountyEvidence(p) {
       ${row("seismic design category", c.seismic?.sdc)}</table>
     <h3>Community posture</h3><table>
       ${row("posture", c.posture?.posture)}${row("opposition intensity", c.posture?.opposition_intensity)}
-      ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}</table>`;
+      ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}</table>
+    ${dcPostureBlock(c)}
+    ${actionExpiryBlock(c)}`;
   if (!state.receipts) { try { state.receipts = await fetchGz("data/receipts.json.gz"); } catch { state.receipts = []; } }
   const name = (p.county_name || "").toUpperCase().replace(/ COUNTY$/, "");
   const rows_ = state.receipts.filter((r) => (r.county || "").toUpperCase().replace(/ COUNTY$/, "") === name).slice(0, 40);

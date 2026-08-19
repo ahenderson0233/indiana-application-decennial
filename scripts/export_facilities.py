@@ -43,7 +43,21 @@ def add_points(table, layer, keep, latc=None, lonc=None, geogc=None, gjson=None,
         n += 1
     print(f"{table} -> {layer}: {n}")
 
-add_points("in_data_centers_all", "dc", ["src", "name", "operator"], latc="lat", lonc="lon")
+# ⛔ SOURCE THE DC PINS FROM in_data_centers_located, NOT in_data_centers_all.
+# This line read `in_data_centers_all` until 2026-08-19b, and the only reason the map was right is
+# that `export_signoff_payloads.py` runs later, STRIPS every dc feature out of this payload and
+# re-adds them from `in_data_centers_located`. That is a post-patch with an ORDERING DEPENDENCY
+# that nothing declared and nothing enforced: run these two exporters the other way round, or run
+# this one alone during a "refresh everything" pass, and the map silently loses
+#   * the 249 -> 244 row difference (in_data_centers_all is NOT deduplicated), and
+#   * `location_precision` entirely -- so all 92 census-gazetteer CITY centroids would render as
+#     solid, surveyed-looking pins, 32 of them stacked on one point near New Carlisle, and the
+#     "THIS IS NOT THE FACILITY'S LOCATION" warning would stop appearing on any of them.
+# Both writers now read the same table, so order no longer changes the result.
+add_points("in_data_centers_located", "dc",
+           ["src", "name", "operator", "unnamed_cannot_dedupe", "dedupe_note",
+            "location_precision", "precision_method", "pins_at_this_point"],
+           latc="lat", lonc="lon")
 
 t = client.get_table(f"{DS}.in_eia_plants")
 cols = [s.name.lower() for s in t.schema]
