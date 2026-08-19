@@ -21,7 +21,7 @@
        actually truthful — why don't we have more?" The number is not a rendering error (the
        checkpoint asserts payload-vs-warehouse agreement on it every run), so the honest answer is
        the FUNNEL, with the loss at each stage named. -->
-  <div class="card"><h2>Why 24,277 and not more? &mdash; the whole funnel, with every loss named</h2>
+  <div class="card"><h2><span id="funnel-h">Why this many</span> and not more? &mdash; the whole funnel, with every loss named</h2>
     <div class="sowhat" id="funnel-answer">measuring…</div>
     <div class="scroll" style="max-height:340px"><table id="t-funnel">
       <tr><th>stage</th><th>count</th><th>what is lost here, and why</th></tr></table></div>
@@ -322,7 +322,7 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=e1ec1feb"></script>
+<script src="common.js?v=09dd4143"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -343,6 +343,10 @@
      parcels, which would read as "nothing survives the pipeline". */
   try {
     const F = await fetchGz("data/si_funnel.json.gz");
+    /* ⛔ The heading used to hardcode "24,277". G84 moved it to 23,795 the same day, so
+       it is read from the payload now - a headline number typed into markup is a stale
+       figure waiting to happen. */
+    document.getElementById("funnel-h").textContent = `Why ${fmt(F.admitted_parcels)}`;
     document.getElementById("funnel-answer").innerHTML = F.answer;
     document.getElementById("t-funnel").insertAdjacentHTML("beforeend", F.stages.map((st) => {
       const lost = st.lost ? `<b>${fmt(st.lost)}</b> lost here. ` : "";
@@ -360,7 +364,13 @@
        admitted nowhere. That looks like an oversight until you measure the parcels:
        <b>${fmt(bare)} of ${fmt(d5tot)} (${(100 * bare / d5tot).toFixed(1)}%) have NO STRUCTURE
        on them.</b> A postal vacancy flag on bare land is not evidence an owner wants to sell, and
-       admitting it would multiply the flagged count roughly 35&times; with empty ground.`;
+       admitting it would multiply the flagged count roughly 35&times; with empty ground.
+       <br>⚠ <b>One caveat, added after this was first published.</b> &ldquo;No structure&rdquo;
+       means no building in the national structures layer, whose newest Indiana record is
+       <b>27 January 2020</b> — so some of these parcels may have been built on since. The
+       join itself is sound (0 false positives in a dense test box of 6,341), and 99.4% is far too
+       high for post-2020 construction to explain, so the conclusion stands; but it rests on a
+       six-year-old footprint layer and should be re-measured when that is refreshed.`;
     document.getElementById("t-funnel-d5").insertAdjacentHTML("beforeend", F.d5_vacancy_occ.map((o) =>
       `<tr><td>${escHtml(String(o.occ_group || "not classified").replace(/_/g, " "))}</td>
        <td class="num">${fmt(o.n)}</td></tr>`).join(""));

@@ -82,6 +82,12 @@
         <label><input type="checkbox" id="f-ci" checked> Commercial or industrial</label>
         <label><input type="checkbox" id="f-ag" checked> Farmland</label>
         <label><input type="checkbox" id="f-vac" checked> Undeveloped &mdash; no building on it</label>
+        <div class="hint">⚠ <b>&ldquo;No building&rdquo; means no building in the national
+          structures layer, whose newest Indiana record is <b>27 January 2020</b>.</b> Anything
+          built since then is invisible to it, so a recently-built site can appear here
+          wrongly. Measured 2026-08-19: the join itself is sound &mdash; in a dense
+          Indianapolis test box, 0 of 6,341 &ldquo;empty&rdquo; parcels contained a structure
+          point &mdash; the corpus is simply six years old.</div>
         <label><input type="checkbox" id="f-other"> Other non-residential</label>
         <div class="hint"><b>&ldquo;Undeveloped&rdquo; is about land; &ldquo;vacant&rdquo; is about a
           building.</b> Undeveloped land simply has no structure and is not a sign of distress &mdash;
@@ -455,7 +461,7 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
-<script src="common.js?v=e1ec1feb"></script>
-<script src="app.js?v=48cbc37f"></script>
+<script src="common.js?v=09dd4143"></script>
+<script src="app.js?v=a6eaed95"></script>
 </body>
 </html>

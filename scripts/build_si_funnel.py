@@ -1,4 +1,4 @@
-"""G81 - is 24,277 flagged parcels truthful, and why is it not more? Publish the FUNNEL.
+"""G81 - is the flagged-parcel count truthful, and why is it not more? Publish the FUNNEL.
 
     python scripts/build_si_funnel.py
 
@@ -6,7 +6,7 @@ Operator, 2026-08-19: *"We need to determine if ~24,000 seller intent properties
 truthful - why don't we have more?"*
 
 ⭐ THE NUMBER IS NOT A RENDERING ERROR. The checkpoint asserts payload-vs-warehouse agreement on
-24,277 every run. The question is the FUNNEL, so this publishes it, with the loss at each stage
+it every run. The question is the FUNNEL, so this publishes it, with the loss at each stage
 NAMED - and the dominant loss is not what the backlog row guessed.
 
 ⛔ THE HEADLINE: THE LARGEST SIGNAL IN THE ESTATE IS 99.4% BARE LAND.
@@ -35,8 +35,11 @@ signal set.
 ⭐ WHERE THE ADMITTED PARCELS ACTUALLY GO, and this IS one clean chain (all inside one table):
     106,659 parcels reach the parcel-grain rollup
     -76,612 excluded as RESIDENTIAL      (a house is not a data-centre site)
-     -6,231 excluded as LOW SEVERITY     <- the hidden editorial filter G83 asks us to disclose
-    = 24,277 admitted
+     -6,752 excluded as LOW SEVERITY     <- the hidden editorial filter G83 asks us to disclose,
+                                            and G84 grew it by demoting plain ECHO violations
+    = 23,795 admitted   (24,277 before the G84 demotion; the figure is READ from the table, never
+                         typed - the heading on si.html used to hardcode it and went stale the
+                         same day it was written)
 
 WRITES `indiana_app.in_si_funnel` and `data/si_funnel.json.gz`. Reads indiana_app only.
 """
@@ -134,9 +137,10 @@ payload = {
     "d5_vacancy_occ": occ,
     "address_recovered": {"rows": a2p_n, "parcels": a2p_p},
     "answer": (
-        "24,277 is truthful — the checkpoint asserts payload-vs-warehouse agreement on it every "
-        "run. It is not larger for three measured reasons, in order of size: (1) the biggest feed "
-        "we hold, D5_vacancy at 947,592 rows, sits on parcels that are 99.4% BARE LAND, and a "
+        f"{admitted.p:,} is truthful — the checkpoint asserts payload-vs-warehouse agreement on it "
+        "every run. It is not larger for three measured reasons, in order of size: (1) the "
+        "biggest feed we hold, D5_vacancy at 947,592 rows, sits on parcels that are 99.4% "
+        "BARE LAND, and a "
         "vacancy flag with no building under it is not seller intent; (2) 76,612 parcels that DO "
         "carry a signal are RESIDENTIAL, and a house is not a data-centre site; (3) 865,312 rows "
         "are keyed only by address or owner name and never resolve to a parcel at all — and that "
@@ -172,7 +176,7 @@ VALUES (
  'must have IN: stripped before it will join the parcel corpus. '
  'RE-SCRAPE COMMAND: python scripts/build_si_funnel.py',
  1, 0.0, CURRENT_TIMESTAMP(),
- 'G81. Answers why the flagged count is 24,277 and not larger. Dominant cause: D5_vacancy is 52% '
+ 'G81. Answers why the flagged count is what it is and not larger. Dominant cause: D5_vacancy is 52% '
  'of all raw rows and 99.4% of its parcels have NO STRUCTURE, so excluding it is correct, not an '
  'oversight. Second: 76,612 signal-carrying parcels are residential. Third: 865,312 rows never '
  'resolve to a parcel because owner is NULL statewide and only Marion publishes an address '

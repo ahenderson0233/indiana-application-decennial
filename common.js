@@ -143,8 +143,36 @@ const LAND_PLAIN = {
   undeveloped: "undeveloped land",   // no structure on the parcel. NOT "vacant".
   built: "has buildings",
 };
+/* ⛔ G120(a)(d), MEASURED 2026-08-19b: "undeveloped land" MEANS "NO BUILDING IN A JANUARY-2020
+   FOOTPRINT LAYER", NOT "NO BUILDING".
+
+   The operator hit this against a real prospecting list: retail stores rendering as no-structure
+   with a building plainly visible on satellite. Two measurements settle what is happening.
+
+     1. `structure_count` is FAITHFUL to the corpus it is built from. In a dense central-
+        Indianapolis test box, of 6,341 parcels carrying structure_count = 0, exactly ZERO
+        contain a USA Structures point. The spatial join is not losing buildings.
+     2. THE CORPUS IS STALE. `energy.nat_usa_structures` holds 3,377,472 Indiana structures whose
+        NEWEST publisher production date is **2020-01-27** — 84.7% stamped 2020-01-23, 12.4%
+        stamped 2011. There is nothing newer in it at all. (⚠ `prod_date` is epoch MILLISECONDS
+        in a STRING, the Esri convention; an ISO parse returns NULL on every row.)
+
+   So a building put up since January 2020 is invisible to us, its parcel reads
+   structure_count = 0, and the app calls the land undeveloped. That is a data vintage, not a
+   defect in the join — and the label has to say so, because "undeveloped land" reads as a
+   surveyed fact and it is not one.
+   ⚠ It also bounds three other things: the BESS "open ground" basis (parcel minus footprints),
+   the `f-vac` land filter, and G81's finding that D5_vacancy parcels are 99.4% bare land. */
+const STRUCTURES_VINTAGE = "2020-01-27";
 const landPlain = (occ_group, structure_count) =>
   LAND_PLAIN[occ_group] || ((structure_count || 0) > 0 ? LAND_PLAIN.built : LAND_PLAIN.undeveloped);
+/* Use this wherever the ABSENCE of a structure is being asserted to a reader. */
+const landPlainTitle = (occ_group, structure_count) =>
+  ((structure_count || 0) > 0 || (occ_group && occ_group !== "no_structure"))
+    ? ""
+    : `No building found in the national structures layer, whose newest Indiana record is `
+      + `${STRUCTURES_VINTAGE}. Anything built since then is not in it, so this means `
+      + `"no building as of early 2020", not "no building".`;
 /* "D4_tax_delinquency,D2_foreclosure" -> "Unpaid property taxes · Foreclosure filed" */
 function signalsPlain(csv) {
   if (!csv) return "";

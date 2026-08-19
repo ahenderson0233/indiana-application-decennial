@@ -301,7 +301,7 @@
   </main>
 </div>
 
-<script src="common.js?v=e1ec1feb"></script>
+<script src="common.js?v=09dd4143"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -695,7 +695,9 @@ function siteDetail(s) {
             "At 4 MW/acre. Below 25 MW a hyperscale search will not look at it.")}
           ${detailRow("Fits a battery", s.mw_bess != null ? mw(s.mw_bess) : null, null,
             "At 10 MW/acre. A BESS clears at a far smaller size than a data centre.")}
-          ${detailRow("What is on it", landPlain(s.occ_group, s.structure_count), null,
+          ${detailRow("What is on it", landPlain(s.occ_group, s.structure_count)
+            + (landPlainTitle(s.occ_group, s.structure_count)
+               ? ` <span class="warn">&#9888; as of ${STRUCTURES_VINTAGE}</span>` : ""), null,
             "Nothing built is a BUILD advantage — no demolition, no tenants — but it is not a signal the owner will sell.")}
           ${detailRow("Nearest substation", s.sub_name
             ? `${s.sub_name}${s.sub_kv ? ` · ${fmt(s.sub_kv)}
@@ -793,7 +795,8 @@ function render() {
     const g = gridOf(s), a = acresOf(s), sst = signalState(s);
     return `<tr class="siterow" data-i="${i}">
       <td class="exp" title="show everything we hold for this site">&#9656;</td>
-      <td>${s.county_name || "&mdash;"}<div class="sub2">${landPlain(s.occ_group, s.structure_count)}</div></td>
+      <td>${s.county_name || "&mdash;"}<div class="sub2" title="${escHtml(landPlainTitle(s.occ_group, s.structure_count))}">${landPlain(s.occ_group, s.structure_count)}${
+        landPlainTitle(s.occ_group, s.structure_count) ? ' <span class="warn" title="see tooltip">&#9888;</span>' : ""}</div></td>
       <td>${a.acres.toFixed(1)}${a.disputed ? ' <span class="warn" title="the recorded and measured acreage disagree; the smaller is used">±</span>' : ""}</td>
       <td class="num"><b>${fmt(capacityMW(s))}</b></td>
       <td class="num">${g ? `<b>${fmt(g.mw)}</b><div class="sub2">${busLabel(g)}</div>`
