@@ -71,6 +71,27 @@ for r in client.query(f"""
     }
     n_posture += 1
 
+# G72/G80: severe-weather history, merged by the SAME writer rather than a second one. A second
+# merger into this file is how the dc_posture block got silently wiped by export_grid_sentiment --
+# one file, one merger, one self-heal to protect it.
+n_wx = 0
+for r in client.query(f"""
+    SELECT county_geoid, tornado_all, tornado_since_2000, tornado_max_ef, tornado_ef3_plus,
+           tornado_unrated, hail_all, hail_since_2000, wind_all, wind_since_2000,
+           injuries, fatalities, first_year, last_year
+    FROM `{DS}.in_severe_weather_county`"""):
+    ent = ctx["by_fips"].setdefault(r.county_geoid, {})
+    ent["severe_weather"] = {
+        "tornado": r.tornado_all, "tornado_since_2000": r.tornado_since_2000,
+        "tornado_max_ef": r.tornado_max_ef, "tornado_ef3_plus": r.tornado_ef3_plus,
+        "tornado_unrated": r.tornado_unrated,
+        "hail": r.hail_all, "hail_since_2000": r.hail_since_2000,
+        "wind": r.wind_all, "wind_since_2000": r.wind_since_2000,
+        "injuries": r.injuries, "fatalities": r.fatalities,
+        "first_year": r.first_year, "last_year": r.last_year,
+    }
+    n_wx += 1
+
 # ⚠ Keyed by county NAME, because in_dc_action_expiry carries the jurisdiction's county name
 # rather than a geoid. The name->geoid map is built from the posture table, which was itself
 # asserted to match on all 92, so nothing can silently fall on the floor here.
@@ -109,6 +130,7 @@ with open(CTX, "w", encoding="utf-8") as f:
     json.dump(ctx, f, separators=(",", ":"))
 
 print(f"  dc_posture written on   : {n_posture} counties")
+print(f"  severe_weather written  : {n_wx} counties")
 print(f"  action_expiry written on: {n_exp} actions")
 print(f"  file size               : {os.path.getsize(CTX):,} bytes")
 

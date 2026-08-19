@@ -3915,6 +3915,44 @@ function actionExpiryBlock(c) {
       developer might plan around is worse than admitting there is none.</div>`;
 }
 
+/* ---------- G72/G80: severe-weather history, one of the 83 objects that reached no surface -----
+   `in_spc_severe_events` held 24,716 located events, 1950-2024, and nothing rendered one.
+
+   ⭐ It earns a place because it is a STRUCTURAL DESIGN AND INSURANCE input, and because it is the
+   rare county fact that does not move: a board can lift a moratorium, it cannot move the storm
+   track.
+   ⛔ COUNTY GRAIN ON PURPOSE. A tornado is a TRACK and the source carries only its start point, so
+   a per-parcel figure would be invented precision.
+   ⚠ Both an all-time and a since-2000 count are shown, because reporting practice changed
+   enormously over 74 years — hail and wind counts partly measure OBSERVATION, not weather, and a
+   single all-time number would quietly present one as the other. */
+function severeWeatherBlock(c) {
+  const w = c.severe_weather;
+  if (!w) return "";
+  const ef = w.tornado_max_ef;
+  return `
+    <h3>Severe weather on record${w.first_year ? `, ${w.first_year}–${w.last_year}` : ""}</h3>
+    <table>
+      ${row("Tornadoes", w.tornado ? `${fmt(w.tornado)} <span class="hint">(${fmt(w.tornado_since_2000)} since 2000)</span>` : null, "none recorded")}
+      ${row("Strongest on record", ef != null ? `<b>EF${ef}</b>` : null,
+            w.tornado ? "none of them rated" : "no tornado recorded")}
+      ${row("EF3 or stronger", w.tornado_ef3_plus || null, "none")}
+      ${row("Large hail", w.hail ? `${fmt(w.hail)} <span class="hint">(${fmt(w.hail_since_2000)} since 2000)</span>` : null, "none recorded")}
+      ${row("Damaging wind", w.wind ? `${fmt(w.wind)} <span class="hint">(${fmt(w.wind_since_2000)} since 2000)</span>` : null, "none recorded")}
+    </table>
+    <div class="sowhat">${w.tornado_ef3_plus
+      ? `<b>${w.tornado_ef3_plus} tornado${w.tornado_ef3_plus === 1 ? " has" : "es have"} reached
+         EF3 or stronger here.</b> That is a hardening and insurance question at design time, not a
+         reason to avoid the county — but it belongs in the capital estimate rather than being
+         discovered by the underwriter.`
+      : `No EF3-or-stronger tornado is on record in this county. Weaker events still occur;
+         the absence of a severe one is a lower design load, not immunity.`}</div>
+    <div class="prov">${prov("in_severe_weather_county")} · NOAA Storm Prediction Center, placed on
+      the event's START point. ⚠ Counts partly track REPORTING: spotter networks and population
+      grew over the window, so compare the since-2000 figures between counties rather than the
+      all-time ones. An unrated tornado is counted but carries no EF.</div>`;
+}
+
 async function openCountyEvidence(p) {
   const c = state.ctx.by_fips[p.fips] || {};
   let html = `
@@ -3937,7 +3975,8 @@ async function openCountyEvidence(p) {
       ${row("posture", c.posture?.posture)}${row("opposition intensity", c.posture?.opposition_intensity)}
       ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}</table>
     ${dcPostureBlock(c)}
-    ${actionExpiryBlock(c)}`;
+    ${actionExpiryBlock(c)}
+    ${severeWeatherBlock(c)}`;
   if (!state.receipts) { try { state.receipts = await fetchGz("data/receipts.json.gz"); } catch { state.receipts = []; } }
   const name = (p.county_name || "").toUpperCase().replace(/ COUNTY$/, "");
   const rows_ = state.receipts.filter((r) => (r.county || "").toUpperCase().replace(/ COUNTY$/, "") === name).slice(0, 40);
