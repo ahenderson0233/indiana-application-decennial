@@ -11,12 +11,13 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 292 of 308 registered objects reach a surface
+## 291 of 309 registered objects reach a surface
 
 ### Not reaching a surface
 
 | object | rows | built by |
 |---|---:|---|
+| `in_bus_headroom_miso_ladder` | 3852 | `—` |
 | `in_miso_dpp2025_counties` | 1000 | `—` |
 | `in_miso_dpp2025_footprint` | 1 | `—` |
 | `in_miso_dpp2025_ph1_project_costs` | 202 | `—` |
@@ -27,6 +28,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nhd_waterbody_geom` | 7430 | `—` |
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
 | `in_pjm_qs_c23_inj_10` | 655404 | `—` |
+| `in_pjm_qs_c23_inj_15` | 655404 | `—` |
 | `in_pjm_qs_c23_wd_10` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_15` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
@@ -56,7 +58,7 @@ headline can be audited rather than taken on trust:
 | `in_bus_capacity_tier0` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_300` | direct | `app.js`, `grid.html` |
 | `in_bus_headroom_miso` | direct | `app.js`, `scripts/build_headroom_300.py` |
-| `in_bus_headroom_miso_ladder` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
+| `in_bus_headroom_miso_ladder` | **none** | — |
 | `in_bus_headroom_miso_vendor` | direct | `scripts/acceptance_run.py` |
 | `in_candidate_sites_colleges` | direct | `app.js` |
 | `in_candidate_sites_private_schools` | direct | `scripts/export_context_layers.py` |
@@ -218,6 +220,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_qs_c23_inj_10` | **none** | — |
+| `in_pjm_qs_c23_inj_15` | **none** | — |
 | `in_pjm_qs_c23_inj_5000` | direct | `scripts/audit_pjm_short_reads.py` |
 | `in_pjm_qs_c23_wd_10` | **none** | — |
 | `in_pjm_qs_c23_wd_15` | **none** | — |

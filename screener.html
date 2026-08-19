@@ -115,6 +115,15 @@
             <option value="any">Either &mdash; show me both</option>
           </select></label>
 
+        <div class="explain" style="background:#fff7ed;border-color:#fed7aa">
+          <b>Where the load-side numbers come from &mdash; read this before quoting one.</b>
+          <p class="hint" style="margin:4px 0 0"><b>PJM</b> figures are <b>ours</b>, harvested from
+            QueueScope case 23 (2028 TC2 Phase II, Summer Peak). <b>MISO</b> figures come from our
+            <b>licensed Orennia DPP-2025 proxy</b>, because <b>MISO publishes no public load-side
+            headroom at all</b> &mdash; that licence lapses <b>late 2027</b>. Every site row says
+            which of the two it is. ⚠ Both are <b>screening</b> figures: only the utility&rsquo;s
+            own study binds.</p>
+        </div>
         <label><input type="checkbox" id="s-needbus"> Only show sites where we actually hold this
           measurement</label>
         <p class="hint" id="s-cover-note"></p>
@@ -590,6 +599,18 @@ function siteDetail(s) {
         <table class="dtable">
           ${detailRow("Nearest bus", s.wd_bus, "no withdrawal point within 25 miles",
             "This is the direction a load draws. It is a published screening figure; only the utility's own study binds.")}
+          ${detailRow("Grid operator", s.wd_iso, null,
+            "Which RTO runs the study behind this figure. PJM covers the east and north-east of the state; MISO the rest.")}
+          ${/* G50: a vendor-derived figure must name its source WHERE IT RENDERS, not only in a
+                methods page. 46,259 of the 51,368 load figures in this payload are the licensed
+                MISO proxy, so on most rows this line is the disclosure. */
+            detailRow("Where this figure comes from",
+              s.wd_conf === "vendor_licensed_proxy"
+                ? "our LICENSED Orennia DPP-2025 proxy — MISO publishes no public load-side headroom at all. Licence lapses late 2027."
+                : s.wd_conf === "own_harvest"
+                  ? "our own PJM QueueScope harvest, case 23 (2028 TC2 Phase II Summer Peak)"
+                  : s.wd_conf,
+              null, "Not all load-side numbers are ours. The ones that are not say so.")}
           ${detailRow("Published capacity", mw(s.wd_mw), "not published for this location",
             "How much load could connect there today, before upgrades.")}
           ${detailRow("Distance", mi(s.wd_mi), null, "Further means more line to build, at your cost.")}

@@ -54,34 +54,47 @@ WITH cand AS (
                     WHERE f.parcel_source = s.parcel_source AND f.parcel_key = s.parcel_key
                       AND f.has_si_signal))
 ),
--- MISO: INJECTION. Generator-side. Present so a co-located generation play can be screened,
--- NOT as an answer to "can this site be served".
--- ⛔ THE ACTUAL IS A **MINIMUM** OVER BINDING CONSTRAINTS, NOT A MEDIAN OVER THE CONSTRAINT SET.
--- This query previously took `median_mw` and it was badly wrong. Measured 2026-08-17: median_mw
--- averages ~1,193 MW across the 642 Indiana POIs while the ACTUAL at a 300 MW request is 0 MW on
--- 641 of 642, because facilities_at_zero averages 15.8 of 59.8 monitored facilities - the binding
--- constraints are already at their limit in the base case. A median mixes the one constraint that
--- sets the answer in with dozens that do not, so it reads as ~1,193 MW of capacity that is not
--- there. The worst/median/best triple was never a methodology, it was a workaround for a probe run
--- at pmax_request=99999 that returned worst_mw=0 on ~88% of POIs.
+-- ============================================================================================
+-- BUS CAPACITY, BOTH DIRECTIONS, BOTH ISOs -- repointed 2026-08-19.
+--
+-- ⛔ WHAT WAS HERE WAS SUPERSEDED AND IT SILENTLY CRIPPLED THE SCREENER.
+--   `bus_inj` read in_bus_headroom_miso joined to the ladder AT request_mw = 300, so inj_mw was
+--   "headroom at a 300 MW probe" -- structurally capped at 300, and 514,270 of 515,934 rows were 0.
+--   `bus_wd` read vw_pjm_bus_withdrawal_located -- PJM ONLY, 227 located buses -- so wd_mw spanned
+--   just 13-132 MW and THE SCREENER HELD NO MISO LOAD-SIDE DATA AT ALL. The operator reported it
+--   from the other end: "even for MISO, I wasn't able to populate a single site based on bus
+--   headroom over 300MW." Nothing could: 132 was the ceiling, and the page's own default target
+--   is 300.
+--
+-- G63 rebuilt capacity into in_bus_capacity_tier0 (7,102 rows, both directions, both ISOs) and
+-- this build was never repointed. It is now.
+--
+-- ⚠ COORDINATES ARE THE LIMIT ON PJM, NOT THIS QUERY. tier0 carries lat/lon on 1,731 of 1,731 MISO
+-- buses in each direction but only 223/1,814 PJM injection and 227/1,826 PJM withdrawal -- the G62
+-- gazetteer ceiling. A bus with no coordinate cannot be joined to a parcel, so it is excluded here
+-- and that exclusion is REPORTED rather than hidden.
+-- ============================================================================================
 bus_inj AS (
-  SELECT m.bus_name AS nm, m.poi_name AS poi, m.kv,
-         l.headroom_mw AS mw,          -- ACTUAL at the 300 MW rung (min over binding constraints)
-         l.request_fits AS fits_300,
-         m.worst_mw, m.best_mw,
-         m.worst_binding_facility AS binding, ST_GEOGPOINT(m.lon, m.lat) AS g
-  FROM `{DS}.in_bus_headroom_miso` m
-  LEFT JOIN `{DS}.in_bus_headroom_miso_ladder` l
-    ON l.poi_name = m.poi_name AND l.request_mw = 300
-  WHERE m.location_status = 'indiana' AND m.lat IS NOT NULL AND m.lon IS NOT NULL
+  SELECT bus_name AS nm, bus_name AS poi, bus_voltage_kv AS kv, iso,
+         bus_interconnection_capacity_mw AS mw,
+         primary_limiting_constraint AS binding,
+         provenance_class AS conf,
+         ST_GEOGPOINT(longitude, latitude) AS g
+  FROM `{DS}.in_bus_capacity_tier0`
+  WHERE interconnection_type = 'Injection'
+    AND latitude IS NOT NULL AND longitude IS NOT NULL
 ),
--- PJM: WITHDRAWAL. Load-side. THIS is the direction a data centre needs.
+-- WITHDRAWAL. Load-side. THIS is the direction a data centre needs, and it now carries BOTH
+-- operators rather than PJM alone.
 bus_wd AS (
-  SELECT bus_label AS nm, bus_label AS poi, SAFE_CAST(bus_kv AS FLOAT64) AS kv,
-         withdrawal_mw AS mw, binding_facility AS binding, match_confidence AS conf,
-         ST_GEOGPOINT(lon, lat) AS g
-  FROM `{DS}.vw_pjm_bus_withdrawal_located`
-  WHERE lat IS NOT NULL AND lon IS NOT NULL
+  SELECT bus_name AS nm, bus_name AS poi, bus_voltage_kv AS kv, iso,
+         bus_interconnection_capacity_mw AS mw,
+         primary_limiting_constraint AS binding,
+         provenance_class AS conf,
+         ST_GEOGPOINT(longitude, latitude) AS g
+  FROM `{DS}.in_bus_capacity_tier0`
+  WHERE interconnection_type = 'Withdrawal'
+    AND latitude IS NOT NULL AND longitude IS NOT NULL
 ),
 subs AS (
   SELECT substation_name AS nm, max_kv, ST_GEOGPOINT(lon, lat) AS g
@@ -90,7 +103,7 @@ subs AS (
 ),
 n_inj AS (
   SELECT c.parcel_source, c.parcel_key,
-         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.worst_mw, b.best_mw, b.binding,
+         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf,
                           ST_DISTANCE(c.parcel_geog, b.g) AS m)
                    ORDER BY ST_DISTANCE(c.parcel_geog, b.g) LIMIT 1)[OFFSET(0)] AS b
   FROM cand c JOIN bus_inj b ON ST_DWITHIN(c.parcel_geog, b.g, {RADIUS_M})
@@ -98,7 +111,7 @@ n_inj AS (
 ),
 n_wd AS (
   SELECT c.parcel_source, c.parcel_key,
-         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.binding, b.conf,
+         ARRAY_AGG(STRUCT(b.nm, b.kv, b.mw, b.iso, b.binding, b.conf,
                           ST_DISTANCE(c.parcel_geog, b.g) AS m)
                    ORDER BY ST_DISTANCE(c.parcel_geog, b.g) LIMIT 1)[OFFSET(0)] AS b
   FROM cand c JOIN bus_wd b ON ST_DWITHIN(c.parcel_geog, b.g, {RADIUS_M})
@@ -129,12 +142,16 @@ SELECT
   g.sfha_flood, g.wetland_on_parcel, g.protected_land, g.bonus_kinds,
 
   -- GRID CAPACITY, per direction, never fused
+  -- ⛔ inj_mw_worst / inj_mw_best ARE GONE ON PURPOSE. tier0 carries ONE binding figure per bus
+  -- per direction; the worst/median/best triple was retired because three rival numbers let a
+  -- reader pick the flattering one. Fabricating them from a single value would undo that ruling.
   ni.b.nm AS inj_bus, ni.b.kv AS inj_kv, ROUND(ni.b.mw, 1) AS inj_mw,
-  ROUND(ni.b.worst_mw, 1) AS inj_mw_worst, ROUND(ni.b.best_mw, 1) AS inj_mw_best,
-  ni.b.binding AS inj_binding, ROUND(ni.b.m / 1609.344, 2) AS inj_mi,
+  ni.b.iso AS inj_iso, ni.b.binding AS inj_binding, ni.b.conf AS inj_conf,
+  ROUND(ni.b.m / 1609.344, 2) AS inj_mi,
 
   nw.b.nm AS wd_bus, nw.b.kv AS wd_kv, ROUND(nw.b.mw, 1) AS wd_mw,
-  nw.b.binding AS wd_binding, nw.b.conf AS wd_conf, ROUND(nw.b.m / 1609.344, 2) AS wd_mi,
+  nw.b.iso AS wd_iso, nw.b.binding AS wd_binding, nw.b.conf AS wd_conf,
+  ROUND(nw.b.m / 1609.344, 2) AS wd_mi,
 
   ns.s.nm AS sub_name, ns.s.max_kv AS sub_kv, ROUND(ns.s.m / 1609.344, 2) AS sub_mi,
 
@@ -199,11 +216,18 @@ client.query(
         bigquery.ScalarQueryParameter("t", "STRING", "in_screener_candidates"),
         bigquery.ScalarQueryParameter("s", "STRING",
             "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x "
-            "in_bus_headroom_miso(injection) x vw_pjm_bus_withdrawal_located(withdrawal) x in_substations"),
+            "in_bus_capacity_tier0 (BOTH directions, BOTH ISOs) x in_substations x "
+            "in_asset_distance_parcel"),
         bigquery.ScalarQueryParameter("m", "STRING",
             f"candidates = fits>=25MW OR carries a v2 owner-motivation signal; nearest bus within "
             f"{RADIUS_M/1000:.0f} km computed SEPARATELY per direction; D85 excluded by key before "
-            f"any spatial join; fan-out asserted < 1.01"),
+            f"any spatial join; fan-out asserted < 1.01. REPOINTED 2026-08-19 from "
+            f"in_bus_headroom_miso(300 MW probe, injection only) + "
+            f"vw_pjm_bus_withdrawal_located(PJM only, 227 buses) onto in_bus_capacity_tier0 - "
+            f"the old pair capped wd_mw at 132 MW and inj_mw at exactly 300, and carried NO "
+            f"MISO load-side data at all. Bus coverage is limited by COORDINATES: MISO 1,731 "
+            f"of 1,731 per direction, PJM 227 of 1,826 withdrawal and 223 of 1,814 injection "
+            f"(the G62 gazetteer ceiling)"),
         bigquery.ScalarQueryParameter("n", "INT64", int(m.n)),
         bigquery.ScalarQueryParameter("g", "FLOAT64", round(job.total_bytes_processed / 1024**3, 2)),
         bigquery.ScalarQueryParameter("no", "STRING",

@@ -75,8 +75,8 @@ for r in client.query(f"""
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
          events_3y, events_5y, events_10y, keying,
          sfha_flood, wetland_on_parcel, protected_land, bonus_kinds,
-         inj_bus, inj_kv, inj_mw, inj_mw_worst, inj_mw_best, inj_binding, inj_mi,
-         wd_bus, wd_kv, wd_mw, wd_binding, wd_conf, wd_mi,
+         inj_bus, inj_kv, inj_mw, inj_binding, inj_mi,
+         wd_bus, wd_kv, wd_mw, wd_binding, wd_conf, wd_mi, wd_iso, inj_iso, inj_conf,
          sub_name, sub_kv, sub_mi,
          -- transmission line, 2026-08-19. A line is the one asset that can run THROUGH a
          -- parcel rather than near it: 41,986 do. line_on_parcel is a stronger fact than a
@@ -111,9 +111,18 @@ payload = {
         "note": ("THE UI MUST SHOW BOTH NUMBERS. A screener that silently shows a subset looks "
                  "identical to one that searched everything. Open the map console for a full county."),
     },
-    "direction_note": ("Injection = what a GENERATOR can push into the bus (MISO publishes this). "
-                       "Withdrawal = what a LOAD can pull out (PJM publishes this). A data centre "
-                       "is load. These are different questions, not two measures of one thing."),
+    # ⚠ REWRITTEN 2026-08-19. The old note said "Withdrawal ... (PJM publishes this)", which was
+    # true only while the screener's load side was PJM-only. It now carries BOTH operators, and the
+    # MISO half is the LICENSED vendor proxy - which G50 requires be disclosed wherever it renders.
+    "direction_note": ("Injection = what a GENERATOR can push into the bus. Withdrawal = what a "
+                       "LOAD can pull out, and a data centre is load. These are different "
+                       "questions, not two measures of one thing - a bus can be wide open one way "
+                       "and full the other."),
+    "provenance_note": ("Load-side (withdrawal) figures come from two places and the row says "
+                        "which: PJM from OUR OWN case-23 QueueScope harvest (wd_conf = "
+                        "'own_harvest'), MISO from our LICENSED Orennia DPP-2025 proxy (wd_conf = "
+                        "'vendor_licensed_proxy') because MISO publishes no public load-side "
+                        "headroom at all. The licence lapses late 2027."),
     "counties": denom,
     "sites": rows,
 }
