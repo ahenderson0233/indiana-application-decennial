@@ -190,14 +190,39 @@ map.on("load", async () => {
   map.addLayer({ id: "grid-subs-fp", type: "fill", source: "grid",
     filter: ["all", ["==", ["get", "layer"], "substation"], ["==", ["get", "geom_kind"], "footprint"]],
     paint: { "fill-color": "#334155", "fill-opacity": 0.45, "fill-outline-color": "#0f172a" } });
+  /* ---------- G77: BUSES ARE COLOURED BY HEADROOM ---------------------------------------------
+     Operator, 2026-08-19: *"Buses should show headroom by coloring."*
+
+     They were sized by headroom and coloured one flat amber, which asks the reader to compare
+     CIRCLE AREAS - the worst channel there is for a quantity, and hopeless at the bottom of the
+     range where almost all of these sit.
+
+     ⭐ BANDED, NOT A CONTINUOUS RAMP, AND THE BANDS ARE MEASURED. Withdrawal headroom across
+     1,772 buses: 652 AT ZERO, median 17 MW, p75 61, p90 200, p95 364, p99 1,257, max 5,000. A
+     linear ramp over that would paint 90% of the map one colour. The breaks are set at the
+     DECISIONS instead - the app's own 25 MW datacentre floor and the 300 MW target the dossier
+     uses - so a colour answers "can this host my project", not "what percentile is this".
+
+     ⛔ ZERO GETS ITS OWN COLOUR, DELIBERATELY NOT THE DARK END OF A RAMP. A zero here is a
+     statement about the STUDY CASE, not the bus: 99.7% of zero-headroom rows are already at or
+     over 100% loaded before any request arrives (G40). "Nothing available because the network is
+     already full" and "a small amount available" are different findings, and a gradient would
+     render them as neighbours. */
   map.addLayer({ id: "grid-bus", type: "circle", source: "grid",
-    filter: ["==", ["get", "layer"], "bus_poi"],
-    /* sized by the BINDING headroom, and only the load direction is drawn by default - a data
-       centre asks the withdrawal question, and drawing both stacked two dots on every station */
+    /* ⚠ there were TWO `filter` keys here - the first was silently overwritten by the second.
+       Harmless in JS and confusing to read, so the dead one is gone. Only the load direction
+       draws by default: a data centre asks the withdrawal question, and drawing both stacked
+       two dots on every station. */
     filter: ["all", ["==", ["get", "layer"], "bus_poi"],
                     ["==", ["get", "direction"], "Withdrawal"]],
     paint: { "circle-radius": ["interpolate", ["linear"], ["to-number", ["get", "headroom_mw"], 0], 0, 4, 2000, 9, 8000, 13],
-             "circle-color": "#d97706", "circle-stroke-color": "#7c2d12", "circle-stroke-width": 1.2, "circle-opacity": 0.9 } });
+             "circle-color": ["step", ["to-number", ["get", "headroom_mw"], 0],
+                              BUS_BANDS[0].colour,          // 0 - already at or over its limit
+                              1,    BUS_BANDS[1].colour,    // under the 25 MW datacentre floor
+                              25,   BUS_BANDS[2].colour,
+                              100,  BUS_BANDS[3].colour,
+                              300,  BUS_BANDS[4].colour],
+             "circle-stroke-color": "#44403c", "circle-stroke-width": 1.1, "circle-opacity": 0.92 } });
   map.addLayer({ id: "grid-bus-label", type: "symbol", source: "grid", minzoom: 8,
     filter: ["all", ["==", ["get", "layer"], "bus_poi"],
                     ["==", ["get", "direction"], "Withdrawal"]],
@@ -234,10 +259,33 @@ map.on("load", async () => {
 
   state.terr = await fetchGz("data/territories.geojson.gz");
   map.addSource("terr", { type: "geojson", data: state.terr });
+  /* ---------- G94: TERRITORIES SHOW WHO IS WHERE ----------------------------------------------
+     Operator, 2026-08-19: *"I want to see the service territory boundaries be bolded and be able
+     to decipher exactly which territory is where (they are not currently named or color coded
+     differently anywhere)."*
+
+     ⛔ AND THERE IS A REASON THEY WERE NOT COLOUR CODED: THE MATCH NEVER FIRED. The previous paint
+     tested `utility_type == "investor_owned"` and `== "cooperative"`, lower-case with an
+     underscore. The payload's actual values are `INVESTOR OWNED` (17), `COOPERATIVE` (40),
+     `MUNICIPAL` (14) and `NOT AVAILABLE` (74) - upper-case, spaced. So EVERY ONE of the 145
+     territories fell through to the default grey, and the layer looked deliberately coloured while
+     being uniform. A guessed value vocabulary, exactly like a guessed column name.
+
+     Three layers now, because one cannot answer "which territory is where": a fill coloured by
+     TYPE, a bolded boundary, and the utility's NAME.
+     ⚠ Coloured by TYPE and not by utility: 145 categorical colours is noise, and the type is what
+     changes who you negotiate with and whether the IURC is involved at all.
+     ⚠ NOT AVAILABLE is its own colour and its own legend row - it is 74 of 145, so rendering it as
+     if it were an ordinary category would hide that half the layer has no type. */
   map.addLayer({ id: "terr-fill", type: "fill", source: "terr", layout: { visibility: "none" },
-    paint: { "fill-color": ["case", ["==", ["get", "utility_type"], "investor_owned"], "#93c5fd",
-             ["==", ["get", "utility_type"], "cooperative"], "#fcd34d", "#d1d5db"],
-             "fill-opacity": 0.28, "fill-outline-color": "#475569" } }, "county-line");
+    paint: { "fill-color": TERR_FILL, "fill-opacity": 0.30 } }, "county-line");
+  map.addLayer({ id: "terr-line", type: "line", source: "terr", layout: { visibility: "none" },
+    paint: { "line-color": TERR_FILL, "line-width": 2.0, "line-opacity": 0.95 } }, "county-line");
+  map.addLayer({ id: "terr-label", type: "symbol", source: "terr", minzoom: 7,
+    layout: { visibility: "none", "text-field": ["get", "utility"], "text-size": 11,
+              "text-font": ["Noto Sans Regular"], "text-allow-overlap": false,
+              "text-max-width": 9 },
+    paint: { "text-color": "#1f2937", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
 
   /* ---- G12: water. Watersheds and water-stress basins.
      Rivers and lakes are deliberately ABSENT: the national hydrography tables carry attributes
@@ -795,6 +843,7 @@ function applyFilters() {
   }
   renderActiveFilters();
   renderDenominator();
+  applyParcelHighlight();     // G95: a newly loaded county must pick up the highlight too
 }
 for (const id of ["f-ci", "f-ag", "f-vac", "f-other", "f-mw", "f-mw-val", "f-density", "f-si",
   "f-recent", "f-recent-days", "f-keepundated", "f-noflood", "f-nowet", "f-noprot", "f-bonus",
@@ -822,11 +871,30 @@ $("f-cand").addEventListener("change", syncLayers);
    This registry stays the single source of truth for layer state (G34): syncLayers() iterates it,
    so a layer added here without a box, or a box added without a layer, is the one thing that can
    still break "off means hidden". Add both, together, always. */
+/* G77: ONE definition of the bus bands, read by the map paint AND by the legend, so a colour on
+   the map can never mean something different in the key. Breaks are decisions, not percentiles. */
+/* G94: one definition of the territory colours, shared by the fill, the outline and the legend.
+   ⚠ The values are the payload's OWN vocabulary, read from it - upper case, spaced. */
+const TERR_TYPES = [
+  ["INVESTOR OWNED", "#2563eb", "Investor-owned - regulated by the IURC"],
+  ["COOPERATIVE",    "#d97706", "Rural electric co-operative (REMC)"],
+  ["MUNICIPAL",      "#059669", "Municipal utility"],
+  ["NOT AVAILABLE",  "#94a3b8", "type not published by the source (74 of 145)"],
+];
+const TERR_FILL = ["match", ["get", "utility_type"],
+                   ...TERR_TYPES.flatMap(([v, c]) => [v, c]), "#cbd5e1"];
+const BUS_BANDS = [
+  { colour: "#b91c1c", label: "0 MW - already at or over its limit" },
+  { colour: "#f59e0b", label: "under 25 MW - below the datacentre floor" },
+  { colour: "#84cc16", label: "25-99 MW" },
+  { colour: "#16a34a", label: "100-299 MW" },
+  { colour: "#065f46", label: "300 MW and above - hyperscale-capable" },
+];
 const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-lines", "grid-lines-unknown"],
   "L-bus": ["grid-bus", "grid-bus-label"],
   "L-pjm-queue": ["pjm-queue"], "L-pjm-bus": ["pjm-bus-est"],
   "L-gas-pipe": ["gas-lines"], "L-gas-comp": ["gas-compressor"], "L-gas-stor": ["gas-storage"],
-  "L-terr": ["terr-fill"], "L-padus": ["env-padus"], "L-nonatt": ["env-nonatt"],
+  "L-terr": ["terr-fill", "terr-line", "terr-label"], "L-padus": ["env-padus"], "L-nonatt": ["env-nonatt"],
   "L-bonus-lit": ["env-bonus-lit"], "L-bonus-qct": ["env-bonus-qct"],
   "L-bonus-coal": ["env-bonus-coal"], "L-bonus-oz": ["env-bonus-oz"],
   "L-bonus-ec": ["env-bonus-ec"], "L-bonus-hab": ["env-bonus-hab"],
@@ -1056,8 +1124,21 @@ function renderLayerLegend() {
         ? `<i class="lg-sw lg-banded" title="several colours - banded by value"></i>`
         : `<i class="lg-sw" style="background:${escHtml(sw.colour)}"></i>`;
     rows.push(`<div class="lg-row">${chip}<span>${escHtml(name)}</span>` +
-              (sw && sw.banded ? ` <span class="hint">banded</span>` : "") +
+              (sw && sw.banded && box !== "L-bus" ? ` <span class="hint">banded</span>` : "") +
               (sw === null ? ` <span class="hint">loading</span>` : "") + `</div>`);
+    /* G77: "banded" is not a key. Where the bands carry the whole meaning of the layer - and on
+       the bus layer they ARE the answer to "can this host my project" - spell them out. Read from
+       the same BUS_BANDS the paint uses, so the key cannot drift from the map. */
+    if (box === "L-terr")
+      for (const [, colour, label] of TERR_TYPES)
+        rows.push(`<div class="lg-row" style="margin-left:14px">` +
+                  `<i class="lg-sw" style="background:${colour}"></i>` +
+                  `<span class="hint">${escHtml(label)}</span></div>`);
+    if (box === "L-bus")
+      for (const b of BUS_BANDS)
+        rows.push(`<div class="lg-row" style="margin-left:14px">` +
+                  `<i class="lg-sw" style="background:${b.colour}"></i>` +
+                  `<span class="hint">${escHtml(b.label)}</span></div>`);
   }
   const metric = $("county-metric") ? $("county-metric").value : "none";
   if (metric && metric !== "none")
@@ -1206,7 +1287,7 @@ function addCountyLayers(fips, fc) {
   map.addSource(src, { type: "geojson", data: fc });
   map.addLayer({ id: `${src}-fill`, type: "fill", source: src, minzoom: PARCEL_ZOOM,
     layout: { visibility: $("L-parcels").checked ? "visible" : "none" },
-    paint: { "fill-color": FILL_COLOR, "fill-opacity": 0.45 } }, "grid-lines");
+    paint: { "fill-color": parcelFillPaint(), "fill-opacity": 0.45 } }, "grid-lines");
   map.addLayer({ id: `${src}-line`, type: "line", source: src, minzoom: PARCEL_ZOOM,
     layout: { visibility: $("L-parcels").checked ? "visible" : "none" },
     paint: { "line-color": "#333", "line-width": 0.6 } }, "grid-lines");
@@ -1222,6 +1303,48 @@ function addCountyLayers(fips, fc) {
   map.on("mousemove", `${src}-fill`, (e) => showTip(e, tipText(e.features[0].properties)));
   map.on("mouseleave", `${src}-fill`, hideTip);
 }
+/* ---------- G95: SHOW ME WHICH PARCELS CARRY THE CONSTRAINT ----------------------------------
+   Operator, 2026-08-19: *"the layers still say 'exclude' XXX layer, which doesn't help us if we
+   want to see the layer itself."*
+
+   Right, and the honest answer is not a layer. `in_flood` is 803.8 MB and `in_wetlands` 1,319.6 MB
+   -- neither can be sent to a browser, and shipping a simplified version would be a different
+   claim wearing the same name. What we DO hold, on every parcel, is a flag measured against those
+   sources. So the map highlights the affected PARCELS, which answers the siting question ("is this
+   site affected?") rather than the cartographic one ("where is the floodplain?"). The control says
+   which of the two it is doing.
+
+   ⚠ `undefined` is NOT `false` here. A parcel outside in_site_gates was never measured, so it is
+   drawn in the ordinary colour and is not claimed to be clear. */
+function parcelFillPaint() {
+  const k = $("f-hilite") ? $("f-hilite").value : "";
+  if (!k) return FILL_COLOR;
+  return ["case", ["==", ["get", k], true], "#dc2626", FILL_COLOR];
+}
+function applyParcelHighlight() {
+  const paint = parcelFillPaint();
+  for (const fips of state.loaded.keys())
+    if (map.getLayer(`sites-${fips}-fill`))
+      map.setPaintProperty(`sites-${fips}-fill`, "fill-color", paint);
+  const el = $("f-hilite-note");
+  if (el) {
+    const k = $("f-hilite").value;
+    if (!k) { el.textContent = ""; return; }
+    let hit = 0, measured = 0;
+    for (const feats of state.loaded.values())
+      for (const f of feats) {
+        const v = f.properties[k];
+        if (v === undefined) continue;
+        measured++; if (v === true) hit++;
+      }
+    el.innerHTML = measured
+      ? `<b>${fmt(hit)}</b> of ${fmt(measured)} loaded parcels carry it, drawn in red. `
+        + `Parcels we never measured stay the ordinary colour rather than being called clear.`
+      : `Zoom in until parcels load to see the highlight.`;
+  }
+}
+if ($("f-hilite")) $("f-hilite").addEventListener("change", applyParcelHighlight);
+
 function countiesInView() {
   const b = map.getBounds();
   return Object.entries(state.countyBbox)

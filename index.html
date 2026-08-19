@@ -191,9 +191,29 @@
     <details class="acc">
       <summary><span class="step">5</span> Environmental constraints</summary>
       <div class="accbody">
-        <label><input type="checkbox" id="f-noflood"> Exclude mapped flood zones</label>
-        <label><input type="checkbox" id="f-nowet"> Exclude wetland on the parcel</label>
-        <label><input type="checkbox" id="f-noprot"> Exclude protected-land overlap</label>
+        <!-- G95. Operator, 2026-08-19: "the layers still say 'exclude' XXX layer, which doesn't
+             help us if we want to see the layer itself." Two different verbs were wearing one
+             word. These three are parcel FILTERS - they remove sites from the result set - and
+             they were stacked under the same subhead as the LAYERS below, which draw geometry.
+             Relabelled so the verb is unambiguous, and the "show me" control underneath is the
+             other half of the answer. -->
+        <div class="subhead">Keep only sites clear of&hellip;</div>
+        <label><input type="checkbox" id="f-noflood"> a mapped flood zone</label>
+        <label><input type="checkbox" id="f-nowet"> wetland on the parcel</label>
+        <label><input type="checkbox" id="f-noprot"> a protected-land overlap</label>
+        <label class="blk" style="margin-top:6px">&hellip;or just <b>show me which parcels have one</b>
+          <select id="f-hilite">
+            <option value="">no highlight</option>
+            <option value="sfha_flood">highlight parcels in a flood zone</option>
+            <option value="wetland_on_parcel">highlight parcels with wetland</option>
+            <option value="protected_land">highlight parcels overlapping protected land</option>
+          </select></label>
+        <div class="hint" id="f-hilite-note"></div>
+        <div class="hint">⚠ <b>We highlight the PARCELS, not the hazard polygons.</b> The flood and
+          wetland source layers are 804&nbsp;MB and 1.3&nbsp;GB &mdash; far too large to send to a
+          browser &mdash; so what we ship is a per-parcel flag measured against them. That answers
+          &ldquo;is this site affected&rdquo;, which is the siting question; it will not draw you
+          the floodplain itself.</div>
         <label><input type="checkbox" id="f-bonus"> Only federal energy-community tax-credit areas</label>
         <div class="sowhat">The first three are hard constraints that can stop a
           project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
@@ -396,6 +416,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=be1a3d27"></script>
-<script src="app.js?v=1aab1843"></script>
+<script src="app.js?v=e12cb53f"></script>
 </body>
 </html>
