@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-19T01:36:08+00:00",
+ "built_at_utc": "2026-08-19T16:35:46+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -296,11 +296,11 @@
   },
   {
    "table_name": "in_dc_actions_resolved",
-   "source": "Indiana county/municipal government websites \u2014 official-source verification of the sweep's REPORTED_NEEDS_VERIFICATION leads (4 agents, 46 counties)",
-   "method": "Each lead re-checked against the government's OWN site, minutes, agenda or ordinance PDF. robots.txt read per host before any fetch; crawl-delays honoured (up to 300s); honest UA. Verdicts: VERIFIED_AT_OFFICIAL_SOURCE / NOT_FOUND_AT_OFFICIAL_SOURCE / CONTRADICTED / BLOCKED.",
+   "source": "Indiana county/municipal government websites - F3/F4 clock re-verification",
+   "method": "targeted UPDATE of rows whose vote had not yet happened at first sweep",
    "n_rows": 86,
-   "built_at": "2026-08-16 19:36:58.078281+00",
-   "notes": "READ posture_renderable BEFORE RENDERING ANYTHING. It is TRUE only where a government source was actually fetched and quoted. CONTRADICTED rows are MISATTRIBUTED OUT-OF-STATE leads \u2014 Brown County's action belongs to Brown County WISCONSIN and Clay County's to Clay County FLORIDA; both were live in the app as Indiana postures. NOT_FOUND means checked-and-absent, which is NOT the same as never-checked and must not be scored as permissive. match_method records how each verification was tied to its lead: (county, action_type) is NOT unique \u2014 9 keys carry multiple rows on both sides."
+   "built_at": "2026-08-19 16:34:31.684396+00",
+   "notes": "F3 Howard + City of Elkhart (votes scheduled 2026-08-17) and F4 Marion MDC Proposal No. 238 (scheduled 2026-08-19) re-checked. posture_renderable stays FALSE on anything not verified at a government source. RE-SCRAPE COMMAND: python scripts/apply_action_verification.py --apply"
   },
   {
    "table_name": "in_dc_actions_resweep",
@@ -493,6 +493,14 @@
    "n_rows": 15638,
    "built_at": "2026-08-15 05:57:13.156586+00",
    "notes": "WIRE-NEXT batch 1 - subject read pending per audit protocol"
+  },
+  {
+   "table_name": "in_faa_obstacles_tall",
+   "source": "indiana_app.in_faa_obstacles",
+   "method": "state=IN AND agl>=200 ft; agl/amsl cast from zero-padded STRING; type/city TRIMmed; lighting and verified_status decoded from their single-letter vocabularies",
+   "n_rows": 4591,
+   "built_at": "2026-08-19 13:54:39.469297+00",
+   "notes": "G72. 200 ft AGL is the FAA Part 77 NOTICE threshold, so every row here already had to tell the FAA it exists. Reads two ways for a siter: clutter to clear for a tall structure, and - since 44 are transmission-line towers - a visible trace of where heavy transmission actually runs. Tallest in Indiana is 1133 ft AGL | RE-SCRAPE COMMAND: python scripts/build_land_gates.py"
   },
   {
    "table_name": "in_fcc_bdc",
@@ -783,6 +791,14 @@
    "notes": "table total now 618. Pulled 2026-08-14 23:09:13 UTC."
   },
   {
+   "table_name": "in_grid_plans_located",
+   "source": "indiana_app.in_grid_plans x in_substations",
+   "method": "pipe-row split + station->gazetteer match ladder",
+   "n_rows": 618,
+   "built_at": "2026-08-19 15:49:56.322999+00",
+   "notes": "G15. Splits the pipe-delimited workpaper row that was written whole into project_name into its real fields, then locates each asset by matching its station to in_substations (exact, then suffix-insensitive, then UNAMBIGUOUS prefix; location_method records which). Located 119 of 618. cost_usd_m is deliberately NULL - the workpaper columns 6-8 are unlabelled in this table and guessing which is dollars would print a coin flip. CEILING IS THE GAZETTEER, not the matcher: in_substations is already the complete Indiana cut of energy.mat_grid_substations, and neither osm_power_substations (2,873 IN) nor nat_substations_hifld (2,077 IN) holds the missing NIPSCO stations. Same blocker as G62. | RE-SCRAPE COMMAND: python scripts/build_grid_plans_located.py"
+  },
+  {
    "table_name": "in_groundwater_sites",
    "source": "energy.groundwater_sites",
    "method": "census-keyed clip (state:state)",
@@ -821,6 +837,22 @@
    "n_rows": 19,
    "built_at": "2026-08-15 06:18:00.722923+00",
    "notes": "WIRE-NEXT batch 4 (audit tail)"
+  },
+  {
+   "table_name": "in_land_gate_parcel",
+   "source": "indiana_app.in_screener_candidates x in_sites x in_land_gates",
+   "method": "parcel FOOTPRINT (parcel_geog) vs gate polygons; nearest military within 40234 m (25 mi) else NULL; SUA and tribal are ST_INTERSECTS; D85 excluded by key; fan-out 1.0",
+   "n_rows": 532870,
+   "built_at": "2026-08-19 13:54:47.719601+00",
+   "notes": "G72 screener half. 13193 parcels sit within 3 miles of a military installation, which is the band where a DoD Siting Clearinghouse review is likely. NULL means measured and nothing within 25 miles - it does not mean zero | RE-SCRAPE COMMAND: python scripts/build_land_gates.py"
+  },
+  {
+   "table_name": "in_land_gates",
+   "source": "indiana_app.in_land_military_bases + in_tribal_land + in_land_faa_sua",
+   "method": "UNION ALL of three gate sources normalised to (kind, name, detail, note, geog)",
+   "n_rows": 33,
+   "built_at": "2026-08-19 13:54:34.712118+00",
+   "notes": "G72. One layer per kind on the map console. 13 military installations (DoD Siting Clearinghouse review runs on the DoDs clock, not the countys), 1 tribal trust (different sovereign), 19 special-use airspace (governs what may be built TALL) | RE-SCRAPE COMMAND: python scripts/build_land_gates.py"
   },
   {
    "table_name": "in_land_military_bases",
@@ -1349,6 +1381,38 @@
    "n_rows": 55,
    "built_at": "2026-08-14 23:15:01.505719+00",
    "notes": "THE public machine-readable queue-project -> network-upgrade-cost mapping: network upgrade id -> allocated queue project ids -> cost -> TO -> state. 55 rows all-states, 1 name Indiana. Costs in $M per the page's conventions (same family as RTEP export). PLOTTABILITY: JOINABLE_IDENTITY (upgrade id joins in_pjm_rtep_upgrades/held txexp_pjm_tcic_upgrade_info; queue project ids join the PJM queue/queuescope universe; no coords served). Per-upgrade drilldowns exist at /m/ProjectTransition/NucraProjectDetails|UpgradeProjectsWithCostAlloc?upgradeId={id} (not crawled this run)."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_inj_10",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 655404,
+   "built_at": "2026-08-19 10:35:59.759517+00",
+   "notes": "PJM QueueScope INJECTION direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_inj_5000",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 655790,
+   "built_at": "2026-08-19 12:29:48.186530+00",
+   "notes": "PJM QueueScope INJECTION direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_wd_10",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 462654,
+   "built_at": "2026-08-19 08:02:30.313259+00",
+   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_wd_15",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 462654,
+   "built_at": "2026-08-19 14:37:16.717407+00",
+   "notes": "PJM QueueScope WITHDRAWAL direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
   },
   {
    "table_name": "in_pjm_qs_c23_wd_5000",
@@ -2129,10 +2193,10 @@
   {
    "table_name": "in_tribal_land",
    "source": "energy.tribal_land",
-   "method": "census-keyed clip (geoid:geoid)",
-   "n_rows": 14,
-   "built_at": "2026-08-15 06:18:05.363179+00",
-   "notes": "WIRE-NEXT batch 4 (audit tail)"
+   "method": "SPATIAL clip ST_INTERSECTION to Indiana (REPLACES a census-keyed geoid join)",
+   "n_rows": 1,
+   "built_at": "2026-08-19 13:54:30.526165+00",
+   "notes": "REPAIRED 2026-08-19: the previous build used method=census-keyed clip (geoid:geoid) and returned 14 rows of which ZERO intersect Indiana (Laguna Pueblo NM, LAnse MI, Kootenai ID, Lake Traverse SD ...). Indiana holds exactly 1: Pokagon Off-Reservation Trust Land, 178.1 acres in-state. Tribal trust land is a SEPARATE SOVEREIGN - not county zoning, not state permitting | RE-SCRAPE COMMAND: python scripts/build_land_gates.py"
   },
   {
    "table_name": "in_txexp_miso_mtep_appendix_a_status",
@@ -2527,6 +2591,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 327,
+ "registry_rows_total": 338,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }

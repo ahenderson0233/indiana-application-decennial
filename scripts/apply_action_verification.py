@@ -147,6 +147,135 @@ add(
 )
 
 
+# ==============================================================================================
+# F3a - HOWARD COUNTY. Board of Commissioners, two-year data-centre moratorium.
+#
+# NOT VERIFIED, and the re-check made our own record LESS certain rather than more - which is the
+# useful outcome here. The county's own 2026-08-17 commissioners' packet lists no data-centre item
+# under any heading; its only ordinances are a rezoning (2026-BCCO-29) and flood damage prevention
+# (2026-BCCO-30). Howard publishes each meeting's minutes inside the FOLLOWING meeting's packet, so
+# the 08-17 minutes are not due until September. NOT_FOUND is therefore expected, and it is NOT
+# "no action was taken".
+#
+# ⚠ AND THERE IS NOW A DIRECT CONFLICT THAT OUR ROW WAS ASSERTING ITS WAY PAST.
+# We stored "Two-year data-center moratorium". That figure came from a news lead, not a government
+# source - the verdict has always been NOT_FOUND. A newer Kokomo Lantern piece, verified here by
+# fetching it directly, says something different, verbatim:
+#     "This is a temporary moratorium that lasts for ONE year"
+#     "the county can lift the restriction earlier than one year should the commissioners develop
+#      a regulatory ordinance in a shorter time period"
+# reporting a unanimous Board of Commissioners vote on 2026-08-18 - a date on which the county's
+# own published 2026 schedule has NO meeting (August has only the 3rd and the 17th).
+#
+# So we hold two UNVERIFIED and MUTUALLY INCONSISTENT durations. The honest state is that the
+# duration is UNKNOWN pending the county's own minutes, and the instrument text is rewritten to
+# say so rather than to keep repeating "two-year" as though we had it from the county.
+# ⚠ The lead_url we hold is DEAD (HTTP 404). Replaced with the live article.
+add(
+    county="Howard",
+    jurisdiction_like="Howard County%",
+    verdict="NOT_FOUND_AT_OFFICIAL_SOURCE",
+    confirmed_action_type="proposed",
+    verified_instrument=(
+        "Data-centre moratorium, DURATION UNKNOWN AND DISPUTED. Our earlier record said 'two-year' "
+        "and a later news report says 'one year'; NEITHER is from a Howard County source. No "
+        "data-centre instrument of any number appears in any published county record. For contrast "
+        "the only ordinances on the 2026-08-17 agenda are 'Rezoning of Property - 3820 W 200 N - "
+        "Ord. No. 2026-BCCO-29' and 'Updated Howard County Flood Damage Prevention - Ord. No. "
+        "2026-BCCO-30'."),
+    date_note=(
+        "Do not record a duration or an expiry until the county's own minutes state one. The two "
+        "figures in circulation (two-year, one-year) are both from news leads and they disagree."),
+    verification_note=(
+        "Re-checked 2026-08-19 for F3. The 2026-08-17 Board of Commissioners packet - a scanned PDF "
+        "with no text layer - contains the agenda for that meeting and the minutes of 2026-08-03, "
+        "and lists NO data-centre or moratorium item. Howard publishes minutes one meeting in "
+        "arrears, so the 08-17 minutes are due in the September packet; that is the artifact to "
+        "watch. CONFLICT: Kokomo Lantern 'County adopts data center moratorium' reports a unanimous "
+        "vote on 2026-08-18 for a ONE-year moratorium liftable early - but the county's own 2026 "
+        "schedule has no 08-18 meeting (August is the 3rd and the 17th only). Lead is unverified "
+        "and its date is unexplained. Our previously held lead URL 404s and has been replaced. "
+        "City of Kokomo remains BLOCKED by its own robots.txt and was deliberately not probed."),
+    official_url=("https://www.in.gov/counties/howard/home/meetings,-minutes,-and-agendas/"
+                  "meeting-and-agenda-docs/commissioners/2026/"
+                  "08.17.2026-Commissioner-Meeting-Packet.pdf"),
+    lead_url="https://kokomolantern.substack.com/p/county-adopts-data-center-moratorium",
+    final_evidence_grade=(
+        "county packet READ and contains no such item; minutes for the meeting in question are not "
+        "yet published; a news lead conflicts with our own held duration"),
+)
+
+# ==============================================================================================
+# F3b - CITY OF ELKHART. Common Council, temporary moratorium.
+#
+# VERIFIED at the city's own documents, and the answer is NOT ADOPTED - it advanced from FIRST
+# READING and final action is set for a special meeting on 2026-08-27.
+#
+# ⭐ THIS IS THE ONE ROW THE RE-CHECK GENUINELY ADVANCED. We previously held only "a proposed
+# ordinance from Mayor Rod Roberson", with no number and no text. We now have the number, the full
+# title, and the operative expiry clause.
+#
+# ⚠ AND IT CORRECTS AN ASSUMPTION BEFORE IT COULD BE MADE: effective_to stays NULL. December 31,
+# 2027 appears in this ordinance too - but as the LAST OF THREE ALTERNATIVE TRIGGERS in Section 7,
+# whichever comes first, and the ordinance is not adopted so nothing is fixed. Writing 2027-12-31
+# here would repeat, in a second county, exactly the error found in Marion this morning.
+#
+# HOW FAR THIS WAS INDEPENDENTLY CONFIRMED, stated rather than implied:
+#   CONFIRMED HERE - the three documents exist at the cited paths on the city's own SharePoint,
+#   are reachable with no login, and match their descriptions: "8.17.26 VOTING RECORD" is 2 pages,
+#   and a document titled "Agenda & Packet 8.27 meeting" exists, which is itself corroboration
+#   that a 2026-08-27 special meeting is scheduled.
+#   NOT CONFIRMABLE BY EXTRACTION - all of them are SCANNED IMAGES with no text layer (fetched and
+#   checked: 0 inflatable streams, 0 extractable characters), so the ordinance number, the Section
+#   7 wording and the 9-0 vote tallies rest on a visual read of those images, not on text this
+#   session could pull. Graded accordingly below.
+add(
+    county="Elkhart",
+    jurisdiction_like="City of Elkhart%",
+    verdict="VERIFIED_AT_OFFICIAL_SOURCE",
+    confirmed_action_type="proposed",
+    verified_instrument=(
+        "PROPOSED ORDINANCE 26-O-32, 'AN ORDINANCE OF THE COMMON COUNCIL OF THE CITY OF ELKHART, "
+        "INDIANA ESTABLISHING A TEMPORARY MORITORIUM ON THE ACCEPTANCE AND PROCESSING OF NEW "
+        "APPLICATIONS FOR DATA CENTERS AND BATTERY ENERGY STORAGE FACILITIES, AND DIRECTING IMPACT "
+        "STUDIES TO INFORM FUTURE LAND-USE STANDARDS' [the agenda's spelling 'MORITORIUM' is "
+        "verbatim; the ordinance text spells it 'MORATORIUM']. The ordinance caption still reads "
+        "'ORDINANCE NO. ________' - blank, no number assigned, because it is not adopted."),
+    verified_observed_date="2026-08-17",
+    expiry_condition_verbatim=(
+        "Section 7. Duration; Expiration. This temporary moratorium shall commence upon the "
+        "effective date of this Ordinance and shall automatically expire on the earliest of: "
+        "(a) Council action lifting or terminating the moratorium; (b) The completion of all "
+        "studies identified in Section 4 and the development of appropriate standards for "
+        "consideration of permit applications for Data Centers and BESS (including presentation of "
+        "draft text to the Plan Commission); or (c) December 31, 2027. -- Section 10. Effective "
+        "Date. This Ordinance shall be in full force and effect from and after its passage by the "
+        "Common Council and approval as required by law."),
+    date_note=(
+        "effective_to is deliberately NULL. December 31, 2027 is only the LAST OF THREE "
+        "ALTERNATIVE triggers in Section 7, whichever comes first, and the ordinance is not "
+        "adopted, so no date is fixed. Recording it as an end date would repeat the Marion error."),
+    verification_note=(
+        "Re-checked 2026-08-19 for F3. NOT adopted on 2026-08-17: the council's own agenda places "
+        "26-O-32 under 'New Business / Ordinances on First Reading', while that same agenda uses a "
+        "separate 'Ordinances on Second-Third Reading' heading for a different ordinance. The "
+        "council's own 'VOTING RECORD FOR AUGUST 17, 2026' records exactly two final actions, both "
+        "9-0 - Ordinance No. 6098 (Proposed Ordinance 26-O-30, an alley vacation) and Resolution "
+        "No. 26-R-41 - and 26-O-32 does not appear on it at all. FINAL ACTION IS SET FOR A SPECIAL "
+        "MEETING ON 2026-08-27, where 26-O-32 is the single item of business. Whether the text was "
+        "amended at first reading is unknown: the 08-17 minutes are not yet published (that "
+        "meeting was still approving the 07-27 minutes). NOTE THE SCOPE - this ordinance covers "
+        "BATTERY ENERGY STORAGE as well as data centres, which is broader than our other rows."),
+    official_url=("https://elkhartin.sharepoint.com/sites/TestSite/Shared%20Documents/"
+                  "Voting%20Records/8.17.26%20VOTING%20RECORD.pdf"),
+    final_evidence_grade=(
+        "city's OWN documents, publicly reachable with no login, and their existence, page counts "
+        "and titles were re-confirmed independently this session. They are SCANNED IMAGES with no "
+        "text layer, so the ordinance number, Section 7 text and vote tallies come from a visual "
+        "read rather than extracted text"),
+)
+
+
 def preflight(f):
     """Refuse a finding that breaks one of the rules above, loudly, before anything is written."""
     problems = []
@@ -206,6 +335,9 @@ def main():
         for col in ("verdict", "confirmed_action_type", "verified_instrument",
                     "verified_observed_date", "verified_effective_from", "verified_effective_to",
                     "expiry_condition_verbatim", "verbatim_snippet", "official_url",
+                    # lead_url is settable because a LEAD can rot: Howard's held lead 404s.
+                    # It is still only ever a lead - it can never satisfy official_url.
+                    "lead_url",
                     "date_note", "verification_note", "final_evidence_grade"):
             if col in f:
                 sets.append(f"{col} = @{col}")
