@@ -11,12 +11,24 @@
 <header id="topbar">
   <div id="title">Indiana Siting Intelligence <span class="tag">beta</span></div>
   <div id="statebar">loading…</div>
+  <!-- G93, operator 2026-08-19: "We have no use for the Future Capacity, Market, Acquisitions,
+       Inventory, or Shortlist tabs in the top right of the map - these can be removed and (if
+       able) replaced by something useful, insightful, or actionable to the user."
+
+       FOUR OF THE FIVE WERE A SECOND, WORSE ROUTE TO A WHOLE PAGE: Future capacity -> grid.html,
+       Market -> market.html, Inventory and Acquisitions -> data.html. A modal that duplicates a
+       page cannot say what it changes about a decision, so the governing principle vetoes it.
+
+       SHORTLIST WAS THE EXCEPTION and could not simply be deleted - it is the only holder of
+       `localStorage in_shortlist`, and the CSV/Excel export reads it. It moved to the rail beside
+       saved workspaces, where the other persistent state already lives.
+
+       ONE REPLACEMENT, NOT FIVE. The rail already carries a live count of what passes the filters
+       (`#denominator`), so repeating that here would be the same duplication in new clothes. What
+       the map genuinely cannot answer at a glance is the POWER picture for what is currently on
+       screen - so that is what the one remaining control does. -->
   <div id="topbtns">
-    <button id="btn-pipeline">Future capacity</button>
-    <button id="btn-market">Market</button>
-    <button id="btn-acq">Acquisitions</button>
-    <button id="btn-inventory">Inventory</button>
-    <button id="btn-shortlist">★ Shortlist <span id="sl-count">0</span></button>
+    <button id="btn-powerview">⚡ Power in view</button>
   </div>
 </header>
 <nav id="nav"></nav>
@@ -347,6 +359,17 @@
 
     <div id="denominator" class="railcard panelbox">loading…</div>
 
+    <!-- G93: rehomed from the top bar. It holds `localStorage in_shortlist`, which nothing else
+         holds and which the CSV/Excel export reads, so removing the button had to move the
+         feature rather than orphan it. It sits beside saved workspaces because that is where the
+         other browser-persisted state already lives. -->
+    <div class="railcard">
+      <h2>★ Shortlist <span class="hint">(starred from a parcel's evidence panel)</span></h2>
+      <button id="btn-shortlist">Open shortlist (<span id="sl-count">0</span>)</button>
+      <div class="hint" style="margin-top:6px">Stored <b>in this browser only</b>. Starred parcels
+        ride along into the CSV and Excel exports.</div>
+    </div>
+
     <div class="railcard">
       <h2>Saved workspaces <span class="hint">(C4 — screener + weights + layers)</span></h2>
       <div class="hint">Saves every screener setting, your scoring weights, which layers are on and
@@ -433,6 +456,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=e1ec1feb"></script>
-<script src="app.js?v=a36a1c2c"></script>
+<script src="app.js?v=05bef359"></script>
 </body>
 </html>

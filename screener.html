@@ -582,6 +582,35 @@ function detailRow(label, value, absentWhy, sowhat) {
           <td class="hint">${sowhat || ""}</td></tr>`;
 }
 
+/* G113: shared by render() and siteDetail() so the expanded row can never disagree with the
+   header about how many columns there are. Initialised to the current count; render() sets it. */
+let SCREENER_NCOL = 8;
+
+/* ---------- G113(3) + G86: where IS this site? -------------------------------------------------
+   Operator, 2026-08-19: the screener *"should provide the site location and/or coordinates"*.
+
+   ⛔ ABSENT COORDINATES MUST RENDER AS ABSENT. `export_screener.py` drops nulls to keep the
+   payload lean, so a site with no point simply has no `lat`. Trap 9 in the handoff is that
+   `Number(null)` is 0 and 0 is finite -- a coordinate-less parcel once measured a military base
+   from the Gulf of Guinea. So this tests for the KEY, not for truthiness, and an Indiana site can
+   legitimately never be at 0,0.
+   ⭐ Full precision is preserved in the copy text (G30b keeps all 13 decimals); only the DISPLAY
+   is rounded, because 13 decimals in a table cell is unreadable and 5 decimals is ~1 m. */
+function siteCoords(s) {
+  if (!("lat" in s) || !("lon" in s) || s.lat == null || s.lon == null) return null;
+  const la = Number(s.lat), lo = Number(s.lon);
+  if (!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+  return { lat: la, lon: lo, full: `${s.lat}, ${s.lon}`, short: `${la.toFixed(5)}, ${lo.toFixed(5)}` };
+}
+function siteLocationCell(s) {
+  const c = siteCoords(s);
+  if (!c) return `<span class="cannot" title="we hold no coordinate for this parcel">no coordinate held</span>`;
+  const label = `${s.county_name || ""} parcel`.trim();
+  const href = `index.html?lat=${c.lat}&lon=${c.lon}&z=15`
+             + `&label=${encodeURIComponent(label)}&src=screener`;
+  return `<a href="${href}" title="open this point on the map console">${c.short}</a>`;
+}
+
 function siteDetail(s) {
   const a = acresOf(s);
   const mi = (x) => x == null ? null : `${Number(x).toFixed(1)} mi`;
@@ -592,7 +621,22 @@ function siteDetail(s) {
   if (s.wd_mw != null) both.push("getting");
   if (s.inj_mw != null) both.push("sending");
 
-  return `<tr class="detailrow"><td colspan="7"><div class="detail">
+  const co = siteCoords(s);
+  return `<tr class="detailrow"><td colspan="${SCREENER_NCOL}"><div class="detail">
+    <!-- G113: the identity block. Everything a reader needs to take this row somewhere else -
+         into a GIS, into an email, or onto the map - without going back to the warehouse. -->
+    <table class="dtable" style="margin-bottom:8px">
+      ${detailRow("Coordinates", co
+          ? `<code>${co.full}</code> &nbsp;<a href="index.html?lat=${co.lat}&lon=${co.lon}&z=15`
+            + `&label=${encodeURIComponent((s.county_name || "") + " parcel")}&src=screener">open on the map</a>`
+          : null,
+          "we hold no coordinate for this parcel",
+          "Full stored precision, WGS84 lat/lon. The table above rounds to 5 decimals (about a metre) for legibility; this is the value as held.")}
+      ${detailRow("Parcel id", s.parcel_key ? `<code>${s.parcel_key}</code>` : null, null,
+          "The key this row is stored under. Quote it when asking us to re-check a site.")}
+      ${detailRow("Land record type", s.site_kind, null,
+          "What kind of record the county keeps for this land.")}
+    </table>
     <div class="dgrid">
       <div>
         <h4>Getting power &mdash; what a data centre needs</h4>
@@ -730,9 +774,15 @@ function render() {
     </div>`;
 
   const dirLabel = $("s-dir").value === "inj" ? "Can send (MW)" : "Can get (MW)";
+  /* G113(3), operator 2026-08-19: *"should provide the site location and/or coordinates"*.
+     ⚠ The column count is now DERIVED and shared with `siteDetail`, because the detail row used to
+     hardcode `colspan="7"`. Adding a column to this list while that stayed 7 would have silently
+     narrowed every expanded row by one cell -- the kind of break that renders wrong instead of
+     erroring. See SCREENER_NCOL. */
   const head = [["county", "County"], ["acres", "Acres"], ["mw", "Fits (MW)"],
-    ["grid", dirLabel], ["gridmi", "Distance"], ["sig", "Owner signal"]];
-  const NCOL = head.length + 1;   // + the expander
+    ["grid", dirLabel], ["gridmi", "Distance"], ["sig", "Owner signal"], ["loc", "Location"]];
+  SCREENER_NCOL = head.length + 1;   // + the expander
+  const NCOL = SCREENER_NCOL;
   const badge = (st) => st.label === "standing"
       ? `<span class="bdg bdg-st" title="${st.why}">standing condition</span> `
     : st.label === "undated"
@@ -752,6 +802,7 @@ function render() {
       <td>${s.has_signal ? `${signalsPlain(s.signals)}<div class="sub2">${badge(sst)}${
         plural(s.signal_events || 0, "record")}${s.last_event ? ` · latest ${s.last_event}`
         : " · date unknown"}</div>` : '<span class="hint">none</span>'}</td>
+      <td>${siteLocationCell(s)}</td>
     </tr>${siteDetail(s)}`;
   }).join("");
 

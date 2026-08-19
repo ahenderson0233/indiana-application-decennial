@@ -12,7 +12,10 @@ const state = {
   grid: null, gas: null, pjm: null, terr: null, overlays: null, cand: null,
   subBins: null, lineBins: null, poiList: null,
   shortlist: JSON.parse(localStorage.getItem("in_shortlist") || "[]"),
-  measure: { on: false, pts: [] }, market: null, pipeline: null,
+  // G93: `market` and `pipeline` went with the modals that fetched them. market.json.gz and
+  // pipeline.json.gz are still built and still read by market.html and grid.html, which is where
+  // that content belongs; the map no longer holds a second copy in memory.
+  measure: { on: false, pts: [] },
 };
 
 /* ---------- helpers ---------- */
@@ -3240,6 +3243,74 @@ function gridEv(p) {
         : "HIFLD linework. OSM lines running within 100 m of a HIFLD line are treated as the same circuit and suppressed, so nothing is drawn twice."}</div>`);
   }
 }
+/* ---------- G92: GAS HEADROOM IN THE PIPELINE POPUP -------------------------------------------
+   Operator, 2026-08-19: *"the natural gas pipelines should show headroom, where the data is
+   available"*. The qualifier is doing real work: we hold a feed for TWO of the twelve pipelines
+   drawn, so the other ten must say so rather than render an empty table. A pipeline with no
+   number beside it must never read as a pipeline with no capacity. */
+state.gasCap = null; state.gasCapLoading = null;
+async function ensureGasCapacity() {
+  if (state.gasCap) return state.gasCap;
+  if (state.gasCapLoading) return state.gasCapLoading;
+  state.gasCapLoading = fetchGz("data/gas_capacity.json.gz")
+    .then((d) => { state.gasCap = d; return d; })
+    .catch(() => { state.gasCap = { by_pipeline: {}, _failed: true }; return state.gasCap; });
+  return state.gasCapLoading;
+}
+/* ⚠ MUST MATCH `pipe_key()` in scripts/export_gas_capacity.py. The map says 'Panhandle Eastern
+   Pipe Line Co.' and the feed says 'Panhandle Eastern Pipe Line Company, LP'. Corporate suffixes
+   only -- nothing that could merge two genuinely different pipelines (Texas Gas Transmission and
+   Texas Eastern Transmission must stay apart). */
+function gasPipeKey(name) {
+  return String(name || "").toLowerCase()
+    .replace(/[.,]/g, " ")
+    .replace(/\b(company|companies|co|corporation|corp|llc|lp|l p|inc|the)\b/g, " ")
+    .replace(/\bpipe line\b/g, "pipeline")
+    .replace(/\s+/g, " ").trim();
+}
+function gasPipelineHtml(p) {
+  const head = `<table>${row("Operator", p.operator)}${row("Type", p.typepipe)}</table>`;
+  if (!state.gasCap) {
+    return head + `<div class="hint">loading daily capacity…</div>`;
+  }
+  const e = state.gasCap.by_pipeline[gasPipeKey(p.operator)];
+  if (!e) {
+    return head + `
+      <div class="cannot">⚠ <b>No daily-capacity feed is captured for this pipeline.</b> We hold
+      operationally-available capacity for <b>Panhandle Eastern</b> and <b>Trunkline</b> only —
+      both Energy Transfer iPost boards. This is an absence of measurement, <b>not</b> a
+      measurement of zero: this pipeline may have plenty of room and we simply have no posting
+      for it.</div>
+      <div class="prov">${prov("in_gas_pipelines")} · interstate border design capacity for every
+      pipeline is on the <a href="market.html">Market</a> page.</div>`;
+  }
+  const top = (e.locations || []).slice(0, 8).map((l) => `<tr>
+      <td>${escHtml(l.name || "")}<br><span class="hint">${escHtml(l.county || "")} ·
+        ${escHtml(l.purpose || "")}</span></td>
+      <td><b>${fmt(l.free_dth)}</b> Dth/d free<br>
+        <span class="hint">of ${fmt(l.design_dth)} design · ~${fmt(Math.round((l.free_dth || 0) / 156))} MW</span></td>
+    </tr>`).join("");
+  return head + `
+    <h3>Gas free on this pipeline today, in Indiana</h3><table>
+      ${row("Locations posting", e.n_locations)}
+      ${row("Total free", `${fmt(e.total_free_dth)} Dth/day`)}
+      ${row("Largest single point", `${fmt(e.max_free_dth)} Dth/day`)}
+      ${row("Supports roughly", `${fmt(e.total_free_mw_est)} MW`)}
+    </table>
+    <div class="est-badge">MW is OUR ESTIMATE — the boards post no units column. Magnitudes match
+      dekatherms/day and 1 Dth = 1 MMBtu, so at a 6.5 MMBtu/MWh combined-cycle heat rate,
+      MW = Dth/day ÷ 156.</div>
+    <div class="sowhat">This is <b>what is free today</b>, not design capacity — the number a
+      developer actually needs when on-site generation or a dual-fuel backup is the plan. A single
+      point with 450,000 Dth/day free can support a hyperscale campus on its own; a point posting a
+      few thousand is a boiler connection. ⚠ Availability is a <b>daily</b> posting and moves.</div>
+    <h3>Where the room is</h3><table>${top}</table>
+    <div class="prov">${prov(e.source_table)} · gas day “current”, pulled
+      ${escHtml(String(e.pulled_at || "").slice(0, 10))}.
+      ⛔ These locations carry a NAME and a county, never a coordinate, so they are listed against
+      the pipeline rather than plotted — inventing a point for them would be a centroid.</div>`;
+}
+
 function miscEv(p) {
   if (p.layer === "bus_candidate") {
     show(`PJM bus ${p.bus_number} — ESTIMATED location`, `
@@ -3258,8 +3329,12 @@ function miscEv(p) {
     const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10).map(([k, v]) => row(k, v)).join("");
     show("PJM queue point", `<table>${rows_}</table><div class="prov">${prov("in_pjm_gis_queues")} · PJM's own coordinates</div>`);
   } else if (p.layer === "gas") {
-    show("Gas pipeline", `<table>${row("operator", p.operator)}${row("type", p.typepipe)}</table>
-      <div class="prov">${prov("in_gas_pipelines")} · border design capacity in Market; daily availability is an open lane</div>`);
+    /* G92: this popup showed operator and type -- two fields -- and its own provenance line
+       admitted "daily availability is an open lane". It is not an open lane any more: Energy
+       Transfer's iPost boards give free capacity per named location and we hold 29 in Indiana.
+       Loaded on first gas click (2 KB), then re-rendered. */
+    show("Gas pipeline", gasPipelineHtml(p));
+    if (!state.gasCap) ensureGasCapacity().then(() => show("Gas pipeline", gasPipelineHtml(p)));
   } else if (p.layer === "compressor" || p.layer === "storage") {
     const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 9).map(([k, v]) => row(k, v)).join("");
     show(`Gas ${p.layer}`, `<table>${rows_}</table>
@@ -3542,6 +3617,82 @@ function toggleShortlist(key, title) {
   renderShortlistCount();
   $("ev-star").classList.toggle("starred", state.shortlist.some((s) => s.key === key));
 }
+/* ---------- G93: THE ONE CONTROL THAT REPLACED THE FIVE -----------------------------------------
+   Operator: the five top-right tabs should be *"replaced by something useful, insightful, or
+   actionable"*. ⛔ Not five new buttons. The test applied was: what can this MAP not answer at a
+   glance that is not already answered somewhere else on the page?
+
+   Ruled out: a live count of passing parcels (the rail's `#denominator` already does it), and
+   anything that is a page (that was the defect).
+
+   What survives the test is the POWER picture for what is currently on screen. A siter pans to an
+   area and the honest question is "is there any capacity here at all, and what is stopping it" -
+   which needs the buses IN THE VIEWPORT, not statewide totals, and no other surface is viewport-
+   aware. ⚠ It reports both directions (G111) and says how many buses it could not place, because
+   only 12.3% of PJM buses carry a coordinate (G114) and a silent viewport count would read as
+   "there are three buses here" when there may be thirty. */
+$("btn-powerview").onclick = () => {
+  if (!state.grid) { show("Power in view", `<div class="hint">The grid layer is still loading.</div>`); return; }
+  const b = map.getBounds();
+  const seen = new Map();   // iso|bus -> {wd, inj, name, kv, iso}
+  for (const f of state.grid.features) {
+    const p = f.properties;
+    if (p.layer !== "bus_poi") continue;
+    const [lon, lat] = f.geometry.coordinates;
+    if (lon < b.getWest() || lon > b.getEast() || lat < b.getSouth() || lat > b.getNorth()) continue;
+    const k = `${p.iso}|${p.bus_number}`;
+    const e = seen.get(k) || { name: p.bus_name, kv: p.kv, iso: p.iso };
+    if (p.direction === "Withdrawal") e.wd = p.headroom_mw;
+    else e.inj = p.headroom_mw;
+    e.binding = e.binding || p.worst_binding_facility;
+    seen.set(k, e);
+  }
+  const buses = [...seen.values()];
+  if (!buses.length) {
+    show("Power in view", `<div class="cannot">No located bus falls inside the current view.
+      ⚠ That is <b>not</b> the same as no capacity here. Only 12.3% of PJM buses carry a
+      coordinate at all (223 of 1,814), and the gap is concentrated in the AEP footprint across
+      north-eastern Indiana — so an empty view in that part of the state usually means we cannot
+      PLACE the buses, not that none exist. MISO is fully located, 1,731 of 1,731.</div>`);
+    return;
+  }
+  const wd = buses.map((x) => x.wd).filter((v) => v != null).sort((a, b2) => a - b2);
+  const inj = buses.map((x) => x.inj).filter((v) => v != null).sort((a, b2) => a - b2);
+  const med = (a) => a.length ? a[Math.floor(a.length / 2)] : null;
+  const atLeast = (a, n) => a.filter((v) => v >= n).length;
+  // which constraint binds most often here -- the actionable half, and the reason this is not
+  // just a headroom histogram
+  const tally = {};
+  for (const x of buses) if (x.binding) tally[x.binding] = (tally[x.binding] || 0) + 1;
+  const top = Object.entries(tally).sort((a, b2) => b2[1] - a[1]).slice(0, 3);
+  const isos = [...new Set(buses.map((x) => x.iso))].join(" + ");
+  show("Power in view", `
+    <div class="hint">Everything below is measured over the <b>${fmt(buses.length)} located
+      buses inside the current map view</b> (${escHtml(isos)}). Pan or zoom and reopen to
+      re-measure.</div>
+    <h3>Withdrawal — what a LOAD can pull out</h3><table>
+      ${row("Buses with a load figure", wd.length || null, "none in view")}
+      ${row("Median headroom", wd.length ? `${fmt(Math.round(med(wd)))} MW` : null)}
+      ${row("Best in view", wd.length ? `${fmt(Math.round(wd[wd.length - 1]))} MW` : null)}
+      ${row("At or above 300 MW", wd.length ? `${atLeast(wd, 300)} of ${wd.length}` : null)}
+      ${row("At zero", wd.length ? `${wd.filter((v) => v <= 0).length} of ${wd.length}` : null)}
+    </table>
+    <h3>Injection — what a GENERATOR can push in</h3><table>
+      ${row("Buses with an injection figure", inj.length || null, "none in view")}
+      ${row("Median headroom", inj.length ? `${fmt(Math.round(med(inj)))} MW` : null)}
+      ${row("Best in view", inj.length ? `${fmt(Math.round(inj[inj.length - 1]))} MW` : null)}
+    </table>
+    <h3>What binds first here</h3>
+    ${top.length ? `<table>${top.map(([f, n]) =>
+        row(escHtml(f), `binds first on ${n} of ${buses.length} buses`)).join("")}</table>
+      <div class="sowhat">A constraint that binds across many buses in one area is a
+        <b>regional</b> limit, not a site problem — moving a few miles will not escape it, and it
+        is the thing to ask the utility about first.</div>`
+      : `<div class="hint">No binding facility recorded on the buses in view.</div>`}
+    <div class="prov">${prov("in_bus_capacity_tier0")} · viewport measurement, both directions.
+      ⚠ Counts located buses only.</div>`);
+};
+
 $("btn-shortlist").onclick = () => {
   const rows_ = state.shortlist.map((s) => `<tr><td>${s.title}</td><td>${s.added}
     <button class="unstar" data-k="${s.key}">remove</button></td></tr>`).join("");
@@ -3551,160 +3702,12 @@ $("btn-shortlist").onclick = () => {
   document.querySelectorAll(".unstar").forEach((b) => b.onclick = () => { toggleShortlist(b.dataset.k, ""); $("btn-shortlist").click(); });
 };
 
-/* ---------- top panels ---------- */
-$("btn-market").onclick = async () => {
-  if (!state.summary) return;
-  if (!state.market) state.market = await fetchGz("data/market.json.gz");
-  const m = state.market;
-  const recent = m.monthly.slice(-120);
-  const max = Math.max(...recent.map((r) => r.gross_load_mwh || 0));
-  const pts = recent.map((r, i) => `${(i / (recent.length - 1) * 300).toFixed(1)},${(80 - (r.gross_load_mwh || 0) / max * 75).toFixed(1)}`).join(" ");
-  const gas = (m.gas_state_capacity || []).filter((r) => r.year >= 2015).sort((a, b) => b.capacity_mmcfd - a.capacity_mmcfd).slice(0, 25);
-  show("Market (P6)", `
-    <h3>CEMS gross generation, Indiana plants (10y monthly)</h3>
-    <svg viewBox="0 0 300 84" style="width:100%;background:#f8fafc;border:1px solid #e3e6ec;border-radius:6px">
-      <polyline points="${pts}" fill="none" stroke="#0f172a" stroke-width="1.2"/></svg>
-    <div class="prov">${prov("in_cems_monthly")} · ${m.monthly.length} months held</div>
-    <h3>Top plants</h3>
-    <table>${m.top_plants.slice(0, 10).map((r) => row(`plant ${r.plant_id_epa}`, `${fmt(r.gross_load_mwh)} MWh · thru ${r.last_month}`)).join("")}</table>
-    <h3>Gas capacity at Indiana borders (EIA, design)</h3>
-    <table>${gas.map((r) => row(`${r.pipeline || ""} ${r.year}`, `${r.state_from}→${r.state_to}: ${fmt(r.capacity_mmcfd)} MMcf/d`)).join("")}</table>
-    <div class="prov">${prov("in_gas_state_capacity")} · daily operational availability (EBB) is an open lane</div>
-    ${m.state_demand ? `<h3>Indiana statewide demand (FERC-714, monthly MWh)</h3>
-    <svg viewBox="0 0 300 84" style="width:100%;background:#f8fafc;border:1px solid #e3e6ec;border-radius:6px">
-      <polyline points="${(() => { const s = m.state_demand.slice(-120); const mx = Math.max(...s.map((r) => r.demand_mwh || 0)); return s.map((r, i) => `${(i / (s.length - 1) * 300).toFixed(1)},${(80 - (r.demand_mwh || 0) / mx * 75).toFixed(1)}`).join(" "); })()}" fill="none" stroke="#b45309" stroke-width="1.2"/></svg>
-    <div class="prov">${prov("in_ferc714_state_demand")} · ${m.state_demand.length} months held</div>` : ""}
-    <h3>Utility reliability (EIA-861 SAIDI/SAIFI)</h3>
-    <table>${(m.reliability || []).filter((r) => r.saidi_minutes_per_year != null).slice(0, 15).map((r) =>
-      row(`${String(r.utility_name).slice(0, 34)} ${r.data_year}`,
-      `SAIDI ${fmt(Math.round(r.saidi_minutes_per_year))} min/yr · SAIFI ${r.saifi_times_per_year ?? "—"} · ${fmt(r.number_of_customers)} customers`)).join("")}</table>
-    <div class="prov">${prov("in_eia861_reliability")} · outage risk per utility — a screening metric</div>
-    <h3>Indiana C&I tariffs (URDB) — ${fmt((m.tariffs || []).length)}</h3>
-    <table>${(m.tariffs || []).slice(0, 30).map((r) => row(String(r.utility).slice(0, 38),
-      `${r.name || ""} · ${r.sector || ""}${r.has_demand_charge ? " · demand-charged" : ""}${r.energy_rate_max_usd_kwh ? " · ≤$" + r.energy_rate_max_usd_kwh + "/kWh" : ""}`)).join("")}</table>
-    <div class="prov">${prov("in_urdb_rates")} · name-matched floor; full tariff math is the rate-engine milestone</div>`);
-};
-$("btn-pipeline").onclick = async () => {
-  if (!state.summary) return;
-  if (!state.pipeline) state.pipeline = await fetchGz("data/pipeline.json.gz");
-  const pl = state.pipeline;
-  const plans = pl.grid_plans.filter((r) => r.row_type === "project").slice(0, 60);
-  show("Future capacity — where upgrades are coming", `
-    <h3>State grid plans (TDSIC/IRP) — ${fmt(pl.grid_plans.filter((r) => r.row_type === "project").length)} projects</h3>
-    <table>${plans.map((r) => row(`${r.utility || ""} ${r.in_service_year || ""}`,
-      `${r.project_name || r.location_text || ""} ${r.voltage_kv ? r.voltage_kv + " kV" : ""} ${r.cost_usd_m ? "$" + r.cost_usd_m + "M" : ""}`)).join("")}</table>
-    <div class="prov">${prov("in_grid_plans")} · named endpoints/counties, never geocoded</div>
-    <h3>RTO expansion (MTEP + RTEP) — ${fmt(pl.rto_expansion.length)} Indiana-naming</h3>
-    <table>${pl.rto_expansion.slice(0, 60).map((r) => row(`${r.rto || r.source || ""} ${r.in_service_year || r.isd || ""}`,
-      `${r.project_name || r.upgrade_name || r.description || ""}`)).join("")}</table>
-    <div class="prov">${prov("in_rto_expansion")}</div>
-    <h3>Queue projects by county — ${fmt(pl.queue_projects.length)}</h3>
-    <table>${pl.queue_projects.slice(0, 40).map((r) => row(`${r.county || "?"} · ${r.status || ""}`,
-      `${r.project_name || r.entity || ""} ${r.capacity_mw ? fmt(r.capacity_mw) + " MW" : ""} ${r.resource_type || ""}`)).join("")}</table>
-    <div class="prov">${prov("in_queue")} · withdrawn rows kept deliberately (a siting signal)</div>`);
-};
-document.getElementById("btn-acq").onclick = () => {
-  if (!state.summary) return;
-  const ACQ_COUNTY = { indy: "Marion", evansville: "Vanderburgh", southbend: "St. Joseph", state: "statewide", refresh: "statewide refresh" };
-  const rows_ = state.summary.provenance
-    .filter((p) => p.table_name.startsWith("in_si_") && !["in_si_signals", "in_si_candidates"].includes(p.table_name))
-    .map((p) => {
-      const key = Object.keys(ACQ_COUNTY).find((k) => p.table_name.includes(k)) || "";
-      return `<tr><td>${p.table_name.replace(/^in_si_(refresh_)?/, "").replace(/_/g, " ")}<br><span class="hint">${ACQ_COUNTY[key] || ""} · ${String(p.built_at).slice(0, 10)}</span></td><td>${fmt(p.n_rows)} rows</td></tr>`;
-    }).join("");
-  show("Staged SI acquisitions", `
-    <div class="hint">New Indiana sources awaiting the human subject test (auto-wiring on a name is a documented defect class). Approved ones graduate to candidate layers like D21.</div>
-    <table>${rows_}</table><div class="prov">source: indiana_app._registry</div>`);
-};
-const FEATURE_HOME = {
-  in_sites: "Parcels + screener + evidence", in_si_signals: "parcel evidence (SI)",
-  in_sites_county: "county spine", in_county_rollup: "county layer + evidence",
-  in_substations: "Substations layer + distance screen", in_transmission_lines: "Lines layer + distance screen",
-  in_bus_headroom_miso: "MISO bus layer (labeled MW)", in_miso_poi_identity: "feeds bus layer",
-  in_pjm_bus_locations_candidate: "PJM estimate rings", in_pjm_gis_queues: "PJM queue points",
-  in_queue: "Future-capacity panel + county evidence", in_queue_counties: "county evidence",
-  in_grid_plans: "Future-capacity panel", in_rto_expansion: "Future-capacity panel",
-  in_pjm_nucra_costs: "Future-capacity panel", in_pjm_rtep_upgrades: "Future-capacity source",
-  in_pjm_rtep_upgrade_details: "DEFERRED: upgrade drill-down", in_pjm_rtep_cost_allocations: "DEFERRED: upgrade drill-down",
-  in_pjm_queuescope_aep: "DEFERRED: needs bus locations", in_padus: "Protected-land layer",
-  in_bonus_geo: "Bonus layer + parcel gate", in_wetlands: "county gates + parcel gate",
-  in_flood: "county gates + parcel gate", in_water: "DEFERRED: tile pipeline",
-  in_fcc_bdc: "county gates via in_county_fibre", in_county_fibre: "county evidence",
-  in_county_flood: "county evidence", in_county_wetlands: "county evidence",
-  in_iurc_dockets: "county receipts", in_news_dc: "county receipts", in_dc_actions: "county receipts",
-  in_ordinances_dc: "county receipts", in_cems_monthly: "Market panel",
-  in_gas_pipelines: "Gas layer", in_gas_compressor_stations: "Gas layer", in_gas_storage: "Gas layer",
-  in_gas_state_capacity: "Market panel", in_gas_processing_plants: "measured zero in Indiana — registered evidence",
-  in_gas_lng_terminals: "measured zero in Indiana — registered evidence",
-  in_site_gates: "parcel gates + screener", in_miso_poi: "SUPERSEDED by in_bus_headroom_miso",
-  in_territories: "Territories layer", in_seismic: "county evidence",
-  in_eia861_territory: "county evidence", in_urdb_rates: "Market panel",
-  in_parcel_attrs: "BLOCKED-UPSTREAM: IN slice 100% NULL — question filed",
-  in_county_water: "DEFERRED: tile pipeline", in_si_candidates: "Candidate overlay (dashed purple)",
-  in_nonattainment: "Nonattainment layer + evidence", in_eia861_reliability: "Market panel (reliability)",
-  in_ferc714_state_demand: "Market panel (state demand chart)",
-  in_nhd_waterbody: "WIRE-NEXT: water gate complement (county agg + tiles)",
-  in_spc_severe_events: "WIRE-NEXT: P4 severe-weather county stats",
-  in_faa_obstacles: "WIRE-NEXT: P4 obstacle-proximity gate",
-  in_echo_cwa_facilities: "WIRE-NEXT: water-permit facilities layer",
-  in_utility_tariff_riders: "Market panel (riders — next)", in_dc_eei_tariffs: "Market panel (EEI benchmark — next)",
-  in_econ_gjf_megadeals: "county evidence (megadeals — next)", in_state_irp_catalog: "Future-capacity panel (IRP refs)",
-  in_gov_auction_gsa: "Acquisitions (A2 extension)", in_ustp_ch7_tfr: "Acquisitions (D6 extension)",
-  in_queue_miso: "FLAG: diff vs interconnection_queue before wiring",
-  in_nfirs_basicincident_2024: "Acquisitions (D16 vintage, subject-read pending)",
-  in_nfirs_incidentaddress_2024: "joins in_nfirs_basicincident_2024",
-  in_nfirs_basicincident_2023: "Acquisitions (D16 vintage)", in_nfirs_incidentaddress_2023: "joins 2023",
-  in_nfirs_basicincident_2022: "Acquisitions (D16 vintage)", in_nfirs_incidentaddress_2022: "joins 2022",
-  in_miso_poi_300mw: "Grid — bounded 300MW harvest (facility grain)",
-  in_bus_headroom_300: "MISO bus panel (injection @300MW headline)",
-  in_pjm_bus_withdrawal: "PJM bus panel + tooltip (LOAD headroom headline)",
-  in_data_centers_datacentermap: "PAGE-NEXT: existing-DC layer (157)", in_power_plants: "PAGE-NEXT: plants layer",
-  in_solar_pv_facilities: "PAGE-NEXT: solar layer", in_lbnl_interconnection_costs: "Future-capacity (cost benchmarks)",
-  in_fema_nri_counties: "county evidence (risk index)", in_qcew_county_labor: "county evidence (workforce)",
-  in_acs_county: "county evidence", in_water_use: "county evidence (water use)",
-  in_solar_potential: "county evidence", in_usa_structures_county: "county evidence",
-  in_cbp_county_industry: "county evidence (industry mix)", in_workforce_ipeds_directory: "county evidence",
-  in_eia861_sales: "Market (retail sales)", in_eia861_sales_ult_cust: "Market (retail sales)",
-  in_fsis_establishments: "context layer (large occupiers)", in_fsis_establishments_inactive: "Acquisitions (closure signal)",
-  in_candidate_sites_colleges: "upload-door demo set", in_data_centers_peeringdb: "PAGE-NEXT: connectivity layer",
-  in_peeringdb_facilities: "PAGE-NEXT: connectivity layer", in_land_faa_sua: "PAGE-NEXT: airspace gate",
-  in_tribal_land: "PAGE-NEXT: land-status gate", in_sec_cik_registrant_state: "Acquisitions (D23 support)",
-  in_commission_posture: "Sentiment context", in_dc_docket_tracker: "Sentiment context",
-  in_balancing_authority_areas: "Grid context", in_groundwater_sites: "water gate context",
-  in_puc_state_access_ledger: "Regulatory-preview context",
-  in_data_centers_all: "⭐ Existing-DC layer + Grid page", in_data_centers: "feeds in_data_centers_all",
-  in_fcc_bdc_fixed_summary_by_geography: "county fibre detail (page-next)",
-  in_fcc_bdc_mobile_summary: "county mobile coverage (page-next)",
-  in_fcc_bdc_provider_summary: "provider detail (page-next)",
-  in_elec_power_operational: "Market page (operations series — next)",
-  in_operating_generators: "Facilities layer source (860M live)",
-  in_ghgrp_emissions: "emitter detail (joins facilities)", in_workforce_ipeds_cs_eng: "county workforce depth",
-  in_railroads: "logistics layer (page-next)", in_roads_primary: "logistics layer (page-next)",
-  in_roads_secondary: "logistics layer (page-next)", in_zctas: "geography spine",
-  in_land_military_bases: "P4 gate layer (page-next)", in_water_aqueduct: "water-stress context",
-  in_drought_by_state: "water context (Market)", in_nrc_reactors: "measured zero in Indiana — registered",
-  in_data_centers_baxtel: "feeds in_data_centers_all", in_data_centers_cloudscene: "FLAG: state vocabulary unread",
-  in_si_d11_entity_dissolution: "Acquisitions (D11 first IN rows — subject-check pending)",
-  in_gov_surplus_nces: "Acquisitions (A2 school surplus)", in_si_d25_stb_abandonment_state: "Acquisitions (D25 dent)",
-  in_si_d27_ucc_lapse_v2: "Acquisitions (D27 dent)", in_txexp_miso_mtep_appendix_a_status: "Future-capacity source",
-  in_nfirs_fireincident_2022: "Acquisitions (D16 vintage)",
-  in_gas_capacity_texas_gas: "Gas OAC (Market page next)", in_gas_capacity_vector: "Gas OAC",
-  in_gas_capacity_midwestern: "Gas OAC", in_gas_capacity_panhandle_eastern: "Gas OAC (county-plottable)",
-  in_gas_capacity_trunkline: "Gas OAC (county-plottable)", in_gas_capacity_ngpl: "Gas OAC",
-  in_gas_capacity_anr: "Gas OAC", in_gas_capacity_northern_border: "Gas OAC",
-  in_gas_capacity_crossroads: "Gas OAC",
-};
-$("btn-inventory").onclick = () => {
-  if (!state.summary) return;
-  const rows_ = state.summary.provenance.map((p) => {
-    let home = FEATURE_HOME[p.table_name];
-    if (!home) home = p.table_name.startsWith("in_si_refresh_") ? "Acquisitions panel (freshness refresh)"
-      : (p.table_name.startsWith("in_si_") ? "Acquisitions panel (awaiting subject test)" : "STAGED");
-    const cls = /DEFERRED|STAGED|BLOCKED|awaiting/.test(home) ? ' class="cannot"' : "";
-    return `<tr><td>${p.table_name}<br><span class="hint">${fmt(p.n_rows)} rows · ${String(p.built_at).slice(0, 10)}</span></td><td${cls}>${home}</td></tr>`;
-  }).join("");
-  show("Data inventory — every table has a home or a stated waiver", `<table>${rows_}</table>`);
-};
+/* ---------- top panels ----------
+   G93 removed the Inventory / Acquisitions / Market / Future-capacity modals, and `FEATURE_HOME`
+   went with them: it was a hand-maintained table mapping each table name to the surface that
+   shows it, read by the Inventory modal alone. It had already drifted (it still named
+   `in_bus_headroom_miso`, superseded by G63). The generated `docs/TABLE_PURPOSE_INDEX.md` and
+   `audit_wiring_census.py` answer the same question from the warehouse instead of from memory. */
 
 /* ---------- upload door: user's own sites through the same pipeline ---------- */
 function pointInPoly(lon, lat, geom) {
