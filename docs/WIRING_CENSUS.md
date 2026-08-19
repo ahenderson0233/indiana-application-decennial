@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 287 of 304 registered objects reach a surface
+## 290 of 307 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -29,7 +29,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_pjm_bus_injection` | 200 | `scripts/build_pjm_injection_rollup.py` |
 | `in_pjm_qs_c23_inj_10` | 655404 | `—` |
 | `in_pjm_qs_c23_wd_10` | 462654 | `—` |
-| `in_pjm_qs_c23_wd_15` | 176688 | `—` |
+| `in_pjm_qs_c23_wd_15` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_water_parcel` | 532868 | `—` |
 | `in_water_stress_basin` | 34 | `scripts/build_water_county.py` |
@@ -51,7 +51,7 @@ headline can be audited rather than taken on trust:
 | `_indiana_census` | direct | `data.html`, `scripts/acceptance_run.py` |
 | `in_acs_county` | direct | `app.js` |
 | `in_acs_tract_vacancy` | direct | `si.html`, `scripts/export_context_layers.py` |
-| `in_asset_distance_parcel` | direct | `app.js`, `scripts/export_sites_exact.py` |
+| `in_asset_distance_parcel` | direct | `app.js`, `scripts/build_land_gates.py` |
 | `in_balancing_authority_areas` | direct | `app.js` |
 | `in_bonus_geo` | direct | `app.js`, `scripts/build_census_wires.py` |
 | `in_bus_capacity_tier0` | direct | `app.js`, `grid.html` |
@@ -107,6 +107,7 @@ headline can be audited rather than taken on trust:
 | `in_elec_power_operational` | direct | `app.js` |
 | `in_eqr_identity` | direct | `market.html`, `scripts/export_context_layers.py` |
 | `in_faa_obstacles` | direct | `app.js` |
+| `in_faa_obstacles_tall` | direct | `app.js` |
 | `in_fcc_bdc` | direct | `app.js` |
 | `in_fcc_bdc_fixed_summary_by_geography` | direct | `app.js`, `scripts/build_t3_t4.py` |
 | `in_fcc_bdc_mobile_summary` | direct | `app.js`, `scripts/build_t3_t4.py` |
@@ -147,8 +148,10 @@ headline can be audited rather than taken on trust:
 | `in_huc8_boundaries` | direct | `scripts/export_water.py` |
 | `in_iocs_county_context` | direct | `community.html`, `scripts/checkpoint.py` |
 | `in_iurc_dockets` | direct | `app.js`, `community.html` |
-| `in_land_faa_sua` | direct | `app.js` |
-| `in_land_military_bases` | direct | `app.js` |
+| `in_land_faa_sua` | direct | `app.js`, `scripts/build_land_gates.py` |
+| `in_land_gate_parcel` | direct | `app.js`, `scripts/export_screener.py` |
+| `in_land_gates` | direct | `app.js` |
+| `in_land_military_bases` | direct | `app.js`, `scripts/build_land_gates.py` |
 | `in_lbnl_interconnection_costs` | direct | `app.js`, `scripts/export_grid_siting.py` |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
 | `in_marion_parcel_crosswalk` | direct | `si.html` |
@@ -246,7 +249,7 @@ headline can be audited rather than taken on trust:
 | `in_rtep_bus_summary` | direct | `grid.html`, `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `app.js`, `grid.html` |
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
-| `in_screener_candidates` | direct | `scripts/export_screener.py`, `scripts/export_sites_exact.py` |
+| `in_screener_candidates` | direct | `scripts/build_land_gates.py`, `scripts/export_screener.py` |
 | `in_sec_cik_registrant_state` | direct | `app.js` |
 | `in_seismic` | direct | `app.js` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |
@@ -313,7 +316,7 @@ headline can be audited rather than taken on trust:
 | `in_substations_dedup` | direct | `scripts/export_grid_sentiment.py` |
 | `in_territories` | direct | `app.js`, `common.js` |
 | `in_transmission_lines` | direct | `app.js`, `scripts/export_context_layers.py` |
-| `in_transmission_union` | direct | `app.js`, `scripts/export_context_layers.py` |
+| `in_transmission_union` | direct | `app.js`, `scripts/build_land_gates.py` |
 | `in_transmission_voltage` | direct | `scripts/export_grid_sentiment.py` |
 | `in_tribal_land` | direct | `app.js` |
 | `in_txexp_miso_mtep_appendix_a_status` | direct | `app.js`, `scripts/export_grid_siting.py` |

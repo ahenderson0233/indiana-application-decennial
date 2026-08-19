@@ -1,24 +1,24 @@
 {
- "run_at": "2026-08-19T13:17:06.262796+00:00",
+ "run_at": "2026-08-19T14:44:12.448278+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "FAIL",
-   "detail": "scanned 121 payloads + pages \u00b7 4 leaks: ['app.js', 'data.html', 'grid.html']"
+   "detail": "scanned 122 payloads + pages \u00b7 4 leaks: ['app.js', 'data.html', 'grid.html']"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 287 of 304 registered objects reach a surface \u00b7 17 unwired: ['in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail', 'in_miso_poi_ladder']"
+   "detail": "MEASURED this run: 290 of 307 registered objects reach a surface \u00b7 17 unwired: ['in_bus_headroom_miso_vendor', 'in_miso_dpp2025_counties', 'in_miso_dpp2025_footprint', 'in_miso_dpp2025_ph1_project_costs', 'in_miso_facility_detail', 'in_miso_poi_ladder']"
   },
   {
    "criterion": 2,
    "name": "upload parity",
-   "state": "PASS",
-   "detail": "door: yes (index.html file input) \u00b7 upload calls enrichDistances(): True \u00b7 calls scoreP2(): True \u00b7 parallel distance copy removed: True. Round-trip measured in-browser on 6 real Marion parcels (18097): substation distance, line distance and kV identical on all 6 between the held path and the upload path, and all 6 uploaded rows scored \u2014 before the fix, zero of them did."
+   "state": "PARTIAL",
+   "detail": "door: True \u00b7 shares enrichDistances: True \u00b7 scores: False \u00b7 parallel copy removed: True \u2014 uploaded rows are NOT scored as held rows"
   },
   {
    "criterion": 3,

@@ -92,6 +92,15 @@ LAYER_PREFIX_PAYLOAD = {
     "water-": "water.geojson.gz", "fac-": "facilities.geojson.gz",
     "log-": "logistics.geojson.gz", "ctx-": "context.geojson.gz",
     "scr-": "screener.json.gz",
+    # G72, 2026-08-19. ⚠ THIS MAP IS A HAND-MAINTAINED MIRROR OF LAYER_MAP AND IT WENT STALE
+    # IMMEDIATELY. Four new gate layers shipped, browser-verified, and this generator still
+    # reported TOGGLE = 38 because it had no "gate-" prefix and therefore could not connect
+    # gates.geojson.gz to any control. The work was done; the INSTRUMENT could not see it --
+    # which is the project's own rule (a clean or unchanged number is a claim about the
+    # instrument first) landing on the tool built to measure the rule.
+    # ⛔ ADD A PREFIX HERE IN THE SAME COMMIT THAT ADDS A LAYER, or this file will under-report
+    # and the under-report will look like a finding.
+    "gate-": "gates.geojson.gz",
 }
 
 TABLE_RE = re.compile(r"\bin_[a-z0-9_]+|\bvw_[a-z0-9_]+|\b_indiana_census\b")

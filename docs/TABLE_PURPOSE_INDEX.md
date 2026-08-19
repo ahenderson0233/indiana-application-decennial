@@ -16,13 +16,13 @@ filters on everything).
 
 | verdict | meaning | n |
 |---|---|---:|
-| **TOGGLE** | a checkbox or layer control the user can operate reaches it | **38** |
-| **PAGE ONLY** | it reaches a filterable page, but no control names it — a G67 candidate | **79** |
-| **READ-ONLY** | rendered, but nothing the user can ask a question with | **152** |
-| **NO SURFACE** | reaches nothing at all | **20** |
+| **TOGGLE** | a checkbox or layer control the user can operate reaches it | **43** |
+| **PAGE ONLY** | it reaches a filterable page, but no control names it — a G67 candidate | **78** |
+| **READ-ONLY** | rendered, but nothing the user can ask a question with | **156** |
+| **NO SURFACE** | reaches nothing at all | **19** |
 | **INFRASTRUCTURE** | registries, censuses and join views — correctly not a control | **12** |
 
-**301 objects.** ⭐ **38 of them can be turned on and off by the reader.**
+**308 objects.** ⭐ **43 of them can be turned on and off by the reader.**
 Everything in PAGE ONLY and READ-ONLY is data we hold and the user cannot ask about.
 
 ## By objective
@@ -30,13 +30,14 @@ Everything in PAGE ONLY and READ-ONLY is data we hold and the user cannot ask ab
 | objective | the developer question it answers | objects |
 |---|---|---:|
 | **P1 owner motivation** | who might sell, and how strongly we believe it | 74 |
-| **P2 power & grid** | can I get power here, in the direction I need, and when | 59 |
-| **P4 environmental** | what could stop or slow the permit | 36 |
+| **P2 power & grid** | can I get power here, in the direction I need, and when | 62 |
+| **P4 environmental** | what could stop or slow the permit | 39 |
 | **P5 community & rules** | will the county let me build, and what have they done before | 36 |
 | **P6 market & cost** | what will power actually cost me here | 35 |
 | **context** | who else is here, and what does the local economy look like | 23 |
 | **P3 land & size** | is there enough usable land, and how far to what matters | 22 |
 | **infrastructure** | machinery: registries, censuses and join views | 16 |
+| **unclassified** | — | 1 |
 
 ⚠ The objective classification is a **stated rule table** at the top of the generator, not a
 judgement buried in prose. If a row is filed wrongly, fix the rule and regenerate — do not
@@ -57,52 +58,57 @@ mis-file some rows; it no longer invents whole categories of them.
 
 ---
 
-## TOGGLE — 38 objects
+## TOGGLE — 43 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
-| `in_si_parcel_signals_v2` | 135,590 | P1 owner motivation | `L-bonusgeo`, `L-nonatt`, `L-padus` | indiana_app.in_si_signals + in_si_signals_parcel_dated + in_ |
-| `in_si_sites_flags_v2` | 106,659 | P1 owner motivation | `L-bonusgeo`, `L-nonatt`, `L-padus` | indiana_app.in_si_parcel_signals_v2 |
-| `in_si_d11_admitted` | 983 | P1 owner motivation | `L-bonusgeo`, `L-dc`, `L-fac`, `L-nonatt`, `L-padus` | indiana_app.in_si_d11_entity_dissolution |
-| `in_si_d27_admitted` | 156 | P1 owner motivation | `L-bonusgeo`, `L-dc`, `L-fac`, `L-nonatt`, `L-padus` | indiana_app.in_si_d27_ucc_lapse_v2 |
-| `in_si_d25_admitted` | 127 | P1 owner motivation | `L-bonusgeo`, `L-dc`, `L-fac`, `L-nonatt`, `L-padus` | indiana_app.in_si_d25_stb_abandonment_state |
-| `in_si_signal_coverage` | 25 | P1 owner motivation | `L-bonusgeo`, `L-nonatt`, `L-padus` | indiana_app.in_si_signals + in_si_parcel_signals_v2 |
+| `in_si_parcel_signals_v2` | 135,590 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_signals + in_si_signals_parcel_dated + in_ |
+| `in_si_sites_flags_v2` | 106,659 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_parcel_signals_v2 |
+| `in_si_d11_admitted` | 983 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_d11_entity_dissolution |
+| `in_si_d27_admitted` | 156 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_d27_ucc_lapse_v2 |
+| `in_si_d25_admitted` | 127 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_d25_stb_abandonment_state |
+| `in_si_signal_coverage` | 25 | P1 owner motivation | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_signals + in_si_parcel_signals_v2 |
 | `in_osm_power_lines` | 10,906 | P2 power & grid | `L-frpp`, `L-ghgrp` | energy.osm_power_lines |
 | `in_substations` | 3,858 | P2 power & grid | `L-bus`, `L-frpp`, `L-ghgrp`, `L-lines`, `L-subs` | energy.mat_grid_substations (HIFLD+OSM deduped) |
 | `in_transmission_union` | 3,737 | P2 power & grid | `L-frpp`, `L-ghgrp` | indiana_app.in_transmission_lines + in_osm_power_lines (>=10 |
 | `in_substations_dedup` | 3,010 | P2 power & grid | `L-bus`, `L-lines`, `L-subs` | energy-platfrom.indiana_app.in_substations |
 | `in_transmission_lines` | 2,623 | P2 power & grid | `L-frpp`, `L-ghgrp` | energy.transmission_lines (HIFLD), spatial clip |
 | `in_wind_turbines` | 1,652 | P2 power & grid | `L-frpp`, `L-ghgrp` | energy.wind_turbines |
-| `in_pjm_bus_locations_candidate` | 1,475 | P2 power & grid | `L-bonusgeo`, `L-nonatt`, `L-padus`, `L-pjm` | DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-publ |
+| `in_pjm_bus_locations_candidate` | 1,475 | P2 power & grid | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | DERIVED ladder over: indiana_app.in_pjm_gis_queues (PJM-publ |
+| `in_sites` | 3,553,194 | P3 land & size | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | energy.vw_parcel_sites (all parcels, SI-agnostic) |
 | `in_parcel_attrs` | 1,143,873 | P3 land & size | `L-terr` | energy.mat_parcel_attrs x in_sites |
-| `in_county_rollup` | 92 | P3 land & size | `L-bonusgeo`, `L-nonatt`, `L-padus` | in_sites + in_sites_county |
-| `in_padus` | 4,736 | P4 environmental | `L-bonusgeo`, `L-nonatt`, `L-padus`, `L-pjm` | energy.padus |
-| `in_bonus_geo` | 1,394 | P4 environmental | `L-bonusgeo`, `L-nonatt`, `L-padus`, `L-pjm` | energy communities + LIC tracts + opportunity zones + critic |
+| `in_screener_candidates` | 532,870 | P3 land & size | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_c |
+| `in_county_rollup` | 92 | P3 land & size | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | in_sites + in_sites_county |
+| `in_land_gate_parcel` | 532,870 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_screener_candidates x in_sites x in_land_gate |
+| `in_padus` | 4,736 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.padus |
+| `in_faa_obstacles_tall` | 4,591 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_faa_obstacles |
+| `in_bonus_geo` | 1,394 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy communities + LIC tracts + opportunity zones + critic |
 | `in_water_cwns_2022` | 404 | P4 environmental | `L-frpp`, `L-ghgrp` | energy.water_cwns_2022 |
-| `in_nonattainment` | 62 | P4 environmental | `L-bonusgeo`, `L-nonatt`, `L-padus` | energy.nonattainment_areas |
-| `in_iurc_dockets` | 516 | P5 community & rules | `L-bonusgeo`, `L-nonatt`, `L-padus` | https://iurc.portal.in.gov/advanced-search/ via companion AP |
-| `in_news_dc` | 283 | P5 community & rules | `L-bonusgeo`, `L-nonatt`, `L-padus` | CORRECTION note (no data change) |
+| `in_nonattainment` | 62 | P4 environmental | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.nonattainment_areas |
+| `in_land_gates` | 33 | P4 environmental | `L-mil`, `L-obst`, `L-sua`, `L-tribal` | indiana_app.in_land_military_bases + in_tribal_land + in_lan |
+| `in_iurc_dockets` | 516 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | https://iurc.portal.in.gov/advanced-search/ via companion AP |
+| `in_news_dc` | 283 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | CORRECTION note (no data change) |
 | `in_ordinances_dc_v2` | 153 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | https://api.municode.com/search ; https://codelibrary.amlega |
-| `in_iocs_county_context` | 92 | P5 community & rules | `L-bonusgeo`, `L-nonatt`, `L-padus` | indiana_app.in_si_refresh_iocs_eviction x energy.county_boun |
+| `in_iocs_county_context` | 92 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | indiana_app.in_si_refresh_iocs_eviction x energy.county_boun |
 | `in_dc_actions_resolved` | 86 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | Indiana county/municipal government websites — official-sour |
-| `in_dc_actions` | 79 | P5 community & rules | `L-bonusgeo`, `L-nonatt`, `L-padus` | CORRECTION note (no data change) |
+| `in_dc_actions` | 79 | P5 community & rules | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | CORRECTION note (no data change) |
 | `in_ordinances_dc` | 4 | P5 community & rules | `L-bus`, `L-lines`, `L-subs` | https://api.municode.com/search (public JSON API of library. |
-| `in_gas_capacity_panhandle_eastern` | 1,979 | P6 market & cost | `L-bonusgeo`, `L-nonatt`, `L-padus` | Energy Transfer Messenger ipost, https://peplmessenger.energ |
-| `in_gas_capacity_trunkline` | 1,231 | P6 market & cost | `L-bonusgeo`, `L-nonatt`, `L-padus` | Energy Transfer Messenger ipost, https://tgcmessenger.energy |
-| `in_urdb_rates` | 969 | P6 market & cost | `L-bonusgeo`, `L-nonatt`, `L-padus` | energy.urdb_rates |
-| `in_gas_pipelines` | 215 | P6 market & cost | `L-gas` | energy.gas_pipelines_hifld |
+| `in_gas_capacity_panhandle_eastern` | 1,979 | P6 market & cost | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | Energy Transfer Messenger ipost, https://peplmessenger.energ |
+| `in_gas_capacity_trunkline` | 1,231 | P6 market & cost | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | Energy Transfer Messenger ipost, https://tgcmessenger.energy |
+| `in_urdb_rates` | 969 | P6 market & cost | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.urdb_rates |
+| `in_gas_pipelines` | 215 | P6 market & cost | `L-gas-comp`, `L-gas-pipe`, `L-gas-stor` | energy.gas_pipelines_hifld |
 | `in_territories` | 145 | P6 market & cost | `L-terr` | energy.vw_grid_territories |
-| `in_eia861_reliability` | 36 | P6 market & cost | `L-bonusgeo`, `L-nonatt`, `L-padus` | energy.eia861_reliability |
+| `in_eia861_reliability` | 36 | P6 market & cost | `L-bonus-coal`, `L-bonus-ec`, `L-bonus-hab`, `L-bonus-lit`,  | energy.eia861_reliability |
 | `in_ghgrp_facilities` | 3,391 | context | `L-frpp`, `L-ghgrp` | energy.ghgrp_facilities |
 | `in_ghgrp_emitter_facilities` | 2,882 | context | `L-frpp`, `L-ghgrp` | energy.ghgrp_emitter_facilities |
-| `in_cloudscene_crosscheck` | 260 | context | `L-dc`, `L-fac` | energy.data_centers_cloudscene |
-| `in_data_centers_deduped` | 242 | context | `L-dc`, `L-fac` | indiana_app.in_data_centers_all |
+| `in_cloudscene_crosscheck` | 260 | context | `L-dc`, `L-fac-plant`, `L-fac-solar`, `L-fac-wind` | energy.data_centers_cloudscene |
+| `in_data_centers_deduped` | 242 | context | `L-dc`, `L-fac-plant`, `L-fac-solar`, `L-fac-wind` | indiana_app.in_data_centers_all |
 | `vw_bus_headroom_300_located` | 0 | infrastructure | `L-frpp`, `L-ghgrp` | indiana_app.in_bus_headroom_300 |
 | `vw_ghgrp_emissions_located` | 0 | infrastructure | `L-frpp`, `L-ghgrp` | indiana_app.in_ghgrp_emissions |
 
 ---
 
-## PAGE ONLY — 79 objects
+## PAGE ONLY — 78 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
@@ -144,7 +150,6 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_queue_miso_extras` | 456 | P2 power & grid | grid.html | energy.queue_miso |
 | `in_pjm_rtep_cost_allocations` | 375 | P2 power & grid | app.js, grid.html | PJM RTEP per-upgrade cost-allocation splits (public GET, no  |
 | `in_rtep_bus_summary` | 79 | P2 power & grid | grid.html | energy-platfrom.indiana_app.in_rtep_bus_join |
-| `in_sites` | 3,553,194 | P3 land & size | app.js, common.js, community.html, market.html, si.html | energy.vw_parcel_sites (all parcels, SI-agnostic) |
 | `in_sites_county` | 3,553,186 | P3 land & size | app.js, common.js, community.html, market.html | in_sites x geo_us_boundaries.counties, greatest-intersection |
 | `in_fcc_bdc_provider_summary` | 12,196 | P3 land & size | app.js, data.html | energy.fcc_bdc_provider_summary_by_geography |
 | `in_fcc_bdc_mobile_summary` | 533 | P3 land & size | app.js, data.html | energy.fcc_bdc_mobile_summary_by_geography |
@@ -188,14 +193,14 @@ mis-file some rows; it no longer invents whole categories of them.
 
 ---
 
-## READ-ONLY — 152 objects
+## READ-ONLY — 156 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
 | `in_si_refresh_indy_code_enforcement` | 910,483 | P1 owner motivation | direct: scripts/export_si_sources.py | gis.indy.gov OpenData_NonSpatial/MapServer/1 (Indianapolis/M |
 | `in_marion_address_crosswalk` | 465,050 | P1 owner motivation | derivative: feeds `in_si_indy_code_widened` via `scr | https://gis.indy.gov/server/rest/services/sde_Addressing/sde |
 | `in_si_indy_code_widened` | 88,576 | P1 owner motivation | direct: scripts/checkpoint.py | indiana_app.in_si_refresh_indy_code_enforcement x in_marion_ |
-| `in_si_refresh_sri_taxsale_in` | 83,547 | P1 owner motivation | direct: scripts/export_si_sources.py | sriservicesusermgmtprod.azurewebsites.net (SRI Services tax- |
+| `in_si_refresh_sri_taxsale_in` | 83,547 | P1 owner motivation | direct: scripts/audit_backlog_truth.py`, `script | sriservicesusermgmtprod.azurewebsites.net (SRI Services tax- |
 | `in_si_indy_taxsale_parcels` | 62,368 | P1 owner motivation | direct: scripts/export_si_sources.py | https://gis.indy.gov/server/rest/services/TaxSaleViewer/TaxS |
 | `in_si_d22_echo_facilities` | 58,021 | P1 owner motivation | derivative: feeds `in_si_d22_county_rollup` via `scr | https://echo.epa.gov/files/echodownloads/echo_exporter.zip |
 | `in_si_address_parcel_bridge` | 51,309 | P1 owner motivation | derivative: feeds `in_si_owner_signals` via `scripts | energy-platfrom.energy.mat_si_address_location + energy-plat |
@@ -234,7 +239,11 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_si_southbend_chronic_problem` | 7 | P1 owner motivation | direct: scripts/export_si_sources.py | https://services1.arcgis.com/0n2NelSAfR7gTkr1/arcgis/rest/se |
 | `in_si_plottability` | 4 | P1 owner motivation | direct: scripts/export_spine.py | energy-platfrom.energy.mat_si_plottable WHERE state='IN' (RE |
 | `in_gov_auction_gsa` | 2 | P1 owner motivation | app.js | energy.gov_auction_gsa |
+| `in_pjm_qs_c23_inj_5000` | 655,790 | P2 power & grid | direct: scripts/audit_pjm_short_reads.py | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23sens_inj` | 655,404 | P2 power & grid | direct: scripts/audit_pjm_short_reads.py | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_queuescope_injection` | 475,098 | P2 power & grid | derivative: feeds `vw_pjm_bus_injection_ladder` via  | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23_wd_5000` | 462,654 | P2 power & grid | direct: scripts/audit_pjm_short_reads.py | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23sens_wd` | 462,654 | P2 power & grid | direct: scripts/audit_pjm_short_reads.py | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_pjm_queuescope_aep` | 303,671 | P2 power & grid | app.js | energy.pjm_queuescope_results (AEP = the I&M sliver) |
 | `in_miso_poi_300mw` | 40,007 | P2 power & grid | app.js | giqueue.misoenergy.org POI/api/poi_mf?pMaxValue=300 |
 | `in_pjm_rtep_upgrades` | 15,443 | P2 power & grid | app.js | PJM Project Status & Cost Allocation (RTEP upgrades) - publi |
@@ -262,7 +271,6 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_fcc_bdc` | 12,649,532 | P3 land & size | app.js | energy.fcc_bdc_fixed_availability |
 | `in_site_gates` | 1,200,923 | P3 land & size | app.js | in_sites x in_flood/in_wetlands/in_padus/in_bonus_geo |
 | `in_asset_distance_parcel` | 532,868 | P3 land & size | app.js | energy-platfrom.indiana_app.in_screener_candidates x energy- |
-| `in_screener_candidates` | 532,868 | P3 land & size | direct: scripts/export_screener.py | in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_c |
 | `in_fcc_bdc_fixed_summary_by_geography` | 15,900 | P3 land & size | app.js | energy.fcc_bdc_fixed_summary_by_geography |
 | `in_railroads` | 2,117 | P3 land & size | app.js | energy.railroads |
 | `in_candidate_sites_schools` | 1,928 | P3 land & size | direct: scripts/export_context_layers.py | energy.candidate_sites_schools |
@@ -294,9 +302,9 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_water_aqueduct` | 56 | P4 environmental | app.js | energy.water_aqueduct |
 | `in_water_stress_basin_geo` | 34 | P4 environmental | direct: scripts/export_water.py | energy.water_aqueduct (geometry_geojson, name_1 LIKE Indiana |
 | `in_land_faa_sua` | 19 | P4 environmental | app.js | energy.land_faa_sua |
-| `in_tribal_land` | 14 | P4 environmental | app.js | energy.tribal_land |
 | `in_land_military_bases` | 13 | P4 environmental | app.js | energy.land_military_bases |
 | `in_groundwater_sites` | 1 | P4 environmental | app.js | energy.groundwater_sites |
+| `in_tribal_land` | 1 | P4 environmental | app.js | energy.tribal_land |
 | `in_ordinances_amlegal_v3` | 230 | P5 community & rules | registry panel: scripts/export_ordinances.py (family `in | https://codelibrary.amlegal.com + https://www.iccsafe.org/ab |
 | `in_ordinances_dc_v2_triage` | 115 | P5 community & rules | direct: scripts/acceptance_run.py`, `scripts/exp | energy-platfrom.indiana_app.in_ordinances_dc_v2 (not modifie |
 | `in_ordinances_county_codified` | 55 | P5 community & rules | registry panel: scripts/export_ordinances.py (family `in | the 55 Indiana counties' OWN websites — the counties no code |
@@ -344,19 +352,18 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_fsis_establishments_inactive` | 13 | context | app.js | energy.fsis_establishments_inactive |
 | `in_dc_operator_aliases` | 8 | context | direct: scripts/export_signoff_payloads.py | operator press releases and their own sites (databank.com, 3 |
 | `in_data_centers_cloudscene` | 0 | context | app.js | energy.data_centers_cloudscene |
+| `in_dc_county_counts` | 23 | unclassified | direct: scripts/export_grid_sentiment.py | indiana_app.in_data_centers_all x energy.county_boundaries ( |
 
 ---
 
-## NO SURFACE — 20 objects
+## NO SURFACE — 19 objects
 
 | object | rows | objective | control / surface | what it is |
 |---|---:|---|---|---|
 | `in_si_d5_vacant_land_NOT_A_SIGNAL` | 945,896 | P1 owner motivation | — | indiana_app.in_si_signals WHERE source_id='si_d5_vacancy_der |
-| `in_pjm_qs_c23sens_inj` | 655,404 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
-| `in_pjm_qs_tc2phii_inj` | 655,404 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
-| `in_pjm_qs_c23sens_wd` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
-| `in_pjm_qs_tc2phii_wd` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
-| `in_pjm_qs_c23_wd_5000` | 353,516 | P2 power & grid | — |  |
+| `in_pjm_qs_c23_inj_10` | 655,404 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23_wd_10` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
+| `in_pjm_qs_c23_wd_15` | 462,654 | P2 power & grid | — | queuescope.pjm.com/queuescope/pages/public/evaluator.jsf |
 | `in_miso_poi_ladder` | 230,286 | P2 power & grid | — | MISO giqueue POI transfer analysis | endpoint_kind=json_api  |
 | `in_miso_facility_detail` | 40,007 | P2 power & grid | — | energy.miso_poi_headroom / energy.miso_poi_monitored_facilit |
 | `in_bus_headroom_miso_vendor` | 17,146 | P2 power & grid | — | Orennia 'Greenfield Interconnection Capacity, Buses' extract |
@@ -366,6 +373,7 @@ mis-file some rows; it no longer invents whole categories of them.
 | `in_miso_dpp2025_ph1_project_costs` | 202 | P2 power & grid | — | https://cdn.misoenergy.org/GI-DPP-2025-ALL_SIS_Ph1_FINAL_v1. |
 | `in_pjm_bus_injection` | 200 | P2 power & grid | — | rollup of indiana_app.in_pjm_queuescope_injection | endpoint |
 | `in_miso_dpp2025_footprint` | 1 | P2 power & grid | — | cloud.cartovista.com/miso/api/v2/DataTable/421ee8c5-939e-426 |
+| `in_pjm_qs_c23_inj_15` | 0 | P2 power & grid | — |  |
 | `in_water_parcel` | 532,868 | P4 environmental | — | in_screener_candidates x energy.water_aqueduct (geometry_geo |
 | `in_nhd_flowline_geom` | 163,976 | P4 environmental | — | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapSe |
 | `in_nhd_waterbody_geom` | 7,430 | P4 environmental | — | https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapSe |

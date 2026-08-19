@@ -46,20 +46,27 @@ signal state, date window, MW capability and use case.
 `in_si_sites_flags_v2`, `in_asset_distance_parcel`, `in_water_distance_parcel` by
 `scripts/export_sites_exact.py`.
 
-### 1.2 Layer registry and presets
-**What it does.** 18 toggleable layers grouped by theme, plus four presets (Land, Grid,
-Environmental, Sentiment).
-**How it works.** ⭐ **One registry** — `ALL_LAYER_BOXES` — and one `syncLayers()` path. Every
-preset must state every layer; `PRESET_GAPS` console-errors at boot if one does not. Unstated means
-OFF, never "leave it as it was" (**G34** — that bug left wind and solar drawing after a preset
-switch).
+### 1.2 Layer registry
+**What it does.** **34 toggleable controls** grouped by theme — 30 in `LAYER_MAP`, 2 lazily
+fetched context layers, the parcel layer and the screener layer.
+**How it works.** ⭐ **One registry** — `ALL_LAYER_BOXES` — and one `syncLayers()` path. A layer
+in the registry without a checkbox, or a checkbox without a layer, is the one thing that can still
+break "off means hidden" (**G34** — that bug left wind and solar drawing after a preset switch).
+Add both, together, always.
+⚠ **THE FOUR PRESETS ARE GONE** (**G66**, 2026-08-19) and `PRESET_GAPS` with them. The operator
+asked for "Jump to a view" to be removed because a preset answers thirty questions on the
+reader's behalf. **This section described them as live while the code had already deleted them**,
+and this file is on the required reading list — so a stale paragraph here is read by the next
+session as truth. Correct it in the same commit as the code, every time.
 **Data.** `grid.geojson.gz` (substations, lines, bus POIs), `overlays.geojson.gz`,
-`context.geojson.gz`, `water.geojson.gz`, `logistics.geojson.gz`, `pjm.geojson.gz`,
-`territories.geojson.gz`, `facilities.geojson.gz`, `gas.geojson.gz`.
+`gates.geojson.gz` (**G72** — military installations, tribal trust land, special-use airspace,
+tall obstructions), `context.geojson.gz`, `water.geojson.gz`, `logistics.geojson.gz`,
+`pjm.geojson.gz`, `territories.geojson.gz`, `facilities.geojson.gz`, `gas.geojson.gz`.
 
-### 1.3 Bus / connection-point layer ⭐ REBUILT 2026-08-18
-**What it does.** Every grid connection point with its **binding headroom**, sized by capacity,
-amber where an owner signal exists.
+### 1.3 Bus layer ⭐ REBUILT 2026-08-18, renamed "Buses" 2026-08-19
+**What it does.** Every bus with its **binding headroom**, sized by capacity, amber where an
+owner signal exists. ⚠ *Sized*, not coloured — **G77 is open to colour it by headroom**, because
+comparing circle areas is the worst available channel for comparing a quantity.
 **How it works.** One binding figure per bus per direction — the tightest facility with
 `|shift factor| ≥ 0.05` that is **not already over its rating**. Only the **withdrawal** direction
 draws by default (a data centre asks the load question). ⛔ The old worst/median/best triple is
@@ -109,11 +116,23 @@ error no longer loses the parcel.
 lat/lon** and the control says so.
 **Data.** `screener.json.gz`.
 
-### 1.9 Measure tool, shortlist, workspaces, CSV export, upload-your-own-sites
+### 1.9 Measure tool, shortlist, workspaces, Excel/CSV export, upload-your-own-sites
 **What they do.** Distance measuring; star parcels to a shortlist; save named workspaces
 (screener + weights + layers); export the current view; score your own uploaded sites through the
 same pipeline.
-**Data.** browser local state; upload is scored client-side against the same payloads.
+**⭐ G74, 2026-08-19 — ANY sheet in, rich workbook out, kept across pages.**
+`vendor/xlsx-lite.js` (~9 KB, no CDN) reads **.xlsx / .xlsm / .csv / .tsv** and writes .xlsx. An
+.xlsx is a ZIP of XML and the browser already ships the inflater, so nothing more is vendored. The
+**header row is detected** (real exports carry a title and a date stamp above it) and the **column
+mapping is proposed and then asked**, because a silent wrong guess on the longitude column puts
+every site in the wrong county with no visible failure.
+⚠ **Persistence has precise semantics and sessionStorage alone gets them WRONG.** The operator
+asked for the sheet to survive a page change and clear on a refresh; sessionStorage survives both.
+`SiteStore` reads `performance.getEntriesByType("navigation")[0].type` and drops itself when the
+load was a `reload`. `back_forward` is a restore, not a refresh, so it keeps.
+Exports carry **every column any row holds** plus a README sheet with the build times, rows-in-file
+vs matching vs shipped vs qualifying-statewide, the live filter list and a column glossary.
+**Data.** browser session state; upload is scored client-side against the same payloads.
 
 ---
 

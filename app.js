@@ -1738,7 +1738,9 @@ function openWaterEvidence(p) {
 
    Page 1  status, load ramp, key takeaways, next steps, Figure 1 stakeholders, Figure 2 diagram
    Page 2  Figure 3 Path-to-Power Outlook - generation, transmission, tariffs, local rules
-   Page 3  Figure 4 interconnection checklist, Figure 5 evidence held
+   Page 3  Figure 4 what stands between this parcel and power (DERIVED - G73 replaced the
+           borrowed PDF's eight hardcoded "Not started" milestones, dossier audit D-8),
+           Figure 5 who else holds a say over the land (G72 gates), Figure 6 evidence held
    Page 4  site detail and the stakeholder-meeting appendix
 
    Built from the SAME functions the screener and the panel use - acreageOf(), scoreSite(), prov()
@@ -1893,6 +1895,43 @@ function bindingPlain(s) {
   return clean.length ? clean.slice(0, 2).join(" – ") : String(s).slice(0, 40);
 }
 
+/* ---------- G72/G73: who else holds a say over THIS point -------------------------------------
+   The gate payload is 33 polygons and 4,591 points, already in memory from boot, so this is a
+   direct test rather than a lookup against a precomputed table. The screener gets the same three
+   facts from `in_land_gate_parcel` in BigQuery; this is the client-side twin for a single parcel.
+
+   ⚠ The military distance is measured to the nearest POLYGON VERTEX, which is an upper bound on
+   the true distance to the boundary and can read slightly long for a large installation. It is
+   used to decide whether to RAISE the question, never to answer it, so erring long is the safe
+   direction -- and the dossier says the review is triggered by the DoD, not by our number. */
+function gatesForPoint(lat, lon) {
+  const out = { mil: null, milMi: null, sua: [], tribal: null, tall1mi: 0 };
+  if (!state.gates || !isFinite(lat) || !isFinite(lon)) return out;
+  for (const f of state.gates.features) {
+    const g = f.properties.layer;
+    if (g === "obstacle") {
+      const [ox, oy] = f.geometry.coordinates;
+      if (havM(lat, lon, oy, ox) <= 1609.344) out.tall1mi++;
+      continue;
+    }
+    const inside = f.geometry && f.geometry.type !== "Point" && pointInPoly(lon, lat, f.geometry);
+    if (g === "sua" && inside) out.sua.push(f.properties.name);
+    else if (g === "tribal" && inside) out.tribal = f.properties.name;
+    else if (g === "military") {
+      if (inside) { out.mil = f.properties.name; out.milMi = 0; continue; }
+      const walk = (c) => {
+        if (typeof c[0] === "number") {
+          const d = havM(lat, lon, c[1], c[0]) / 1609.344;
+          if (out.milMi === null || d < out.milMi) { out.milMi = d; out.mil = f.properties.name; }
+        } else c.forEach(walk);
+      };
+      if (out.milMi !== 0) walk(f.geometry.coordinates);
+    }
+  }
+  if (out.milMi != null) out.milMi = Math.round(out.milMi * 100) / 100;
+  return out;
+}
+
 /* Figure 2 - the parcel drawn from its own geometry. No basemap, no centroid: the outline is the
    publisher's polygon, scaled to fit. A dossier that showed a pin instead of the parcel would be
    showing a place, not a property. */
@@ -1996,7 +2035,11 @@ function renderPowerPlan(p, fips) {
      actually produced the numbers above. (dossier audit D-4) */
   const tables = ["in_sites", "in_si_sites_flags_v2", "in_site_gates", "in_si_d22_echo_indiana",
                   "in_territories", "in_bus_capacity_tier0", "in_queue", "in_dc_actions_resolved",
-                  "in_utility_tariff_riders", "in_urdb_rates"];
+                  "in_utility_tariff_riders", "in_urdb_rates",
+                  // G72/G73: Figure 5 reads these, so the document must name them. The last
+                  // version of this list cited two tables the dossier never read and omitted
+                  // four it did -- G16's test is whether a stranger could re-run it from here.
+                  "in_land_gates", "in_faa_obstacles_tall"];
 
   /* ---- the Power Plan's own inputs ---- */
   const lat = Number(p.lat), lon = Number(p.lon);
@@ -2026,6 +2069,60 @@ function renderPowerPlan(p, fips) {
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const regulated = String(T.regulated || "").toUpperCase().startsWith("Y") || T.utility_type === "INVESTOR OWNED";
+
+  /* ---- G73: FIGURE 4 IS NOW DERIVED ----------------------------------------------------------
+     Operator, 2026-08-19: *"The dossier should be geared more to the data that we hold, rather
+     than the document I provided earlier - that was just an idea of what I have seen in the past.
+     Make it revolve around our application."*
+
+     What was here was eight hardcoded milestone rows, every one printed "Not started", copied
+     from the sample PDF's interconnection checklist. Dossier audit D-8 named the problem exactly:
+     ⛔ **it would not change if a study DID exist**, so it was literal markup wearing the costume
+     of a measurement. A reader cannot tell a checklist nobody ran from a checklist that came back
+     empty, and the second is a finding while the first is decoration.
+
+     Replaced with the question the document actually exists to answer - what stands between THIS
+     parcel and power - built from what we measured at this point. Ordered by what can STOP a
+     project above what merely costs time, because that is the order a developer triages in. */
+  const gt = gatesForPoint(lat, lon);
+  const gateRow = (q, state_, action, cls) =>
+    `<tr><td>${q}</td><td${cls ? ` class="${cls}"` : ""}>${state_}</td>
+     <td class="hint">${action}</td></tr>`;
+  const gateRows = [
+    p.protected_land === true
+      ? gateRow("Protected land", "OVERLAPS", "Usually ends the conversation. Confirm the designation and the manager before spending anything else.", "cannot")
+      : gateRow("Protected land", p.protected_land === undefined ? "not measured" : "clear",
+                "Measured against PAD-US. Nothing to do.", p.protected_land === undefined ? "cannot" : ""),
+    p.sfha_flood === true
+      ? gateRow("Flood hazard", "IN AN SFHA", "A mapped 1-in-100 hazard. Raises insurance and can rule out a build. Get a surveyed elevation certificate before design.", "cannot")
+      : gateRow("Flood hazard", p.sfha_flood === undefined ? "not measured" : "clear",
+                "FEMA Special Flood Hazard Area.", p.sfha_flood === undefined ? "cannot" : ""),
+    p.wetland_on_parcel === true
+      ? gateRow("Wetland on the parcel", "YES", "Federal permitting and a longer clock. Delineate early — the boundary decides how much of the parcel you actually keep.", "cannot")
+      : gateRow("Wetland on the parcel", p.wetland_on_parcel === undefined ? "not measured" : "clear", "National Wetlands Inventory."),
+    gt.tribal
+      ? gateRow("Land status", `TRIBAL TRUST — ${gt.tribal}`, "A different sovereign. County zoning is not the path; the tribal government is the counterparty.", "cannot")
+      : (gt.milMi != null && gt.milMi <= 3)
+        ? gateRow("Land status", `${gt.milMi} mi from ${gt.mil}`, "Close enough that a DoD Siting Clearinghouse review is likely. It adds months rather than refusing. Raise it in the first utility conversation, not at permitting.")
+        : gateRow("Land status", "no federal or tribal interest within 3 mi", "Measured against military installations and tribal trust land."),
+    (() => {
+      const mwAvail = wdBus && wdBus.mw != null ? Math.round(wdBus.mw) : null;
+      if (!wdBus) return gateRow("Getting power", "no bus measured within 25 mi", "We looked and found none in this balancing authority. That is a finding about the site, not a gap.", "cannot");
+      if (mwAvail === 0) return gateRow("Getting power", `0 MW at ${wdBus.name}`,
+        "Zero here is a statement about the STUDY CASE, not the bus — the network is already at or over its limit before any new request. Upgrades, a different bus, or a different site.", "cannot");
+      return gateRow("Getting power", `${fmt(mwAvail)} MW at ${wdBus.name}, ${a(wdBus.mi)} mi`,
+        `Against your ${fmt(target)} MW target. ${mwAvail >= target ? "Covers it on today's binding constraint." : "Short of it — expect upgrades, phasing, or a second point of delivery."}`);
+    })(),
+    po.has_local_restriction
+      ? gateRow("Local rules", "RESTRICTION ON RECORD", "This county has already acted. Read the instrument before anything else — the Community page carries the receipt.", "cannot")
+      : gateRow("Local rules", po.opposition_intensity != null ? `opposition intensity ${po.opposition_intensity}` : "nothing on record",
+                "Nothing recorded is not the same as welcoming. It means no action has reached us."),
+    quote && quote.cents != null
+      ? gateRow("What power costs", `${quote.cents.toFixed(2)}¢/kWh at ${T.utility}`,
+                `Priced from that utility's own book at ${Math.round(TARIFF_LF * 100)}% load factor, riders included. Confirm which schedule you qualify for — eligibility has a ceiling as well as a floor.`)
+      : gateRow("What power costs", T.utility ? "no priced book held" : "no utility resolved",
+                T.utility ? "We hold no tariff book for this utility, so any figure would be a floor rather than a price." : "No territory polygon covers this parcel.", "cannot"),
+  ].join("");
 
   /* Figure 1 - who has to say yes. Four roles, because those are the four conversations. */
   const fig1 = `
@@ -2270,27 +2367,45 @@ function renderPowerPlan(p, fips) {
 
     <!-- ============================ PAGE 3 ============================ -->
     <div class="pp-break"></div>
-    <h3>Figure 4 · Large-load interconnection checklist</h3>
+    <h3>Figure 4 · What stands between this parcel and power</h3>
     <table class="pp">
-      <tr><th style="width:42%">Milestone</th><th style="width:16%">Status</th><th>What it is</th></tr>
-      ${[["Informal utility guidance", "The first conversation — is the utility willing to serve this size here?"],
-         ["Study agreement executed", "A signed agreement to run the load study, usually with a deposit."],
-         ["Load study returned", "The utility's own answer on what can be served and what must be built."],
-         ["System impact study", "What your load does to the wider network, and which upgrades it triggers."],
-         ["Regulatory approval", "Commission sign-off where a special contract or new tariff is needed."],
-         ["Design and procurement", "Long-lead equipment ordered — transformers can run years."],
-         ["Facilities construction agreement", "Who builds what, by when, at whose cost."],
-         ["Electric service agreement", "The contract that actually delivers power."]]
-        .map(([m, d]) => `<tr><td>${m}</td><td class="cannot">Not started</td>
-          <td class="hint">${d}</td></tr>`).join("")}
+      <tr><th style="width:27%">Question</th><th style="width:20%">What we measured here</th>
+          <th>What you do about it</th></tr>
+      ${gateRows}
     </table>
-    <div class="prov">⚠ <b>This checklist is not derived from anything.</b> We hold no utility
-      study documentation for any Indiana site, so every milestone is printed as
-      <b>Not started</b> rather than measured — it is the honest status of a prospect and a map of
-      the path ahead, but it would not change if a study did exist. Do not read it as a
-      check we performed. (dossier audit D-8)</div>
+    <div class="prov">Every row above is <b>derived from this parcel</b>, and a row we could not
+      measure says so rather than showing a zero. ⚠ Ordered by what moves first: the things that
+      can stop a project sit above the things that only cost time.</div>
 
-    <h3>Figure 5 · Evidence held for this site</h3>
+    <h3>Figure 5 · Who else already holds a say over this land</h3>
+    <table class="pp">
+      <tr><th style="width:27%">Interest</th><th style="width:20%">Here</th><th>Why it matters</th></tr>
+      ${row("Military installation", gt.milMi == null ? null
+             : (gt.milMi === 0 ? `ON ${gt.mil}` : `${gt.milMi} mi — ${gt.mil}`),
+             "none within reach (measured)")}
+      <tr><td colspan="2"></td><td class="hint">A large load or a tall structure near an active
+        installation can draw a <b>DoD Siting Clearinghouse</b> review. It runs on the
+        Department's clock, not the county's — it rarely refuses, it adds months. Ask early.</td></tr>
+      ${row("Special-use airspace", gt.sua.length ? gt.sua.join("; ") : null,
+             "none overhead (measured)")}
+      <tr><td colspan="2"></td><td class="hint">Governs what may be built <b>tall</b> — cooling
+        towers, stacks, met masts and construction cranes. The data hall is rarely the problem;
+        the plant on top of it can be.</td></tr>
+      ${row("Tribal trust land", gt.tribal, "no (measured)")}
+      <tr><td colspan="2"></td><td class="hint">A <b>different sovereign</b>: the counterparty is
+        the tribal government, not the county.</td></tr>
+      ${row("Tall obstructions within 1 mile", gt.tall1mi ? `${gt.tall1mi} at or above 200 ft` : null,
+             "none within a mile (measured)")}
+      <tr><td colspan="2"></td><td class="hint">Everything counted here already cleared an FAA
+        review at 200 ft or more, so a cluster is cheap evidence that a tall structure of your own
+        will clear one too.</td></tr>
+    </table>
+    <div class="prov">${prov("in_land_gates")} · ${prov("in_faa_obstacles_tall")} —
+      measured against this parcel's own point. ⚠ The military distance is to the nearest boundary
+      vertex, so it reads slightly long for a large installation; it is used to decide whether to
+      raise the question, never to answer it.</div>
+
+    <h3>Figure 6 · Evidence held for this site</h3>
     <table class="pp">
       <tr><th style="width:31%">Question</th><th>What we can show</th></tr>
       ${row("Land &amp; size", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}

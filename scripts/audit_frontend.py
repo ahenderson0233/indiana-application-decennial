@@ -34,6 +34,11 @@ from collections import Counter, defaultdict
 REPO = r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial"
 PAGES = ["index.html", "grid.html", "market.html", "community.html", "si.html", "data.html"]
 SHARED_JS = ["app.js", "common.js"]
+# An id can be load-bearing through CSS alone. See the DEAD_ELEMENT_ID check below.
+try:
+    CSS = open(os.path.join(REPO, "style.css"), encoding="utf-8").read()
+except Exception:
+    CSS = ""          # no stylesheet is a real state; it must not crash the audit
 
 # FIRST RUN OF THIS AUDIT PRODUCED 56 FINDINGS AND ROUGHLY ZERO REAL ONES. That is worse than no
 # audit: a check that cries wolf gets ignored, which is how the wiring census came to count each
@@ -142,7 +147,13 @@ for page in PAGES:
     for prefix in re.findall(r'[$]\(\s*`([A-Za-z][\w-]*?)\$\{', js) + \
                   re.findall(r'getElementById\(\s*`([A-Za-z][\w-]*?)\$\{', js):
         mentioned |= {i for i in html_ids if i.startswith(prefix)}
-    for i in sorted(html_ids - used - mentioned):
+    # ⚠ AN ID CAN BE LOAD-BEARING WITHOUT ANY JAVASCRIPT TOUCHING IT. Found 2026-08-19: this check
+    # reported `evidence-head` as dead while `style.css` carries TWO rules for it
+    # (`#evidence-head { display:flex ... }`), so acting on the finding would have broken the
+    # evidence panel's layout. An audit that cries wolf gets ignored (rule 9) and this one was
+    # crying on a real style hook -- the same defect shape as G76's permanently-failing criterion.
+    styled = set(re.findall(r"#([A-Za-z][\w-]*)", CSS))
+    for i in sorted(html_ids - used - mentioned - styled):
         if re.match(r"^(map|main|rail|panel|hdr|nav|foot|wrap|content|layout|topbar|topbtns|title|presets)", i):
             continue
         add(page, "DEAD_ELEMENT_ID",
