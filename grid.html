@@ -96,6 +96,12 @@
         <th>average loading before your request</th><th>lowest MW available</th></tr></table></div>
     <div class="prov" id="p-bind"></div></div>
 
+  <div class="card"><h2>⭐ Where the planned work actually is &mdash; and how precisely we know</h2>
+    <div class="sowhat" id="gp-answer">measuring…</div>
+    <table id="t-gp"><tr><th>utility</th><th>projects we can place only to its territory</th>
+      <th>with a voltage</th><th>with an in-service year</th><th>uncertainty region</th></tr></table>
+    <div class="prov" id="p-gp"></div></div>
+
   <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
     <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
     <div class="prov" id="p-plans"></div></div>
@@ -284,6 +290,31 @@
      <td>${r.nris_mw ? fmt(Math.round(r.nris_mw)) : `<span class="cannot">none requested</span>`}</td>
      <td>${r.usd_k_per_nris_mw != null ? `$${fmt(Math.round(r.usd_k_per_nris_mw))}k`
         : `<span class="cannot">no NRIS MW to divide by</span>`}</td></tr>`).join(""));
+
+  /* G15/G87: the two location tiers, and the split IS the finding. */
+  const gp = WG.grid_plan_regions || [];
+  const gpn = (WG.grid_plan_note || [])[0] || {};
+  const gpNoRegion = gp.filter((r) => !r.region_known).reduce((a, r) => a + r.projects, 0);
+  document.getElementById("gp-answer").innerHTML = gpn.exact
+    ? `<b>${fmt(gpn.exact)} of ${fmt(gpn.exact + gpn.region_only)} planned items name a station we
+       can place on a map.</b> The rest name only a utility, so their uncertainty region is that
+       utility's service territory — an area, not a point, which is the precision we actually
+       have. ⭐ <b>That exact count was ${fmt(gpn.exact - 19)} this morning.</b> Recovering 734
+       substations from footprints we already held added 161 names to the gazetteer, and every one
+       of the 19 projects that had matched a station with no county now has both.
+       ⛔ <b>Cost stays empty on every row on purpose</b> — the workpaper's numeric columns arrive
+       unlabelled, and guessing which is dollars would print a coin flip on a page.
+       ${gpNoRegion ? `⚠ ${fmt(gpNoRegion)} rows name no utility at all and have no region
+         either.` : ""}`
+    : `No located grid plans are held.`;
+  document.getElementById("t-gp").insertAdjacentHTML("beforeend", gp.map((r) =>
+    `<tr><td>${r.utility}</td><td>${fmt(r.projects)}</td>
+     <td>${r.with_kv ? fmt(r.with_kv) : `<span class="cannot">none stated</span>`}</td>
+     <td>${r.with_year ? fmt(r.with_year) : `<span class="cannot">none stated</span>`}</td>
+     <td>${r.region_known ? r.territory_utility
+        : `<span class="cannot">no territory — this row names no utility</span>`}</td></tr>`).join(""));
+  document.getElementById("p-gp").innerHTML =
+    `indiana_app.in_grid_plans_located · IURC TDSIC and IRP filings. ${escHtml(gpn.note || "")}`;
 
   const bd = WG.miso_binding || [];
   const overloaded = bd.filter((r) => (r.avg_pct_loaded_before || 0) >= 100).length;

@@ -177,6 +177,17 @@
           distance to decide construction cost, and the bus to decide whether the project is
           possible at all. See the <a href="grid.html">Power &amp; grid</a> page for every bus in
           both directions.</div>
+        <!-- G15/G87, 2026-08-20: the only layer on this console about capacity that does not
+             exist yet. Tier 1 only — see the so-what. -->
+        <label><input type="checkbox" id="L-gridplan"> Planned utility work
+          <span class="hint">(119 placed of 618 &mdash; sized by voltage)</span></label>
+        <div class="sowhat"><b>This is the future, and everything else here is the present.</b>
+          A substation being rebuilt to a higher voltage in 2027 changes what a site beside it can
+          ask for in 2028 &mdash; and a utility that has already committed capital near your
+          parcel is a very different negotiation from one that has not.
+          ⚠ <b>Only 119 of 618 planned items name a station we can place.</b> The other 499 name
+          only a utility; they are shown against that utility&rsquo;s service territory on the
+          <a href="grid.html">grid page</a> rather than invented into a point here.</div>
         <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(315 &mdash; projects competing for the same study slots)</span></label>
         <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(42 &mdash; estimated positions, not published)</span></label>
         <div class="sowhat"><b>The queue is your competition for the same study slots and the same
@@ -511,6 +522,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=b6a36660"></script>
-<script src="app.js?v=9c3e4119"></script>
+<script src="app.js?v=c4f63e1b"></script>
 </body>
 </html>

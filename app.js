@@ -1141,6 +1141,7 @@ const WIRED_LAYERS = {
   "L-surplus": ["wired-surplus"],
   "L-withdrawn": ["wired-withdrawn"],
   "L-campus": ["wired-college", "wired-foodplant"],
+  "L-gridplan": ["wired-gridplan"],
 };
 const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS),
                          ...Object.keys(ENVGATE_LAYERS), ...Object.keys(WIRED_LAYERS),
@@ -1219,6 +1220,15 @@ async function ensureWiredLayers() {
     map.addLayer({ id: "wired-foodplant", type: "circle", source: "wired2",
       filter: ["==", ["get", "layer"], "foodplant"], layout: hid,
       paint: { "circle-radius": 4, "circle-color": "#b45309", "circle-opacity": 0.8 } });
+    // G15/G87 tier 1. Sized by voltage, because a 345 kV rebuild and a 12 kV recloser are not
+    // the same news. ⚠ Only the 119 with a resolved station are drawn — the other 499 are placed
+    // to a utility TERRITORY and belong on the grid page, not as invented points here.
+    map.addLayer({ id: "wired-gridplan", type: "circle", source: "wired",
+      filter: ["==", ["get", "layer"], "gridplan"], layout: hid,
+      paint: { "circle-radius": ["interpolate", ["linear"],
+                                 ["coalesce", ["get", "voltage_kv"], 12], 12, 4, 138, 7, 345, 11],
+               "circle-color": "#0ea5e9", "circle-opacity": 0.7,
+               "circle-stroke-color": "#075985", "circle-stroke-width": 1.2 } });
     // ⛔ EVERY layer gets BOTH a hover and a click. G105's precedent is layers that were drawn
     //    and unclickable for weeks; adding six more without handlers would repeat it exactly.
     for (const ids of Object.values(WIRED_LAYERS)) for (const id of ids) {
@@ -1239,6 +1249,9 @@ function wiredTip(p) {
       (SURPLUS_PLAIN[p.surplus_class] || p.surplus_class);
     case "withdrawn": return `${p.iso} ${p.project_id} — ${fmt(p.mw)} MW ${p.resource_type || ""}` +
       ` withdrawn ${p.wd_date || "?"}`;
+    case "gridplan": return `${p.utility}: ${p.asset_name || p.station_name || "planned work"}` +
+      (p.voltage_kv ? ` — ${p.voltage_kv} kV` : "") +
+      (p.in_service_year ? `, in service ${p.in_service_year}` : "");
     case "college": return `${p.name} (${p.city || "?"})`;
     case "foodplant": return `${p.name} — USDA-inspected plant`;
     default: return p.layer;
@@ -1264,6 +1277,15 @@ const WIRED_PROV = {
     "infrastructure and now has a studied grid position with no project on it — willingness " +
     "revealed by preference rather than inferred from distress. ⚠ The point is the " +
     "INTERCONNECTION point, not the generator parcel; those can be a mile apart down a gen-tie."],
+  gridplan: ["in_grid_plans_located",
+    "Planned utility work from IURC TDSIC and IRP filings, placed on the station it names.",
+    "⭐ THIS IS CAPACITY THAT DOES NOT EXIST YET, and it is the only layer here that is about the " +
+    "FUTURE. A substation being rebuilt to a higher voltage in 2027 changes what a site beside it " +
+    "can ask for in 2028. ⚠ Only 119 of 618 planned items name a station the gazetteer holds; the " +
+    "other 499 name only a utility and are placed to that utility's service TERRITORY on the grid " +
+    "page rather than invented into a point here. ⛔ Cost is deliberately NULL on every row: the " +
+    "workpaper's numeric columns arrive unlabelled, and guessing which one is dollars would print " +
+    "a coin flip."],
   college: ["in_candidate_sites_colleges", "Degree-granting institutions.",
     "Operations staffing. A campus within commuting distance is where technicians come from, " +
     "and it is also a large institutional landowner."],
@@ -3853,17 +3875,46 @@ function gridEv(p) {
     const S = { "HIFLD+OSM": "both HIFLD and OpenStreetMap describe this substation, matched to each other at 0.5 m on average (2,354 of 3,858)",
                 "OSM": "OpenStreetMap ONLY — HIFLD does not carry this substation. 933 of 3,858 are visible only because OSM was merged in.",
                 "HIFLD": "HIFLD only — OpenStreetMap has no matching footprint (571 of 3,858)" };
+    /* G51 sweep, 2026-08-20. A third state is added ONLY where a coverage argument exists, which
+       is this row's own rule — inventing "none" where we never looked is the unpublished-rate-
+       as-zero defect. Here the argument is that `in_substations` is the COMPLETE Indiana cut of
+       its parent (3,858 = 3,858, checked), so a blank field is the publisher declining to state
+       it, not us failing to look. `kV range` deliberately keeps no third state: an unknown
+       voltage is genuinely unknown and 1,769 rows carry none. */
+    const geomWhy = { point_and_footprint: "published point, and a footprint we can draw",
+                      point_only: "a published point; no footprint published",
+                      footprint_only_point_derived:
+                        "footprint only — the marker is a centroid WE derived, not a survey point",
+                      no_location: "no usable Indiana location" }[p.geom_kind];
     show(`Substation: ${p.substation_name || "(unnamed)"}`, `
-      <table>${row("kV range", `${p.min_kv ?? "—"}–${p.max_kv ?? "—"}`)}${row("county", p.county)}
-      ${row("status", p.status)}${row("type", p.substation_type)}${row("lines", p.line_count)}${row("operator", p.operator)}
-      ${row("sources merged", p.sources)}</table>
-      <div class="prov">${prov("in_substations")}<br>${S[p.sources] || "source not recorded"}</div>`);
+      <table>${row("kV range", `${p.min_kv ?? "—"}–${p.max_kv ?? "—"}`)}
+      ${row("county", p.county, "neither publisher records a county for this station")}
+      ${row("status", p.status, "no status published")}
+      ${row("type", p.substation_type, "untyped by both publishers")}
+      ${row("lines", p.line_count, "line count not published")}
+      ${row("operator", p.operator, "no operator named by either publisher")}
+      ${row("sources merged", p.sources)}
+      ${row("how it is positioned", geomWhy)}</table>
+      <div class="prov">${prov("in_substations")}<br>${S[p.sources] || "source not recorded"}
+      ${p.geom_kind === "footprint_only_point_derived"
+        ? `<br>⚠ <b>This station had no coordinate until 2026-08-20.</b> OpenStreetMap maps
+           substations as POLYGONS and only node records carry a latitude, so 933 of these were
+           read as unlocated while their footprint sat in the same table. Distance measurements
+           use the footprint, not this marker.` : ""}</div>`);
   } else {
     show("Transmission line", `
-      <table>${row("source", p.src === "osm" ? "OpenStreetMap" : "HIFLD")}${row("owner", p.owner)}
-      ${row("voltage", p.kv != null ? `${p.kv} kV` : p.voltage)}${row("class", p.volt_class)}
-      ${row("status", p.status)}${row("from", p.sub_1)}${row("to", p.sub_2)}
-      ${row("name (OSM)", p.osm_name)}${row("length", p.km != null ? `${p.km} km` : null)}</table>
+      <table>${row("source", p.src === "osm" ? "OpenStreetMap" : "HIFLD")}
+      ${row("owner", p.owner, "no owner published for this circuit")}
+      ${/* ⛔ NO third state on voltage, on purpose. 335 lines carried HIFLD's -999999 sentinel and
+            1,114 OSM lines carry none at all — "unknown" here is genuinely unknown, and printing
+            "none" would put a 765 kV backbone and an unlabelled lateral in the same bucket. */
+        row("voltage", p.kv != null ? `${p.kv} kV` : p.voltage)}
+      ${row("class", p.volt_class, "voltage unknown, so no class can be assigned")}
+      ${row("status", p.status, "no status published")}
+      ${row("from", p.sub_1, "endpoint not named by the publisher")}
+      ${row("to", p.sub_2, "endpoint not named by the publisher")}
+      ${row("name (OSM)", p.osm_name, "unnamed in OpenStreetMap")}
+      ${row("length", p.km != null ? `${p.km} km` : null)}</table>
       <div class="prov">${prov("in_transmission_union")} — ONE merged layer, 27,866 km.
       ${p.src === "osm"
         ? `<b>This line exists only in OpenStreetMap.</b> ${p.merge_note}. 1,114 lines / 2,706 km
@@ -4282,16 +4333,31 @@ async function openCountyEvidence(p) {
       ${row("fits ≥25 MW @ 4/acre", p.ge25mw)}${row("carries SI signal", p.si_sites)}
       ${row("MW potential (sum)", p.mw_potential_at_4)}</table>
     <div class="prov">${prov("in_county_rollup")}</div>
+    <!-- G51 sweep, 2026-08-20. The coverage argument here is that the queue and the EIA-861
+         territory table are COMPLETE 92-county sets: every Indiana county has a row, so an empty
+         cell means "we looked at this county and there are none", which is a finding. That is
+         exactly the case the third state exists for, and exactly what these rows used to hide
+         behind a bare dash. -->
     <h3>Grid & queue</h3><table>
-      ${row("queue projects", c.queue?.projects)}${row("active MW", c.queue?.active_mw)}
-      ${row("withdrawn (a signal, kept)", c.queue?.withdrawn_projects)}${row("utilities serving", c.eia861?.utilities)}</table>
+      ${row("queue projects", c.queue?.projects, "no interconnection request on record here")}
+      ${row("active MW", c.queue?.active_mw, "nothing active in the queue")}
+      ${row("withdrawn (a signal, kept)", c.queue?.withdrawn_projects,
+            "nothing has been withdrawn here")}
+      ${row("utilities serving", c.eia861?.utilities, "no utility reports service territory here")}</table>
     <h3>Gates</h3><table>
       ${row("wetlands", c.wetlands ? `${fmt(c.wetlands.wetland_features)} / ${fmt(c.wetlands.wetland_acres)} ac` : null)}
       ${row("flood features (SFHA)", c.flood ? `${fmt(c.flood.flood_features)} (${fmt(c.flood.sfha_features)})` : null)}
       ${row("fibre-served / total locations", c.fibre ? `${fmt(c.fibre.fiber_locations)} / ${fmt(c.fibre.locations)}` : null)}
       ${row("business units: fiber ≥100/20 · gig (FCC)", c.fcc ? `${fmt(c.fcc.fiber_units)} · ${fmt(c.fcc.gig_units)} of ${fmt(c.fcc.units)}` : null)}
       ${row("mobile coverage 5G · 4G (area %)", c.fcc_mobile ? `${Math.round((c.fcc_mobile.pct_5g || 0) * 100)}% · ${Math.round((c.fcc_mobile.pct_4g || 0) * 100)}%` : null)}
-      ${row("seismic design category", c.seismic?.sdc)}</table>
+      ${/* ⚠ NO third state. The seismic table covers 88 of 92 counties, not all of them, so a
+            blank cell here may mean "not surveyed" rather than "no category" — and there is no
+            way for the reader to tell which. The default "not measured here" is the safe
+            direction and is what a caller saying nothing already gets. */
+        row("seismic design category", c.seismic?.sdc)}</table>
+    <div class="prov">${prov("in_seismic")} · ASCE 7 site class and design category, 88 of 92
+      counties. ${prov("in_county_fibre")} · ${prov("in_county_flood")} ·
+      ${prov("in_county_wetlands")}</div>
     <h3>Community posture</h3><table>
       ${row("posture", c.posture?.posture)}${row("opposition intensity", c.posture?.opposition_intensity)}
       ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}</table>
@@ -4489,6 +4555,134 @@ $("btn-shortlist").onclick = () => {
    `audit_wiring_census.py` answer the same question from the warehouse instead of from memory. */
 
 /* ---------- upload door: user's own sites through the same pipeline ---------- */
+/* =============================================================================================
+   G79 - THE DOSSIER MUST COVER MANUALLY INPUTTED SITES
+   Operator, 2026-08-19: *"The dossier should contain manually inputted sites, not just the sites
+   we currently have in view."*
+
+   ⭐ THE ROW'S PREMISE WAS TOO PESSIMISTIC, AND CHECKING IT IS MOST OF THE ANSWER.
+   G79 assumed this needed a "degraded-mode design", because `renderPowerPlan()` reads the
+   parcel's own POLYGON - Figure 2 draws it to scale and the serving utility resolves from up to
+   64 ring vertices - and an uploaded row is a point.
+
+   But our parcel corpus is EVERY Indiana parcel (3,553,194 of them). A point inside Indiana is
+   therefore almost always INSIDE one, and once it is resolved there is nothing degraded about
+   it: the uploaded site gets the identical dossier a held parcel gets, from the same function,
+   because it IS a held parcel - the reader simply arrived at it by coordinate instead of by
+   clicking. The honest design is RESOLVE FIRST, degrade only when resolution fails.
+
+   ⛔ AND SAY WHICH ONE HAPPENED. A dossier that silently swaps the user's point for a parcel is
+   claiming a correspondence it has not shown. The panel states that the parcel was found under
+   the coordinate, and offers the raw upload beside it.
+
+   ⚠ Degraded mode is still needed and is still honest, for three cases: a point outside Indiana,
+   a row with no coordinate at all, and a point that lands where we hold no parcel (a road
+   right-of-way gap, water, or an unmapped parcel). Each says WHICH figures survive on a bare
+   point and what the missing ones would have needed - never a blank, never a zero (G51).
+   ============================================================================================= */
+/* ⚠ countyOf() already returns the word "County" in county_name ("Marion County"), so appending
+   it produced "Marion County County". Normalised once here rather than at each call site. */
+const ctyLabel = (c) => !c ? "" : /county$/i.test(String(c.county_name).trim())
+  ? String(c.county_name).trim() : `${String(c.county_name).trim()} County`;
+
+async function uploadedEvidence(p) {
+  const lat = Number(p._lat ?? p.lat), lon = Number(p._lon ?? p.lon);
+  const raw = Object.entries(p).filter(([k]) => k !== "layer" && !k.startsWith("_"))
+    .slice(0, 14).map(([k, v]) => row(k, v)).join("");
+  const rawBlock = `<h3>The row you uploaded</h3><table>${raw}</table>`;
+
+  if (p._status !== "placed" || !isFinite(lat) || !isFinite(lon)) {
+    show(`Your site (row ${p._row})`, `
+      <div class="cannot"><b>No dossier can be built for this row.</b>
+        ${p._status === "outside Indiana"
+          ? "The coordinate is outside Indiana, and every layer in this application is clipped at the state border. It is kept in your list and in the export rather than dropped."
+          : "The row carries no usable coordinate, so it cannot be placed against any layer. It is kept in your list and in the export rather than dropped — a row we cannot place is not a row we discard."}
+      </div>${rawBlock}`);
+    return;
+  }
+
+  const cty = countyOf(lon, lat);
+  show(`Your site (row ${p._row})`, `<div class="hint">looking for a parcel under this
+    coordinate…</div>${rawBlock}`);
+  let ft = null;
+  if (cty) {
+    try {
+      await ensureCountyLoaded(cty.fips);
+      // ⚠ state.loaded holds an ARRAY OF FEATURES, not a FeatureCollection. Every other reader in
+      //   this file uses `(state.loaded.get(fips) || [])` directly; treating it as `{features:…}`
+      //   threw on `.find` of undefined.
+      ft = (state.loaded.get(cty.fips) || []).find((f) => pointInPoly(lon, lat, f.geometry));
+    } catch (err) { /* fall through to degraded mode; the reason is stated below */ }
+  }
+
+  if (ft) {
+    state.uploadResolved = { row: p._row, lat, lon };
+    await openDossier(ft.properties, cty.fips);
+    // ⭐ prepend the correspondence rather than hiding it: this dossier is about a PARCEL we
+    //    found under the reader's point, and they are entitled to see that step.
+    $("evidence-body").insertAdjacentHTML("afterbegin", `
+      <div class="sowhat"><b>This is the full dossier — nothing is degraded.</b>
+        Your uploaded row ${p._row} at <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code> falls
+        inside a parcel we hold (<code>${escHtml(String(ft.properties.parcel_key ||
+          ft.properties.key || ""))}</code> in ${escHtml(ctyLabel(cty))}), so every
+        figure below is measured from that parcel's own boundary — the same way it would be for a
+        site you clicked. ⚠ <b>Check the parcel is the one you meant.</b> A coordinate that landed
+        on a road selects the road right-of-way, which is a true answer about the wrong land.</div>`);
+    return;
+  }
+
+  // ---- degraded mode: a real point, no parcel under it ----
+  /* ⚠ THREE VOCABULARIES CHECKED AGAINST THE DATA, NOT GUESSED — all three were wrong first try:
+       nearestBus filters on a LOWER-CASE direction ('withdrawal' / 'injection'). Capitalised
+         strings match nothing and return null, which would have rendered as an honest-looking
+         "no bus within 25 miles" on every uploaded site in the state.
+       territoryAt returns the raw feature properties, where the name is `utility`, not `name`.
+       gatesForPoint returns {mil, milMi, sua[], tribal, tall1mi} and has NO summary field. */
+  const g = gatesForPoint(lat, lon);
+  const terr = territoryAt(lat, lon);
+  const wd = nearestBus(lat, lon, "withdrawal");
+  const inj = nearestBus(lat, lon, "injection");
+  const gateBits = [];
+  if (g) {
+    if (g.mil) gateBits.push(`${g.mil}${g.milMi ? ` at ${g.milMi} mi` : " — the point is inside it"}`);
+    if (g.tribal) gateBits.push(`tribal trust land: ${g.tribal}`);
+    if (g.sua && g.sua.length) gateBits.push(`special-use airspace: ${g.sua.join(", ")}`);
+    if (g.tall1mi) gateBits.push(`${g.tall1mi} tall obstruction${g.tall1mi === 1 ? "" : "s"} within a mile`);
+  }
+  show(`Your site (row ${p._row})`, `
+    <div class="cannot"><b>Partial dossier — we hold no parcel under this coordinate.</b>
+      It is inside ${cty ? escHtml(ctyLabel(cty)) : "Indiana"}, so everything keyed
+      to LOCATION still works. Everything keyed to the parcel BOUNDARY cannot be computed, and is
+      listed as such below rather than left blank.</div>
+    <h3>What still holds at this point</h3><table>
+      ${row("county", cty && cty.county_name)}
+      ${row("serving utility", terr && terr.utility, "no service territory covers this point")}
+      ${row("nearest load bus", wd && `${wd.name} — ${fmt(Math.round(wd.mw))} MW at ${wd.mi.toFixed(1)} mi`,
+            "no withdrawal bus within 25 miles")}
+      ${row("nearest generation bus", inj && `${inj.name} — ${fmt(Math.round(inj.mw))} MW at ${inj.mi.toFixed(1)} mi`,
+            "no injection bus within 25 miles")}
+      ${row("substation", p._sub_name && `${p._sub_name} at ${p._sub_mi} mi`,
+            "no substation within 25 miles")}
+      ${row("transmission line", p._dline_mi != null ? `${p._dline_mi} mi` : null,
+            "no line within 25 miles")}
+      ${row("who else holds a say over this land", gateBits.length ? gateBits.join(" · ") : null,
+            "no installation, sovereign boundary, airspace ceiling or tall obstruction in range")}
+    </table>
+    <h3>What a parcel would have added, and why it cannot</h3><table>
+      ${row("acreage and buildable area", null, "needs a boundary — a point has no area")}
+      ${row("megawatts the ground could host", null, "derived from acreage, so it follows the above")}
+      ${row("the parcel diagram", null, "drawn from the boundary polygon")}
+      ${row("deliverable capacity", null,
+            "measured from the parcel to the nearest line and then to the bus at each end")}
+      ${row("owner-motivation signals", null, "attached to a parcel key, which this point has none of")}
+    </table>
+    ${rawBlock}
+    <div class="prov">your upload · enriched client-side against the same layers as the feed.
+      Nothing leaves the browser. ⚠ A point with no parcel under it usually means water, a road
+      right-of-way gap, or a parcel the county has not published — not that the land is
+      unowned.</div>`);
+}
+
 function pointInPoly(lon, lat, geom) {
   const test = (ring) => {
     let inside = false;
@@ -4654,13 +4848,7 @@ function ingestRecords(recs, latK, lonK, meta) {
     map.addLayer({ id: "uploaded-pts", type: "circle", source: "uploaded",
       paint: { "circle-radius": 7, "circle-color": "#16a34a", "circle-stroke-color": "#fff",
                "circle-stroke-width": 2 } });
-    map.on("click", "uploaded-pts", (e2) => {
-      const p = e2.features[0].properties;
-      const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 16)
-        .map(([k, v]) => row(k.replace(/^_/, ""), v)).join("");
-      show(`Your site (row ${p._row})`, `<table>${rows_}</table>
-        <div class="prov">your upload · enriched client-side against the same layers as the feed — upload parity is a scope commitment; nothing leaves the browser</div>`);
-    });
+    map.on("click", "uploaded-pts", (e2) => uploadedEvidence(e2.features[0].properties));
     map.on("mousemove", "uploaded-pts", (e2) => showTip(e2, `your site · ${e2.features[0].properties._county || ""} · sub ${e2.features[0].properties._sub_mi ?? "?"} mi`));
     map.on("mouseleave", "uploaded-pts", hideTip);
   }

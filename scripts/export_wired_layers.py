@@ -158,6 +158,61 @@ for r in client.query(f"""
     n_wq += 1
 print(f"  withdrawn queue: {n_wq:,}")
 
+# ---- 5. G15 / G87: future capacity, at the two grains we can honestly claim ------------------
+# Operator (G87): *"maybe you should follow what we do on the Illinois map to better outline where
+# the upgrades occur and where they may be located; the utilities often provide location estimates
+# or regions where a project will take place."*
+#
+# ⭐ TWO TIERS, EXACTLY AS G15 PRESCRIBED, AND THE SPLIT IS THE HONEST PART.
+#   TIER 1 - EXACT: 119 projects whose station resolves in the gazetteer get a real point.
+#            ⭐ That was 100 this morning. `repair_substation_geometry.py` recovered 734
+#            substations and 161 gazetteer names, and re-running the locator turned every one of
+#            G109's "matched a substation with no county" rows into a located project: 19 -> 0.
+#   TIER 2 - REGION: the other 499 name only a utility. Their uncertainty region is that
+#            utility's SERVICE TERRITORY, which we hold - "somewhere in here", drawn as an area
+#            rather than pretended into a point. That is the Illinois pattern the operator named.
+#
+# ⛔ THE UTILITY NAMES DO NOT MATCH AND ARE NOT FUZZY-MATCHED. The plans say "NIPSCO" and "AES
+#   Indiana (IPL)"; the territory layer says "NORTHERN INDIANA PUB SERV CO" and "INDIANAPOLIS
+#   POWER & LIGHT CO". A similarity match across 6 names would be a coin flip nobody could audit,
+#   so the alias table is EXPLICIT and hand-checked against the territory list. An unmapped
+#   utility is reported, never silently dropped.
+UTIL_ALIAS = {
+    "NIPSCO": "NORTHERN INDIANA PUB SERV CO",
+    "AES Indiana (IPL)": "INDIANAPOLIS POWER & LIGHT CO",     # AES Indiana was IPL until 2021
+    "Duke Energy Indiana": "DUKE ENERGY INDIANA, LLC",
+    "CenterPoint Indiana South (SIGECO/Vectren)": "SOUTHERN INDIANA GAS & ELEC CO",
+    "Indiana Michigan Power": "INDIANA MICHIGAN POWER CO",
+    # ⚠ deliberately unmapped: 17 rows scraped from the IURC IRP page with no utility attributed.
+    #   They have no region either, and saying so is the answer.
+    "unattributed (IURC IRP page)": None,
+}
+n_gp = 0
+for r in client.query(f"""
+  SELECT utility, asset_name, asset_type, station_name, matched_substation, voltage_kv,
+         in_service_year, county, location_method, lat AS la, lon AS lo
+  FROM `{DS}.in_grid_plans_located` WHERE lat IS NOT NULL"""):
+    d = dict(r)
+    la, lo = d.pop("la"), d.pop("lo")
+    d["layer"] = "gridplan"
+    d["locate_tier"] = "exact"
+    feats.append({"type": "Feature", "properties": d,
+                  "geometry": {"type": "Point", "coordinates": [rc(lo), rc(la)]}})
+    n_gp += 1
+region = [dict(r) for r in client.query(f"""
+  SELECT utility, COUNT(*) AS projects,
+         COUNTIF(voltage_kv IS NOT NULL) AS with_kv,
+         COUNTIF(in_service_year IS NOT NULL) AS with_year,
+         ROUND(MAX(voltage_kv)) AS max_kv
+  FROM `{DS}.in_grid_plans_located` WHERE lat IS NULL GROUP BY 1 ORDER BY projects DESC""")]
+unmapped = [r["utility"] for r in region
+            if r["utility"] not in UTIL_ALIAS]
+print(f"  grid plans: {n_gp} exact points + "
+      f"{sum(r['projects'] for r in region)} placed only to a utility region")
+if unmapped:
+    print(f"  ⛔ {len(unmapped)} utility name(s) with no territory alias - REPORTED, not dropped: "
+          f"{unmapped}")
+
 size = gzwrite("wired.geojson.gz", {"type": "FeatureCollection", "features": feats})
 print(f"  data/wired.geojson.gz  {len(feats):,} features, {size:,} bytes")
 
@@ -272,6 +327,22 @@ wired = {
         "note": "cont_name, fr_name and to_name are held and 100% empty; the branch endpoints "
                 "are parsed out of the monitored_facility PSS/E string instead. Reported so a "
                 "later session does not read an empty GROUP BY as 'nothing binds'.",
+    }],
+
+    # G15/G87 tier 2: the projects we can place only to a utility's service territory.
+    # The map shades that territory; the panel says how many projects and what is known of them.
+    "grid_plan_regions": [
+        {**r, "territory_utility": UTIL_ALIAS.get(r["utility"], None),
+         "region_known": UTIL_ALIAS.get(r["utility"]) is not None}
+        for r in region],
+    "grid_plan_note": [{
+        "exact": n_gp,
+        "region_only": sum(r["projects"] for r in region),
+        "note": "Two tiers. EXACT means the workpaper named a station the gazetteer holds, so the "
+                "point is that station. REGION means the row names only a utility, and the "
+                "uncertainty region is that utility's service territory - drawn as an area "
+                "because that is the precision we have. 17 rows name no utility at all and have "
+                "neither.",
     }],
 
     # G97/G98 summaries for si.html
