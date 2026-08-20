@@ -384,3 +384,53 @@ body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
 tr.nearmiss > td { background: #fffbeb; }
 .nm-tag { font-size: 9px; font-weight: 700; color: #92400e; background: #fef3c7;
           border: 1px solid #fde68a; border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
+
+/* ==============================================================================================
+   G128 - THE RECORD GRAMMAR. One shared set of rules so every dense table on every page reads
+   the same way, drawn from the four industries the operator named.
+
+   ⭐ TABULAR NUMERALS ARE THE HIGHEST-VALUE LINE IN THIS FILE. Proportional digits make a column
+   of numbers impossible to compare by eye - "1,111" is narrower than "8,888" - and every
+   financial terminal, every accounting ledger and every real-estate comp sheet uses
+   tabular-nums for exactly this reason. It costs one property and it changes how the whole
+   product reads.
+   ⚠ Applied to CELLS, not to the page. Body prose in tabular figures looks like a spreadsheet.
+
+   ⚠ NOTHING HERE CHANGES A LAYOUT ENGINE OR A COMPONENT. G123 had just moved 49 blocks and
+   hidden 11,964 more; re-flowing eight pages in the same session would make any regression
+   untraceable to a cause. This is typography, alignment and rhythm only.
+   ============================================================================================== */
+table td, table th { font-variant-numeric: tabular-nums; }
+
+/* Numbers right, labels left - the ledger convention. A reader scans the right edge for
+   magnitude and never has to read a digit they do not need. */
+table.rtable td.num, table.pp td.num, #evidence-body td.num,
+table td.sc, table.mini td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* A 500-row scroll that loses its column names is a table you have to scroll back up to read. */
+table.rtable th { position: sticky; top: 0; z-index: 2; background: #fff;
+                  box-shadow: inset 0 -2px 0 #e3e6ec; }
+
+/* Zebra striping only where rows are long enough to lose your place. ⚠ :nth-child on the ROW,
+   not a class, so a generator that adds a row cannot forget it. Detail rows are excluded - they
+   are a different kind of thing and striping them reads as a table inside a table. */
+table.rtable tbody tr.siterow:nth-child(4n+3) > td,
+table.rtable > tbody > tr.siterow:nth-child(4n+3) > td { background: #fcfcfd; }
+table.rtable tr.siterow:hover > td { background: #f1f5f9; }
+
+/* One row rhythm across the product. Panels were 3px, results 5px, the dossier 4px - three
+   different densities in one tool reads as three tools. */
+#evidence-body td, table.pp td, table.pp th { padding: 4px 6px; }
+
+/* ⭐ THE HEADER BAR - the Bloomberg pattern. Every page states its NAME, its ONE question and its
+   headline figure in the same place and the same shape, so a reader always knows what they are
+   looking at and what it is for. The ONE question per page is decided in docs/COMPARABLE_TOOLS.md
+   §3; a page that cannot state one is doing more than one job. */
+.pagehead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+            padding: 10px 0 8px; margin-bottom: 10px; border-bottom: 2px solid #e3e6ec; }
+.pagehead .ph-name { font-size: 17px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+.pagehead .ph-q { font-size: 12.5px; color: #475569; }
+.pagehead .ph-fig { margin-left: auto; font-size: 12px; color: #334155;
+                    font-variant-numeric: tabular-nums; }
+.pagehead .ph-fig b { font-size: 15px; color: #0f172a; }
+@media (max-width: 720px) { .pagehead .ph-fig { margin-left: 0; } }

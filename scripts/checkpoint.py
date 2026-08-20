@@ -94,6 +94,17 @@ AUDITS = [
     # operator, owner and status from the gas layers until 2026-08-20b.
     ("schema truncation", "scripts/audit_schema_truncation.py",
      r"(\d+) load-bearing columns dropped|(\d+) site\(s\) are dropping"),
+    # G127: the operator found 71 "data centre" against 2 "data center". An unguarded spelling
+    # convention is one that has already drifted. ⚠ RENDERED text only - comments, MapLibre paint
+    # properties and snake_case column names are excluded by construction, or this would fail on
+    # `circle-color` forever and everyone would learn to ignore it.
+    ("spelling", "scripts/audit_spelling.py",
+     r"(\d+) finding\(s\) in RENDERED text"),
+    # G129: near-miss recovery relaxes PREFERENCES and must never relax a GATE. That only holds
+    # while passesGates() carries every gate passes() enforces. Add a gate to one and forget the
+    # other and a floodway parcel comes back wearing a NEAR MISS badge.
+    ("gate/preference consistency", "scripts/audit_g129_gates.py",
+     r"(\d+) G129 consistency failure\(s\)"),
 ]
 
 print("=" * 90)
@@ -172,6 +183,26 @@ for label, script, pat in AUDITS:
                  "reported, not failed" if nfail == 1 else
                  " - PARTIALs are reported, not failed" if nfail == 0 else
                  " - MORE THAN THE EXPECTED wiring-census failure, read docs/ACCEPTANCE_RUN.json"))
+
+    elif label == "spelling":
+        n = int(m.group(1))
+        check(label, n == 0,
+              f"{n} British spelling(s) in text a reader actually sees")
+    elif label == "gate/preference consistency":
+        n = int(m.group(1))
+        check(label, n == 0,
+              f"{n} filter(s) where the GATE/PREF badge and the enforcement disagree")
+    else:
+        # ⛔ AN AUDIT REGISTERED BUT NOT DISPATCHED IS AN AUDIT THAT IS NOT RUNNING, and this
+        # loop had no way to say so. Both audits added on 2026-08-20d - `spelling` and
+        # `gate/preference consistency` - ran, matched their pattern, stored their groups and
+        # then fell off the end of the if/elif chain in silence. The checkpoint printed eight
+        # audits and looked complete while ten had run. That is the same disease as the
+        # hardcoded acceptance PASS this file already carries a warning about: a green board
+        # that is green because nobody asked.
+        check(label, False,
+              f"registered in AUDITS but has no branch in the dispatch chain - it ran and its "
+              f"result was discarded. Add an elif for '{label}'.")
 
 # ---------------------------------------------------------------- warehouse-side invariants
 print("\nWAREHOUSE INVARIANTS")
@@ -270,7 +301,17 @@ except Exception as e:
 # ---------------------------------------------------------------- the generated state block
 print("\nSTATE (every figure below is a live query)")
 
-flag = q1(f"SELECT COUNTIF(has_si_signal) n FROM `{DS}.in_si_sites_flags_v2`").n
+# ⛔ BOTH SIDES MUST COUNT THE SAME POPULATION. G122 removed confirmed road and rail rights-of-way
+# from the candidate set and from the county files, and 29 of the flagged parcels were
+# rights-of-way. Left unfiltered, this check reported "23,766 in the payload vs 23,795 in
+# BigQuery" and failed - not because a figure was wrong but because the two sides were counting
+# different things, which is exactly the mistake it is meant to catch in others.
+flag = q1(f"""
+  SELECT COUNTIF(f.has_si_signal) n
+  FROM `{DS}.in_si_sites_flags_v2` f
+  WHERE NOT EXISTS (SELECT 1 FROM `{DS}.in_parcel_row_class` rc
+                    WHERE rc.parcel_source = f.parcel_source
+                      AND rc.parcel_key = f.parcel_key AND rc.row_excluded)""").n
 payload = 0
 for f in glob.glob(os.path.join(REPO, "data", "sites", "*.geojson.gz")):
     import gzip

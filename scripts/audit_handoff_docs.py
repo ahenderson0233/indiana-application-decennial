@@ -24,7 +24,15 @@ REPO = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Cal
         r"\ca-capacity-deploy\indiana-application-decennial")
 DS = "energy-platfrom.indiana_app"
 c = bigquery.Client(project="energy-platfrom")
-DOCS = ["docs/HANDOFF_2026-08-20b.md", "docs/NEXT_SESSION_PROMPT.md", "docs/BACKLOG.md"]
+# ⚠ THE CURRENT HANDOFF IS FOUND, NOT PINNED. Three places in this file named
+# HANDOFF_2026-08-20b.md by hand, so writing a NEW handoff silently left it unaudited while the
+# audit went on re-measuring a superseded document and passing. Two copies of one name is the
+# same defect as two copies of one number, which this file already warns about further down.
+import glob as _glob
+_HANDOFFS = sorted(_glob.glob(os.path.join(REPO, "docs", "HANDOFF_*.md")))
+CURRENT_HANDOFF = os.path.relpath(_HANDOFFS[-1], REPO).replace("\\", "/") if _HANDOFFS     else "docs/HANDOFF_2026-08-20b.md"
+PREV_HANDOFF = os.path.relpath(_HANDOFFS[-2], REPO).replace("\\", "/") if len(_HANDOFFS) > 1     else CURRENT_HANDOFF
+DOCS = [CURRENT_HANDOFF, "docs/NEXT_SESSION_PROMPT.md", "docs/BACKLOG.md"]
 text = {d: io.open(os.path.join(REPO, d), encoding="utf-8").read() for d in DOCS}
 allt = "\n".join(text.values())
 
@@ -99,7 +107,12 @@ check("withdrawn requests placed", r.placed == 195 and has(r.placed),
 r = one(f"""SELECT COUNTIF(rowlike_confidence='high') high,
                    COUNTIF(nearest_structured_key IS NOT NULL) redirect,
                    COUNTIF(sliver_neighbours>0) sliver FROM `{DS}.in_parcel_assembly`""")
-check("ribbon parcels with a road on them", r.high == 184 and has(r.high), f"live {r.high}")
+# ⚠ THE LITERAL 184 WAS PINNED HERE AND G122 DELIBERATELY CHANGED IT. This check asserted
+# `r.high == 184` on top of "the docs state the live figure", which turns a *measurement* into a
+# *constant* - so the audit failed the moment the thing it measures was correctly fixed. The 159
+# that vanished were EXCLUDED as rights-of-way, which was the whole point of the row. Its
+# neighbours below only require the documents to state whatever is live, and so does this now.
+check("ribbon parcels with a road on them", has(r.high), f"live {r.high}")
 check("parcels with a built neighbour to redirect to", has(r.redirect), f"live {r.redirect:,}")
 check("candidates carrying a sliver", has(r.sliver), f"live {r.sliver:,}")
 
@@ -191,15 +204,21 @@ check("0 active duplicates", "ACTIVE DUPLICATES (two live rows for one number): 
 # ⚠ The opening DONE count is a fact about the PREVIOUS handoff, so it is read from that file
 #    rather than hard-coded here - two copies of one number is the defect this project keeps
 #    hitting.
-prev = io.open(os.path.join(REPO, "docs", "HANDOFF_2026-08-20.md"), encoding="utf-8").read()
+prev = io.open(os.path.join(REPO, PREV_HANDOFF), encoding="utf-8").read()
 m_prev = re.search(r"\*\*(\d+) DONE\b", prev)
 if m_prev:
     opened, now = int(m_prev.group(1)), counts.get("DONE", 0)
     closed = now - opened
-    words = {12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen", 16: "sixteen",
-             17: "seventeen", 18: "eighteen", 19: "nineteen", 20: "twenty"}
-    claimed = re.findall(r"\b(twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|"
-                         r"nineteen|twenty)\s+rows?\s+closed", allt, re.I)
+    words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven",
+             8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen",
+             14: "fourteen", 15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
+             19: "nineteen", 20: "twenty"}
+    # ⚠ THE LIST MUST REACH SMALL NUMBERS. It started at "twelve", so a session that closed six
+    # rows matched nothing, `claimed` came back empty, and the check passed by default - a
+    # silent false pass in the very audit that exists to stop a prose figure going unchecked.
+    claimed = re.findall(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+                         r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+                         r"twenty)\s+rows?\s+closed", allt, re.I)
     ok = all(w.lower() == words.get(closed, "") for w in claimed) if claimed else True
     check("the 'N rows closed' claim matches the arithmetic", ok,
           f"{opened} -> {now} is {closed} closed; the docs say {claimed or 'nothing'}")
@@ -235,7 +254,7 @@ STALE = [
     ("2,925", r"\u2192|->|was|from|before", "3,659"),
     ("2,072", r"\u2192|->|was|from|before", "2,233"),
 ]
-for doc in ("docs/HANDOFF_2026-08-20b.md", "docs/NEXT_SESSION_PROMPT.md"):
+for doc in (CURRENT_HANDOFF, "docs/NEXT_SESSION_PROMPT.md"):
     t = text[doc]
     for fig, allowed, repl in STALE:
         bad = [ln.strip()[:100] for ln in t.split("\n")

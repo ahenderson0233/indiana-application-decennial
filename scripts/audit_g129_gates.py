@@ -109,11 +109,13 @@ if no_badge:
           f"({', '.join(no_badge)})")
 
 print()
-if fail:
-    for f in fail:
-        print(f"  FAIL  {f}")
-    print(f"\n{len(fail)} G129 consistency failure(s)")
-    print("=" * 92)
-    sys.exit(1)
-print("  passesGates() enforces every declared gate; no gate is relaxed by the near-miss path")
+for f in fail:
+    print(f"  FAIL  {f}")
+if not fail:
+    print("  passesGates() enforces every declared gate; no gate is relaxed by the near-miss path")
+# ⚠ THE COUNT LINE PRINTS ON EVERY RUN, PASS OR FAIL. The first version printed it only on
+# failure, so the checkpoint scraped for it, found nothing, and reported "ran but produced no
+# parseable result line" - an audit that passes silently is indistinguishable from one that broke.
+print(f"\n{len(fail)} G129 consistency failure(s)")
 print("=" * 92)
+sys.exit(1 if fail else 0)

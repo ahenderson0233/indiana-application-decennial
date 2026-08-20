@@ -59,7 +59,19 @@ check("provenance completeness", r.no_source == 0 and r.no_date == 0,
       f"{r.no_method} without a method")
 
 print("\n=== 2. the payload agrees with the warehouse ===")
-flag_bq = q1(f"SELECT COUNTIF(has_si_signal) n FROM `{DS}.in_si_sites_flags_v2`").n
+# ⛔ THE WAREHOUSE SIDE MUST APPLY THE SAME EXCLUSION THE PAYLOAD DOES, or this check fails for a
+# reason that is not a defect. G122 removed confirmed road and rail rights-of-way from the
+# candidate set and from the county files - "no one can actually own a roadway" - and 29 of the
+# flagged parcels were rights-of-way. Comparing the shipped files against an unfiltered warehouse
+# count then reported 23,766 vs 23,795 and shouted that one of them was lying to a user. Neither
+# was: they were counting different populations, which is the subtler version of the same defect
+# this check exists to catch. The exclusion is applied on BOTH sides or the comparison is void.
+flag_bq = q1(f"""
+  SELECT COUNTIF(f.has_si_signal) n
+  FROM `{DS}.in_si_sites_flags_v2` f
+  WHERE NOT EXISTS (SELECT 1 FROM `{DS}.in_parcel_row_class` rc
+                    WHERE rc.parcel_source = f.parcel_source
+                      AND rc.parcel_key = f.parcel_key AND rc.row_excluded)""").n
 site_files = sorted(glob.glob(os.path.join(REPO, "data", "sites", "*.geojson.gz")))
 flag_disk = 0
 for f in site_files:

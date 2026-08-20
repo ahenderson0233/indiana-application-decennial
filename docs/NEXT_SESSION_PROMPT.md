@@ -27,16 +27,9 @@ powershell -ExecutionPolicy Bypass -File scripts\run_pjm_ladder.ps1
 there and deleting them forces a duplicating re-harvest; **archive, never delete**. ⛔ **Owner is
 1568, not 739** — 739 loads **0 rows and exits successfully**.
 
-⛔ **DO NOT TRUST ANY RUNG LIST IN A DOCUMENT — MEASURE IT.** The ladder advanced four times
-while the 2026-08-20b/c documents were being written, so any list here is stale by the time you
-read it. `python scripts/audit_handoff_docs.py` prints the live complete/short split.
-
-⚠ **What DOES persist is the anomaly: two rungs are SHORT and are NOT being harvested** —
-`inj_25` at **1,797 of 1,826** (and it carries a registry row, which normally means complete)
-and `wd_50` at **1,625**. A rung that is short *and* in flight is short by definition and is
-not a problem; a rung that is short and stopped means a harvest died without finishing.
-⛔ **Neither affects a shipped figure** — `in_bus_capacity_tier0` reads the **5,000** rung only,
-and both 5,000 rungs audit CLEAN. A session that repoints tier0 lower must finish them first.
+⛔ **DO NOT TRUST ANY RUNG LIST IN A DOCUMENT — MEASURE IT.** The ladder advanced twice during the
+2026-08-20d session and its PID changed with it. `python scripts/audit_handoff_docs.py` prints the
+live complete/short split.
 
 ### 2. Start a web server, or every page hangs
 
@@ -44,186 +37,136 @@ and both 5,000 rungs audit CLEAN. A session that repoints tier0 lower must finis
 python -m http.server 8123 --directory "C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial"
 ```
 
-⚠ Not optional housekeeping. On 2026-08-19b the operator's server died, the cached HTML still drew
-the page, and the screener sat on "Loading sites…" — reported as a code bug, debugged as a code
-bug, and it was a dead port.
+⚠ Not optional. A dead server looks exactly like a code bug — that has cost this project a
+debugging session already.
+⚠ **And hard-reload, with a cache-busting query if you must.** On 2026-08-20d a stale cached page
+served `common.js?v=b6a36660` while disk held `9a0640f5`, and brand-new code was "missing" for
+three probes.
 
 ### 3. The checkpoint and the ledger audits
 
 ```bash
 python scripts/checkpoint.py
-python scripts/audit_backlog_state.py     # is the LEDGER coherent?
-python scripts/audit_handoff_docs.py      # are the numbers in the HANDOFF still true?
-python scripts/audit_registry_truth.py    # can a stranger re-run every table?
+python scripts/audit_backlog_state.py
+python scripts/audit_handoff_docs.py
+python scripts/audit_registry_truth.py
 ```
 
 **Expect 3 checkpoint failures and expect them to be correct:**
 
 | failing check | why |
 |---|---|
-| `wiring census` fails | ⭐ **This is the END STATE, not a gap** — see §4 of the handoff. Every unreached object carries a measured reason and the worklist is 0. ⛔ **Do not chase the ratio:** the census counts an object as reached if any script NAMES it, so it moves whenever one does. The durable check is `0 unclassified` |
-| `honesty audit: 1 failure` | known |
+| `wiring census` fails | ⭐ **END STATE, not a gap.** Every unreached object carries a measured reason and the worklist is 0. ⛔ Do not chase the ratio — the durable check is `0 unclassified` |
+| `honesty audit: 1 failure` | known; it is the unregistered-table count below, reported twice |
 | `2 unregistered tables` | ladder rungs the running harvest created since the last registration pass |
 
-⭐ **The checkpoint gained three checks on 2026-08-20b** — `map clicks`, `page controls` and
-`schema truncation` — and all three should PASS. Each guards a defect that had already shipped.
-⛔ **Anything else failing is real.**
+⭐ **The checkpoint now runs TEN audits.** The two newest — `spelling` and `gate/preference
+consistency` — must PASS. ⛔ **Anything else failing is real.**
 
 ### 4. Read, in this order
 
 | # | file | why |
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
-| 2 | ⭐ **`docs/HANDOFF_2026-08-20b.md`** | **THE CURRENT ONE.** Six findings, five wrong audits, ten traps |
-| 3 | ⭐ **`docs/BACKLOG.md`** | the **⚠ IN FLIGHT** row, then **WHERE EVERY UNFINISHED ROW STANDS** (why each is unfinished and what would finish it), then the G-index (G1–G129) |
-| 4 | ⭐ `docs/UNWIRED_CLASSIFICATION.md` | **generated** — why each unreached object is unreached, with its measured reason |
-| 5 | `docs/FEATURE_INVENTORY.md` | every feature, how it works, its BigQuery table |
-| 6 | `docs/REFERENCE_TOOL_GAP.md` | ⚠ **its #1 item is DECLINED** — read the ruling at the top |
+| 2 | ⭐ **`docs/HANDOFF_2026-08-20d.md`** | **THE CURRENT ONE.** Six findings, §2b every parcel figure that moved, seven instrument failures, seven traps |
+| 3 | ⭐ **`docs/BACKLOG.md`** | the **⚠ IN FLIGHT** row, then **WHERE EVERY UNFINISHED ROW STANDS**, then the G-index (G1–G129) |
+| 4 | ⭐ **`docs/COMPARABLE_TOOLS.md`** | **the plan for what this product should look like.** §3 names the ONE question each page answers |
+| 5 | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** — which loaders re-run, how often, safely, and what each clip drops |
+| 6 | `docs/UNWIRED_CLASSIFICATION.md` | **generated** — why each unreached object is unreached |
+| 7 | `docs/FEATURE_INVENTORY.md` | every feature, how it works, its BigQuery table |
 
-⚠ `HANDOFF_2026-08-20.md` and earlier are **HISTORY**. Read them for *how*, never for *what is
-true now*.
-
----
-
-## ⛔ START HERE — THE OPERATOR'S PRIORITY BATCH, filed 2026-08-20c
-
-The operator reviewed the 2026-08-20b session and filed **seven new rows, G122–G128**. **These come
-before everything else**, and G122–G126 are numbered in the order they were given.
-⚠ **G129 is an eighth**, but it is not a new ask — it was split out of G96, which read ✅ DONE while
-still carrying an unanswered operator question, so the question never reached the OPEN list.
-⭐ **`docs/BACKLOG.md` now opens with a "WHERE EVERY UNFINISHED ROW STANDS" table** — every
-unfinished row, why it is unfinished, and what would finish it. Read that, then the rows.
-
-### ① G122 — ROADWAYS ARE BEING TREATED AS PARCELS. Do this first.
-
-Operator: *"the roadway is acting as a parcel with no structure, and no one can actually own a
-roadway, so this needs to be fixed immediately."*
-⭐ **The detection already exists and is only ADVISORY** — `in_parcel_assembly` grades **184**
-parcels as ribbon-shaped WITH a held road crossing them, **2,226** by shape alone, **3,347**
-possible. The screener warns; the parcel still counts, still scores, still appears in search and
-in every "fits N MW" total. ⚠ **Excluding them moves the 532,693 denominator and every county
-figure**, so the exclusion and the re-measurement must land in the same change.
-⭐ **Clip TIGER All Roads for Indiana first.** We hold only PRIMARY and SECONDARY roads (225 + 861
-features), which is why only 184 of 5,757 could be confirmed by geometry rather than shape alone.
-
-### ② G123 — CUT THE PROSE. Field and value, not an essay.
-
-Operator: *"cut out all of the 'Why' statements… everything should be field + associated number…
-assume the user is an energy professional… the dossier should be highly simplified."*
-⭐ **Measured: 38,866 characters** of `.sowhat`/`.hint` prose in the static HTML, plus **28 more
-blocks app.js builds at runtime**. Popups, tables, screener and dossier become field + value; the
-reasoning moves to `insights.html`.
-⚠ **This partially reverses G21 and the governing principle, deliberately.** The operator is
-RELOCATING the insight, not withdrawing it.
-⛔ **Disclosure is not explanation and must survive the cut:** the cap line ("showing 300 of
-12,431"), the three-state wording, the MISO vendor-licence badge, the 2020 structures vintage and
-the estimate-vs-published flag on a coordinate.
-
-### ③ G124 — THE RESCRAPE LEDGER, and full-column capture
-
-⭐ **Half exists**: every registered object now carries a `RE-SCRAPE COMMAND` (136 runnable here,
-131 delegated, 13 ladder, 49 honestly unresolved). **Missing:** an append-vs-replace verdict per
-loader, a cadence per table, and — the valuable half — **full-column capture**. We took partial
-slices; one measured case was silently dropping `operator`, `owner` and `status`.
-
-### ④ G125 — A COORDINATE OR ADDRESS ON EVERY POPUP AND DOSSIER
-
-So the reader can self-verify against imagery. The payload already carries the coordinate; the
-popup does not print it. Address is Marion-only and must say so. ⛔ Appraised value is measured
-100% NULL for Indiana — it arrives with the DLGF purchase, not with code.
-
-### ⑤ G126 — CAN WE PLACE ALL THE BUSES? Measured: no, but there is a free win
-
-⭐ **87 of the 1,551 unplaced PJM buses carry a PJM QUEUE ID in their label, and ALL 87 match a
-published queue point we already hold.** An untried join key, 100% hit rate, no scraping — do it
-first. Then branch topology (each placement seeds the next), then queue-generator coincidence.
-⛔ The other 1,449 are PSS/E area labels sitting at the gazetteer ceiling. **Refuse to place below
-a confidence threshold:** a bus in the wrong place is worse than a bus with no place.
-
-### ⑥ G127 — AMERICAN SPELLING · ⑦ G128 — STUDY COMPARABLE TOOLS AND REDESIGN
-
-71 × "data centre" against 2 × "data center", 34 of them in rendered text. ⛔ **Not a
-find-and-replace** — `circle-color` and `fill-color` are MapLibre properties and renaming them
-kills a layer silently.
-G128 is the operator's own framing: *"it looks like an intern made this, and we need to turn this
-from a simple project into an actual service that users would pay for."* ⚠ **It must come after
-G123**, or you design around text that is about to be deleted.
+⚠ `HANDOFF_2026-08-20b.md` and earlier are **HISTORY**. Read them for *how*, never for *what is
+true now* — §2b of the current handoff lists nine figures they get wrong.
 
 ---
 
-## THE BACKLOG BEHIND THAT BATCH — 92 DONE · 16 PARTIAL · 16 OPEN
+## ⛔ START HERE — THE LARGEST REMAINING WIN, AND IT NEEDS YOUR JUDGEMENT
 
-Twelve rows closed on 2026-08-20b and nine more advanced. ⚠ **OPEN reads 15 → 16 and that
-is not a standstill:** eight of the originals closed or were reclassified, then **seven new rows
-from the operator (G122–G128)** landed on top, plus **G129**, split out of a row that was marked
-DONE while still carrying an unanswered question. ⛔ **Two rows were corrected back from DONE on 2026-08-20c:**
-`G53` — the withdrawn-queue data is built and placed, but the operator asked for it to be
-*"filterable by date of withdrawn application"* and the screener has no such field (measured:
-the word "withdrawn" appears 0 times in `screener.html`); and `G90`, whose second half is blocked
-on the DLGF purchase like G70/G71/G104. What was left before the new batch is three decisions
-and a scrape queue — still true, just second in line now.
+### ⭐ G128(b) — MAKE THE ANSWER COME BEFORE THE WORKPAPER
 
-### ① THE DLGF GATEWAY PURCHASE — the highest-value action left, and it is yours, not code's
+`docs/COMPARABLE_TOOLS.md` is written, and its diagnosis is measured rather than felt:
 
-It unblocks **four rows at once**: G70 (parcel owner), G71 (parcel zoning), G104 (assessed value)
-and G90(b) (making WARN notices reach a parcel). Each has been measured to death and each is
-blocked on the same missing Indiana source. `mat_parcel_attrs` declares `assessed_value`,
-`zoning`, `parcel_owner`, `land_use` and `year_built`, and **all five are 100% NULL for Indiana**
-— 0 of 1,143,873 in our clip and 0 of 3,553,381 in the parent — while the parent holds 40.8M
-assessed values across 43 other states. **It is not a clip defect and re-clipping will not help.**
+| page | headings | tables | cards |
+|---|---:|---:|---:|
+| `si.html` | **38** | **40** | **53** |
+| `market.html` | 19 | 17 | 17 |
+| `community.html` | 12 | 16 | 18 |
+| `grid.html` | 14 | 14 | 16 |
 
-### ② THE DEFERRED SCRAPES — the operator excluded these deliberately
+**Six of eight pages are ANTHOLOGIES ordered by how the data was built, not by a question anyone
+arrives with.** `si.html` opens with *"Why this many and not more? — the whole funnel, with every
+loss named"* — a build diary — and the section a reader actually wants, *which owners might sell
+you land*, is **fifth**.
 
-G102 (state surplus, likely IDOA) · G103 (water utilities, EPA SDWIS) · G114's remaining ~1,500
+The typographic half already shipped: a shared record grammar (tabular numerals, right-aligned
+numerics, sticky headers, one row rhythm), a standard page header naming each page's ONE question,
+and nav/title reconciled. **What is left is the content decision:** on each of those four pages,
+which section is the ANSWER and which is the WORKPAPER. That is a judgement, which is why it was
+not done blind in the same session that moved 49 prose blocks.
+
+⚠ **13 runtime `.sowhat` blocks belong to this job.** Each wraps a live `id` the page's script
+writes a VALUE into — `<div class="sowhat" id="wd-answer">measuring…</div>`. The value is what G123
+wants to keep; only the sentence around it should go. Moving them wholesale broke six pages on the
+first attempt (18 fatal findings).
+
+---
+
+## THE BACKLOG BEHIND THAT — 98 DONE · 18 PARTIAL · 8 OPEN
+
+**Six rows closed** on 2026-08-20d (G122, G123, G124, G125, G127, G129) and two more were answered
+and advanced (G126, G128). ⭐ **OPEN halved, 16 → 8**, and the operator's whole priority batch is
+either closed or answered.
+
+### ① THE DLGF GATEWAY PURCHASE — still the highest-value action left, and it is yours
+
+It unblocks **four rows at once**: G70 (parcel owner), G71 (zoning), G104 (assessed value) and
+G90(b). All five attribute columns are **100% NULL for Indiana** — 0 of 1,143,873 in our clip and 0
+of 3,553,381 in the parent — while the parent holds 40.8M assessed values across 43 other states.
+**Not a clip defect; re-clipping will not help.**
+⭐ **G70 shrank on 2026-08-20d:** its building-use half shipped earlier, and its address half is now
+done too — statewide, not Marion-only. What remains is owner, and that is the purchase.
+
+### ② THE DEFERRED SCRAPES
+
+G102 (state surplus, likely IDOA) · G103 (water utilities, EPA SDWIS) · G114's remaining **1,464**
 PJM bus coordinates · G15's cost re-extraction from the workpaper header row.
 ⭐ **Scraping goes to an Opus (non-Fable) agent** — brief it with the write boundary,
 no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
 
-### ③ G129 NEEDS AN OPERATOR DECISION
+### ③ TWO SMALL THINGS WORTH DOING EARLY
 
-When is a filter a **hard gate** (flood) and when a **preference** (acreage)? A ranking cannot
-treat them alike, and no amount of code supplies the answer.
-⛔ **Split out of G96 on 2026-08-20c** — it had been buried inside a row marked ✅ DONE, so it
-never reached the OPEN list and was never put to the operator.
-
-**Everything else PARTIAL is honest about its remainder:** G6 (visual polish — the structure is
-done), G15 (cost), G21 (a standing principle, never "done"), G26 (the mitigated case is not
-obtainable), G27 (closed in substance), G40 (owned by the parallel session), G45 (the ladder),
-G46 (MISO placement is still borrowed), G51 (must stay evidence-driven), G55 (unpublished books),
-G62 (an acquisition), G113 (cleanup is judgement), G114 (a scrape).
+- **G53's withdrawn-date filter** on the screener, plus the SIZE gate that row also specifies.
+  Small, and it belongs with G113.
+- ⚠ **G129 option (b)** — a per-filter GATE/PREFERENCE toggle instead of the fixed published
+  classification. More honest and more work; a product decision, not a defect. Option (a) is live.
 
 ---
 
-## ⛔ SIX THINGS THAT WILL MISLEAD YOU IF NOBODY SAYS THEM
+## ⛔ SIX THINGS THAT WILL MISLEAD YOU
 
-**① The wiring census FAILING is CORRECT and is not work.** Every unreached
-object carries a measured reason in `docs/UNWIRED_CLASSIFICATION.md`, and
-`audit_unwired_classification.py` fails the checkpoint if one ever does not. The question is no
-longer *how many are unwired* — which is unanswerable — but *is any object unwired without a
-reason*, which is answerable and answered.
+**① Every parcel figure in the estate moved.** G122 removed 1,368 right-of-way parcels, so
+candidates are **531,325** (not 532,693), flagged parcels **23,766** (not 23,795), GRID binds
+**189,807**, LAND binds **72,725**, substations-on-a-parcel **1,820**. §2b of the handoff carries
+the full before/after. ⚠ Median substation distance **rose** 2.08 → **2.15 mi**, because the
+parcels removed were corridors that hug infrastructure — a number moving the unhelpful way after a
+correction is usually a sign the correction was real.
 
-**② "No structure" means "no building as of January 2020"** — `nat_usa_structures` has a newest
-Indiana production date of **2020-01-27**. ⭐ **And there is now a SECOND cause with the same
-appearance:** an address that geocodes onto the road selects the road right-of-way, which
-genuinely has no building, so the tool answers correctly about the **wrong parcel**. The screener
-names which one is in play. Do not conflate them.
+**② THE ADDRESS IS STATEWIDE.** Three documents said Marion-only. `energy.parcels_in` carries the
+DLGF property address on **98.4% of Indiana parcels across all 92 counties**; the Marion-only
+belief came from `in_si_address_parcel_bridge`, which is the address SEARCH crosswalk and a
+different corpus doing a different job.
 
-**③ The flagged parcel count is 23,795, not 24,277.** G84 demoted plain ECHO `violation`.
+**③ "Ribbon parcels with a road" is now 25, not 184** — and that is the fix working. The other 159
+were excluded as rights-of-way. The figure counts what SURVIVES the exclusion.
 
-**④ The screener carries TWO capacity figures and they mean different things.** `mw_dc` is LAND
-(acres × density); `deliv_wd_mw` is GRID (the lower of the two end-bus headrooms on the nearest
-line). **The grid binds on 190,178 parcels and the land on 73,058.** Never collapse them.
+**④ The wiring census FAILING is correct** and is not work.
 
-**⑤ Substation distance moved for every parcel in the corpus on 2026-08-20b.** 734 substations
-gained a position from footprints already in our own table, and the distance builds now measure to
-the **footprint**. Median distance from a candidate parcel to the nearest substation went
-**2.56 → 2.08 miles**, and on-parcel substations 871 → **1,846**. If you are comparing against an
-older figure, that is why.
+**⑤ "No structure" means "no building as of January 2020"** — and there is a second cause with the
+same appearance: a geocode landing on the road. ⭐ G122 makes that far rarer, because the road
+parcel itself is now excluded from the candidate set.
 
-**⑥ Nine gas capacity boards exist; only TWO can be placed in Indiana.** Thirteen operators cross
-the state. ⛔ **The gap is ATTRIBUTION, not acquisition** — seven of the nine boards post the
-operator's whole system with no state column, so scraping four more would mostly add four more
-unplaceable boards.
+**⑥ The screener carries TWO capacity figures and they mean different things.** `mw_dc` is LAND;
+`deliv_wd_mw` is GRID. Never collapse them.
 
 ---
 
@@ -239,32 +182,29 @@ unplaceable boards.
 
 ---
 
-## ⛔ TRAPS THAT COST REAL TIME — read §5 and §6 of the handoff in full
+## ⛔ TRAPS — read §4 and §5 of the handoff in full
 
-The short version, because these repeat:
-
-1. ⛔ **NEVER write a regex through a shell heredoc.** Broken for the **sixth** time on
-   2026-08-20b, inside an audit. Write tool, module level, self-test at import.
-2. ⛔ **THE INSTRUMENT IS WRONG BEFORE THE CODE IS. Five audits misled me in one session** —
-   `audit_map_clicks`, `audit_registry_truth`, `audit_js_duplicates`, `audit_page_controls` and
-   `audit_schema_truncation`. One reported a clean all-clear while measuring the wrong tables;
-   one reported 231 correct rows as broken; one crying-wolf fix of mine produced 249 false
-   findings and was deleted rather than shipped. **Fix the instrument before acting on it, and
-   prove it on an injected regression.**
-3. ⛔ **A value vocabulary lies.** Five times in one session: FRPP's `state_code` is the numeric
-   FIPS `'18'`; WARN's `notice_class` is UPPER-CASE; `nearestBus` filters on a **lower-case**
-   direction; the roads tables use `geom` not `geog`; `territoryAt` returns `utility` not `name`.
-4. ⛔ **Cumulative categories are not buckets.** The Drought Monitor's D0 means "D0 **or worse**",
-   so summing them double-counts — it reported 91.5% where the truth was 50.2%.
-5. ⛔ **HARD-RELOAD before debugging a front-end change.** `stamp_assets.py` versions the JS and
-   CSS; the HTML cannot version itself.
-6. ⛔ **A dead web server looks exactly like a code bug.**
-7. ⛔ **Two changes that are each fine can be fatal together.** Removing a checkbox while a layer
-   registry still named it threw during boot, before the map existed, so the page rendered nothing.
-8. ⚠ **A key in the wrong payload renders empty forever.** `audit_frontend.py` caught it twice.
-9. ⚠ **An in-place repair that reads its own output is not idempotent**, and **a build that
-   appends to a payload it does not own will double itself** — compressor 24 → 48 features.
-10. ⚠ **A statistic true of 98% of the corpus tells a siter nothing.** Narrow it or drop it.
+1. ⛔ **NEVER WRITE A REGEX THROUGH A SHELL HEREDOC. SEVENTH occurrence on 2026-08-20d.** And it
+   fails a second way: a heredoc edit silently applied HALF of a two-part change, widening a
+   lookup table but not the regex feeding it, leaving a check that passes by default.
+2. ⛔ **BUILDS MAY READ `energy`; EXPORTS MAY NOT.** The checkpoint enforces it and caught an
+   address join placed inside an export.
+3. ⛔ **THE INSTRUMENT IS WRONG BEFORE THE CODE IS — seven times in one session.** A join on the
+   wrong key reported "99% carry no class code" against a column 97.8% populated. `re.split` with
+   a two-group regex wrote `</script>scriptscript` into eight pages and **no audit could see it**.
+   A regex cannot parse a template nested inside another template's `${...}`, which is how nearly
+   every rendered string here is written — the fixer missed six and the audit then reported ZERO.
+   **An audit registered but not dispatched runs and reports nothing.**
+4. ⛔ **A LOOKALIKE IS SOMETIMES A KEY.** `fits_mw_datacentre_at_4_per_acre` is a CSV column name;
+   `circle-color` and 91 siblings are MapLibre paint properties.
+5. ⛔ **A PRESENTATION POLICY MUST NOT DEPEND ON THE TAB BEING VISIBLE** — rAF does not fire in a
+   tab that is not compositing.
+6. ⛔ **AN `id` IS USUALLY ON THE BLOCK, NOT INSIDE IT.**
+7. ⚠ **Two audits that count different populations will disagree forever.**
+8. ⚠ **Cumulative categories are not buckets** (Drought D0 means "D0 or worse").
+9. ⚠ **A value vocabulary lies:** FRPP `state_code` is `'18'`; WARN `notice_class` is UPPER-CASE;
+   `nearestBus` wants lower-case; roads use `geom`; `territoryAt` returns `utility`.
+10. ⚠ **A statistic true of 98% of the corpus tells a siter nothing.**
 
 **The pattern behind all of them: a clean, alarming or UNCHANGED number is a claim about your
 INSTRUMENT first.**
@@ -279,25 +219,27 @@ INSTRUMENT first.**
 ⚠ **Builds may read `energy`; EXPORTS MAY NOT.**
 
 **Every table gets a `_registry` row in the same run**, with `source`, `method` and a verbatim
-`RE-SCRAPE COMMAND:`. ⚠ **Update it when you repoint a build.** ⭐ As of 2026-08-20b **every
-registered object carries one** — 136 runnable here, 131 delegated to the platform session, 13
-ladder, 49 honestly unresolved. ⛔ **The 49 are visible on purpose:** a plausible command that
-does not run is worse than an absent one.
+`RE-SCRAPE COMMAND:`. ⭐ `docs/RESCRAPE_LEDGER.md` now also records, per object, whether re-running
+is **safe** (replace_safe / append_only / unknown), how often the PUBLISHER changes, and which
+parent columns the clip drops.
 
-**⛔ Check the warehouse before you explore or scrape.** **Read the schema. Never guess a column
-name OR a value vocabulary.**
+**⛔ Check the warehouse before you explore or scrape. Read the schema. Never guess a column name
+OR A VALUE VOCABULARY.**
 **Unpublished is NULL, never 0** — but a **stated** zero is a fact.
 **⚠ EXCLUDE `parcels_in/080500000047000018`** from every spatial join (D85); prove it by fan-out.
-**⛔ No centroid where a footprint exists.** **Never `git add -A`.** **Use a commit-message FILE.**
+**⛔ No centroid where a footprint exists.** ⚠ The G125 display coordinate is the one exception and
+it is quarantined: `map_lat`/`map_lon` are for the reader's eye and the imagery link, and **nothing
+measures with them**.
+**Never `git add -A`.** **Use a commit-message FILE.**
 
-**After ANY front-end change:** `python scripts/stamp_assets.py` → `python scripts/audit_frontend.py`
-→ `python scripts/audit_js_duplicates.py` → `python scripts/audit_page_controls.py` →
-**hard-reload and verify in a browser**. ⭐ The map boots headless via
-`scripts/boot_map_harness.js`.
+**After ANY front-end change:** `python scripts/stamp_assets.py` → `audit_frontend.py` →
+`audit_js_duplicates.py` → `audit_page_controls.py` → `audit_spelling.py` → **hard-reload and
+verify in a browser**. ⭐ The map boots headless via `scripts/boot_map_harness.js`.
 
 ---
 
 **Start by** telling me whether the harvest is alive, what the checkpoint printed, and what the
 ledger audits printed — then what you read, then your plan.
-⭐ **Lead with G122, then G123, then G124–G126** unless I say otherwise. G122 and G123 both
-change figures and text that other rows depend on, so doing them late means doing them twice.
+⭐ **Lead with G128(b)** — the page re-ordering — unless I say otherwise. It is the largest
+remaining win, it is what "it looks like an intern made this" was actually about, and every
+mechanical prerequisite for it is now done.

@@ -47,6 +47,16 @@ REPO = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Cal
 # Every entry was measured, not assumed. Where a claim is about CONTENT ("no state column"), it
 # was checked against the table, because G80's whole lesson is that a name is not a data test.
 CLASSIFIED = {
+    # G124, 2026-08-20d. A REASON, not an excuse: this object's surface is a DOCUMENT, and it is
+    # generated in the same run that writes the table. Putting a 337-row engineering ledger about
+    # loader idempotency and column coverage onto a siting page would be showing a developer's
+    # workpaper to a site selector. The table exists so the checkpoint can audit the ledger for
+    # drift, which is a use, just not a rendered one.
+    "document_surface": ("the surface is a generated DOCUMENT rather than a page - "
+                         "docs/RESCRAPE_LEDGER.md is written by the same script in the same run, "
+                         "and the table exists so the ledger can be audited for drift", [
+        "in_rescrape_ledger",
+    ]),
     "empty": ("0 rows held - there is nothing to render, and an empty layer on a map reads as "
               "'we looked and found none' rather than 'we hold nothing'", [
         "in_data_centers_cloudscene", "in_gas_lng_terminals", "in_gas_processing_plants",

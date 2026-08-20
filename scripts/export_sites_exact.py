@@ -102,9 +102,8 @@ SELECT sc.county_fips, s.* EXCEPT(parcel_geog, {", ".join(V1_SI)}),
        --    measures with them - every distance above was computed against a geography - so "no
        --    centroid where a footprint exists" is untouched.
        loc.prop_address AS x_addr, loc.prop_city AS x_city, loc.prop_zip AS x_zip,
-       COALESCE(s.lat, ST_Y(ST_CENTROID(s.parcel_geog))) AS x_map_lat,
-       COALESCE(s.lon, ST_X(ST_CENTROID(s.parcel_geog))) AS x_map_lon,
-       IF(s.lat IS NOT NULL, 'published', 'parcel_interior_point') AS x_coord_basis,
+       loc.map_lat AS x_map_lat, loc.map_lon AS x_map_lon,
+       loc.coord_basis AS x_coord_basis,
        ST_ASGEOJSON(s.parcel_geog) AS gj
 FROM `{DS}.in_sites` s
 JOIN `{DS}.in_sites_county` sc USING (parcel_source, parcel_key)
@@ -113,21 +112,13 @@ LEFT JOIN `{DS}.in_si_sites_flags_v2` f USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_asset_distance_parcel` d USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_water_distance_parcel`  w USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_screener_candidates`     b USING (parcel_source, parcel_key)
--- ⚠ de-duplicated, and aliased to loc_key rather than parcel_key: 38,840 state_parcel_id values
--- repeat in the source, and a second column named parcel_key reaches the USING joins above and
--- BigQuery rejects it as ambiguous.
-LEFT JOIN (
-  SELECT state_parcel_id AS loc_key,
-         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address, ''),
-                                   NULLIF(prop_add, '')), ''))       AS prop_address,
-         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address_city, ''),
-                                   NULLIF(prop_city, '')), ''))      AS prop_city,
-         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address_zip, ''),
-                                   NULLIF(prop_zip, '')), ''))       AS prop_zip
-  FROM `energy-platfrom.energy.parcels_in`
-  WHERE state_parcel_id IS NOT NULL AND state_parcel_id != '080500000047000018'
-  GROUP BY 1
-) loc ON loc.loc_key = s.parcel_key
+-- ⛔ THIS READ energy.parcels_in DIRECTLY AND THE CHECKPOINT FAILED IT: "no EXPORT reads energy
+-- directly". Builds may read energy; EXPORTS MAY NOT - an export is on the path to what the user
+-- sees, so a dependency here means the application cannot be rebuilt without the platform
+-- session's dataset, and energy is READ-ONLY and owned by somebody else. The clip is now
+-- indiana_app.in_parcel_location, built by scripts/build_parcel_location.py, which owns the
+-- de-duplication and asserts its own fan-out at 1.0.
+LEFT JOIN `{DS}.in_parcel_location` loc USING (parcel_source, parcel_key)
 -- ⛔ G122: THE MAP AND THE SCREENER MUST EXCLUDE THE SAME PARCELS. in_screener_candidates drops
 -- confirmed road and rail rights-of-way; if this export did not, the map would keep drawing them
 -- and the two surfaces would disagree about what a site is - which is worse than either answer

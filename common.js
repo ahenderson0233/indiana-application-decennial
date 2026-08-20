@@ -985,7 +985,11 @@ const SPELL_MAP = [[/\bcentres\b/g, "centers"], [/\bCentres\b/g, "Centers"],
   [/\bmetres\b/g, "meters"], [/\bmetre\b/g, "meter"],
   [/\bcolours\b/g, "colors"], [/\bcolour\b/g, "color"],
   [/\bbehaviour\b/g, "behavior"], [/\blicences\b/g, "licenses"], [/\blicence\b/g, "license"],
-  [/\bprogramme\b/g, "programme".replace("mme", "m")],
+  /* ⚠ written plainly. It was first obfuscated as "programme".replace("mme","m") to stop
+     fix_american_spelling.py rewriting this very table - which was unnecessary (the fixer skips
+     regex literals, and rewriting the replacement "program" to "program" is a no-op) and cost a
+     checkpoint failure, because audit_spelling.py correctly read the literal as British. */
+  [/\bprogramme\b/g, "program"],
   [/\bnormalised\b/g, "normalized"], [/\borganisation\b/g, "organization"],
   [/\bdefence\b/g, "defense"], [/\banalysed\b/g, "analyzed"]];
 const SPELL_ANY = /centre|metre|colour|behaviour|licence|programme|normalised|organisation|defence|analysed/i;
@@ -1013,3 +1017,53 @@ function applyAmericanSpelling(root) {
   }
   return n;
 }
+
+/* ============================================================================================
+   G128 - THE PAGE HEADER BAR. Every page says its NAME, its ONE question, and its headline
+   figure, in the same place and the same shape.
+
+   ⭐ THE PATTERN IS THE FINANCIAL TERMINAL'S. A Bloomberg security page opens with the same four
+   figures in a band that never moves, whatever tab you are on, so you always know what record you
+   are looking at. Measured against ours: six of eight pages are ANTHOLOGIES ordered by how the
+   data was built rather than by a question - si.html carries 38 headings, 40 tables and 53 cards,
+   and it OPENS with "Why this many and not more? - the whole funnel, with every loss named",
+   which is a build diary rather than a finding.
+
+   ⛔ THE ONE QUESTION IS THE POINT, NOT THE DECORATION. A page that cannot state one is doing more
+   than one job, and naming it here is what makes that visible. The full reasoning, the comparable
+   products and the per-page verdict are in docs/COMPARABLE_TOOLS.md.
+
+   ⚠ NAV LABEL AND TITLE ARE RECONCILED HERE TOO. index.html called itself "Map console" in the nav
+   and "Indiana Siting Intelligence" in the title bar; grid.html was "Power & grid" against
+   "Grid & Capacity". Two names for one page is small and it reads as unfinished.
+   ============================================================================================ */
+const PAGE_PURPOSE = {
+  "insights.html": "What this tool holds, and what it can tell you",
+  "index.html":    "Where the candidate sites are, and what is around them",
+  "screener.html": "A ranked shortlist against your criteria",
+  "grid.html":     "Can a site get power here, and what would interconnection cost",
+  "market.html":   "What power costs here, and who sells it",
+  "community.html":"Whether a county will let you build",
+  "si.html":       "Which owners might sell, and how strongly we believe it",
+  "data.html":     "Where every figure came from, and what we do not know",
+};
+
+function renderPageHead(figureHtml) {
+  const here = location.pathname.split("/").pop() || "index.html";
+  const q = PAGE_PURPOSE[here];
+  if (!q) return;
+  const nav = document.getElementById("nav");
+  if (!nav || document.querySelector(".pagehead")) return;
+  const label = (NAV.find(([h]) => h === here) || [null, here])[1];
+  const el = document.createElement("div");
+  el.className = "pagehead";
+  el.innerHTML = `<span class="ph-name">${label}</span><span class="ph-q">${q}</span>` +
+                 (figureHtml ? `<span class="ph-fig">${figureHtml}</span>` : "");
+  /* after the nav, before whatever the page draws first */
+  nav.parentNode.insertBefore(el, nav.nextSibling);
+  /* one name for one page: the title bar follows the nav label */
+  if (!document.title.startsWith(label)) {
+    document.title = `${label} — Indiana Siting Intelligence`;
+  }
+}
+document.addEventListener("DOMContentLoaded", () => renderPageHead());
