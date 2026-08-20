@@ -145,8 +145,24 @@ print(f"  [note] ladder complete rungs: {complete}")
 print(f"  [note] ladder short rungs:    {short}")
 check("inj_25 still short", rungs.get("in_pjm_qs_c23_inj_25") == 1797,
       f"live {rungs.get('in_pjm_qs_c23_inj_25')}")
-check("the docs name every short rung", all(k in allt for k in short),
-      f"short = {sorted(short)}")
+
+# ⛔ THE RUNG BEING HARVESTED RIGHT NOW IS SHORT BY DEFINITION, and requiring the docs to name it
+#    made this check fail every time the ladder advanced - twice within hours of the handoff being
+#    written, as `wd_200` completed and `inj_300` began. A check that fails for a correct reason
+#    gets ignored, and this one would have failed on every future session.
+# ⭐ WHAT ACTUALLY MATTERS is the ANOMALY: a rung that is short and NOT being written, because
+#    that means a harvest stopped without finishing. Those must be named. The in-flight rung is
+#    identified by its table having been written in the last hour.
+fresh = {r.table_id for r in c.query(f"""
+  SELECT table_id FROM `{DS}.__TABLES__`
+  WHERE REGEXP_CONTAINS(table_id, r'^in_pjm_qs_c23_(inj|wd)_[0-9]+$')
+    AND TIMESTAMP_MILLIS(last_modified_time) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
+""")}
+stalled = {k.replace("in_pjm_qs_c23_", ""): v for k, v in rungs.items()
+           if v < 1826 and k not in fresh}
+check("the docs name every STALLED short rung", all(k in allt for k in stalled),
+      f"stalled = {sorted(stalled)}; in-flight and excluded = "
+      f"{sorted(x.replace('in_pjm_qs_c23_', '') for x in fresh)}")
 
 print()
 print("=" * 92)
@@ -166,6 +182,27 @@ for k in ("DONE", "PARTIAL", "OPEN"):
           f"live {n}")
 check("0 active duplicates", "ACTIVE DUPLICATES (two live rows for one number): 0" in out,
       "structural check")
+
+# ⛔ THE ARITHMETIC OF "N ROWS CLOSED", added 2026-08-20b because the handoff got it wrong.
+#    It claimed "Twenty rows closed" when 80 DONE -> 94 DONE is FOURTEEN. Eighteen rows were
+#    edited that session, but four of them moved PARTIAL->PARTIAL, and the write-up counted
+#    edits instead of closures. Every other figure in that document was re-measured by this
+#    audit; this one was prose, so nothing checked it.
+# ⚠ The opening DONE count is a fact about the PREVIOUS handoff, so it is read from that file
+#    rather than hard-coded here - two copies of one number is the defect this project keeps
+#    hitting.
+prev = io.open(os.path.join(REPO, "docs", "HANDOFF_2026-08-20.md"), encoding="utf-8").read()
+m_prev = re.search(r"\*\*(\d+) DONE\b", prev)
+if m_prev:
+    opened, now = int(m_prev.group(1)), counts.get("DONE", 0)
+    closed = now - opened
+    words = {12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen", 16: "sixteen",
+             17: "seventeen", 18: "eighteen", 19: "nineteen", 20: "twenty"}
+    claimed = re.findall(r"\b(twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|"
+                         r"nineteen|twenty)\s+rows?\s+closed", allt, re.I)
+    ok = all(w.lower() == words.get(closed, "") for w in claimed) if claimed else True
+    check("the 'N rows closed' claim matches the arithmetic", ok,
+          f"{opened} -> {now} is {closed} closed; the docs say {claimed or 'nothing'}")
 
 print()
 print("=" * 92)

@@ -83,8 +83,7 @@ true now*.
 
 ## ⭐ START HERE — the non-scraping backlog is DONE
 
-**80 DONE · 21 PARTIAL · 15 OPEN → 94 DONE · 14 PARTIAL · 8 OPEN.** Twenty rows closed on
-2026-08-20b. What is left is not a list of tasks; it is three decisions and a scrape queue.
+**80 DONE · 21 PARTIAL · 15 OPEN → 94 DONE · 14 PARTIAL · 8 OPEN.** Fourteen rows closed on 2026-08-20b, seven more advanced. What is left is not a list of tasks; it is three decisions and a scrape queue.
 
 ### ① THE DLGF GATEWAY PURCHASE — the highest-value action left, and it is yours, not code's
 
