@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grid &amp; Capacity — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=e0291edb"></head>
+<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Grid &amp; Capacity</span></div></header>
 <nav id="nav"></nav>
@@ -68,6 +68,33 @@
           <th>basis</th><th>map</th></tr></table></div>
     <div class="hint" id="b-zero" style="margin-top:6px"></div>
     <div class="prov" id="p-buses"></div></div>
+
+  <!-- ============================================================================================
+       G72/G80, 2026-08-20. Two objects that reached no surface, and between them they answer the
+       hardest question a developer has to price.
+       ⛔ A THIRD 300 MW PANEL WAS DELIBERATELY NOT ADDED. `in_bus_headroom_300` holds 642 rows
+       and covers EXACTLY the same 642 POIs as the table below it (measured: 642 shared, no
+       residue on either side). It is a second derivation of one thing, and shipping it beside
+       the first is the two-copies-drift defect — so it is recorded as a duplicate grain in
+       docs/UNWIRED_CLASSIFICATION.md rather than given a panel of its own.
+       ============================================================================================ -->
+  <div class="card"><h2>⭐ What an interconnection upgrade actually costs</h2>
+    <div class="sowhat" id="upcost-answer">measuring…</div>
+    <div class="scroll"><table id="t-upcost">
+      <tr><th>fuel</th><th>service</th><th>projects</th><th>network upgrade $M</th>
+        <th>NRIS MW</th><th>$k per NRIS MW</th></tr></table></div>
+    <div class="prov">indiana_app.in_miso_dpp2025_ph1_project_costs · MISO DPP-2025 Phase 1
+      study report. ⚠ These are the costs assigned in ONE study cycle across the whole MISO
+      footprint, not Indiana alone, and network upgrade cost is only part of an interconnection
+      bill — it excludes the interconnection facilities themselves. It is an order of magnitude,
+      which is exactly what is missing when a developer is asked for a number early.</div></div>
+
+  <div class="card"><h2>Which branches actually bind, and how loaded they already are</h2>
+    <div class="sowhat" id="bind-answer">measuring…</div>
+    <div class="scroll" style="max-height:340px"><table id="t-bind">
+      <tr><th>from bus</th><th>to bus</th><th>POIs it constrains</th>
+        <th>average loading before your request</th><th>lowest MW available</th></tr></table></div>
+    <div class="prov" id="p-bind"></div></div>
 
   <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
     <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
@@ -234,6 +261,51 @@
      ${fmt((GS.gaps||{}).miso_buses_joinable_but_no_coordinates || 0)} MISO buses join but carry no
      coordinate. They are listed in the payload's own gaps block, never rendered as zero and never
      dropped. <b>The map console's bus layer is the fuller view.</b>`;
+
+  /* ---------- G72/G80, 2026-08-20 ----------------------------------------------------------- */
+  const WG = await fetchGz("data/wired.json.gz");
+  const uc = WG.miso_upgrade_costs || [];
+  const ucTot = uc.reduce((a, r) => a + (r.cost_musd || 0), 0);
+  const ucMw = uc.reduce((a, r) => a + (r.nris_mw || 0), 0);
+  document.getElementById("upcost-answer").innerHTML = uc.length
+    ? `<b>$${fmt(Math.round(ucTot))}M of network upgrades across ${
+        fmt(uc.reduce((a, r) => a + r.projects, 0))} projects</b>, against
+       ${fmt(Math.round(ucMw))} MW of network resource interconnection service — about
+       <b>$${(ucTot * 1000 / Math.max(ucMw, 1)).toFixed(0)}k per MW</b> on average.
+       <b>This is the number nobody can give you early</b>, and the spread between fuel types is
+       the part to read: it is driven by WHERE the queue put those projects, not by the
+       technology, so a low figure is a statement about that cycle's geography rather than a
+       price you can expect. ⚠ Costs are assigned per project by study, and one project can carry
+       an upgrade that several others then free-ride on.`
+    : `No study-cycle upgrade costs are held.`;
+  document.getElementById("t-upcost").insertAdjacentHTML("beforeend", uc.map((r) =>
+    `<tr><td>${r.fuel_type || "&mdash;"}</td><td>${r.service_type || "&mdash;"}</td>
+     <td>${fmt(r.projects)}</td><td>$${fmt(Math.round(r.cost_musd || 0))}</td>
+     <td>${r.nris_mw ? fmt(Math.round(r.nris_mw)) : `<span class="cannot">none requested</span>`}</td>
+     <td>${r.usd_k_per_nris_mw != null ? `$${fmt(Math.round(r.usd_k_per_nris_mw))}k`
+        : `<span class="cannot">no NRIS MW to divide by</span>`}</td></tr>`).join(""));
+
+  const bd = WG.miso_binding || [];
+  const overloaded = bd.filter((r) => (r.avg_pct_loaded_before || 0) >= 100).length;
+  document.getElementById("bind-answer").innerHTML = bd.length
+    ? `A MISO interconnection is capped by <b>one branch</b>, and it is usually not the one next
+       to you. These are the branches that constrain the most interconnection points in the
+       study. <b>${overloaded} of the top ${bd.length} are ALREADY AT OR OVER 100% loading before
+       any new request</b> — on those, the headroom figure is not "how much is left", it is a
+       statement about a system that is already past its rating, and any project behind one is
+       waiting on an upgrade rather than on a study.`
+    : `No monitored-facility detail is held.`;
+  document.getElementById("t-bind").insertAdjacentHTML("beforeend", bd.map((r) =>
+    `<tr><td>${r.from_bus || "&mdash;"}</td>
+     <td>${r.to_bus || `<span class="cannot">not parsed</span>`}</td>
+     <td>${fmt(r.pois_affected)}</td>
+     <td class="${(r.avg_pct_loaded_before || 0) >= 100 ? "cannot" : ""}">${
+       r.avg_pct_loaded_before != null ? r.avg_pct_loaded_before.toFixed(1) + "%" : "&mdash;"}</td>
+     <td>${r.min_mw_available != null ? fmt(r.min_mw_available) : "&mdash;"}</td></tr>`).join(""));
+  const fn = (WG.miso_facility_note || [])[0] || {};
+  document.getElementById("p-bind").innerHTML =
+    `indiana_app.in_miso_facility_detail (${fmt(fn.held)} monitored-facility rows). ` +
+    `⚠ <b>${escHtml(fn.note || "")}</b>`;
 
   const pl = await fetchGz("data/pipeline.json.gz");
   const plans = pl.grid_plans.filter(r => r.row_type === "project").slice(0, 80)

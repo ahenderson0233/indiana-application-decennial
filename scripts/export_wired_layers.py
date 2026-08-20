@@ -222,13 +222,57 @@ wired = {
         FROM `{DS}.in_miso_dpp2025_ph1_project_costs`
         GROUP BY 1, 2 ORDER BY cost_musd DESC"""),
 
-    # in_bus_headroom_300 held 642 rows and reached no surface. tier0 answers at one request size;
-    # this answers at 300 MW, which is a realistic hyperscale ask.
-    "headroom_300": rows(f"""
-        SELECT poi_name, ROUND(headroom300_mw) AS mw, ROUND(headroom300_dfax5_mw) AS mw_dfax5,
-               facilities_300 AS facilities, binding_300 AS binding
-        FROM `{DS}.in_bus_headroom_300`
-        WHERE headroom300_mw IS NOT NULL ORDER BY headroom300_mw DESC LIMIT 250"""),
+    # ⛔ `headroom_300` REMOVED 2026-08-20, AND NOT WIRED ANYWHERE. The table it came from holds
+    #    642 rows covering EXACTLY the same 642 MISO points as in_miso_poi_state - measured, 642
+    #    shared with no residue on either side - and grid.html already carries a "MISO POIs,
+    #    injection detail @ a 300 MW request" card. Shipping a second 300 MW answer beside the
+    #    first is the two-copies-drift defect, so it is recorded as a duplicate grain in
+    #    audit_unwired_classification.py instead. An unused payload key is not free either: it
+    #    is weight in every download and a future reader assumes something renders it.
+    # ⚠ MOVED HERE FROM export_wired_batch2.py, 2026-08-20 — THE SECOND TIME THIS SESSION
+    #   THAT RELATED KEYS LANDED IN DIFFERENT PAYLOADS. grid.html reads wired.json.gz and
+    #   these were being written into wired2.json.gz, so three panels would have rendered
+    #   empty forever. Both times audit_frontend.py caught it, because it compares every
+    #   key a page READS against the keys the export WRITES.
+    #   ⛔ The root cause is two sibling export scripts with no rule about which payload a
+    #   key belongs in. The rule is now: a key goes in the payload the PAGE THAT RENDERS
+    #   IT already loads — grid content in wired, market content in wired2.
+    # MISO POI headroom and the facility that binds it. 642 points, 40,007 monitored facilities.
+    "miso_poi": rows(f"""
+        SELECT poi_name, bus_name, kv, area_name, ROUND(headroom_mw) AS headroom_mw,
+               headroom_state, n_monitored_facilities, n_facilities_at_zero,
+               n_facilities_overloaded_base, ROUND(binding_percent_loading_before, 1) AS pct_loaded,
+               _vintage AS vintage
+        FROM `{DS}.in_miso_poi_state`
+        ORDER BY headroom_mw DESC LIMIT 300"""),
+    # ⛔ `cont_name`, `fr_name` and `to_name` EXIST AND ARE 100% NULL on all 40,007 rows. Grouping
+    #    on cont_name returned ZERO rows and a careless reading of that is "no contingency binds
+    #    anything", which is the opposite of the truth. The endpoints are packed inside
+    #    `monitored_facility` as a PSS/E branch string:
+    #        '348067 7RAMSEY       345  348491 7HOLLAND      345  1'
+    #        <-- from bus + name + kV --><-- to bus + name + kV --><ckt>
+    #    so the facility is aggregated on that string and the from/to names are pulled out of it.
+    "miso_binding": rows(f"""
+        SELECT
+          TRIM(REGEXP_EXTRACT(monitored_facility, r'^\\s*\\d+\\s+(\\S+)')) AS from_bus,
+          TRIM(REGEXP_EXTRACT(monitored_facility, r'\\d+\\s+\\S+\\s+\\d+\\s+\\d+\\s+(\\S+)'))
+            AS to_bus,
+          COUNT(*) AS times_monitored,
+          COUNT(DISTINCT poi_name) AS pois_affected,
+          ROUND(AVG(percent_loading_before), 1) AS avg_pct_loaded_before,
+          ROUND(MIN(mw_available)) AS min_mw_available
+        FROM `{DS}.in_miso_facility_detail`
+        WHERE monitored_facility IS NOT NULL
+        GROUP BY 1, 2
+        HAVING from_bus IS NOT NULL
+        ORDER BY pois_affected DESC, times_monitored DESC LIMIT 40"""),
+    "miso_facility_note": [{
+        "held": 40007,
+        "cont_name_populated": 0,
+        "note": "cont_name, fr_name and to_name are held and 100% empty; the branch endpoints "
+                "are parsed out of the monitored_facility PSS/E string instead. Reported so a "
+                "later session does not read an empty GROUP BY as 'nothing binds'.",
+    }],
 
     # G97/G98 summaries for si.html
     "surplus_summary": rows(f"""

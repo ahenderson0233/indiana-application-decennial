@@ -165,43 +165,6 @@ w2 = {
         LEFT JOIN cty ON cty.nm = UPPER(REGEXP_REPLACE(e.facstdcountyname, r'(?i)\\s+COUNTY$', ''))
         WHERE e.cwpstate = 'IN'"""),
 
-    # MISO POI headroom and the facility that binds it. 642 points, 40,007 monitored facilities.
-    "miso_poi": rows(f"""
-        SELECT poi_name, bus_name, kv, area_name, ROUND(headroom_mw) AS headroom_mw,
-               headroom_state, n_monitored_facilities, n_facilities_at_zero,
-               n_facilities_overloaded_base, ROUND(binding_percent_loading_before, 1) AS pct_loaded,
-               _vintage AS vintage
-        FROM `{DS}.in_miso_poi_state`
-        ORDER BY headroom_mw DESC LIMIT 300"""),
-    # ⛔ `cont_name`, `fr_name` and `to_name` EXIST AND ARE 100% NULL on all 40,007 rows. Grouping
-    #    on cont_name returned ZERO rows and a careless reading of that is "no contingency binds
-    #    anything", which is the opposite of the truth. The endpoints are packed inside
-    #    `monitored_facility` as a PSS/E branch string:
-    #        '348067 7RAMSEY       345  348491 7HOLLAND      345  1'
-    #        <-- from bus + name + kV --><-- to bus + name + kV --><ckt>
-    #    so the facility is aggregated on that string and the from/to names are pulled out of it.
-    "miso_binding": rows(f"""
-        SELECT
-          TRIM(REGEXP_EXTRACT(monitored_facility, r'^\\s*\\d+\\s+(\\S+)')) AS from_bus,
-          TRIM(REGEXP_EXTRACT(monitored_facility, r'\\d+\\s+\\S+\\s+\\d+\\s+\\d+\\s+(\\S+)'))
-            AS to_bus,
-          COUNT(*) AS times_monitored,
-          COUNT(DISTINCT poi_name) AS pois_affected,
-          ROUND(AVG(percent_loading_before), 1) AS avg_pct_loaded_before,
-          ROUND(MIN(mw_available)) AS min_mw_available
-        FROM `{DS}.in_miso_facility_detail`
-        WHERE monitored_facility IS NOT NULL
-        GROUP BY 1, 2
-        HAVING from_bus IS NOT NULL
-        ORDER BY pois_affected DESC, times_monitored DESC LIMIT 40"""),
-    "miso_facility_note": [{
-        "held": 40007,
-        "cont_name_populated": 0,
-        "note": "cont_name, fr_name and to_name are held and 100% empty; the branch endpoints "
-                "are parsed out of the monitored_facility PSS/E string instead. Reported so a "
-                "later session does not read an empty GROUP BY as 'nothing binds'.",
-    }],
-
     # ---- owner-motivation corpora that si.html summarised but never named ----
     "dissolution": rows(f"""
         SELECT status_family, COUNT(*) AS entities,

@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Community &amp; Regulatory — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=e0291edb"></head>
+<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Community &amp; Regulatory</span></div></header>
 <nav id="nav"></nav>
@@ -145,6 +145,37 @@
       <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
         physical-risk complement to the flood and wetland gates on the map</div></div>
   </div>
+
+  <!-- G72/G80, 2026-08-20: three water objects that reached no surface. Water is the second
+       conversation a large load has with a community, after power, and the page had none of it. -->
+  <div class="gridcards">
+    <div class="card"><h2>Drought, week by week</h2>
+      <div class="sowhat" id="drought-answer">measuring…</div>
+      <div class="scroll" style="max-height:260px"><table id="t-drought">
+        <tr><th>week</th><th>no drought</th><th>abnormally dry or worse</th>
+          <th>moderate or worse</th><th>severe or worse</th></tr></table></div>
+      <div class="hint">⚠ <b>These categories are CUMULATIVE, not slices.</b> The Drought Monitor
+        publishes &ldquo;D1 or worse&rdquo;, not &ldquo;exactly D1&rdquo;, so the columns
+        deliberately overlap and adding them across a row is meaningless &mdash; which is exactly
+        the mistake this panel made on its first build.</div>
+      <div class="prov">indiana_app.in_drought_by_state · US Drought Monitor.
+        ⚠ <b>A STATE figure, not a county one</b> &mdash; it must never be read onto a parcel.</div></div>
+    <div class="card"><h2>Water stress in the basins Indiana sits in</h2>
+      <div class="sowhat">A withdrawal permit is argued at BASIN level, not county level, so two
+        parcels a few miles apart can face different objectors. <b>Baseline water stress is the
+        ratio of withdrawals to available supply</b> &mdash; it governs how CONTESTED a new
+        withdrawal will be, which is a different question from whether water is physically there.</div>
+      <div class="scroll" style="max-height:260px"><table id="t-aq">
+        <tr><th>basin</th><th>baseline stress</th><th>depletion</th>
+          <th>year-to-year variability</th><th>drought risk</th></tr></table></div>
+      <div class="prov">indiana_app.in_water_aqueduct · WRI Aqueduct 3.0.</div></div>
+  </div>
+  <div class="card"><h2>Permitted water dischargers, by county</h2>
+    <div class="sowhat" id="cwa-answer">measuring…</div>
+    <div class="scroll" style="max-height:300px"><table id="t-cwa">
+      <tr><th>county</th><th>permitted facilities</th><th>with a design flow on record</th>
+        <th>total design flow (Mgal/day)</th></tr></table></div>
+    <div class="prov" id="p-cwa"></div></div>
 
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
     <div class="sowhat">A read on <b>local economic distress</b>, which is what makes land
@@ -366,6 +397,70 @@
     const rv = document.getElementById("cda-verified");
     rv.textContent = fmt((Number(String(rv.textContent).replace(/,/g, "")) || 0) + verified.length);
   }
+
+  /* ---------- G72/G80, 2026-08-20: the three water objects ---------------------------------- */
+  const WC = await fetchGz("data/wired2.json.gz");
+  const dr = WC.drought || [];
+  const latest = dr[0] || {};
+  /* ⛔ THE DROUGHT MONITOR'S CATEGORIES ARE CUMULATIVE, NOT EXCLUSIVE, AND SUMMING THEM IS WRONG.
+     D0 means "D0 OR WORSE", D1 means "D1 or worse", and so on — which is why `none + d0` is
+     EXACTLY 100 on every row (19.42 + 80.58, 57.86 + 42.14 …) and why d0 >= d1 >= d2 >= d3.
+     The first version of this panel computed d1+d2+d3+d4 and reported 2026-03-03 as
+     "91.5% at moderate drought or worse". The real figure is d1 alone: 50.2%. Nearly shipped —
+     caught only because 91.5% looked implausible against a series showing 97% clear in August.
+     ⚠ It is the same shape as every value-vocabulary trap in this project: the column names
+     look like buckets and are not. */
+  const modPlus = (r) => r.d1 || 0;          // D1 already means "moderate OR WORSE"
+  const sevPlus = (r) => r.d2 || 0;          // D2 = severe or worse
+  const worst = dr.reduce((a, r) => modPlus(r) > modPlus(a) ? r : a, dr[0] || {});
+  document.getElementById("drought-answer").innerHTML = dr.length
+    ? `As of <b>${latest.week}</b>, <b>${(latest.pct_none ?? 0).toFixed(1)}% of Indiana is in no
+       drought at all</b>${modPlus(latest) > 0
+         ? ` and ${modPlus(latest).toFixed(1)}% is at moderate drought or worse`
+         : ` and none of it is at moderate drought or worse`}.
+       Over the ${dr.length} weeks held, the worst week was <b>${worst.week}</b>, when
+       <b>${modPlus(worst).toFixed(1)}% of the state was at moderate drought or worse</b>
+       and ${sevPlus(worst).toFixed(1)}% at severe or worse. <b>Why a siter cares:</b> a cooling-water withdrawal is
+       permitted against LOW-FLOW conditions, not average ones, so the question is not today's
+       reading but how often the state gets dry — and a drought year is when a large industrial
+       withdrawal becomes a public argument.`
+    : `No drought series is held.`;
+  document.getElementById("t-drought").insertAdjacentHTML("beforeend", dr.map((r) =>
+    `<tr><td>${r.week}</td><td>${(r.pct_none ?? 0).toFixed(1)}%</td>
+     <td>${(r.d0 ?? 0).toFixed(1)}%</td>
+     <td class="${modPlus(r) > 0 ? "cannot" : ""}">${modPlus(r).toFixed(1)}%</td>
+     <td class="${sevPlus(r) > 0 ? "cannot" : ""}">${sevPlus(r).toFixed(1)}%</td></tr>`).join(""));
+
+  document.getElementById("t-aq").insertAdjacentHTML("beforeend", (WC.aqueduct || []).map((r) =>
+    `<tr><td>${r.basin}</td><td><b>${r.baseline_water_stress || "&mdash;"}</b></td>
+     <td>${r.baseline_water_depletion || "&mdash;"}</td>
+     <td>${r.interannual_variability || "&mdash;"}</td>
+     <td>${r.drought_risk || "&mdash;"}</td></tr>`).join(""));
+
+  const cw = WC.cwa_by_county || [];
+  const cwn = (WC.cwa_note || [])[0] || {};
+  const cwTot = cw.reduce((a, r) => a + r.facilities, 0);
+  const cwFlow = cw.reduce((a, r) => a + (r.design_flow_mgd || 0), 0);
+  document.getElementById("cwa-answer").innerHTML = cw.length
+    ? `<b>${fmt(cwTot)} facilities across ${cw.length} counties hold a Clean Water Act permit</b>,
+       and the ${fmt(cw.reduce((a, r) => a + r.with_design_flow, 0))} with a design flow on record
+       total <b>${fmt(Math.round(cwFlow))} Mgal/day</b>. <b>Why this is a siting fact and not
+       trivia:</b> a site with an existing permitted discharge is a place where a cooling
+       blowdown has already been permitted once — the hardest half of a water plan is the
+       discharge, not the intake, and an existing outfall is a starting position rather than a
+       blank application.`
+    : `No permitted dischargers are held.`;
+  document.getElementById("t-cwa").insertAdjacentHTML("beforeend", cw.map((r) =>
+    `<tr><td>${r.county}</td><td>${fmt(r.facilities)}</td>
+     <td>${r.with_design_flow ? fmt(r.with_design_flow) : `<span class="cannot">none stated</span>`}</td>
+     <td>${r.design_flow_mgd ? fmt(Math.round(r.design_flow_mgd)) : "&mdash;"}</td></tr>`).join(""));
+  document.getElementById("p-cwa").innerHTML =
+    `indiana_app.in_echo_cwa_facilities · EPA ECHO. ` +
+    `⛔ <b>COUNTY GRAIN, AND NOT BY CHOICE</b> — the table carries <code>faclong</code> and NO ` +
+    `LATITUDE COLUMN AT ALL (a platform-side defect recorded under G27), so these cannot be ` +
+    `mapped. ⚠ <b>${fmt(cwn.rows_whose_county_is_not_in_indiana)} of ` +
+    `${fmt(cwn.rows_flagged_indiana)} rows flagged as Indiana name a county that is not in ` +
+    `Indiana</b> (Koochiching, Cook, Lackawanna) and are excluded here rather than absorbed.`;
 
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;

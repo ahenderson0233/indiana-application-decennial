@@ -87,8 +87,13 @@ CLASSIFIED = {
         "in_state_irp_catalog", "in_puc_state_access_ledger", "in_groundwater_sites",
         "in_sec_cik_registrant_state",
     ]),
-    "superseded": ("replaced by a table that IS wired, and kept only so the change is auditable", [
+    "superseded": ("replaced by, or a second derivation of, a table that IS wired - kept only so "
+                   "the change stays auditable", [
         "in_fsis_establishments_inactive",
+        # 642 rows over EXACTLY the same 642 MISO points as in_miso_poi_state (measured: 642
+        # shared, no residue either side), and grid.html already carries a 300 MW POI card.
+        # Wiring it would put two answers to one question on one page.
+        "in_bus_headroom_300",
     ]),
     "no_indiana_content": ("⛔ AN `in_` PREFIX IS NOT A CLIP. Measured row by row, these hold no "
                            "Indiana data at all, so there is nothing to surface and the name is "
