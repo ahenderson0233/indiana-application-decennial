@@ -75,7 +75,7 @@ python scripts/audit_registry_truth.py    # can a stranger re-run every table?
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
 | 2 | ⭐ **`docs/HANDOFF_2026-08-20b.md`** | **THE CURRENT ONE.** Six findings, five wrong audits, ten traps |
-| 3 | ⭐ **`docs/BACKLOG.md`** | the **⚠ IN FLIGHT** row, then **WHERE EVERY UNFINISHED ROW STANDS** (why each is unfinished and what would finish it), then the G-index (G1–G128) |
+| 3 | ⭐ **`docs/BACKLOG.md`** | the **⚠ IN FLIGHT** row, then **WHERE EVERY UNFINISHED ROW STANDS** (why each is unfinished and what would finish it), then the G-index (G1–G129) |
 | 4 | ⭐ `docs/UNWIRED_CLASSIFICATION.md` | **generated** — why each unreached object is unreached, with its measured reason |
 | 5 | `docs/FEATURE_INVENTORY.md` | every feature, how it works, its BigQuery table |
 | 6 | `docs/REFERENCE_TOOL_GAP.md` | ⚠ **its #1 item is DECLINED** — read the ruling at the top |
@@ -89,6 +89,8 @@ true now*.
 
 The operator reviewed the 2026-08-20b session and filed **seven new rows, G122–G128**. **These come
 before everything else**, and G122–G126 are numbered in the order they were given.
+⚠ **G129 is an eighth**, but it is not a new ask — it was split out of G96, which read ✅ DONE while
+still carrying an unanswered operator question, so the question never reached the OPEN list.
 ⭐ **`docs/BACKLOG.md` now opens with a "WHERE EVERY UNFINISHED ROW STANDS" table** — every
 unfinished row, why it is unfinished, and what would finish it. Read that, then the rows.
 
@@ -151,9 +153,10 @@ G123**, or you design around text that is about to be deleted.
 
 ## THE BACKLOG BEHIND THAT BATCH — 92 DONE · 16 PARTIAL · 16 OPEN
 
-Twelve rows closed on 2026-08-20b and nine more advanced. ⚠ **OPEN reads 15 → 15 and that
-is not a standstill:** eight of the originals closed or were reclassified, then seven new rows
-(G122–G128) were filed on top. ⛔ **Two rows were corrected back from DONE on 2026-08-20c:**
+Twelve rows closed on 2026-08-20b and nine more advanced. ⚠ **OPEN reads 15 → 16 and that
+is not a standstill:** eight of the originals closed or were reclassified, then **seven new rows
+from the operator (G122–G128)** landed on top, plus **G129**, split out of a row that was marked
+DONE while still carrying an unanswered question. ⛔ **Two rows were corrected back from DONE on 2026-08-20c:**
 `G53` — the withdrawn-queue data is built and placed, but the operator asked for it to be
 *"filterable by date of withdrawn application"* and the screener has no such field (measured:
 the word "withdrawn" appears 0 times in `screener.html`); and `G90`, whose second half is blocked
