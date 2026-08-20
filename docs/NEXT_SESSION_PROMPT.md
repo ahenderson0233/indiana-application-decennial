@@ -27,12 +27,16 @@ powershell -ExecutionPolicy Bypass -File scripts\run_pjm_ladder.ps1
 there and deleting them forces a duplicating re-harvest; **archive, never delete**. ⛔ **Owner is
 1568, not 739** — 739 loads **0 rows and exits successfully**.
 
-**Ladder state at handoff (2026-08-20b), by distinct buses out of 1,826.** ⚠ It moved *during*
-that session, so measure rather than trusting this line:
-COMPLETE — injection 10 / 15 / 50 / 5000, withdrawal 10 / 15 / 25 / 5000.
-SHORT — `inj_25` at **1,797**, `wd_50` at **1,625**, `wd_200` mid-harvest.
-⛔ **Neither short rung affects a shipped figure** — `in_bus_capacity_tier0` reads the 5,000 rung
-only. A session that repoints tier0 lower must finish them first.
+⛔ **DO NOT TRUST ANY RUNG LIST IN A DOCUMENT — MEASURE IT.** The ladder advanced four times
+while the 2026-08-20b/c documents were being written, so any list here is stale by the time you
+read it. `python scripts/audit_handoff_docs.py` prints the live complete/short split.
+
+⚠ **What DOES persist is the anomaly: two rungs are SHORT and are NOT being harvested** —
+`inj_25` at **1,797 of 1,826** (and it carries a registry row, which normally means complete)
+and `wd_50` at **1,625**. A rung that is short *and* in flight is short by definition and is
+not a problem; a rung that is short and stopped means a harvest died without finishing.
+⛔ **Neither affects a shipped figure** — `in_bus_capacity_tier0` reads the **5,000** rung only,
+and both 5,000 rungs audit CLEAN. A session that repoints tier0 lower must finish them first.
 
 ### 2. Start a web server, or every page hangs
 
@@ -145,10 +149,16 @@ G123**, or you design around text that is about to be deleted.
 
 ---
 
-## THE BACKLOG BEHIND THAT BATCH — 94 DONE · 14 PARTIAL · 15 OPEN
+## THE BACKLOG BEHIND THAT BATCH — 92 DONE · 16 PARTIAL · 16 OPEN
 
-Fourteen rows closed on 2026-08-20b and seven more advanced. What was left then is three
-decisions and a scrape queue — still true, just second in line now.
+Twelve rows closed on 2026-08-20b and nine more advanced. ⚠ **OPEN reads 15 → 15 and that
+is not a standstill:** eight of the originals closed or were reclassified, then seven new rows
+(G122–G128) were filed on top. ⛔ **Two rows were corrected back from DONE on 2026-08-20c:**
+`G53` — the withdrawn-queue data is built and placed, but the operator asked for it to be
+*"filterable by date of withdrawn application"* and the screener has no such field (measured:
+the word "withdrawn" appears 0 times in `screener.html`); and `G90`, whose second half is blocked
+on the DLGF purchase like G70/G71/G104. What was left before the new batch is three decisions
+and a scrape queue — still true, just second in line now.
 
 ### ① THE DLGF GATEWAY PURCHASE — the highest-value action left, and it is yours, not code's
 
@@ -166,10 +176,12 @@ PJM bus coordinates · G15's cost re-extraction from the workpaper header row.
 ⭐ **Scraping goes to an Opus (non-Fable) agent** — brief it with the write boundary,
 no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
 
-### ③ G96 NEEDS AN OPERATOR DECISION
+### ③ G129 NEEDS AN OPERATOR DECISION
 
 When is a filter a **hard gate** (flood) and when a **preference** (acreage)? A ranking cannot
 treat them alike, and no amount of code supplies the answer.
+⛔ **Split out of G96 on 2026-08-20c** — it had been buried inside a row marked ✅ DONE, so it
+never reached the OPEN list and was never put to the operator.
 
 **Everything else PARTIAL is honest about its remainder:** G6 (visual polish — the structure is
 done), G15 (cost), G21 (a standing principle, never "done"), G26 (the mitigated case is not
