@@ -54,7 +54,20 @@
       on a given day, published on each pipeline’s electronic bulletin board. This is the number
       that decides whether on-site generation is actually feasible at your site.</p>
     <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
-    <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div>
+    <!-- G100, operator 2026-08-19: "See if we are missing any data inputs for how much gas is
+         free in a given day." Answered by measurement, and the answer has two halves that point
+         in different directions. -->
+    <h3 style="margin-top:14px">⭐ So what are we missing? &mdash; every operator that crosses
+      Indiana, against the boards we hold</h3>
+    <div class="sowhat" id="gasgap-answer">measuring…</div>
+    <table id="t-gasgap"><tr><th>operator</th><th>segments crossing Indiana</th>
+      <th>capacity board held</th><th>can be placed at an Indiana point</th></tr></table>
+    <div class="prov">indiana_app.in_gas_pipelines (HIFLD linework) against the nine
+      <code>in_gas_capacity_*</code> boards. ⛔ <b>Scraping more boards would mostly add more
+      UNPLACEABLE boards</b> &mdash; the constraint is that seven of the nine post the
+      operator&rsquo;s whole system with no state column, so the missing input is a point-level
+      location on the boards we already have, not another board.</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
     <div class="sowhat">A first-pass power bill for your load, good enough to
       <b>rank utilities and rule out obviously expensive service</b> before you spend anything.
@@ -542,6 +555,32 @@ function mmbtuToCents(v) {
        <td><b>${r.implied_cents_kwh != null ? r.implied_cents_kwh.toFixed(2) : "&mdash;"}</b></td>
        <td>${r.all_class_cents_kwh != null ? r.all_class_cents_kwh.toFixed(2) : "&mdash;"}</td>
        </tr>`).join(""));
+
+  /* G100: the gas gap, measured. Two halves, and they point in different directions. */
+  const gg = W2.gas_coverage || [];
+  const noBoard = gg.filter((r) => !r.have_board);
+  const unplaceable = gg.filter((r) => r.have_board && !r.placeable);
+  const placeable = gg.filter((r) => r.placeable);
+  document.getElementById("gasgap-answer").innerHTML = gg.length
+    ? `<b>${gg.length} interstate operators cross Indiana. We hold a capacity board for
+       ${gg.length - noBoard.length} of them &mdash; and only ${placeable.length} of those can be
+       attached to an Indiana point at all.</b>
+       <br><br>⛔ <b>The bigger gap is ATTRIBUTION, not acquisition.</b>
+       ${unplaceable.length} boards we already hold post the operator's whole system with no
+       state column, so their numbers cannot be tied to Indiana. The worst case is the largest:
+       <b>${(unplaceable.sort((a, b) => b.segments - a.segments)[0] || {}).operator}</b> has more
+       Indiana segments than any other operator and posts capacity we cannot place.
+       Scraping four more boards would mostly add four more unplaceable boards.
+       <br><br>⚠ <b>${noBoard.length} operators crossing Indiana have no board at all</b>:
+       ${noBoard.map((r) => r.operator).join(", ")} &mdash; that half IS an acquisition, and it is
+       the smaller half.`
+    : `No pipeline coverage figures are held.`;
+  document.getElementById("t-gasgap").insertAdjacentHTML("beforeend", gg.map((r) =>
+    `<tr><td>${r.operator}</td><td>${fmt(r.segments)}</td>
+     <td>${r.have_board ? `<code>${r.board}</code>` : `<span class="cannot">none held</span>`}</td>
+     <td>${r.placeable ? "<b>yes</b> — publishes state and county"
+        : r.have_board ? `<span class="cannot">no — whole-system posting, no state column</span>`
+        : `<span class="cannot">n/a</span>`}</td></tr>`).join(""));
 
   const gm = (W2.generation_mix || []).filter((r) => !/^all fuels$/i.test(r.fuel));
   const gmTot = gm.reduce((a, r) => a + (r.gwh || 0), 0);

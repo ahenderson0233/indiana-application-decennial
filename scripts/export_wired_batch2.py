@@ -120,6 +120,34 @@ w2 = {
         FROM `{DS}.in_eia861_sales_ult_cust`
         WHERE ind_sales_mwh > 0 ORDER BY ind_sales_mwh DESC"""),
 
+    # ⭐ G100 - "see if we are missing any data inputs for how much gas is free in a given day".
+    #    The answer is measured rather than guessed, and it has TWO halves. 13 interstate
+    #    operators cross Indiana. We hold an operationally-available-capacity board for 9 of them.
+    #    But only TWO of those boards carry a state or county column, so only two can be attached
+    #    to an Indiana point at all - the rest post the operator's whole system, and Texas Gas
+    #    (which has more Indiana segments than anyone) posts 23,220 rows we cannot place.
+    # ⛔ SO THE BIGGER GAP IS ATTRIBUTION, NOT ACQUISITION. Scraping four more boards would add
+    #    four more unplaceable boards. What is missing is a point-level location on the boards we
+    #    already have, which is a different ask entirely.
+    "gas_coverage": rows(f"""
+        WITH ops AS (
+          SELECT operator, COUNT(*) AS segments
+          FROM `{DS}.in_gas_pipelines` WHERE operator IS NOT NULL GROUP BY 1),
+        boards AS (
+          SELECT 'Panhandle Eastern Pipe Line Co.' AS operator, 'in_gas_capacity_panhandle_eastern' AS board, TRUE AS placeable UNION ALL
+          SELECT 'Trunkline Gas Co.',              'in_gas_capacity_trunkline',       TRUE  UNION ALL
+          SELECT 'ANR Pipeline Co.',               'in_gas_capacity_anr',             FALSE UNION ALL
+          SELECT 'Crossroads Pipeline Co.',        'in_gas_capacity_crossroads',      FALSE UNION ALL
+          SELECT 'Midwestern Gas Transmission Co.','in_gas_capacity_midwestern',      FALSE UNION ALL
+          SELECT 'Natural Gas PL Co. of Am',       'in_gas_capacity_ngpl',            FALSE UNION ALL
+          SELECT 'Northern Border PL Co.',         'in_gas_capacity_northern_border', FALSE UNION ALL
+          SELECT 'Texas Gas Transmission Co.',     'in_gas_capacity_texas_gas',       FALSE UNION ALL
+          SELECT 'Vector Pipeline Co.',            'in_gas_capacity_vector',          FALSE)
+        SELECT o.operator, o.segments, b.board, IFNULL(b.placeable, FALSE) AS placeable,
+               b.board IS NOT NULL AS have_board
+        FROM ops o LEFT JOIN boards b USING (operator)
+        ORDER BY o.segments DESC"""),
+
     # weekly state drought. ⚠ a STATE series, not county - it must not render on a parcel.
     "drought": rows(f"""
         SELECT SUBSTR(validstart, 1, 10) AS week, none AS pct_none, d0, d1, d2, d3, d4

@@ -23,6 +23,22 @@ with gzip.open(os.path.join(REPO, "data", "gas.geojson.gz"), "rt", encoding="utf
     gasfc = json.load(f)
 print(f"existing gas features: {len(gasfc['features'])}")
 
+# ⛔ THIS SCRIPT WAS NOT IDEMPOTENT AND EVERY RE-RUN DOUBLED ITS OWN LAYERS.
+#    It APPENDS compressor / storage / processing / lng features to an existing payload it does
+#    not own, and never removed what a previous run of itself had added. Measured the moment it
+#    was re-run in 2026-08-20b: compressor 24 -> 48 features, storage 22 -> 44, for 24 and 22
+#    warehouse rows. Every marker drawn twice, every count on the map overstated by exactly 2x,
+#    and nothing errors - the payload is still valid GeoJSON.
+# ⚠ Only the layers THIS script owns are dropped. The 213 pipeline features belong to another
+#    exporter and must survive, which is why this filters by layer rather than truncating.
+OWNED = {"compressor", "storage", "processing", "lng"}
+_before = len(gasfc["features"])
+gasfc["features"] = [f for f in gasfc["features"]
+                     if f.get("properties", {}).get("layer") not in OWNED]
+if _before != len(gasfc["features"]):
+    print(f"  dropped {_before - len(gasfc['features'])} feature(s) this script had added "
+          f"previously, so the re-run replaces rather than duplicates")
+
 for tbl, layer in [("gas_compressor_stations", "compressor"), ("gas_storage", "storage"),
                    ("gas_processing_plants", "processing"), ("gas_lng_terminals", "lng")]:
     t = client.get_table(f"energy-platfrom.energy.{tbl}")
@@ -30,7 +46,22 @@ for tbl, layer in [("gas_compressor_stations", "compressor"), ("gas_storage", "s
     gcol = next((c for c in cols if c.lower() in ("geog", "geom")), None)
     gjson = next((c for c in cols if "geojson" in c.lower()), None)
     geo = gcol if gcol else f"SAFE.ST_GEOGFROMGEOJSON({gjson})"
-    keep = [c for c in cols if c not in (gcol, gjson) and not c.startswith("_")][:10]
+    # ⛔ THE `[:10]` CUT THAT USED TO BE HERE WAS DROPPING THE MOST USEFUL COLUMNS IN THESE
+    #    TABLES - G27's warning that "the same `[:N]` idiom is unaudited in this file" was
+    #    justified, and `scripts/audit_schema_truncation.py` measured it:
+    #      gas_compressor_stations  45 eligible columns, 35 dropped - including status, county,
+    #                               latitude, longitude, operator
+    #      gas_storage              41 eligible, 31 dropped - including owner, operator,
+    #                               ownerpct, reservname, type, status
+    #      gas_processing_plants    45 eligible, 35 dropped - including compname, operator,
+    #                               plantflow  (moot in practice: 0 Indiana rows)
+    #      gas_lng_terminals        41 eligible, 31 dropped - including owner, contype, opyear,
+    #                               storcap    (moot in practice: 0 Indiana rows)
+    #    A cut by POSITION keeps whatever the publisher happened to put first. HIFLD puts its
+    #    identifiers first and everything a siter would want after column 10.
+    # ⭐ KEEP THEM ALL. These clips hold 24 and 22 Indiana rows; the payload cost of forty
+    #    columns on forty-six rows is nothing, and the whole point of the layer is the popup.
+    keep = [c for c in cols if c not in (gcol, gjson) and not c.startswith("_")]
     sql = f"""CREATE OR REPLACE TABLE `{DS}.in_{tbl}` AS
       SELECT {', '.join(keep)}, g AS geog FROM (SELECT *, {geo} AS g FROM {E}.{tbl}`)
       WHERE g IS NOT NULL AND ST_INTERSECTS(g, {ST})"""

@@ -77,6 +77,23 @@ AUDITS = [
     # disagreed with it.
     ("acceptance run", "scripts/acceptance_run.py",
      r"PASS\s+(\d+)\s+PARTIAL\s+(\d+)\s+FAIL\s+(\d+)"),
+    # ⭐ G105, added 2026-08-20. The map-layer half and the page-control half of "is anything
+    # drawn and inert" are now both guarded here, because both went unnoticed for weeks the last
+    # time nobody was watching: three layers drawn and unclickable, and a control audit that had
+    # never been written. A drawn-and-inert control produces NO console error and looks exactly
+    # like one that works and found nothing, so only a check catches it.
+    ("map clicks", "scripts/audit_map_clicks.py",
+     r"(\d+) layer\(s\) the reader can see and cannot ask about"),
+    ("page controls", "scripts/audit_page_controls.py",
+     r"(\d+) controls across \d+ pages\D+?(\d+) unreferenced"),
+    # G72/G80: the unwired list is CLOSED, and this is what keeps it closed. An object that
+    # reaches no surface and carries no measured reason fails here.
+    ("unwired classified", "scripts/audit_unwired_classification.py",
+     r"(\d+) unclassified\."),
+    # G27: the `[:N]` schema cuts drop columns by POSITION, silently. One of them was dropping
+    # operator, owner and status from the gas layers until 2026-08-20b.
+    ("schema truncation", "scripts/audit_schema_truncation.py",
+     r"(\d+) load-bearing columns dropped|(\d+) site\(s\) are dropping"),
 ]
 
 print("=" * 90)
@@ -109,6 +126,24 @@ for label, script, pat in AUDITS:
     elif label == "front-end audit":
         tot, severe = (int(x) for x in m.groups())
         check(label, severe == 0, f"{tot} findings, {severe} would break a page")
+    elif label == "map clicks":
+        n = int(m.group(1))
+        check(label, n == 0, f"{n} layer(s) drawn that the reader cannot click")
+    elif label == "page controls":
+        tot, dead = (int(x) for x in m.groups())
+        check(label, dead == 0, f"{tot} controls across the pages, {dead} drawn and inert")
+    elif label == "schema truncation":
+        g = [x for x in m.groups() if x is not None]
+        n = int(g[0]) if g else 0
+        # the "0 load-bearing columns dropped" branch reports 0; the failure branch reports a
+        # site COUNT, which is non-zero by construction. Either way, 0 is the only pass.
+        check(label, n == 0,
+              f"{n} `[:N]` cut(s) dropping a column a surface or a join could need")
+    elif label == "unwired classified":
+        n = int(m.group(1))
+        check(label, n == 0,
+              f"{n} object(s) reach no surface AND carry no reason - the list is only closed "
+              f"while this is zero")
     elif label == "acceptance run":
         # ⭐ G76. This used to be `check(label, True, ...)` - a HARDCODED PASS. The checkpoint
         # therefore printed green while the acceptance run was failing, and it disagreed with the

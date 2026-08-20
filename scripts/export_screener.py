@@ -97,6 +97,14 @@ for r in client.query(f"""
     WHERE c.county_fips IS NOT NULL
   )
   SELECT parcel_source, parcel_key, county_fips, county_name, occ_group, site_kind,
+         -- ⭐ G70: BUILDING USE. `occ_cls` is the USA Structures occupancy class and it is far
+         --    finer than occ_group's five buckets: Residential / Commercial / Industrial /
+         --    Agriculture / Government / Education / Assembly / Utility and Misc / Unclassified.
+         --    It was in in_screener_candidates and simply never selected, so the screener showed
+         --    "ci" where it could have said "Industrial".
+         -- ⚠ NULL on 1,269,061 parcels - the ones with no building at all - which is a THIRD
+         --    STATE, not a missing value: no structure means no occupancy class to publish.
+         occ_cls,
          structure_count, parcel_acres, exact_parcel_acres, outdoor_acres, exact_outdoor_acres,
          mw_dc, mw_bess, lat, lon,
          has_signal, signals, signal_types, signal_events,

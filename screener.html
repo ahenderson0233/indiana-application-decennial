@@ -824,6 +824,16 @@ function siteDetail(s) {
           "The key this row is stored under. Quote it when asking us to re-check a site.")}
       ${detailRow("Land record type", s.site_kind, null,
           "What kind of record the county keeps for this land.")}
+      ${/* G70: "we require more information about the actual parcel ... building use (USA
+            Structures should publish this)". It does, and it is far finer than the five-bucket
+            grouping the table shows: Industrial and Commercial are one bucket there and two
+            very different siting facts here. ⚠ Absent means NO BUILDING, not "unknown" — a
+            parcel with nothing on it has no occupancy class to publish. */
+        detailRow("Building use", s.occ_cls, "no building on this parcel, so no occupancy class",
+          "The occupancy class the national structures layer publishes for the building on this "
+          + "parcel. Industrial and Commercial are separate here even though the filters above "
+          + "group them together — an existing industrial building usually means heavier "
+          + "electrical service and a discharge permit already in place.")}
     </table>
     <div class="dgrid">
       <div>
