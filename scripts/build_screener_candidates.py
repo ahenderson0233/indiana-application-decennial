@@ -49,6 +49,17 @@ WITH cand AS (
   FROM `{DS}.in_sites` s
   WHERE s.parcel_geog IS NOT NULL
     AND s.parcel_key != '{D85}'                      -- D85 excluded BEFORE the spatial joins
+    -- ⛔ G122: A ROAD OR RAIL RIGHT-OF-WAY IS NOT A WEAK SITE, IT IS NOT A SITE.
+    -- Operator, 2026-08-20c: "no one can actually own a roadway". Until now the ribbon detection
+    -- was ADVISORY - the screener warned and the parcel still counted, still scored, still
+    -- appeared in search and in every "fits N MW" total. It is now an exclusion.
+    -- in_parcel_row_class confirms a corridor by the length of road centreline running ALONG the
+    -- polygon, not by a bare ST_INTERSECTS, which with the full 379,165-feature TIGER corpus
+    -- fires on ~30% of ordinary parcels. shape_only is NOT excluded - creeks, pipeline easements
+    -- and genuinely long narrow industrial land are ribbons too.
+    AND NOT EXISTS (SELECT 1 FROM `{DS}.in_parcel_row_class` rc
+                    WHERE rc.parcel_source = s.parcel_source
+                      AND rc.parcel_key = s.parcel_key AND rc.row_excluded)
     AND (s.mw_datacenter_4_per_acre >= 25
          OR EXISTS (SELECT 1 FROM `{DS}.in_si_sites_flags_v2` f
                     WHERE f.parcel_source = s.parcel_source AND f.parcel_key = s.parcel_key
@@ -75,44 +86,48 @@ WITH cand AS (
 -- and that exclusion is REPORTED rather than hidden.
 -- ============================================================================================
 bus_inj AS (
-  SELECT bus_name AS nm, bus_name AS poi, bus_voltage_kv AS kv, iso,
-         bus_interconnection_capacity_mw AS mw,
-         primary_limiting_constraint AS binding,
-         provenance_class AS conf,
+  SELECT t0.bus_name AS nm, t0.bus_name AS poi, t0.bus_voltage_kv AS kv, t0.iso,
+         t0.bus_interconnection_capacity_mw AS mw,
+         t0.primary_limiting_constraint AS binding,
+         t0.provenance_class AS conf,
          -- ⚠ OUR PJM HARVEST IS THE WHOLE AEP FOOTPRINT, NOT INDIANA. Measured 2026-08-19: of the
          -- 227 located PJM withdrawal buses, only 42 are inside the state line - the rest sit in
          -- Ohio, West Virginia, Virginia, Kentucky and Michigan. A border parcel CAN genuinely
          -- interconnect across a state line, so these are kept rather than dropped, but crossing
          -- one means a different state commission and often a different utility. That is a fact
          -- the reader must be told, not one we quietly absorb into a distance.
-         ST_INTERSECTS(ST_GEOGPOINT(longitude, latitude),
+         ST_INTERSECTS(ST_GEOGPOINT(COALESCE(t0.longitude, v3.lon), COALESCE(t0.latitude, v3.lat)),
            (SELECT ANY_VALUE(geom) FROM `energy-platfrom.energy.state_boundaries`
             WHERE UPPER(stusps) = 'IN'))                 AS in_state,
-         ST_GEOGPOINT(longitude, latitude) AS g
-  FROM `{DS}.in_bus_capacity_tier0`
-  WHERE interconnection_type = 'Injection'
-    AND latitude IS NOT NULL AND longitude IS NOT NULL
+         ST_GEOGPOINT(COALESCE(t0.longitude, v3.lon), COALESCE(t0.latitude, v3.lat)) AS g
+  FROM `{DS}.in_bus_capacity_tier0` t0
+  LEFT JOIN `{DS}.in_pjm_bus_placement_v3` v3 ON v3.bus_id = t0.bus_id
+  WHERE t0.interconnection_type = 'Injection'
+    AND COALESCE(t0.latitude, v3.lat) IS NOT NULL
+    AND COALESCE(t0.longitude, v3.lon) IS NOT NULL
 ),
 -- WITHDRAWAL. Load-side. THIS is the direction a data centre needs, and it now carries BOTH
 -- operators rather than PJM alone.
 bus_wd AS (
-  SELECT bus_name AS nm, bus_name AS poi, bus_voltage_kv AS kv, iso,
-         bus_interconnection_capacity_mw AS mw,
-         primary_limiting_constraint AS binding,
-         provenance_class AS conf,
+  SELECT t0.bus_name AS nm, t0.bus_name AS poi, t0.bus_voltage_kv AS kv, t0.iso,
+         t0.bus_interconnection_capacity_mw AS mw,
+         t0.primary_limiting_constraint AS binding,
+         t0.provenance_class AS conf,
          -- ⚠ OUR PJM HARVEST IS THE WHOLE AEP FOOTPRINT, NOT INDIANA. Measured 2026-08-19: of the
          -- 227 located PJM withdrawal buses, only 42 are inside the state line - the rest sit in
          -- Ohio, West Virginia, Virginia, Kentucky and Michigan. A border parcel CAN genuinely
          -- interconnect across a state line, so these are kept rather than dropped, but crossing
          -- one means a different state commission and often a different utility. That is a fact
          -- the reader must be told, not one we quietly absorb into a distance.
-         ST_INTERSECTS(ST_GEOGPOINT(longitude, latitude),
+         ST_INTERSECTS(ST_GEOGPOINT(COALESCE(t0.longitude, v3.lon), COALESCE(t0.latitude, v3.lat)),
            (SELECT ANY_VALUE(geom) FROM `energy-platfrom.energy.state_boundaries`
             WHERE UPPER(stusps) = 'IN'))                 AS in_state,
-         ST_GEOGPOINT(longitude, latitude) AS g
-  FROM `{DS}.in_bus_capacity_tier0`
-  WHERE interconnection_type = 'Withdrawal'
-    AND latitude IS NOT NULL AND longitude IS NOT NULL
+         ST_GEOGPOINT(COALESCE(t0.longitude, v3.lon), COALESCE(t0.latitude, v3.lat)) AS g
+  FROM `{DS}.in_bus_capacity_tier0` t0
+  LEFT JOIN `{DS}.in_pjm_bus_placement_v3` v3 ON v3.bus_id = t0.bus_id
+  WHERE t0.interconnection_type = 'Withdrawal'
+    AND COALESCE(t0.latitude, v3.lat) IS NOT NULL
+    AND COALESCE(t0.longitude, v3.lon) IS NOT NULL
 ),
 -- ⛔ NO CENTROID WHERE A FOOTPRINT EXISTS - 2026-08-20. This read ST_GEOGPOINT(lon, lat), which
 --    was right while every located substation had a published point, and stopped being right when
@@ -187,8 +202,53 @@ SELECT
   -- so `line_on_parcel` is a different and stronger fact than a small `line_mi`.
   ad.line_mi, ad.line_on_parcel, ad.line_kv, ad.line_volt_class, ad.line_kv_unknown,
 
+  -- ⭐ G125: WHERE AM I? The operator asked for "EITHER coordinates OR addresses ... so they can
+  -- self-verify the results". `lat`/`lon` were already here and the popup simply did not print
+  -- them. The ADDRESS is the finding: three documents recorded address as MARION-ONLY, on the
+  -- strength of in_si_address_parcel_bridge (51,309 Marion rows). Measured 2026-08-20d against
+  -- energy.parcels_in, which is a DIFFERENT source - the DLGF's own property address - and it is
+  -- populated on 3,578,398 of 3,637,663 Indiana parcels (98.4%) across all 92 counties.
+  -- ⚠ Marion's bridge is still the right thing for address SEARCH, because it resolves a typed
+  -- address to a parcel. This is the reverse lookup and it is statewide.
+  -- ⛔ Still NULL on ~1.6%, and a parcel with no address must say so rather than print a blank.
+  loc.prop_address, loc.prop_city, loc.prop_zip, loc.dlgf_class_code,
+
+  -- ⛔ G125 SECOND FINDING, AND IT CONTRADICTS THE ROW AS WRITTEN. G125 says "the parcel payload
+  -- ships lat/lon on every row" and the popup merely fails to print it. Measured 2026-08-20d:
+  -- `lat` is populated on 2,284,133 of 3,553,194 in_sites rows, so only 40.3% of CANDIDATES carry
+  -- a published point. Printing "no coordinate" for the other 59.7% would be a worse answer than
+  -- the silence it replaced, because every one of those parcels HAS a polygon - `parcel_geog` is
+  -- non-null on 3,553,193 of 3,553,194 and is required by the WHERE clause above.
+  -- ⭐ So a DISPLAY point is derived from the polygon where the published one is absent, and it is
+  -- LABELLED. The operator's purpose is self-verification against satellite imagery, and an
+  -- interior point of the parcel does that exactly.
+  -- ⛔ IT IS A SEPARATE COLUMN ON PURPOSE. "No centroid where a footprint exists" governs DISTANCE
+  -- MATH, and nothing here may feed it: every distance on this table is already measured to a
+  -- geography. map_lat/map_lon are for the reader's eye and the deep link, never for a join.
+  COALESCE(c.lat, ST_Y(ST_CENTROID(c.parcel_geog))) AS map_lat,
+  COALESCE(c.lon, ST_X(ST_CENTROID(c.parcel_geog))) AS map_lon,
+  IF(c.lat IS NOT NULL, 'published', 'parcel_interior_point') AS coord_basis,
+
   CURRENT_TIMESTAMP() AS built_at
 FROM cand c
+LEFT JOIN (
+  -- de-duplicated: 38,840 state_parcel_id values repeat in the source, and joining them raw
+  -- fans the candidate table out. ⚠ The key is state_parcel_id, NOT parcel_id - the latter is the
+  -- county's dashed form and matches ~1% of our keys, which reads as missing data.
+  -- ⚠ aliased to loc_key, NOT parcel_key: a second column of that name reaches the later
+  -- USING (parcel_source, parcel_key) joins and BigQuery rejects it as ambiguous on the left side.
+  SELECT state_parcel_id AS loc_key,
+         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address, ''),
+                                   NULLIF(prop_add, '')), ''))       AS prop_address,
+         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address_city, ''),
+                                   NULLIF(prop_city, '')), ''))      AS prop_city,
+         ANY_VALUE(NULLIF(COALESCE(NULLIF(dlgf_prop_address_zip, ''),
+                                   NULLIF(prop_zip, '')), ''))       AS prop_zip,
+         ANY_VALUE(NULLIF(dlgf_prop_class_code, ''))                 AS dlgf_class_code
+  FROM `energy-platfrom.energy.parcels_in`
+  WHERE state_parcel_id IS NOT NULL AND state_parcel_id != '{D85}'
+  GROUP BY 1
+) loc ON loc.loc_key = c.parcel_key
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2`   f  USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)

@@ -38,3 +38,8 @@ data/_ckpt_*/
 data/_ARCHIVED_*/
 # raw tariff PDFs cached by the IURC loader
 scrapers/tariff_books/
+
+# TIGER All Roads county .zip cache (G122). 69 MB of public-domain Census bulk files, kept
+# ON DISK - never deleted - but not committed: they are re-downloadable in ~80s from the URL
+# recorded in the in_roads_all registry row, exactly like scrapers/tariff_books/ above.
+data/tiger_roads/

@@ -129,9 +129,20 @@ print("=" * 94)
 # 1. RE-CLIP in_tribal_land SPATIALLY. See the header - the existing table is 14 rows of
 #    out-of-state land produced by a key join. Measured, not assumed, on every run.
 # ---------------------------------------------------------------------------------------------
+# ⛔ THIS BLOCK WAS NOT IDEMPOTENT AND THE SCRIPT COULD ONLY EVER RUN ONCE - fixed 2026-08-20d.
+#    It measured `in_tribal_land.geom` and then CREATE OR REPLACE'd that same table with the
+#    geometry column renamed to `geog`. First run: fine. Every run after: "Unrecognized name:
+#    geom", and the whole land-gates build died at step 1. Caught when G122 forced a rebuild of
+#    everything downstream of in_screener_candidates. This is trap 4 - an in-place repair that
+#    reads its own output - and it meant the RE-SCRAPE COMMAND in this table's registry row was
+#    not runnable, which is exactly what G124 exists to find.
+_cols = {f.name for f in client.get_table(f"{DS}.in_tribal_land").schema}
+_gcol = "geom" if "geom" in _cols else "geog"
 before = one(f"""SELECT COUNT(*) n,
-    COUNTIF(ST_INTERSECTS(geom, {IN_GEOM})) hit FROM `{DS}.in_tribal_land`""")
-print(f"\n[1] in_tribal_land BEFORE: {before.n} rows, {before.hit} of them actually inside Indiana")
+    COUNTIF(ST_INTERSECTS({_gcol}, {IN_GEOM})) hit FROM `{DS}.in_tribal_land`""")
+print(f"\n[1] in_tribal_land BEFORE: {before.n} rows, {before.hit} of them actually inside "
+      f"Indiana (geometry column '{_gcol}'"
+      f"{'; the spatial repair has already been applied' if _gcol == 'geog' else ''})")
 
 client.query(f"""CREATE OR REPLACE TABLE `{DS}.in_tribal_land` AS
 SELECT namelsad, name, geoid, classfp, lsad, funcstat, aiannhce, aiannhns, comptyp,
