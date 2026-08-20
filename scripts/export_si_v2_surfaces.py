@@ -56,8 +56,18 @@ out["flag_summary"] = rows(f"""
     COUNTIF(has_si_signal AND occ_group='other_nonres') other_nonres,
     COUNTIF(has_si_signal AND occ_group='agriculture') ag,
     COUNTIF(has_si_signal AND occ_group='no_structure') land,
-    SUM(si_excluded_residential) excl_resid, SUM(si_excluded_low_severity) excl_lowsev
-  FROM `{DS}.in_si_sites_flags_v2`""")[0]
+    SUM(si_excluded_residential) excl_resid, SUM(si_excluded_low_severity) excl_lowsev,
+    -- ⛔ G122 LEFT TWO NUMBERS FOR ONE APPARENT CONCEPT, and two numbers for one fact is how a
+    -- reader stops trusting both. This page reports the flagged total from
+    -- in_si_sites_flags_v2; the map and the screener report the CANDIDATE total, which now
+    -- excludes confirmed road and rail rights-of-way. They differ by exactly this count, so the
+    -- page can state the relationship instead of leaving a reader to discover a discrepancy.
+    -- ⚠ Generated, not hand-typed - it moves whenever the right-of-way classification does.
+    COUNTIF(has_si_signal AND EXISTS(
+      SELECT 1 FROM `{DS}.in_parcel_row_class` rc
+      WHERE rc.parcel_source = f.parcel_source AND rc.parcel_key = f.parcel_key
+        AND rc.row_excluded)) AS flagged_row_excluded
+  FROM `{DS}.in_si_sites_flags_v2` f""")[0]
 
 # the evidence grain: parcels carrying the most independent signals
 out["top_evidence"] = rows(f"""

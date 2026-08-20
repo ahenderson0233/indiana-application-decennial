@@ -105,10 +105,6 @@
   <div class="card"><h2>Future capacity — grid plans (TDSIC/IRP) + RTO expansion</h2>
     <div class="scroll"><table id="t-plans"><tr><th>utility / RTO</th><th>project</th><th>kV</th><th>in-service</th><th>cost $M</th></tr></table></div>
     <div class="prov" id="p-plans"></div></div>
-  <div class="card"><h2>RTEP upgrade drill-down — per-upgrade details &amp; cost allocations (932 Indiana upgrades)</h2>
-    <input id="f-up" placeholder="filter upgrades…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:280px;margin-bottom:8px">
-    <div class="scroll"><table id="t-up"><tr><th>upgrade</th><th>detail</th><th>allocation</th></tr></table></div>
-    <div class="prov" id="p-up"></div></div>
   <div class="card"><h2>Interconnection queue (county grain — includes withdrawn, a deliberate signal)</h2>
     <div class="scroll"><table id="t-queue"><tr><th>county</th><th>project</th><th>MW</th><th>type</th><th>status</th></tr></table></div>
     <div class="prov" id="p-queue"></div></div>
@@ -124,6 +120,10 @@
       <div class="prov">source: <code>in_eia860m_generators</code> (monthly EIA-860M) · a
         300 MW load should know what is leaving nearby, not only what is arriving</div></div>
   </div>
+  <div class="card"><h2>RTEP upgrade drill-down — per-upgrade details &amp; cost allocations (932 Indiana upgrades)</h2>
+    <input id="f-up" placeholder="filter upgrades…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:280px;margin-bottom:8px">
+    <div class="scroll"><table id="t-up"><tr><th>upgrade</th><th>detail</th><th>allocation</th></tr></table></div>
+    <div class="prov" id="p-up"></div></div>
 
   <div class="card"><h2>MISO study-cycle detail — where each Indiana project actually sits</h2>
     <div class="hint" style="margin-bottom:6px">These are the <b>same 456 projects</b> as the queue above, not
@@ -153,7 +153,7 @@
     <div class="scroll" style="max-height:170px"><table id="t-rbq"><tr><th>confidence</th><th>join rows</th><th>distinct upgrades</th><th>reach a bus</th></tr></table></div>
     <div class="prov" id="p-rb"></div></div>
 </div>
-<script src="common.js?v=48527a9d"></script>
+<script src="common.js?v=ce6884a7"></script>
 <script>
 (async () => {
   await loadProv();

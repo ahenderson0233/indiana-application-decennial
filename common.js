@@ -930,6 +930,14 @@ function applyDensePolicy(root) {
     const t = (el.textContent || "").trim();
     if (t.length < DENSE_MIN_CHARS) continue;      /* an annotation, and often the value itself */
     if (DENSE_KEEP.test(t)) continue;              /* disclosure - survives the cut by rule */
+    /* ⛔ A BIG NUMBER'S LABEL IS THE VALUE, NOT COMMENTARY, AND LENGTH IS THE WRONG TEST FOR IT.
+       si.html's headline band is four `.bigstat` cards whose only other text is the `.hint` that
+       says what the number counts. Twelve of the thirteen survived on length alone - and the
+       moment one label grew past 60 characters it vanished, leaving "23,795" on screen labelled
+       by nothing at all. That is a worse page than the prose G123 was asked to remove, and it
+       would have come back on any future edit that lengthened a caption. Structural, not
+       length-based: inside a card carrying a stat, the caption always stays. */
+    if (el.closest(".card") && el.closest(".card").querySelector(".bigstat")) continue;
     el.hidden = true;
     el.classList.add("dense-hidden");
     n++;

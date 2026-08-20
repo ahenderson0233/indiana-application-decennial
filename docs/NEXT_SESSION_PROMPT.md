@@ -80,42 +80,55 @@ true now* — §2b of the current handoff lists nine figures they get wrong.
 
 ---
 
-## ⛔ START HERE — THE LARGEST REMAINING WIN, AND IT NEEDS YOUR JUDGEMENT
+## ⛔ START HERE — THE PRIORITY BATCH IS CLOSED. WHAT IS LEFT IS ACQUISITION AND JUDGEMENT.
 
-### ⭐ G128(b) — MAKE THE ANSWER COME BEFORE THE WORKPAPER
+⭐ **G122–G129 are all done.** The pages have been reordered so the ANSWER precedes the WORKPAPER
+(G128b, 38 blocks moved): `si.html` opens with *which owners might sell you land* instead of a
+build diary, `market.html` opens with *what would power cost here* instead of statewide demand,
+`community.html` opens with *county posture* instead of the receipts browser, and `grid.html`
+needed only three moves.
 
-`docs/COMPARABLE_TOOLS.md` is written, and its diagnosis is measured rather than felt:
+**There is no large mechanical job left.** The three things that matter now are all things code
+cannot decide:
 
-| page | headings | tables | cards |
-|---|---:|---:|---:|
-| `si.html` | **38** | **40** | **53** |
-| `market.html` | 19 | 17 | 17 |
-| `community.html` | 12 | 16 | 18 |
-| `grid.html` | 14 | 14 | 16 |
+### ① THE DLGF GATEWAY PURCHASE — the highest-value action left, and it is yours
 
-**Six of eight pages are ANTHOLOGIES ordered by how the data was built, not by a question anyone
-arrives with.** `si.html` opens with *"Why this many and not more? — the whole funnel, with every
-loss named"* — a build diary — and the section a reader actually wants, *which owners might sell
-you land*, is **fifth**.
+Four rows unblock at once: **G70** (parcel owner), **G71** (zoning), **G104** (assessed value) and
+**G90(b)**. All are 100% NULL for Indiana in both our clip and the national parent, which holds
+40.8M assessed values for 43 other states. **Not a clip defect; re-clipping will not help.**
+⭐ G70 has shrunk twice — its building-use half and its address half have both shipped — so what
+is left really is just owner, and that is the purchase.
 
-The typographic half already shipped: a shared record grammar (tabular numerals, right-aligned
-numerics, sticky headers, one row rhythm), a standard page header naming each page's ONE question,
-and nav/title reconciled. **What is left is the content decision:** on each of those four pages,
-which section is the ANSWER and which is the WORKPAPER. That is a judgement, which is why it was
-not done blind in the same session that moved 49 prose blocks.
+### ② THE DEFERRED SCRAPES
 
-⚠ **13 runtime `.sowhat` blocks belong to this job.** Each wraps a live `id` the page's script
-writes a VALUE into — `<div class="sowhat" id="wd-answer">measuring…</div>`. The value is what G123
-wants to keep; only the sentence around it should go. Moving them wholesale broke six pages on the
-first attempt (18 fatal findings).
+G102 (state surplus, likely IDOA) · G103 (water utilities, EPA SDWIS) · G114's remaining **1,464**
+PJM bus coordinates · G15's cost re-extraction from the workpaper header row.
+⭐ **Send to an Opus (non-Fable) agent** and brief it with the write boundary, no-CAPTCHA /
+no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
+
+### ③ TWO DECISIONS THAT ARE YOURS, NOT CODE'S
+
+- ⚠ **G129 option (b)** — a per-filter GATE/PREFERENCE toggle instead of the fixed published
+  classification that shipped. More honest and more work; a product decision, not a defect.
+  Option (a) is live: 18 gates, 14 preferences, badged on screen, 259 near misses recovered.
+- ⚠ **How aggressive should the G122 exclusion be?** 3,159 road and 1,861 rail corridors are gone.
+  A further **28,187 parcels are ribbon-shaped with NO road along them** — creeks, pipeline
+  easements, genuinely long narrow industrial land — and they are REPORTED, not excluded.
+  ⛔ Widening the shape threshold until they disappear is how a heuristic eats its own corpus, so
+  it was not done. If you want them out, that is a call, not a fix.
+
+⚠ **If you do pick up front-end work,** the remaining piece of G123 is the **13 runtime `.sowhat`
+blocks** that could not be relocated: each wraps a live `id` its own script writes a VALUE into
+(`<div class="sowhat" id="wd-answer">measuring…</div>`). The value stays, the sentence around it
+goes — a per-block edit, and moving them wholesale broke six pages on the first attempt.
 
 ---
 
-## THE BACKLOG BEHIND THAT — 99 DONE · 17 PARTIAL · 8 OPEN
+## THE BACKLOG — 100 DONE · 16 PARTIAL · 8 OPEN
 
-**Seven rows closed** on 2026-08-20d (G53, G122, G123, G124, G125, G127, G129) and two more were answered
-and advanced (G126, G128). ⭐ **OPEN halved, 16 → 8**, and the operator's whole priority batch is
-either closed or answered.
+**Eight rows closed** across 2026-08-20d/e (G53, G122, G123, G124, G125, G127, G128, G129) and one
+more answered and advanced (G126). ⭐ **OPEN halved, 16 → 8, and the operator's entire priority
+batch G122–G129 is now closed.**
 
 ### ① THE DLGF GATEWAY PURCHASE — still the highest-value action left, and it is yours
 

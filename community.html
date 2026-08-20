@@ -9,14 +9,6 @@
 <div class="page">
   <h1>Community &amp; Regulatory</h1>
   <div class="sub">County posture with receipts, IURC dockets, and the Indiana legislative preview (the scope-limited P7). Grey = no receipts held — <b>cannot assess, not calm</b>.</div>
-  <div class="card"><h2>Receipts browser — every item, newest first</h2>
-    <div style="margin-bottom:8px">
-      <select id="f-kind"><option value="">all kinds</option><option value="news">news</option><option value="iurc_docket">iurc_docket</option><option value="dc_action">dc_action</option><option value="county_action">county_action</option><option value="ordinance">ordinance</option></select>
-      <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
-    </div>
-    <div class="hint" id="rec-note" style="margin-bottom:6px"></div>
-    <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
-    <div class="prov" id="p-rec"></div></div>
   <div class="card"><h2>County posture (from held receipts)</h2>
     <div class="sowhat">⚠ <b>A restriction outranks a
       development</b> — a county that has approved a data center AND holds a moratorium is still
@@ -105,16 +97,12 @@
       a weaker claim to the subject than matching title AND subject AND abstract.</div></div>
 
   <div id="leg-detail" class="card hidden"><h2 id="leg-detail-title"></h2><div id="leg-detail-body"></div></div>
-
-  <div class="gridcards">
-    <div class="card"><h2>Federal disaster declarations — Indiana history</h2>
-      <div class="scroll" style="max-height:260px"><table id="t-dis"><tr><th>incident</th><th>declarations</th><th>counties</th><th>first</th><th>latest</th></tr></table></div>
-      <div class="prov" id="p-dis">source: <code>in_fema_disaster_declarations</code></div></div>
-    <div class="card"><h2>Severe weather events by type (NOAA storm events)</h2>
-      <div class="scroll" style="max-height:260px"><table id="t-storm"><tr><th>event type</th><th>events</th><th>years</th><th>direct injuries</th></tr></table></div>
-      <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
-        physical-risk complement to the flood and wetland gates on the map</div></div>
-  </div>
+  <div class="card"><h2>Permitted water dischargers, by county</h2>
+    <div class="sowhat" id="cwa-answer">measuring…</div>
+    <div class="scroll" style="max-height:300px"><table id="t-cwa">
+      <tr><th>county</th><th>permitted facilities</th><th>with a design flow on record</th>
+        <th>total design flow (Mgal/day)</th></tr></table></div>
+    <div class="prov" id="p-cwa"></div></div>
 
   <!-- G72/G80, 2026-08-20: three water objects that reached no surface. Water is the second
        conversation a large load has with a community, after power, and the page had none of it. -->
@@ -137,12 +125,16 @@
           <th>year-to-year variability</th><th>drought risk</th></tr></table></div>
       <div class="prov">indiana_app.in_water_aqueduct · WRI Aqueduct 3.0.</div></div>
   </div>
-  <div class="card"><h2>Permitted water dischargers, by county</h2>
-    <div class="sowhat" id="cwa-answer">measuring…</div>
-    <div class="scroll" style="max-height:300px"><table id="t-cwa">
-      <tr><th>county</th><th>permitted facilities</th><th>with a design flow on record</th>
-        <th>total design flow (Mgal/day)</th></tr></table></div>
-    <div class="prov" id="p-cwa"></div></div>
+
+  <div class="gridcards">
+    <div class="card"><h2>Federal disaster declarations — Indiana history</h2>
+      <div class="scroll" style="max-height:260px"><table id="t-dis"><tr><th>incident</th><th>declarations</th><th>counties</th><th>first</th><th>latest</th></tr></table></div>
+      <div class="prov" id="p-dis">source: <code>in_fema_disaster_declarations</code></div></div>
+    <div class="card"><h2>Severe weather events by type (NOAA storm events)</h2>
+      <div class="scroll" style="max-height:260px"><table id="t-storm"><tr><th>event type</th><th>events</th><th>years</th><th>direct injuries</th></tr></table></div>
+      <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
+        physical-risk complement to the flood and wetland gates on the map</div></div>
+  </div>
 
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
     <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
@@ -153,8 +145,16 @@
     <div class="prov">indiana_app.in_iocs_county_context · <b>excludes</b> the <code>STATE</code> row (a statewide
       TOTAL, 21,300 MF) and the <code>nan</code> residue (10,235) — together 62% of the raw MF sum and the reason
       the unfiltered county list read 94 names for a 92-county state. All 92 join county boundaries exactly.</div></div>
+  <div class="card"><h2>Receipts browser — every item, newest first</h2>
+    <div style="margin-bottom:8px">
+      <select id="f-kind"><option value="">all kinds</option><option value="news">news</option><option value="iurc_docket">iurc_docket</option><option value="dc_action">dc_action</option><option value="county_action">county_action</option><option value="ordinance">ordinance</option></select>
+      <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
+    </div>
+    <div class="hint" id="rec-note" style="margin-bottom:6px"></div>
+    <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
+    <div class="prov" id="p-rec"></div></div>
 </div>
-<script src="common.js?v=48527a9d"></script>
+<script src="common.js?v=ce6884a7"></script>
 <script>
 (async () => {
   await loadProv();

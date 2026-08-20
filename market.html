@@ -9,65 +9,41 @@
 <div class="page">
   <h1>Market &amp; Rates</h1>
   <div class="sub">Generation, demand, reliability, tariffs, and gas — Indiana grain. The per-site cost model (tariff-structure proxy for a DC of your size) is the flagged rate-engine milestone.</div>
-  <div class="gridcards">
-    <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2>
-      <p class="sowhat">This is the whole state's appetite, and it is the
-        denominator your project lands in. <b>A 300&nbsp;MW campus at an 85% load factor draws about
-        2.2&nbsp;TWh a year</b> &mdash; put that against the trace below and you can see immediately
-        whether you are a rounding error or a visible share of Indiana's load. It decides which
-        conversation you are in: a visible share is what triggers a <b>large-load tariff</b>, a
-        longer interconnection study, and political attention. <b>Context for positioning, not a
-        site test.</b></p>
-      <div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
-    <div class="card"><h2>CEMS gross generation (monthly)</h2>
-      <p class="sowhat">The chart above is what Indiana <i>uses</i>; this is
-        what its emissions-monitored plants actually <i>burn</i> &mdash; the supply half of the same
-        picture. <b>Read the two together:</b> generation falling while demand holds flat means
-        retirements are outrunning replacement, and that is precisely what tightens the
-        interconnection queue and lifts capacity prices in the years you would be energising. It
-        changes your <b>timing and your contingency plan</b>, not your site choice. <b>Context
-        only.</b></p>
-      <div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
-  </div>
-  <div class="gridcards">
-    <div class="card"><h2>How reliable is each utility?</h2>
-      <p class="sowhat">The figure below is <b>how many minutes a typical
-        customer is without power each year</b>. A data center targeting high availability has to
-        cover that gap with its own generation and batteries, so a poor utility is not a
-        dealbreaker &mdash; it is a capital cost. <b>525 minutes is roughly 8.75 hours a year.</b></p>
-      <div class="scroll"><table id="t-rel"><tr><th>Utility</th><th>Hours off per year</th>
-        <th>Outages per year</th><th>What it means</th><th>Customers</th></tr></table></div>
-      <div class="prov" id="p-rel"></div></div>
-    <div class="card"><h2>Could you run your own generation here?</h2>
-      <p class="sowhat">If the grid cannot serve you soon enough, on-site gas
-        generation is the usual fallback. A rough rule is <b>~8&nbsp;MMcf/d of gas per 100&nbsp;MW</b>
-        of gas-fired generation, so a 300&nbsp;MW campus needs on the order of
-        <b>25&ndash;50&nbsp;MMcf/d</b>. The figures below are <b>pipeline design capacity at
-        Indiana's borders</b> &mdash; the size of the pipe, <i>not</i> what is unsold today.</p>
-      <div class="scroll"><table id="t-gas"><tr><th>Pipeline</th><th>Route</th>
-        <th>Design capacity</th><th>Could support</th></tr></table></div>
-      <div class="prov" id="p-gas"></div></div>
-  </div>
-  <div class="card"><h2>Gas — how much is actually free on a given day</h2>
-    <p class="sowhat">The table above is the size of the pipe. This one is
-      <b>operationally-available capacity</b> — what the pipeline reports as unsold and deliverable
-      on a given day, published on each pipeline’s electronic bulletin board. This is the number
-      that decides whether on-site generation is actually feasible at your site.</p>
-    <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
-    <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div>
-    <!-- G100, operator 2026-08-19: "See if we are missing any data inputs for how much gas is
-         free in a given day." Answered by measurement, and the answer has two halves that point
-         in different directions. -->
-    <h3 style="margin-top:14px">⭐ So what are we missing? &mdash; every operator that crosses
-      Indiana, against the boards we hold</h3>
-    <div class="sowhat" id="gasgap-answer">measuring…</div>
-    <table id="t-gasgap"><tr><th>operator</th><th>segments crossing Indiana</th>
-      <th>capacity board held</th><th>can be placed at an Indiana point</th></tr></table>
-    <div class="prov">indiana_app.in_gas_pipelines (HIFLD linework) against the nine
-      <code>in_gas_capacity_*</code> boards. ⛔ <b>Scraping more boards would mostly add more
-      UNPLACEABLE boards</b> &mdash; the constraint is that seven of the nine post the
-      operator&rsquo;s whole system with no state column, so the missing input is a point-level
-      location on the boards we already have, not another board.</div></div>
+
+  <div class="card"><h2>What would power cost here?</h2>
+    <div style="margin:10px 0">
+      Load <input id="tf-mw" type="number" value="300" min="1" max="5000" style="width:74px"> MW
+      &middot; load factor <input id="tf-lf" type="number" value="0.85" min="0.05" max="1" step="0.05" style="width:64px">
+      &middot; <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:260px"></select>
+      <span class="hint" id="tf-count" style="margin-left:6px"></span>
+    </div>
+    <div id="tf-body"></div>
+    <div class="prov" id="tf-prov"></div></div>
+
+  <div class="card"><h2>The rate engine — what we can defend, and what we refuse to quote</h2>
+    <div class="hint" style="margin-bottom:8px">The URDB table above is <b>flattened</b> and is a
+      cross-check only. This is the itemised engine: a wholesale floor from ISO settlement data, the
+      tariff eligibility test, and an explicit list of the components no Indiana publisher has put
+      in the public record.</div>
+
+    <div class="scroll"><table id="t-floor"><tr><th>ISO</th><th>market</th><th>window actually returned</th><th>intervals</th><th>avg ¢/kWh</th><th>median ¢/kWh</th><th>min credible retail ¢/kWh</th></tr></table></div>
+    <div class="hint cannot" id="h-floor" style="margin:6px 0"></div>
+
+    <div class="hint" style="margin:12px 0 6px"><b>Eligibility</b> — a MW threshold is a
+      <b>minimum to qualify</b>, never a cap on what a site may draw.</div>
+    <div class="scroll"><table id="t-elig"><tr><th>utility</th><th>tariff</th><th>requirement</th><th>threshold</th><th>300 MW verdict</th><th>basis</th></tr></table></div>
+
+    <div class="hint" style="margin:12px 0 6px"><b class="cannot">Components we do NOT hold.</b>
+      These render as <span class="cannot">not published</span> — never as zero. An absent rate
+      treated as 0 is what produced 95 false "below floor" violations on this engine's first run.</div>
+    <div class="scroll"><table id="t-gaps"><tr><th>utility</th><th>tariff</th><th>component</th><th>rate</th><th>state</th><th>source</th></tr></table></div>
+    <div class="prov" id="p-rate"></div></div>
+
+  <div class="card"><h2>What each utility's industrial customers actually paid</h2>
+    <div class="scroll" style="max-height:320px"><table id="t-impl">
+      <tr><th>utility</th><th>industrial MWh</th><th>customers</th>
+        <th>implied ¢/kWh</th><th>all classes ¢/kWh</th></tr></table></div>
+    <div class="prov">indiana_app.in_eia861_sales_ult_cust · EIA-861, revenue ÷ sales.</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
     <div style="margin-bottom:8px">
       Load: <input id="rp-mw" type="number" value="300" min="1" style="width:70px"> MW ·
@@ -86,37 +62,10 @@
     ✅ <b>The itemised rate engine is BUILT and is the card below</b> — 22 utilities costed from their
     own tariff books at every service voltage with every applicable rider, and a labelled URDB floor
     for the 50 more where we hold no book. This card remains as an independent cross-check.</div></div>
-  <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
-    <div class="est-badge">MW column is an ESTIMATE — derived by us, not published by the pipeline</div>
-    <div class="hint" style="margin-bottom:6px">⚠ <b>The unit is inferred, not captured.</b>
-      Energy Transfer's iPost bulletin boards post quantities in <b>dekatherms/day</b>
-      (1 Dth = 1 MMBtu) and the magnitudes here match that, but <b>our capture kept no units
-      column</b>, so the pipeline never states it in our own data. MW assumes a modern
-      combined-cycle heat rate of <b>6.5 MMBtu/MWh</b>: MW &asymp; Dth/day &divide; 156. A
-      screening figure, not a supply commitment.</div>
-    <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th><th>&asymp; MW supportable</th></tr></table></div>
-    <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline ·
-      <span id="gasloc-count">…</span> · values verbatim from the bulletin board.
-      ⚠ <b>Not "the latest posting"</b> — the card used to say that, but <code>gas_day</code> is
-      <b>empty on every row we hold</b>, so which posting is current cannot be determined from our
-      capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
-  <div class="gridcards">
-    <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
-      <div class="est-badge">¢/kWh is an ESTIMATE — fuel only, at an assumed 6.5 MMBtu/MWh heat rate</div>
-      <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>&asymp; &cent;/kWh fuel only</th><th>MMBtu received</th></tr></table></div>
-      <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
-        actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
-    <div class="card"><h2>Demand response — load the utilities can already shed</h2>
-      <div class="scroll" style="max-height:280px"><table id="t-dr"><tr><th>utility</th><th>class</th><th>year</th><th>actual MW</th><th>potential MW</th></tr></table></div>
-      <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
-  </div>
-  <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
-    <div class="scroll" style="max-height:260px"><table id="t-eqr"><tr><th>company</th><th>contact city</th><th>quarters filed</th><th>first</th><th>latest</th></tr></table></div>
-    <div class="prov">source: <code>in_eqr_identity</code>. <b>Read this as a contact address, not a
-      location of operations</b> — the state field is where the filer's contact sits. Checked rather
-      than assumed: of 58 companies, exactly one (AES Armenia Mountain Wind) names another state in
-      its own name, so this slice is genuinely Indiana-centerd — but a filer here may still trade
-      elsewhere.</div></div>
+
+  <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
+    <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
+    <div class="prov" id="p-tar"></div></div>
 
   <!-- ============================================================================================
        G72/G80, 2026-08-20. Three objects that were clipped, registered and rendered NOWHERE, and
@@ -138,12 +87,32 @@
     <div class="prov">indiana_app.in_econ_gjf_megadeals · Good Jobs First Subsidy Tracker
       (megadeals). ⚠ These are STATE AND LOCAL packages as tracked by a third party, not offers
       available to you — they are the comparable, not the menu.</div></div>
-
-  <div class="card"><h2>What each utility's industrial customers actually paid</h2>
-    <div class="scroll" style="max-height:320px"><table id="t-impl">
-      <tr><th>utility</th><th>industrial MWh</th><th>customers</th>
-        <th>implied ¢/kWh</th><th>all classes ¢/kWh</th></tr></table></div>
-    <div class="prov">indiana_app.in_eia861_sales_ult_cust · EIA-861, revenue ÷ sales.</div></div>
+  <div class="gridcards">
+    <div class="card"><h2>How reliable is each utility?</h2>
+      <p class="sowhat">The figure below is <b>how many minutes a typical
+        customer is without power each year</b>. A data center targeting high availability has to
+        cover that gap with its own generation and batteries, so a poor utility is not a
+        dealbreaker &mdash; it is a capital cost. <b>525 minutes is roughly 8.75 hours a year.</b></p>
+      <div class="scroll"><table id="t-rel"><tr><th>Utility</th><th>Hours off per year</th>
+        <th>Outages per year</th><th>What it means</th><th>Customers</th></tr></table></div>
+      <div class="prov" id="p-rel"></div></div>
+    <div class="card"><h2>Could you run your own generation here?</h2>
+      <p class="sowhat">If the grid cannot serve you soon enough, on-site gas
+        generation is the usual fallback. A rough rule is <b>~8&nbsp;MMcf/d of gas per 100&nbsp;MW</b>
+        of gas-fired generation, so a 300&nbsp;MW campus needs on the order of
+        <b>25&ndash;50&nbsp;MMcf/d</b>. The figures below are <b>pipeline design capacity at
+        Indiana's borders</b> &mdash; the size of the pipe, <i>not</i> what is unsold today.</p>
+      <div class="scroll"><table id="t-gas"><tr><th>Pipeline</th><th>Route</th>
+        <th>Design capacity</th><th>Could support</th></tr></table></div>
+      <div class="prov" id="p-gas"></div></div>
+  </div>
+  <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
+    <div class="scroll" style="max-height:260px"><table id="t-eqr"><tr><th>company</th><th>contact city</th><th>quarters filed</th><th>first</th><th>latest</th></tr></table></div>
+    <div class="prov">source: <code>in_eqr_identity</code>. <b>Read this as a contact address, not a
+      location of operations</b> — the state field is where the filer's contact sits. Checked rather
+      than assumed: of 58 companies, exactly one (AES Armenia Mountain Wind) names another state in
+      its own name, so this slice is genuinely Indiana-centerd — but a filer here may still trade
+      elsewhere.</div></div>
 
   <div class="card"><h2>Where Indiana's power comes from &mdash; last twelve months</h2>
     <div class="sowhat" id="genmix-answer">measuring…</div>
@@ -151,41 +120,72 @@
       <tr><th>fuel</th><th>GWh</th><th>share</th></tr></table></div>
     <div class="prov">indiana_app.in_elec_power_operational · EIA monthly electric power
       operations, all sectors.</div></div>
-
-  <div class="card"><h2>What would power cost here?</h2>
-    <div style="margin:10px 0">
-      Load <input id="tf-mw" type="number" value="300" min="1" max="5000" style="width:74px"> MW
-      &middot; load factor <input id="tf-lf" type="number" value="0.85" min="0.05" max="1" step="0.05" style="width:64px">
-      &middot; <select id="tf-util" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;min-width:260px"></select>
-      <span class="hint" id="tf-count" style="margin-left:6px"></span>
-    </div>
-    <div id="tf-body"></div>
-    <div class="prov" id="tf-prov"></div></div>
-
-  <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
-    <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
-    <div class="prov" id="p-tar"></div></div>
-
-  <div class="card"><h2>The rate engine — what we can defend, and what we refuse to quote</h2>
-    <div class="hint" style="margin-bottom:8px">The URDB table above is <b>flattened</b> and is a
-      cross-check only. This is the itemised engine: a wholesale floor from ISO settlement data, the
-      tariff eligibility test, and an explicit list of the components no Indiana publisher has put
-      in the public record.</div>
-
-    <div class="scroll"><table id="t-floor"><tr><th>ISO</th><th>market</th><th>window actually returned</th><th>intervals</th><th>avg ¢/kWh</th><th>median ¢/kWh</th><th>min credible retail ¢/kWh</th></tr></table></div>
-    <div class="hint cannot" id="h-floor" style="margin:6px 0"></div>
-
-    <div class="hint" style="margin:12px 0 6px"><b>Eligibility</b> — a MW threshold is a
-      <b>minimum to qualify</b>, never a cap on what a site may draw.</div>
-    <div class="scroll"><table id="t-elig"><tr><th>utility</th><th>tariff</th><th>requirement</th><th>threshold</th><th>300 MW verdict</th><th>basis</th></tr></table></div>
-
-    <div class="hint" style="margin:12px 0 6px"><b class="cannot">Components we do NOT hold.</b>
-      These render as <span class="cannot">not published</span> — never as zero. An absent rate
-      treated as 0 is what produced 95 false "below floor" violations on this engine's first run.</div>
-    <div class="scroll"><table id="t-gaps"><tr><th>utility</th><th>tariff</th><th>component</th><th>rate</th><th>state</th><th>source</th></tr></table></div>
-    <div class="prov" id="p-rate"></div></div>
+  <div class="gridcards">
+    <div class="card"><h2>Indiana statewide demand (FERC-714, monthly MWh)</h2>
+      <p class="sowhat">This is the whole state's appetite, and it is the
+        denominator your project lands in. <b>A 300&nbsp;MW campus at an 85% load factor draws about
+        2.2&nbsp;TWh a year</b> &mdash; put that against the trace below and you can see immediately
+        whether you are a rounding error or a visible share of Indiana's load. It decides which
+        conversation you are in: a visible share is what triggers a <b>large-load tariff</b>, a
+        longer interconnection study, and political attention. <b>Context for positioning, not a
+        site test.</b></p>
+      <div id="c-demand"></div><div class="prov" id="p-demand"></div></div>
+    <div class="card"><h2>CEMS gross generation (monthly)</h2>
+      <p class="sowhat">The chart above is what Indiana <i>uses</i>; this is
+        what its emissions-monitored plants actually <i>burn</i> &mdash; the supply half of the same
+        picture. <b>Read the two together:</b> generation falling while demand holds flat means
+        retirements are outrunning replacement, and that is precisely what tightens the
+        interconnection queue and lifts capacity prices in the years you would be energising. It
+        changes your <b>timing and your contingency plan</b>, not your site choice. <b>Context
+        only.</b></p>
+      <div id="c-cems"></div><div class="prov" id="p-cems"></div></div>
+  </div>
+  <div class="gridcards">
+    <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
+      <div class="est-badge">¢/kWh is an ESTIMATE — fuel only, at an assumed 6.5 MMBtu/MWh heat rate</div>
+      <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>&asymp; &cent;/kWh fuel only</th><th>MMBtu received</th></tr></table></div>
+      <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
+        actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
+    <div class="card"><h2>Demand response — load the utilities can already shed</h2>
+      <div class="scroll" style="max-height:280px"><table id="t-dr"><tr><th>utility</th><th>class</th><th>year</th><th>actual MW</th><th>potential MW</th></tr></table></div>
+      <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
+  </div>
+  <div class="card"><h2>Gas — how much is actually free on a given day</h2>
+    <p class="sowhat">The table above is the size of the pipe. This one is
+      <b>operationally-available capacity</b> — what the pipeline reports as unsold and deliverable
+      on a given day, published on each pipeline’s electronic bulletin board. This is the number
+      that decides whether on-site generation is actually feasible at your site.</p>
+    <div class="scroll"><table id="t-oac"><tr><th>pipeline</th><th>posting rows</th><th>IN locations</th><th>IN counties</th><th>pulled</th></tr></table></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_* · location grain; PEPL &amp; Trunkline publish State+County (county-plottable); Texas Eastern &amp; REX BLOCKED (walls recorded)</div>
+    <!-- G100, operator 2026-08-19: "See if we are missing any data inputs for how much gas is
+         free in a given day." Answered by measurement, and the answer has two halves that point
+         in different directions. -->
+    <h3 style="margin-top:14px">⭐ So what are we missing? &mdash; every operator that crosses
+      Indiana, against the boards we hold</h3>
+    <div class="sowhat" id="gasgap-answer">measuring…</div>
+    <table id="t-gasgap"><tr><th>operator</th><th>segments crossing Indiana</th>
+      <th>capacity board held</th><th>can be placed at an Indiana point</th></tr></table>
+    <div class="prov">indiana_app.in_gas_pipelines (HIFLD linework) against the nine
+      <code>in_gas_capacity_*</code> boards. ⛔ <b>Scraping more boards would mostly add more
+      UNPLACEABLE boards</b> &mdash; the constraint is that seven of the nine post the
+      operator&rsquo;s whole system with no state column, so the missing input is a point-level
+      location on the boards we already have, not another board.</div></div>
+  <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
+    <div class="est-badge">MW column is an ESTIMATE — derived by us, not published by the pipeline</div>
+    <div class="hint" style="margin-bottom:6px">⚠ <b>The unit is inferred, not captured.</b>
+      Energy Transfer's iPost bulletin boards post quantities in <b>dekatherms/day</b>
+      (1 Dth = 1 MMBtu) and the magnitudes here match that, but <b>our capture kept no units
+      column</b>, so the pipeline never states it in our own data. MW assumes a modern
+      combined-cycle heat rate of <b>6.5 MMBtu/MWh</b>: MW &asymp; Dth/day &divide; 156. A
+      screening figure, not a supply commitment.</div>
+    <div class="scroll"><table id="t-gasloc"><tr><th>pipeline</th><th>location</th><th>county</th><th>design</th><th>OAC</th><th>&asymp; MW supportable</th></tr></table></div>
+    <div class="prov">sources: indiana_app.in_gas_capacity_panhandle_eastern / _trunkline ·
+      <span id="gasloc-count">…</span> · values verbatim from the bulletin board.
+      ⚠ <b>Not "the latest posting"</b> — the card used to say that, but <code>gas_day</code> is
+      <b>empty on every row we hold</b>, so which posting is current cannot be determined from our
+      capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
 </div>
-<script src="common.js?v=48527a9d"></script>
+<script src="common.js?v=ce6884a7"></script>
 <script>
 /* G21 requirement 4 -- translate into the reader's DECISION unit. Both conversions are ESTIMATES
    and both say so on screen via .est-badge; "estimates never style as published".

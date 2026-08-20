@@ -11,33 +11,17 @@
   <div class="sub">Signals are admitted at the <b>non-residential</b> level only and only where severity
     would plausibly move an owner to sell. A name is never wired without a subject read.</div>
   <div class="gridcards">
-    <div class="card"><div class="bigstat" id="s-flag">…</div><div class="hint">parcels carrying an ADMITTED seller-intent signal (<code>in_si_sites_flags_v2</code>)</div></div>
+    <div class="card"><div class="bigstat" id="s-flag">…</div><div class="hint">parcels carrying an ADMITTED seller-intent signal (<code>in_si_sites_flags_v2</code>)<span id="s-flag-row"></span></div></div>
     <div class="card"><div class="bigstat" id="s-dated">…</div><div class="hint">of those, carrying an event date</div></div>
     <div class="card"><div class="bigstat" id="s-si">…</div><div class="hint">SI observations held (in_si_signals)</div></div>
     <div class="card"><div class="bigstat" id="s-cand">…</div><div class="hint">candidate-signal parcels (<code>in_si_candidates</code>)</div></div>
   </div>
 
-  <!-- G81, operator 2026-08-19: "We need to determine if ~24,000 seller intent properties is
-       actually truthful — why don't we have more?" The number is not a rendering error (the
-       checkpoint asserts payload-vs-warehouse agreement on it every run), so the honest answer is
-       the FUNNEL, with the loss at each stage named. -->
-  <div class="card" data-group="How many, and why"><h2><span id="funnel-h">Why this many</span> and not more? &mdash; the whole funnel, with every loss named</h2>
-    <div class="sowhat" id="funnel-answer">measuring…</div>
-    <div class="scroll" style="max-height:340px"><table id="t-funnel">
-      <tr><th>stage</th><th>count</th><th>what is lost here, and why</th></tr></table></div>
-    <div class="gridcards" style="margin-top:10px">
-      <div class="card"><h3 style="margin-top:0">Where the admitted parcels come from</h3>
-        <div class="hint">One clean chain &mdash; every row below is inside a single table, so
-          these DO subtract.</div>
-        <table id="t-admit"><tr><th>outcome</th><th>parcels</th></tr></table></div>
-      <div class="card"><h3 style="margin-top:0">The largest signal we hold, and why it is excluded</h3>
-        <div class="hint" id="funnel-d5-note">…</div>
-        <table id="t-funnel-d5"><tr><th>what is on the parcel</th><th>parcels</th></tr></table></div>
-    </div>
-    <div class="prov" id="funnel-prov"></div>
-  </div>
-
-  <div class="card" data-group="How many, and why"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
+<!-- ⛔ THIS CARD WAS TAGGED data-group="How many, and why" - filed with the WORKPAPER.
+       It is the page's ANSWER, and the grouped contents strip is built from these tags in
+       DOM order, so the mis-tag put "How many, and why" first in the strip even after the
+       card itself was moved to the top. Retagged 2026-08-20e (G128b). -->
+  <div class="card" data-group="The signals themselves"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
     <div class="scroll" style="max-height:430px"><table id="t-lead"><tr>
       <th>parcel</th><th>what it is</th><th>why we believe the owner may sell</th>
       <th>kinds</th><th>most recent</th><th>last 3 yrs</th></tr></table></div>
@@ -65,6 +49,80 @@
       <code>scripts/build_d9_absentee_marion.py</code> from <code>in_marion_parcel_crosswalk</code> ×
       <code>in_sites</code>. The owner block was already in the crosswalk we pulled to bridge
       Marion's parcel keys — no acquisition was needed for either signal. One parcel whose published outline covers the entire planet is excluded from the join; leaving it in would match every property in Indiana.</div></div>
+  <div class="card" data-group="The signals themselves"><h2>State environmental enforcement — <span class="hint">now with real dates</span></h2>
+    <div class="hint cannot" id="idem-note" style="margin-bottom:8px"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="idem-n">…</div><div class="hint">actions now carrying an event date</div></div>
+      <div class="card"><div class="bigstat" id="idem-day">…</div><div class="hint">with an exact printed day</div></div>
+      <div class="card"><div class="bigstat cannot" id="idem-old">…</div><div class="hint">older than 10 years — not a lead</div></div>
+    </div>
+    <div class="scroll"><table id="t-idem"><tr><th>age of the action</th><th>actions</th><th>exact day known</th></tr></table></div>
+    <div class="prov"><code>in_si_d22_idem_dated</code> (22,565), built by
+      <code>scrapers/lane_f/load_idem_dates.py</code> from
+      <code>oe.idem.in.gov/idem_oe_order</code> month windows + per-case document pages.
+      <b>Read <code>date_precision</code>:</b> a <code>month</code> row sits on the 1st of the month
+      as a placeholder and the day is <b>not known</b>. IDEM is owner-keyed and still cannot reach a
+      parcel — dating makes it filterable context, not parcel-grain evidence.</div></div>
+  <div class="card" data-group="The signals themselves"><h2>Federal environmental compliance — facilities on EPA's enforcement record</h2>
+    <div class="hint" id="d22-note"></div>
+    <div class="scroll" style="max-height:320px;margin-top:8px"><table id="t-d22"><tr><th>county</th><th>facilities</th><th>in distress</th><th>significant violation</th><th>high-priority</th><th>inactive</th><th>penalties</th></tr></table></div>
+    <div class="prov">indiana_app.in_si_d22_echo_indiana + in_si_d22_county_rollup · source: EPA ECHO
+      <b>bulk export</b> (echo_exporter.zip), not the REST service — the county walk needed ~25,000
+      requests against a 1,500/day quota. 133 columns kept.</div></div>
+  <div class="card" data-group="The signals themselves"><h2>Structure fires severe enough to move an owner to sell</h2>
+    <div class="hint" style="margin-bottom:6px"><b>A signal only counts when it plausibly produces
+      seller intent.</b> A contained kitchen fire does not, and a house is not a hyperscale site.
+      So the raw file is narrowed three times: to structure fires, to <b>non-residential</b>
+      property, and to <b>material loss</b>. Each step is shown, so the discard is auditable rather
+      than a number appearing from nowhere.</div>
+    <div id="nfirs-funnel" class="hint" style="margin-bottom:8px"></div>
+    <div class="gridcards">
+      <div class="card" data-group="sub"><h2 style="font-size:12px">By year</h2>
+        <div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-res</th><th>any loss</th><th>SI-grade</th></tr></table></div></div>
+      <div class="card" data-group="sub"><h2 style="font-size:12px">Severity × property class</h2>
+        <div class="scroll" style="max-height:230px"><table id="t-nfirs-sev"><tr><th>class</th><th>severity</th><th>n</th></tr></table></div></div>
+    </div>
+    <h3 style="margin:10px 0 4px;font-size:12.5px">The SI-grade incidents — non-residential, ≥$10k loss</h3>
+    <div class="scroll" style="max-height:280px"><table id="t-nfirs-si"><tr><th>date</th><th>address</th><th>city</th><th>use</th><th>severity</th><th>loss</th></tr></table></div>
+    <div class="prov" id="p-nfirs"></div></div>
+  <div class="card" data-group="What we cannot place yet"><h2>Signals about an OWNER, not a parcel — and why they cannot yet be placed on the map</h2>
+    <div class="hint" id="own-note"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-owncounty"><tr><th>county</th><th>dissolutions</th><th>UCC lapses</th><th>WARN</th><th>in 3 yrs</th></tr></table></div>
+        <div class="prov">county is <b>inferred from the city</b> — the sources publish none</div></div>
+      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-own"><tr><th>signal</th><th>party</th><th>event</th><th>city</th></tr></table></div>
+        <div class="prov">indiana_app.in_si_owner_signals</div></div>
+    </div></div>
+  <div class="card" data-group="What we cannot place yet"><h2>Can the parcel host anything? — signal and capability are different questions</h2>
+    <div class="hint" id="cap-note"></div>
+    <div class="gridcards" style="margin:8px 0">
+      <div class="card"><div class="bigstat" id="cap-bess">…</div><div class="hint">can host ≥5 MW BESS (≥0.5 ac)</div></div>
+      <div class="card"><div class="bigstat" id="cap-dc">…</div><div class="hint">can host ≥25 MW datacenter</div></div>
+      <div class="card"><div class="bigstat" id="cap-small">…</div><div class="hint">too small for either — filtered out, not deleted</div></div>
+    </div>
+    <div class="prov">indiana_app.in_si_sites_flags_v2 · <code>fits_min_bess_5mw</code> /
+      <code>fits_dc_25mw</code> · the screener's MW filter applies the same test at whatever
+      density and MW floor you set</div></div>
+
+  <!-- G81, operator 2026-08-19: "We need to determine if ~24,000 seller intent properties is
+       actually truthful — why don't we have more?" The number is not a rendering error (the
+       checkpoint asserts payload-vs-warehouse agreement on it every run), so the honest answer is
+       the FUNNEL, with the loss at each stage named. -->
+  <div class="card" data-group="How many, and why"><h2><span id="funnel-h">Why this many</span> and not more? &mdash; the whole funnel, with every loss named</h2>
+    <div class="sowhat" id="funnel-answer">measuring…</div>
+    <div class="scroll" style="max-height:340px"><table id="t-funnel">
+      <tr><th>stage</th><th>count</th><th>what is lost here, and why</th></tr></table></div>
+    <div class="gridcards" style="margin-top:10px">
+      <div class="card"><h3 style="margin-top:0">Where the admitted parcels come from</h3>
+        <div class="hint">One clean chain &mdash; every row below is inside a single table, so
+          these DO subtract.</div>
+        <table id="t-admit"><tr><th>outcome</th><th>parcels</th></tr></table></div>
+      <div class="card"><h3 style="margin-top:0">The largest signal we hold, and why it is excluded</h3>
+        <div class="hint" id="funnel-d5-note">…</div>
+        <table id="t-funnel-d5"><tr><th>what is on the parcel</th><th>parcels</th></tr></table></div>
+    </div>
+    <div class="prov" id="funnel-prov"></div>
+  </div>
   <!-- G83 + G84, operator 2026-08-19: "we filter by severity on many of the signals, and we
        should be transparent about which filters were applied, why, and what the severity actually
        shows"; and "For IDEM enforcement, why does this matter, and how does this signal intent?"
@@ -149,38 +207,6 @@
       in silence.</div>
     <div class="scroll" style="max-height:460px"><table id="t-cov"><tr><th>signal</th><th>held</th><th>reached</th><th>admitted</th><th>C/I</th><th>event range</th><th>excl. resid</th><th>excl. low-sev</th></tr></table></div>
     <div class="prov">indiana_app.in_si_signal_coverage</div></div>
-  <div class="card" data-group="What we cannot place yet"><h2>Signals about an OWNER, not a parcel — and why they cannot yet be placed on the map</h2>
-    <div class="hint" id="own-note"></div>
-    <div class="gridcards" style="margin:8px 0">
-      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-owncounty"><tr><th>county</th><th>dissolutions</th><th>UCC lapses</th><th>WARN</th><th>in 3 yrs</th></tr></table></div>
-        <div class="prov">county is <b>inferred from the city</b> — the sources publish none</div></div>
-      <div class="card"><div class="scroll" style="max-height:280px"><table id="t-own"><tr><th>signal</th><th>party</th><th>event</th><th>city</th></tr></table></div>
-        <div class="prov">indiana_app.in_si_owner_signals</div></div>
-    </div></div>
-  <div class="card" data-group="The signals themselves"><h2>State environmental enforcement — <span class="hint">now with real dates</span></h2>
-    <div class="hint cannot" id="idem-note" style="margin-bottom:8px"></div>
-    <div class="gridcards" style="margin:8px 0">
-      <div class="card"><div class="bigstat" id="idem-n">…</div><div class="hint">actions now carrying an event date</div></div>
-      <div class="card"><div class="bigstat" id="idem-day">…</div><div class="hint">with an exact printed day</div></div>
-      <div class="card"><div class="bigstat cannot" id="idem-old">…</div><div class="hint">older than 10 years — not a lead</div></div>
-    </div>
-    <div class="scroll"><table id="t-idem"><tr><th>age of the action</th><th>actions</th><th>exact day known</th></tr></table></div>
-    <div class="prov"><code>in_si_d22_idem_dated</code> (22,565), built by
-      <code>scrapers/lane_f/load_idem_dates.py</code> from
-      <code>oe.idem.in.gov/idem_oe_order</code> month windows + per-case document pages.
-      <b>Read <code>date_precision</code>:</b> a <code>month</code> row sits on the 1st of the month
-      as a placeholder and the day is <b>not known</b>. IDEM is owner-keyed and still cannot reach a
-      parcel — dating makes it filterable context, not parcel-grain evidence.</div></div>
-  <div class="card" data-group="What we cannot place yet"><h2>Can the parcel host anything? — signal and capability are different questions</h2>
-    <div class="hint" id="cap-note"></div>
-    <div class="gridcards" style="margin:8px 0">
-      <div class="card"><div class="bigstat" id="cap-bess">…</div><div class="hint">can host ≥5 MW BESS (≥0.5 ac)</div></div>
-      <div class="card"><div class="bigstat" id="cap-dc">…</div><div class="hint">can host ≥25 MW datacenter</div></div>
-      <div class="card"><div class="bigstat" id="cap-small">…</div><div class="hint">too small for either — filtered out, not deleted</div></div>
-    </div>
-    <div class="prov">indiana_app.in_si_sites_flags_v2 · <code>fits_min_bess_5mw</code> /
-      <code>fits_dc_25mw</code> · the screener's MW filter applies the same test at whatever
-      density and MW floor you set</div></div>
   <div class="card" data-group="Where it comes from, and how fresh"><h2>Signal inventory — the upstream corpus table, not the whole program</h2>
     <div class="sowhat"><b>Read this as one upstream table, not as leads and not as the full
       signal set.</b> It holds <b id="inv-total">&hellip;</b> observations across
@@ -197,28 +223,6 @@
       those are the leads, and they are at the top of this page.</div>
     <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
     <div class="prov" id="p-sig"></div></div>
-  <div class="card" data-group="The signals themselves"><h2>Federal environmental compliance — facilities on EPA's enforcement record</h2>
-    <div class="hint" id="d22-note"></div>
-    <div class="scroll" style="max-height:320px;margin-top:8px"><table id="t-d22"><tr><th>county</th><th>facilities</th><th>in distress</th><th>significant violation</th><th>high-priority</th><th>inactive</th><th>penalties</th></tr></table></div>
-    <div class="prov">indiana_app.in_si_d22_echo_indiana + in_si_d22_county_rollup · source: EPA ECHO
-      <b>bulk export</b> (echo_exporter.zip), not the REST service — the county walk needed ~25,000
-      requests against a 1,500/day quota. 133 columns kept.</div></div>
-  <div class="card" data-group="The signals themselves"><h2>Structure fires severe enough to move an owner to sell</h2>
-    <div class="hint" style="margin-bottom:6px"><b>A signal only counts when it plausibly produces
-      seller intent.</b> A contained kitchen fire does not, and a house is not a hyperscale site.
-      So the raw file is narrowed three times: to structure fires, to <b>non-residential</b>
-      property, and to <b>material loss</b>. Each step is shown, so the discard is auditable rather
-      than a number appearing from nowhere.</div>
-    <div id="nfirs-funnel" class="hint" style="margin-bottom:8px"></div>
-    <div class="gridcards">
-      <div class="card" data-group="sub"><h2 style="font-size:12px">By year</h2>
-        <div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-res</th><th>any loss</th><th>SI-grade</th></tr></table></div></div>
-      <div class="card" data-group="sub"><h2 style="font-size:12px">Severity × property class</h2>
-        <div class="scroll" style="max-height:230px"><table id="t-nfirs-sev"><tr><th>class</th><th>severity</th><th>n</th></tr></table></div></div>
-    </div>
-    <h3 style="margin:10px 0 4px;font-size:12.5px">The SI-grade incidents — non-residential, ≥$10k loss</h3>
-    <div class="scroll" style="max-height:280px"><table id="t-nfirs-si"><tr><th>date</th><th>address</th><th>city</th><th>use</th><th>severity</th><th>loss</th></tr></table></div>
-    <div class="prov" id="p-nfirs"></div></div>
   <div class="gridcards">
     <div class="card" data-group="Context, not signal"><h2>Highest-vacancy census tracts (ACS)</h2>
       <div class="scroll" style="max-height:280px"><table id="t-vac"><tr><th>tract</th><th>units</th><th>vacant</th><th>rate %</th></tr></table></div>
@@ -363,7 +367,7 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=48527a9d"></script>
+<script src="common.js?v=ce6884a7"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -460,6 +464,18 @@
   document.getElementById("inv-unreach").textContent =
     (V2.coverage || []).filter((c) => !(c.parcels_admitted > 0)).length;
   document.getElementById("s-flag").textContent = fmt(fs.flagged);
+  /* ⛔ G122 LEFT TWO NUMBERS FOR ONE APPARENT CONCEPT. This page counts flagged parcels in
+     in_si_sites_flags_v2; the map and the screener count CANDIDATES, which now exclude confirmed
+     road and rail rights-of-way. A reader who noticed 23,795 here and 23,766 there would have no
+     way to tell which was wrong, and two figures for one fact is how a reader stops trusting
+     both. State the relationship rather than leave it to be discovered.
+     ⚠ The count is generated, never hand-typed - it moves when the classification does. */
+  if (fs.flagged_row_excluded > 0) {
+    document.getElementById("s-flag-row").innerHTML =
+      ` · <b>${fmt(fs.flagged - fs.flagged_row_excluded)}</b> of them are candidate sites; the
+        other ${fmt(fs.flagged_row_excluded)} sit on a road or rail right-of-way and are excluded
+        from the map and the screener (G122)`;
+  }
   document.getElementById("s-dated").textContent =
     `${Math.round(100 * fs.dated / Math.max(fs.flagged, 1))}%`;
   document.getElementById("v2-note").innerHTML =

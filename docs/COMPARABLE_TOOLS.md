@@ -121,12 +121,40 @@ made every regression untraceable to a cause.
 5. **Mode badges on every filter** (G129) — GATE or PREF, so a reader can tell a zero-result search
    from a filtered-out one.
 
-## 5. WHAT IS DELIBERATELY LEFT
+## 5. THE RE-ORDERING, EXECUTED 2026-08-20e
 
-⛔ **Re-ordering `si.html`, `market.html`, `grid.html` and `community.html` so the answer precedes
-the workpaper.** This is the largest remaining win and it is a *content* decision per page — which
-of 38 sections on `si.html` is the answer, and which is the diary. It needs the operator's eye, and
-doing it blind in the same session as G123 would be two large uninstrumented changes at once.
+⭐ **Done. 38 blocks repositioned across the four anthology pages**, by
+`scripts/reorder_page_sections.py`. The orders live in that file, one per page, each with its
+reason beside it — the judgement is readable and arguable, not buried in code.
+
+| page | was first | is first now |
+|---|---|---|
+| `si.html` | *"Why this many and not more? — the whole funnel"* (a build diary) | **"Which owners might sell you land"** |
+| `market.html` | Indiana statewide demand (FERC-714) | **"What would power cost here?"** — it had been THIRTEENTH |
+| `community.html` | the receipts browser (the evidence drawer) | **"County posture"** — go / think hard / no-go |
+| `grid.html` | already close; only 3 blocks moved | LOAD headroom per bus, then cost |
+
+⛔ **A PURE PERMUTATION, ASSERTED.** The tool refuses to write unless the multiset of block texts
+is identical before and after, and it also checks the file length and a tag census. Verified:
+identical character counts and identical line multisets on all four pages. Only TOP-LEVEL blocks
+move — several cards are nested in two-column wrappers and lifting one would orphan its pair — and
+each block carries its preceding comment with it.
+
+⭐ **Two real defects surfaced in the doing, which is the argument for doing it at all:**
+1. si's ANSWER card was tagged `data-group="How many, and why"` — filed with the workpaper — so
+   the generated contents strip still led with the workpaper group even after the card moved.
+2. ⛔ **The G123 dense policy was hiding a headline stat's LABEL.** Twelve of thirteen `.bigstat`
+   captions survived on length alone; the moment one grew past 60 characters it vanished, leaving
+   `23,795` on screen labelled by nothing. The rule is now structural — inside a card carrying a
+   stat, the caption always stays — because length was never the right test for a caption.
+
+⚠ **And a coherence problem G122 had left behind:** si.html reported 23,795 flagged parcels while
+the map and screener reported 23,766. Neither was wrong — they count different populations — but
+two figures for one fact is how a reader stops trusting both. The page now states the relationship
+from a GENERATED count: **23,795 flagged, 29 on a right-of-way, 23,766 candidates.**
+
+## 6. WHAT IS STILL DELIBERATELY LEFT
+
 
 ⚠ **13 runtime `.sowhat` blocks** could not be relocated because each wraps a live `id` the page's
 script writes into (`<div class="sowhat" id="wd-answer">measuring…</div>`). The VALUE is what G123
