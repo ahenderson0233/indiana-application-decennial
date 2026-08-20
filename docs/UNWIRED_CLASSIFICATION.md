@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**293 of 329 registered objects reach a surface.** The other 36 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**293 of 332 registered objects reach a surface.** The other 39 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## empty — 5
 
@@ -14,7 +14,7 @@
 - `in_miso_poi`
 - `in_nrc_reactors`
 
-## harvest_rung — 11
+## harvest_rung — 14
 
 a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads the 5,000 MW rung; the others exist so the ladder can be resumed, audited and re-pointed. Rendering a rung would publish a request size nobody asked about.
 
@@ -23,11 +23,14 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_bus_locations_v2`
 - `in_pjm_qs_c23_inj_10`
 - `in_pjm_qs_c23_inj_15`
+- `in_pjm_qs_c23_inj_200`
 - `in_pjm_qs_c23_inj_25`
 - `in_pjm_qs_c23_inj_50`
 - `in_pjm_qs_c23_wd_10`
 - `in_pjm_qs_c23_wd_15`
+- `in_pjm_qs_c23_wd_200`
 - `in_pjm_qs_c23_wd_25`
+- `in_pjm_qs_c23_wd_300`
 - `in_pjm_qs_withdrawal_rungcheck`
 
 ## raw_feed — 11

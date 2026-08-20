@@ -121,6 +121,17 @@ if not m:
 unwired = re.findall(r"^\s{2}(in_[a-z0-9_]+|_[a-z0-9_]+)\s+rows=", m.group(2), re.M)
 reached = re.search(r"REACHING A SURFACE: (\d+) of (\d+)", out)
 
+# ⛔ PATTERN RULES, added 2026-08-20c because the name-by-name list was a maintenance trap I
+#    built myself. The PJM ladder creates a new rung table every few hours while it harvests, and
+#    each one arrived UNCLASSIFIED and failed the checkpoint - three of them within a day
+#    (inj_200, wd_200, wd_300). A checklist that a running process invalidates on its own
+#    schedule is not a closed list, it is a recurring false alarm, and a check that cries wolf
+#    gets ignored. A ladder rung is identifiable by SHAPE, so match the shape.
+PATTERNS = [
+    (re.compile(r"^in_pjm_qs_c23_(inj|wd)_\d+$"), "harvest_rung"),
+    (re.compile(r"^in_nfirs_(basicincident|incidentaddress|fireincident)_\d{4}$"), "raw_feed"),
+]
+
 known = {t: k for k, (_, ts) in CLASSIFIED.items() for t in ts}
 print("=" * 92)
 print(f"UNWIRED CLASSIFICATION — {len(unwired)} objects reach no surface "
@@ -130,6 +141,9 @@ print("=" * 92)
 by_reason, unclassified = {}, []
 for t in unwired:
     k = known.get(t)
+    if k is None:
+        # fall through to the SHAPE rules before declaring an object unaccounted for
+        k = next((reason for pat, reason in PATTERNS if pat.match(t)), None)
     if k is None:
         unclassified.append(t)
     else:

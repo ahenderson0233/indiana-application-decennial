@@ -71,7 +71,7 @@ python scripts/audit_registry_truth.py    # can a stranger re-run every table?
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
 | 2 | ⭐ **`docs/HANDOFF_2026-08-20b.md`** | **THE CURRENT ONE.** Six findings, five wrong audits, ten traps |
-| 3 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row first, then the G-index (G1–G121) |
+| 3 | ⭐ **`docs/BACKLOG.md`** | the **⚠ IN FLIGHT** row, then **WHERE EVERY UNFINISHED ROW STANDS** (why each is unfinished and what would finish it), then the G-index (G1–G128) |
 | 4 | ⭐ `docs/UNWIRED_CLASSIFICATION.md` | **generated** — why each unreached object is unreached, with its measured reason |
 | 5 | `docs/FEATURE_INVENTORY.md` | every feature, how it works, its BigQuery table |
 | 6 | `docs/REFERENCE_TOOL_GAP.md` | ⚠ **its #1 item is DECLINED** — read the ruling at the top |
@@ -81,9 +81,74 @@ true now*.
 
 ---
 
-## ⭐ START HERE — the non-scraping backlog is DONE
+## ⛔ START HERE — THE OPERATOR'S PRIORITY BATCH, filed 2026-08-20c
 
-**80 DONE · 21 PARTIAL · 15 OPEN → 94 DONE · 14 PARTIAL · 8 OPEN.** Fourteen rows closed on 2026-08-20b, seven more advanced. What is left is not a list of tasks; it is three decisions and a scrape queue.
+The operator reviewed the 2026-08-20b session and filed **seven new rows, G122–G128**. **These come
+before everything else**, and G122–G126 are numbered in the order they were given.
+⭐ **`docs/BACKLOG.md` now opens with a "WHERE EVERY UNFINISHED ROW STANDS" table** — every
+unfinished row, why it is unfinished, and what would finish it. Read that, then the rows.
+
+### ① G122 — ROADWAYS ARE BEING TREATED AS PARCELS. Do this first.
+
+Operator: *"the roadway is acting as a parcel with no structure, and no one can actually own a
+roadway, so this needs to be fixed immediately."*
+⭐ **The detection already exists and is only ADVISORY** — `in_parcel_assembly` grades **184**
+parcels as ribbon-shaped WITH a held road crossing them, **2,226** by shape alone, **3,347**
+possible. The screener warns; the parcel still counts, still scores, still appears in search and
+in every "fits N MW" total. ⚠ **Excluding them moves the 532,693 denominator and every county
+figure**, so the exclusion and the re-measurement must land in the same change.
+⭐ **Clip TIGER All Roads for Indiana first.** We hold only PRIMARY and SECONDARY roads (225 + 861
+features), which is why only 184 of 5,757 could be confirmed by geometry rather than shape alone.
+
+### ② G123 — CUT THE PROSE. Field and value, not an essay.
+
+Operator: *"cut out all of the 'Why' statements… everything should be field + associated number…
+assume the user is an energy professional… the dossier should be highly simplified."*
+⭐ **Measured: 38,866 characters** of `.sowhat`/`.hint` prose in the static HTML, plus **28 more
+blocks app.js builds at runtime**. Popups, tables, screener and dossier become field + value; the
+reasoning moves to `insights.html`.
+⚠ **This partially reverses G21 and the governing principle, deliberately.** The operator is
+RELOCATING the insight, not withdrawing it.
+⛔ **Disclosure is not explanation and must survive the cut:** the cap line ("showing 300 of
+12,431"), the three-state wording, the MISO vendor-licence badge, the 2020 structures vintage and
+the estimate-vs-published flag on a coordinate.
+
+### ③ G124 — THE RESCRAPE LEDGER, and full-column capture
+
+⭐ **Half exists**: every registered object now carries a `RE-SCRAPE COMMAND` (136 runnable here,
+131 delegated, 13 ladder, 49 honestly unresolved). **Missing:** an append-vs-replace verdict per
+loader, a cadence per table, and — the valuable half — **full-column capture**. We took partial
+slices; one measured case was silently dropping `operator`, `owner` and `status`.
+
+### ④ G125 — A COORDINATE OR ADDRESS ON EVERY POPUP AND DOSSIER
+
+So the reader can self-verify against imagery. The payload already carries the coordinate; the
+popup does not print it. Address is Marion-only and must say so. ⛔ Appraised value is measured
+100% NULL for Indiana — it arrives with the DLGF purchase, not with code.
+
+### ⑤ G126 — CAN WE PLACE ALL THE BUSES? Measured: no, but there is a free win
+
+⭐ **87 of the 1,551 unplaced PJM buses carry a PJM QUEUE ID in their label, and ALL 87 match a
+published queue point we already hold.** An untried join key, 100% hit rate, no scraping — do it
+first. Then branch topology (each placement seeds the next), then queue-generator coincidence.
+⛔ The other 1,449 are PSS/E area labels sitting at the gazetteer ceiling. **Refuse to place below
+a confidence threshold:** a bus in the wrong place is worse than a bus with no place.
+
+### ⑥ G127 — AMERICAN SPELLING · ⑦ G128 — STUDY COMPARABLE TOOLS AND REDESIGN
+
+71 × "data centre" against 2 × "data center", 34 of them in rendered text. ⛔ **Not a
+find-and-replace** — `circle-color` and `fill-color` are MapLibre properties and renaming them
+kills a layer silently.
+G128 is the operator's own framing: *"it looks like an intern made this, and we need to turn this
+from a simple project into an actual service that users would pay for."* ⚠ **It must come after
+G123**, or you design around text that is about to be deleted.
+
+---
+
+## THE BACKLOG BEHIND THAT BATCH — 94 DONE · 14 PARTIAL · 15 OPEN
+
+Fourteen rows closed on 2026-08-20b and seven more advanced. What was left then is three
+decisions and a scrape queue — still true, just second in line now.
 
 ### ① THE DLGF GATEWAY PURCHASE — the highest-value action left, and it is yours, not code's
 
@@ -218,5 +283,6 @@ name OR a value vocabulary.**
 ---
 
 **Start by** telling me whether the harvest is alive, what the checkpoint printed, and what the
-ledger audits printed — then what you read, then your plan. **The non-scraping backlog is done**,
-so unless I say otherwise, tell me which of the three remaining decisions you want from me first.
+ledger audits printed — then what you read, then your plan.
+⭐ **Lead with G122, then G123, then G124–G126** unless I say otherwise. G122 and G123 both
+change figures and text that other rows depend on, so doing them late means doing them twice.
