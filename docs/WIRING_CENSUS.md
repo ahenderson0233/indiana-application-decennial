@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 286 of 329 registered objects reach a surface
+## 293 of 329 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -25,13 +25,6 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_data_centers_datacentermap` | 157 | `—` |
 | `in_dc_docket_tracker` | 1 | `—` |
 | `in_fsis_establishments_inactive` | 13 | `—` |
-| `in_gas_capacity_anr` | 554 | `—` |
-| `in_gas_capacity_crossroads` | 24 | `—` |
-| `in_gas_capacity_midwestern` | 3441 | `—` |
-| `in_gas_capacity_ngpl` | 693 | `—` |
-| `in_gas_capacity_northern_border` | 290 | `—` |
-| `in_gas_capacity_texas_gas` | 23220 | `—` |
-| `in_gas_capacity_vector` | 4620 | `—` |
 | `in_gas_lng_terminals` | 0 | `—` |
 | `in_gas_processing_plants` | 0 | `—` |
 | `in_groundwater_sites` | 1 | `—` |
@@ -96,10 +89,10 @@ headline can be audited rather than taken on trust:
 | `in_cloudscene_crosscheck` | direct | `data.html`, `scripts/export_signoff_payloads.py` |
 | `in_commission_posture` | **none** | — |
 | `in_county_context_extras` | direct | `app.js`, `scripts/export_wired_layers.py` |
-| `in_county_fibre` | direct | `scripts/export_full_wiring.py` |
-| `in_county_flood` | direct | `scripts/export_full_wiring.py` |
+| `in_county_fibre` | direct | `app.js`, `scripts/export_full_wiring.py` |
+| `in_county_flood` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_county_rollup` | direct | `app.js`, `scripts/checkpoint.py` |
-| `in_county_wetlands` | direct | `scripts/export_full_wiring.py` |
+| `in_county_wetlands` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_data_centers` | **none** | — |
 | `in_data_centers_all` | direct | `scripts/export_facilities.py`, `scripts/export_grid_sentiment.py` |
 | `in_data_centers_cloudscene` | **none** | — |
@@ -152,19 +145,19 @@ headline can be audited rather than taken on trust:
 | `in_flood` | direct | `app.js`, `scripts/build_site_gates.py` |
 | `in_fsis_establishments` | direct | `app.js`, `scripts/export_wired_batch2.py` |
 | `in_fsis_establishments_inactive` | **none** | — |
-| `in_gas_capacity_anr` | **none** | — |
-| `in_gas_capacity_crossroads` | **none** | — |
-| `in_gas_capacity_midwestern` | **none** | — |
-| `in_gas_capacity_ngpl` | **none** | — |
-| `in_gas_capacity_northern_border` | **none** | — |
+| `in_gas_capacity_anr` | direct | `scripts/export_wired_batch2.py` |
+| `in_gas_capacity_crossroads` | direct | `scripts/export_wired_batch2.py` |
+| `in_gas_capacity_midwestern` | direct | `scripts/export_wired_batch2.py` |
+| `in_gas_capacity_ngpl` | direct | `scripts/export_wired_batch2.py` |
+| `in_gas_capacity_northern_border` | direct | `scripts/export_wired_batch2.py` |
 | `in_gas_capacity_panhandle_eastern` | direct | `market.html`, `scripts/build_t5_gas_locations.py` |
-| `in_gas_capacity_texas_gas` | **none** | — |
+| `in_gas_capacity_texas_gas` | direct | `scripts/export_wired_batch2.py` |
 | `in_gas_capacity_trunkline` | direct | `scripts/build_t5_gas_locations.py`, `scripts/checkpoint.py` |
-| `in_gas_capacity_vector` | **none** | — |
+| `in_gas_capacity_vector` | direct | `scripts/export_wired_batch2.py` |
 | `in_gas_compressor_stations` | direct | `app.js` |
 | `in_gas_lng_terminals` | **none** | — |
 | `in_gas_phmsa_distribution` | direct | `data.html`, `scripts/export_context_layers.py` |
-| `in_gas_pipelines` | direct | `app.js` |
+| `in_gas_pipelines` | direct | `app.js`, `market.html` |
 | `in_gas_processing_plants` | **none** | — |
 | `in_gas_state_capacity` | direct | `market.html` |
 | `in_gas_storage` | direct | `app.js` |
@@ -176,7 +169,7 @@ headline can be audited rather than taken on trust:
 | `in_gov_surplus_frpp` | direct | `scripts/export_context_layers.py` |
 | `in_gov_surplus_nces` | direct | `scripts/export_wired_batch2.py` |
 | `in_grid_plans` | direct | `grid.html`, `scrapers/lane_b/08_iurc_grid_plans.py` |
-| `in_grid_plans_located` | direct | `scripts/audit_backlog_truth.py` |
+| `in_grid_plans_located` | direct | `app.js`, `grid.html` |
 | `in_groundwater_sites` | **none** | — |
 | `in_huc8_boundaries` | direct | `scripts/export_water.py` |
 | `in_iocs_county_context` | direct | `community.html`, `scripts/checkpoint.py` |
@@ -292,7 +285,7 @@ headline can be audited rather than taken on trust:
 | `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
 | `in_screener_candidates` | direct | `scripts/build_land_gates.py`, `scripts/export_screener.py` |
 | `in_sec_cik_registrant_state` | **none** | — |
-| `in_seismic` | co-built | `built beside `in_eia861_territory` in `scripts/build_p36_wiring.py`` |
+| `in_seismic` | direct | `app.js` |
 | `in_severe_weather_county` | direct | `app.js`, `scripts/build_county_dc_wiring.py` |
 | `in_si_address_parcel` | direct | `scripts/build_si_funnel.py` |
 | `in_si_address_parcel_bridge` | derivative | `feeds `in_si_owner_signals` via `scripts/wire_d11_d27.py`` |

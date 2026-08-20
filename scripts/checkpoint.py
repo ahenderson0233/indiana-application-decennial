@@ -103,8 +103,18 @@ print("\nAUDITS (each check is a bug that already happened)")
 
 results = {}
 for label, script, pat in AUDITS:
+    # ⛔ encoding="utf-8", errors="replace" IS LOAD-BEARING, and its absence was a latent defect
+    #    in this loop. Without it `text=True` decodes a child's stdout with the console's cp1252,
+    #    and any audit whose summary contains ⛔ (U+26D4 encodes a 0x90 byte) raises
+    #    UnicodeDecodeError inside subprocess.run - so stdout arrives EMPTY and the audit is
+    #    reported as "ran but produced no parseable result line". It fails safe, but for entirely
+    #    the wrong reason, and the message sends you to debug the audit's regex.
+    #    Caught on 2026-08-20b the first time an added audit printed a ⛔ in its final line. The
+    #    project already had this rule written down for its own print() calls; it needed applying
+    #    to how it READS other scripts too.
     r = subprocess.run([_sys.executable, os.path.join(REPO, script)],
-                       capture_output=True, text=True, cwd=REPO)
+                       capture_output=True, text=True, cwd=REPO,
+                       encoding="utf-8", errors="replace")
     out = (r.stdout or "") + (r.stderr or "")
     m = re.search(pat, out)
     if r.returncode != 0 and not m:

@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**286 of 328 registered objects reach a surface.** The other 42 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**293 of 329 registered objects reach a surface.** The other 36 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## empty — 5
 
@@ -14,19 +14,7 @@
 - `in_miso_poi`
 - `in_nrc_reactors`
 
-## not_placeable — 7
-
-G80's near-miss, and the reason this category exists at all: these gas capacity boards post the OPERATOR'S WHOLE SYSTEM with no state column. ANR's points are in Ohio, Texas Gas's in Louisiana, Vector's in Michigan. Wiring them would attach out-of-state capacity to an Indiana pipeline. Only Panhandle Eastern and Trunkline can be placed, and both are wired.
-
-- `in_gas_capacity_anr`
-- `in_gas_capacity_crossroads`
-- `in_gas_capacity_midwestern`
-- `in_gas_capacity_ngpl`
-- `in_gas_capacity_northern_border`
-- `in_gas_capacity_texas_gas`
-- `in_gas_capacity_vector`
-
-## harvest_rung — 10
+## harvest_rung — 11
 
 a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads the 5,000 MW rung; the others exist so the ladder can be resumed, audited and re-pointed. Rendering a rung would publish a request size nobody asked about.
 
@@ -36,6 +24,7 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_qs_c23_inj_10`
 - `in_pjm_qs_c23_inj_15`
 - `in_pjm_qs_c23_inj_25`
+- `in_pjm_qs_c23_inj_50`
 - `in_pjm_qs_c23_wd_10`
 - `in_pjm_qs_c23_wd_15`
 - `in_pjm_qs_c23_wd_25`
@@ -71,7 +60,7 @@ a one-row record of what was searched and what is held - provenance, not content
 
 ## superseded — 1
 
-replaced by a table that IS wired, and kept only so the change is auditable.
+replaced by, or a second derivation of, a table that IS wired - kept only so the change stays auditable.
 
 - `in_fsis_establishments_inactive`
 

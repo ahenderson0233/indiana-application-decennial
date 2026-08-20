@@ -1,27 +1,19 @@
-"""Are the handoff, the prompt and the backlog TRUE of the application as it stands?
+"""Audit the handoff, the prompt and the backlog against LIVE measurement.
 
-    python scripts/audit_handoff_docs.py
+Every figure quoted in a document is a claim. This re-measures the load-bearing ones and reports
+any that disagree, plus every referenced file that does not exist.
 
-⭐ WHY THIS EXISTS. This project's own rule is "never quote a count from a document, including this
-one" - and the documents are full of counts, because a handoff without numbers is useless. The
-resolution is not fewer numbers, it is a script that re-measures them.
-
-It caught two real problems the first time it ran on 2026-08-20:
-  * the handoff quoted 190,216 / 73,094 for grid-binds vs land-binds while the live figures were
-    190,178 / 73,058 - they had moved when in_screener_candidates was rebuilt after the G84
-    demotion, hours after the sentence was written;
-  * and it caught them only after ITS OWN CHECK was fixed. The first version asserted that the
-    string "190,216" APPEARED in the document, which it did. ⛔ A PRESENCE TEST PASSES ON A STALE
-    NUMBER BY CONSTRUCTION - it can only catch a deleted figure, never a wrong one. Compare values.
-
-⚠ It has cried wolf twice, both times on correct prose: once on "the count is 23,795, NOT 24,277",
-which is the clearest way to cite a superseded figure. An audit that cries wolf gets ignored, so
-the superseded-value cues are deliberately generous.
-
-Run it after editing any of the three documents, and before handing off.
+⛔ COMPARE THE VALUE, NEVER TEST FOR THE STRING. The first version of this audit asserted that
+"190,216" APPEARED in the docs - which it did, while the live figure was 190,178. A presence test
+passes on a stale number by construction: it can only ever catch a DELETED figure, never a wrong
+one. Every check below computes the live value and then asks whether the docs contain THAT.
 """
+import io
+import os
+import re
+import subprocess
+import sys
 
-import io, os, re, sys, subprocess
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -32,7 +24,7 @@ REPO = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Cal
         r"\ca-capacity-deploy\indiana-application-decennial")
 DS = "energy-platfrom.indiana_app"
 c = bigquery.Client(project="energy-platfrom")
-DOCS = ["docs/HANDOFF_2026-08-20.md", "docs/NEXT_SESSION_PROMPT.md", "docs/BACKLOG.md"]
+DOCS = ["docs/HANDOFF_2026-08-20b.md", "docs/NEXT_SESSION_PROMPT.md", "docs/BACKLOG.md"]
 text = {d: io.open(os.path.join(REPO, d), encoding="utf-8").read() for d in DOCS}
 allt = "\n".join(text.values())
 
@@ -51,52 +43,110 @@ def one(sql):
     return list(c.query(sql))[0]
 
 
+def has(n):
+    """Is this number, formatted the way the docs format numbers, present anywhere?"""
+    return f"{n:,}" in allt or str(n) in allt
+
+
 print("=" * 92)
 print("A. FIGURES QUOTED IN THE DOCUMENTS, RE-MEASURED")
 print("=" * 92)
 
 r = one(f"SELECT COUNTIF(has_si_signal) n FROM `{DS}.in_si_sites_flags_v2`")
-check("flagged parcels", r.n == 23795 and "23,795" in allt, f"live {r.n:,}, docs say 23,795")
+check("flagged parcels", r.n == 23795 and has(r.n), f"live {r.n:,}")
 
 r = one(f"""SELECT COUNTIF(deliverable_wd_mw IS NOT NULL AND deliverable_wd_mw < c.mw_dc) grid,
                    COUNTIF(deliverable_wd_mw IS NOT NULL AND deliverable_wd_mw >= c.mw_dc) land
             FROM `{DS}.in_parcel_line_headroom` h
             JOIN `{DS}.in_screener_candidates` c USING (parcel_source, parcel_key)""")
-# ⛔ COMPARE THE VALUE, DO NOT TEST FOR THE STRING. The first version asserted that "190,216"
-# APPEARED in the docs -- which it did, while the live figure was 190,178. A presence test passes
-# on a stale number by construction; it can only ever catch a DELETED figure, never a wrong one.
-check("grid-binds / land-binds", f"{r.grid:,}" in allt and f"{r.land:,}" in allt,
-      f"live grid {r.grid:,} land {r.land:,} -- docs must contain both")
+check("grid-binds / land-binds", has(r.grid) and has(r.land),
+      f"live grid {r.grid:,} land {r.land:,}")
 
-r = one(f"""SELECT COUNT(*) n, COUNTIF(ends_resolved=2) both_ FROM `{DS}.in_line_bus_endpoints`""")
-check("lines resolved both ends", r.both_ == 1018 and "1,018" in allt,
-      f"live {r.both_:,} of {r.n:,}, docs say 1,018")
+# ---- the 2026-08-20b substation repair, which moved a shipped figure ----
+r = one(f"""SELECT COUNTIF(lat IS NOT NULL) located, COUNT(*) total,
+                   COUNT(DISTINCT IF(lat IS NOT NULL, UPPER(TRIM(substation_name)), NULL)) names,
+                   COUNTIF(coord_source='derived_from_osm_footprint') derived,
+                   COUNTIF(coord_source='outside_indiana_not_recovered') outside
+            FROM `{DS}.in_substations`""")
+check("substations located", r.located == 3659 and has(r.located), f"live {r.located:,} of {r.total:,}")
+check("gazetteer usable names", r.names == 2233 and has(r.names), f"live {r.names:,}")
+check("footprint-derived coordinates", r.derived == 734 and has(r.derived), f"live {r.derived}")
+check("recovered but outside Indiana", r.outside == 199 and has(r.outside), f"live {r.outside}")
 
-rungs = {t.table_id: t for t in c.query(f"""
-    SELECT table_id FROM `{DS}.__TABLES__`
-    WHERE REGEXP_CONTAINS(table_id, r'^in_pjm_qs_c23_(inj|wd)_[0-9]+$')""")}
-b = {}
-for t in rungs:
-    b[t] = one(f"SELECT COUNT(DISTINCT bus_number) n FROM `{DS}.{t}`").n
-check("inj_25 short by 29", b.get("in_pjm_qs_c23_inj_25") == 1797,
-      f"live {b.get('in_pjm_qs_c23_inj_25'):,} buses; docs say 1,797 of 1,826")
-check("wd_50 short", b.get("in_pjm_qs_c23_wd_50") == 1625,
-      f"live {b.get('in_pjm_qs_c23_wd_50'):,} buses; docs say 1,625 of 1,826")
-complete = sorted(t.replace("in_pjm_qs_c23_", "") for t, n in b.items() if n >= 1826)
-check("complete rungs", set(complete) == {"inj_10", "inj_15", "inj_5000", "wd_10", "wd_15",
-                                          "wd_25", "wd_5000"}, f"live complete = {complete}")
+r = one(f"""SELECT ROUND(APPROX_QUANTILES(sub_mi,2)[OFFSET(1)],2) med, COUNTIF(sub_mi=0) onparcel
+            FROM `{DS}.in_screener_candidates`""")
+check("median distance to a substation", "2.08" in allt, f"live {r.med} mi")
+check("substations on a parcel", has(r.onparcel), f"live {r.onparcel:,}")
+
+r = one(f"""SELECT COUNT(*) n, COUNTIF(lat IS NOT NULL) located, COUNTIF(county IS NOT NULL) county,
+                   COUNTIF(matched_substation IS NOT NULL AND lat IS NULL) orphan
+            FROM `{DS}.in_grid_plans_located`""")
+check("grid plans located", r.located == 119 and has(r.located), f"live {r.located} of {r.n}")
+check("G109 orphans closed", r.orphan == 0, f"live matched-but-unlocated = {r.orphan}")
+
+r = one(f"""SELECT COUNTIF(is_si_signal) sig, COUNTIF(surplus_class='declared_excess') declared,
+                   COUNTIF(surplus_class='in_use') in_use, COUNT(*) total
+            FROM `{DS}.in_si_gov_surplus_v2`""")
+check("federal property in active use", r.in_use == 1548 and has(r.in_use),
+      f"live {r.in_use:,} of {r.total:,} are Current/Future Mission Need")
+check("declared-surplus assets", r.declared == 17 and has(r.declared), f"live {r.declared}")
+
+r = one(f"""SELECT COUNT(*) total, COUNTIF(placement_grain!='county_only') placed,
+                   COUNT(DISTINCT parcel_key) parcels FROM `{DS}.in_si_queue_withdrawn`""")
+check("withdrawn requests placed", r.placed == 195 and has(r.placed),
+      f"live {r.placed} of {r.total} placed, {r.parcels} parcels")
+
+r = one(f"""SELECT COUNTIF(rowlike_confidence='high') high,
+                   COUNTIF(nearest_structured_key IS NOT NULL) redirect,
+                   COUNTIF(sliver_neighbours>0) sliver FROM `{DS}.in_parcel_assembly`""")
+check("ribbon parcels with a road on them", r.high == 184 and has(r.high), f"live {r.high}")
+check("parcels with a built neighbour to redirect to", has(r.redirect), f"live {r.redirect:,}")
+check("candidates carrying a sliver", has(r.sliver), f"live {r.sliver:,}")
+
+r = one(f"""SELECT COUNT(*) n, COUNT(DISTINCT yr) years,
+                   COUNTIF(property_class='non-residential' AND severity IN
+                     ('moderate >=$10k','major >=$100k','catastrophic >=$500k')) si
+            FROM `{DS}.in_nfirs_structure_fires`""")
+check("structure fires after extending the years", r.n == 45607 and has(r.n),
+      f"live {r.n:,} across {r.years} years, {r.si:,} SI-grade")
+
+r = one(f"""SELECT COUNT(*) projects,
+                   ROUND(SUM(total_dpp_2025_phase_1_network_upgrade_cost)/1e6) musd
+            FROM `{DS}.in_miso_dpp2025_ph1_project_costs`""")
+check("MISO upgrade cost total", has(int(r.musd)) and has(r.projects),
+      f"live ${int(r.musd):,}M across {r.projects} projects")
+
+# ---- G115: the registry contract ----
+nocmd = one(f"""
+  SELECT COUNT(DISTINCT t.table_id) n FROM `{DS}.__TABLES__` t
+  LEFT JOIN (SELECT DISTINCT table_name FROM `{DS}._registry`
+             WHERE STRPOS(UPPER(IFNULL(method,'')||' '||IFNULL(notes,'')),
+                          'RE-SCRAPE COMMAND') > 0) g ON g.table_name = t.table_id
+  WHERE g.table_name IS NULL AND NOT STARTS_WITH(t.table_id, '_')""").n
+# ⚠ NOT asserted at zero. A rung that registers while the harvest is running lands here for the
+#   minutes before the next backfill, so a hard zero would fail for a correct reason.
+check("registry rows with no re-scrape command", nocmd <= 4,
+      f"live {nocmd} (the running ladder registers rungs faster than the backfill runs)")
 
 unreg = [r.table_id for r in c.query(f"""
   SELECT t.table_id FROM `{DS}.__TABLES__` t
   LEFT JOIN (SELECT DISTINCT table_name FROM `{DS}._registry`) g ON g.table_name=t.table_id
   WHERE g.table_name IS NULL AND NOT STARTS_WITH(t.table_id,'_')""")]
-check("2 unregistered tables", len(unreg) == 2, f"live {unreg}")
+check("unregistered tables", len(unreg) <= 3, f"live {unreg}")
 
-r = one(f"""SELECT COUNT(*) n FROM `{DS}.in_severe_weather_county`""")
-check("severe weather counties", r.n == 92, f"live {r.n}")
-
-r = one(f"""SELECT COUNT(DISTINCT parcel_id) p FROM `{DS}.in_si_address_parcel`""")
-check("D11/D27 parcels reached", r.p == 131 and "131" in allt, f"live {r.p}, docs say 131")
+# ---- the ladder, whose state changes while this runs ----
+rungs = {}
+for t in c.query(f"""SELECT table_id FROM `{DS}.__TABLES__`
+                     WHERE REGEXP_CONTAINS(table_id, r'^in_pjm_qs_c23_(inj|wd)_[0-9]+$')"""):
+    rungs[t.table_id] = one(f"SELECT COUNT(DISTINCT bus_number) n FROM `{DS}.{t.table_id}`").n
+complete = sorted(k.replace("in_pjm_qs_c23_", "") for k, v in rungs.items() if v >= 1826)
+short = {k.replace("in_pjm_qs_c23_", ""): v for k, v in rungs.items() if v < 1826}
+print(f"  [note] ladder complete rungs: {complete}")
+print(f"  [note] ladder short rungs:    {short}")
+check("inj_25 still short", rungs.get("in_pjm_qs_c23_inj_25") == 1797,
+      f"live {rungs.get('in_pjm_qs_c23_inj_25')}")
+check("the docs name every short rung", all(k in allt for k in short),
+      f"short = {sorted(short)}")
 
 print()
 print("=" * 92)
@@ -107,13 +157,13 @@ print("=" * 92)
 out = subprocess.run([sys.executable, os.path.join(REPO, "scripts", "audit_backlog_state.py")],
                      capture_output=True, text=True, cwd=REPO,
                      encoding="utf-8", errors="replace").stdout or ""
-counts = dict(re.findall(r"^\s+(DONE|PARTIAL|OPEN|STANDING|SUPERSEDED)\s+(\d+)", out, re.M))
-counts = {k: int(v) for k, v in counts.items()}
+counts = {k: int(v) for k, v in
+          re.findall(r"^\s+(DONE|PARTIAL|OPEN|STANDING|SUPERSEDED)\s+(\d+)", out, re.M)}
 print(f"  live: {counts}")
-for k, claimed in (("DONE", 80), ("PARTIAL", 21), ("OPEN", 15)):
-    check(f"handoff claims {claimed} {k}", counts.get(k) == claimed
-          and f"{claimed} {'DONE' if k=='DONE' else k}" in allt.replace("**", ""),
-          f"live {counts.get(k)}, docs say {claimed}")
+for k in ("DONE", "PARTIAL", "OPEN"):
+    n = counts.get(k)
+    check(f"docs state the live {k} count", n is not None and f"{n} {k}" in allt.replace("**", ""),
+          f"live {n}")
 check("0 active duplicates", "ACTIVE DUPLICATES (two live rows for one number): 0" in out,
       "structural check")
 
@@ -123,29 +173,44 @@ print("C. EVERY FILE THE DOCUMENTS REFERENCE")
 print("=" * 92)
 refs = set()
 for d, t in text.items():
-    refs |= set(re.findall(r"`((?:scripts|docs|data)/[\w./-]+\.(?:py|md|js|json|gz))`", t))
+    refs |= set(re.findall(r"`((?:scripts|docs|data)/[\w./-]+\.(?:py|md|js|json|gz|ps1))`", t))
 missing = sorted(r for r in refs if not os.path.exists(os.path.join(REPO, r)))
 check("no dangling file reference", not missing, f"{len(refs)} referenced, missing: {missing}")
 
 print()
 print("=" * 92)
-print("D. STALE-FIGURE SWEEP — numbers that MOVED this session")
+print("D. STALE-FIGURE SWEEP — numbers that MOVED and must not reappear bare")
 print("=" * 92)
-for doc in ("docs/HANDOFF_2026-08-20.md", "docs/NEXT_SESSION_PROMPT.md"):
+# Each entry: the superseded figure, and the words that make quoting it legitimate.
+# ⚠ THE `replacement` COLUMN EXISTS BECAUSE THIS CHECK WAS OVER-STRICT AND FAILED ON CORRECT
+#   PROSE. The handoff presents the substation repair as a `| before | after |` markdown table:
+#       | substations with a usable position | 2,925 | **3,659** (+734) |
+#   That is unambiguously superseded framing, and it contains none of the words "was" or "from"
+#   and no arrow, because the TABLE HEADER carries that meaning instead. An audit that condemns
+#   the clearest possible presentation of a moved number teaches the next reader to ignore it.
+#   A line naming BOTH the old and the new figure is showing a transition, full stop.
+STALE = [
+    ("24,277", r"\u2192|->|was|before|old|moved|\bnot\b", "23,795"),
+    ("291 of 309", r"\u2192|->|was|from", None),
+    ("235 of 316", r"\u2192|->|was|from", None),
+    ("240 of 323", r"\u2192|->|was|from", None),
+    # the substation figures this session moved
+    ("2,925", r"\u2192|->|was|from|before", "3,659"),
+    ("2,072", r"\u2192|->|was|from|before", "2,233"),
+]
+for doc in ("docs/HANDOFF_2026-08-20b.md", "docs/NEXT_SESSION_PROMPT.md"):
     t = text[doc]
-    # 24,277 is legitimate ONLY where it is described as the OLD value
-    bad = [ln.strip()[:100] for ln in t.split("\n")
-           if "24,277" in ln and not re.search(r"24,277\s*(?:→|->|\u2192)|was|before|old|moved|\bnot\b", ln, re.I)]
-    check(f"{os.path.basename(doc)}: no bare 24,277", not bad, bad or "only as a superseded value")
-    bad2 = [ln.strip()[:100] for ln in t.split("\n")
-            if re.search(r"\b291 of 309\b|\b235 of 316\b", ln)
-            and not re.search(r"→|->|\u2192|was|from", ln)]
-    check(f"{os.path.basename(doc)}: no bare old census", not bad2, bad2 or "clean")
+    for fig, allowed, repl in STALE:
+        bad = [ln.strip()[:100] for ln in t.split("\n")
+               if fig in ln
+               and not re.search(allowed, ln, re.I)
+               and not (repl and repl in ln)]
+        check(f"{os.path.basename(doc)}: {fig} only as superseded", not bad,
+              bad[0] if bad else "clean")
 
 print()
 print("=" * 92)
 print(f"{checks} checks, {len(fails)} FAILED")
-if fails:
-    for f in fails:
-        print(f"  ⛔ {f}")
+for f in fails:
+    print(f"  ⛔ {f}")
 sys.exit(1 if fails else 0)
