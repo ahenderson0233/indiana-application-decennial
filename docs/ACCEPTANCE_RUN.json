@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-20T06:04:29.334638+00:00",
+ "run_at": "2026-08-20T08:11:47.965391+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 126 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
+   "detail": "scanned 131 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 240 of 323 registered objects reach a surface \u00b7 83 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_300', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry']"
+   "detail": "MEASURED this run: 286 of 329 registered objects reach a surface \u00b7 43 unwired: ['in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_commission_posture', 'in_data_centers', 'in_data_centers_cloudscene', 'in_data_centers_datacentermap']"
   },
   {
    "criterion": 2,
@@ -48,7 +48,7 @@
    "criterion": 7,
    "name": "adjustables are config-driven",
    "state": "PASS",
-   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 18 literal MW mentions remain in prose/labels, which are copy not thresholds"
+   "detail": "SCORE_CFG present; density, MW floor, radii, weights and use-case are all UI inputs (f-density / f-mw-val / sc-weights). 19 literal MW mentions remain in prose/labels, which are copy not thresholds"
   },
   {
    "criterion": 8,
@@ -62,364 +62,364 @@
    "label": "si_v2.flag_summary.flagged",
    "value": 23795,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.dated",
    "value": 14264,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r3",
    "value": 4320,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.r5",
    "value": 7646,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ci",
    "value": 4962,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.other_nonres",
    "value": 686,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.ag",
    "value": 320,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.land",
    "value": 17827,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_resid",
    "value": 101646,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.flag_summary.excl_lowsev",
    "value": 6753,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_bess",
    "value": 7183,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.capability.fits_dc",
    "value": 2816,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.capability.too_small",
    "value": 16612,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.capability.median_ac",
    "value": 0.16,
    "table": "in_si_sites_flags_v2",
-   "built_at": "2026-08-19 20:17:15",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D4_tax_delinquency].parcels_admitted",
    "value": 9459,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D2_foreclosure].parcels_admitted",
    "value": 3571,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D1_tax_sale].parcels_admitted",
    "value": 3322,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D12_code_violation].parcels_admitted",
    "value": 2109,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D26_assessment_appeal].parcels_admitted",
    "value": 1937,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D16_structure_fire].parcels_admitted",
    "value": 1680,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D5_unsafe_building].parcels_admitted",
    "value": 1320,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D14_sba_chargeoff].parcels_admitted",
    "value": 762,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D5_vacant_board_order].parcels_admitted",
    "value": 658,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D5_abandoned_building].parcels_admitted",
    "value": 645,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D21_demolition_order].parcels_admitted",
    "value": 596,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D22_environmental_violation].parcels_admitted",
    "value": 564,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D7_brownfield].parcels_admitted",
    "value": 311,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D20_loan_maturity].parcels_admitted",
    "value": 129,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D22_facility_inactive].parcels_admitted",
    "value": 113,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "coverage[D24_plant_delisting].parcels_admitted",
    "value": 6,
    "table": "in_si_signal_coverage",
-   "built_at": "2026-08-19 20:17:25",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.facilities",
    "value": 58003,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.distress",
    "value": 1889,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.inactive",
    "value": 5780,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.sig_violation",
    "value": 372,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.hpv",
    "value": 95,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.d22_summary.penalties_bn",
    "value": 1.86,
    "table": "in_si_d22_echo_indiana",
-   "built_at": "2026-08-16 03:29:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.landbank.ever",
    "value": 314,
    "table": "in_si_evansville_landbank",
-   "built_at": "2026-08-16 15:42:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.landbank.still_held",
    "value": 126,
    "table": "in_si_evansville_landbank",
-   "built_at": "2026-08-16 15:42:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.landbank.disposed",
    "value": 188,
    "table": "in_si_evansville_landbank",
-   "built_at": "2026-08-16 15:42:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.landbank.placed",
    "value": 311,
    "table": "in_si_evansville_landbank",
-   "built_at": "2026-08-16 15:42:46",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.marion_check[AGREE]",
    "value": 7104,
    "table": "in_si_marion_route_check",
-   "built_at": "2026-08-16 15:24:54",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.marion_check[DISAGREE]",
    "value": 9,
    "table": "in_si_marion_route_check",
-   "built_at": "2026-08-16 15:24:54",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "si_v2.marion_check[crosswalk only]",
    "value": 7,
    "table": "in_si_marion_route_check",
-   "built_at": "2026-08-16 15:24:54",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "d5_split[indy_abandoned_vacant]",
    "value": 7120,
    "table": "in_si_d5_abandoned_buildings",
-   "built_at": "2026-08-16 01:30:26",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "d5_split[southbend_vacant_abandoned]",
    "value": 47,
    "table": "in_si_d5_abandoned_buildings",
-   "built_at": "2026-08-16 01:30:26",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "d5_split[southbend_chronic_problem]",
    "value": 7,
    "table": "in_si_d5_abandoned_buildings",
-   "built_at": "2026-08-16 01:30:26",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "ordinances.triage[NOT_RELEVANT]",
    "value": 88,
    "table": "in_ordinances_dc_v2_triage",
-   "built_at": "2026-08-16 16:31:53",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "ordinances.triage[RELEVANT]",
    "value": 19,
    "table": "in_ordinances_dc_v2_triage",
-   "built_at": "2026-08-16 16:31:53",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "ordinances.triage[NEEDS_FULL_TEXT]",
    "value": 8,
    "table": "in_ordinances_dc_v2_triage",
-   "built_at": "2026-08-16 16:31:53",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "estate_census.tables_tested",
    "value": 773,
    "table": "_indiana_census",
-   "built_at": "2026-08-15 22:53:58",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "estate_census.with_indiana_rows",
    "value": 308,
    "table": "_indiana_census",
-   "built_at": "2026-08-15 22:53:58",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   },
   {
    "label": "estate_census.no_indiana_rows",
    "value": 465,
    "table": "_indiana_census",
-   "built_at": "2026-08-15 22:53:58",
+   "built_at": "2026-08-20 08:01:51",
    "traced": true
   }
  ]

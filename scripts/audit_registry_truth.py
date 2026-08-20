@@ -57,10 +57,35 @@ client = bigquery.Client(project="energy-platfrom")
 sizes = {r.table_id: r.row_count
          for r in client.query(f"SELECT table_id, row_count FROM `{DS}.__TABLES__`")}
 
+# ⛔ `ANY_VALUE(method)` WAS A COIN FLIP AND IT MADE THIS AUDIT UNRELIABLE - fixed 2026-08-20.
+#    The registry is APPEND-ONLY by design: a row records what a load produced at a moment in
+#    time, so a table accumulates several rows and corrections arrive as NEW rows. ANY_VALUE then
+#    picks an arbitrary one. After backfill_rescrape_commands.py appended 289 re-scrape commands,
+#    this audit still reported "296 with no command" while a direct check found 2 - it was
+#    reading the ORIGINAL rows for most tables and the new ones for the rest, non-deterministically.
+# ⭐ THE RULE THAT MATCHES THE DISCIPLINE: a table is compliant if ANY of its rows carries a
+#    usable command (a later row cannot un-say an earlier one), and the rest of the detail comes
+#    from the LATEST row, which is the current description of the object.
 reg = [dict(r) for r in client.query(f"""
-  SELECT table_name, ANY_VALUE(n_rows) n_rows, ANY_VALUE(method) method,
-         ANY_VALUE(source) source, MAX(built_at) built_at
-  FROM `{DS}._registry` GROUP BY table_name ORDER BY table_name""")]
+  WITH latest AS (
+    SELECT table_name, n_rows, method, notes, source, built_at,
+           ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY built_at DESC) AS rk
+    FROM `{DS}._registry`),
+  cmd AS (
+    SELECT table_name,
+           -- the newest row that actually carries a command, if any row does
+           ARRAY_AGG(method ORDER BY built_at DESC LIMIT 1)[OFFSET(0)] AS cmd_method,
+           ARRAY_AGG(notes  ORDER BY built_at DESC LIMIT 1)[OFFSET(0)] AS cmd_notes
+    FROM `{DS}._registry`
+    WHERE STRPOS(UPPER(IFNULL(method, '')), 'RE-SCRAPE COMMAND') > 0
+       OR STRPOS(UPPER(IFNULL(notes,  '')), 'RE-SCRAPE COMMAND') > 0
+    GROUP BY table_name)
+  SELECT l.table_name, l.n_rows,
+         COALESCE(c.cmd_method, l.method) AS method,
+         COALESCE(c.cmd_notes,  l.notes)  AS notes,
+         l.source, l.built_at
+  FROM latest l LEFT JOIN cmd c USING (table_name)
+  WHERE l.rk = 1 ORDER BY l.table_name""")]
 print(f"{len(reg)} registered objects, {len(sizes)} tables in the dataset\n")
 
 scripts = {}
@@ -69,7 +94,28 @@ for root, _, files in os.walk(os.path.join(REPO, "scripts")):
         if fn.endswith(".py"):
             scripts[fn] = open(os.path.join(root, fn), encoding="utf-8", errors="ignore").read()
 
+for root, _, files in os.walk(os.path.join(REPO, "scrapers")):
+    for fn in files:
+        if fn.endswith(".py"):
+            scripts[fn] = open(os.path.join(root, fn), encoding="utf-8", errors="ignore").read()
+PS1 = {fn for root, _, files in os.walk(os.path.join(REPO, "scripts"))
+       for fn in files if fn.endswith(".ps1")}
+
+# ⭐ THREE COMMAND FORMS ARE LEGITIMATE AND ARE NOT PYTHON SCRIPTS - recognised 2026-08-20.
+#    The G16 test is "could a stranger ACT on this row", not "does this row name a .py file".
+#    Before this, 231 rows were reported as broken commands, and every one of them was an honest
+#    entry saying the re-run is not ours or is not a one-liner. An audit that condemns the
+#    correct answer is worse than no audit.
+#      DELEGATED  a clip of energy.*: the re-run is a re-clip, and energy.* is READ-ONLY to this
+#                 workstream. Actionable, just not by us.
+#      LADDER     the QueueScope harvest: a PowerShell runner, hours of work, one process at a time.
+#      UNKNOWN    explicitly unresolved. Honest, and counted on its own so it stays visible.
+DELEGATED = re.compile(r"not ours to run|re-clip from", re.I)
+LADDER = re.compile(r"run_pjm_ladder\.ps1", re.I)
+UNKNOWN = re.compile(r"^UNKNOWN\b", re.I)
+
 bad_count, bad_cmd, no_cmd, orphaned = [], [], [], []
+delegated, ladder, unknown = [], [], []
 for r in reg:
     t, n = r["table_name"], r["n_rows"]
     live = sizes.get(t)
@@ -79,20 +125,37 @@ for r in reg:
         if diff > TOL:
             bad_count.append((t, n, live, diff))
 
-    m = RESCRAPE_RE.search(str(r["method"] or ""))
+    # ⚠ SEARCH BOTH COLUMNS. G16 requires the row to CARRY the command; it does not say which
+    #   column. Seven builds put it in `notes` (in_land_gates, in_tribal_land,
+    #   in_grid_plans_located, in_faa_obstacles_tall, in_land_gate_parcel, in_dc_actions_resolved,
+    #   in_bus_headroom_miso_vendor) and this audit, reading `method` alone, called all seven
+    #   non-compliant while backfill_rescrape_commands.py - which reads both - called them done.
+    #   Two instruments disagreeing about the same contract is worse than either being wrong.
+    m = (RESCRAPE_RE.search(str(r["method"] or ""))
+         or RESCRAPE_RE.search(str(r.get("notes") or "")))
     if not m:
         no_cmd.append(t)
     else:
         cmd = m.group(1).strip()
-        sm = re.search(r"(scripts[/\\][\w./\\-]+\.py)", cmd) or re.search(r"([\w-]+\.py)", cmd)
-        if not sm:
-            bad_cmd.append((t, cmd[:70], "no .py file named"))
+        if UNKNOWN.search(cmd):
+            unknown.append(t)
+        elif LADDER.search(cmd):
+            ladder.append(t)
+            if "run_pjm_ladder.ps1" not in PS1:
+                bad_cmd.append((t, cmd[:70], "run_pjm_ladder.ps1 does not exist"))
+        elif DELEGATED.search(cmd):
+            delegated.append(t)
         else:
-            fn = os.path.basename(sm.group(1))
-            if fn not in scripts:
-                bad_cmd.append((t, cmd[:70], f"{fn} does not exist"))
-            elif t not in scripts[fn]:
-                orphaned.append((t, fn))
+            sm = (re.search(r"((?:scripts|scrapers)[/\\][\w./\\-]+\.py)", cmd)
+                  or re.search(r"([\w-]+\.py)", cmd))
+            if not sm:
+                bad_cmd.append((t, cmd[:70], "no .py file named"))
+            else:
+                fn = os.path.basename(sm.group(1))
+                if fn not in scripts:
+                    bad_cmd.append((t, cmd[:70], f"{fn} does not exist"))
+                elif t not in scripts[fn]:
+                    orphaned.append((t, fn))
 
 print("=" * 92)
 print(f"ROWCOUNT DISAGREEMENT  (registry vs live, over {TOL:.0%})")
@@ -100,6 +163,23 @@ print("=" * 92)
 for t, n, live, d in sorted(bad_count, key=lambda x: -x[3])[:25]:
     print(f"  {t:44s} registry {str(n):>10s}  live {live:>10,}   off by {d:>7.1%}")
 print(f"  {len(bad_count)} of {len(reg)}")
+
+print("\n" + "=" * 92)
+print("HOW EVERY RE-SCRAPE COMMAND RESOLVES")
+print("=" * 92)
+runnable = len(reg) - len(no_cmd) - len(delegated) - len(ladder) - len(unknown) - len(bad_cmd)
+print(f"  runnable here - a .py under scripts/ or scrapers/            : {runnable}")
+print(f"  DELEGATED - a clip; the re-run belongs to the platform session: {len(delegated)}")
+print(f"  LADDER - the QueueScope harvest, one process at a time        : {len(ladder)}")
+print(f"  UNKNOWN - honestly unresolved, provenance not established     : {len(unknown)}")
+print(f"  BROKEN - names a script that does not exist                   : {len(bad_cmd)}")
+print(f"  NONE - no command at all                                      : {len(no_cmd)}")
+if unknown:
+    print("\n  ⛔ the honestly-unresolved ones. These are NOT compliant - they are visible:")
+    for _t in unknown[:20]:
+        print(f"      {_t}")
+    if len(unknown) > 20:
+        print(f"      … and {len(unknown) - 20} more")
 
 print("\n" + "=" * 92)
 print("RE-SCRAPE COMMAND NAMES A SCRIPT THAT DOES NOT EXIST")

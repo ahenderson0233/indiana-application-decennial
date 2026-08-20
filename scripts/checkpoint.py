@@ -201,8 +201,14 @@ check("no EXPORT reads energy directly", not export_dep,
       f"{export_dep} — an export is on the path to what the user sees, so it must read "
       f"indiana_app only; otherwise the app cannot be rebuilt without the platform dataset")
 
-r = q1(f"""SELECT COUNTIF(LOWER(source) LIKE '%energy.%'
-       OR LOWER(source) LIKE '%energy-platfrom.energy%') clipped,
+# ⚠ COUNT DISTINCT TABLES, NOT ROWS. This printed "330 of 329" the moment the registry gained a
+#   second row per table — COUNTIF counted ROWS while the denominator counted TABLES. The registry
+#   is APPEND-ONLY by design (a correction is a new row, never an overwrite), so multiple rows per
+#   table is the normal state and any figure that assumes one row per table will drift past its
+#   own denominator. A count larger than its total is the cheapest possible tell that the two
+#   halves are measuring different things.
+r = q1(f"""SELECT COUNT(DISTINCT IF(LOWER(source) LIKE '%energy.%'
+              OR LOWER(source) LIKE '%energy-platfrom.energy%', table_name, NULL)) clipped,
        COUNT(DISTINCT table_name) total FROM `{DS}._registry`""")
 print(f"  {r.clipped} of {r.total} registered objects record energy.* as their SOURCE — "
       f"they are CLIPS that live in indiana_app, not tables in energy. Do not rebuild them.")
