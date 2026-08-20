@@ -373,3 +373,14 @@ body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
 .mini { font-size: 10px; padding: 1px 5px; margin-left: 6px; cursor: pointer;
         border: 1px solid var(--line, #cbd5e1); background: #fff; border-radius: 3px; }
 .mini:hover { background: #f1f5f9; }
+
+/* G129: every filter says whether it is a HARD GATE or a PREFERENCE. Without this a reader
+   cannot tell a zero-result search from a filtered-out one. A badge, not a sentence - G123. */
+.fmode { font-size: 9px; font-weight: 700; letter-spacing: .05em; margin-left: 6px;
+         padding: 1px 4px; border-radius: 3px; vertical-align: middle; cursor: help; }
+.fmode-gate { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.fmode-pref { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+/* a row admitted only by the 10% tolerance is marked, never mixed in silently */
+tr.nearmiss > td { background: #fffbeb; }
+.nm-tag { font-size: 9px; font-weight: 700; color: #92400e; background: #fef3c7;
+          border: 1px solid #fde68a; border-radius: 3px; padding: 1px 4px; margin-left: 6px; }

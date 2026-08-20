@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=a1bb43e9">
+<link rel="stylesheet" href="style.css?v=d9750958">
 </head>
 <body>
 <header id="topbar">
@@ -244,6 +244,8 @@
     <details class="acc">
       <summary><span class="step">5</span> Environmental constraints <span class="acount" id="c-env"></span></summary>
       <div class="accbody">
+        <label><input type="checkbox" id="s-nearmiss" checked> Keep near misses &mdash; a site that clears every GATE and misses one PREFERENCE by 10% or less</label>
+        <p class="hint">G129. A flood zone is a <b>gate</b>: the site is not a site. Acreage is a <b>preference</b>: 90 acres against a 100-acre ask is a near miss worth seeing. Every filter below and to the left carries its mode.</p>
         <label><input type="checkbox" id="s-noflood"> Exclude land in a mapped flood zone</label>
         <p class="hint">A <b>flood zone</b> here means FEMA's Special Flood Hazard Area &mdash; the
           area with a 1-in-100 chance of flooding in any year. It is a hard constraint, not a
@@ -322,7 +324,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const N = (id) => Number($(id).value) || 0;
-let DATA = null, VIEW = [], SORT = { key: "mw", dir: -1 };
+let DATA = null, VIEW = [], NEAR = [], SORT = { key: "mw", dir: -1 };
 
 const USE_NOTE = {
   dc: "A data center replaces or builds over whatever is there, so we measure the <b>whole parcel</b>.",
@@ -459,6 +461,166 @@ function fillSelects() {
     if (c) c.textContent = `(${codes.length} held)`;
   }
   put("s-bonuskind", split((s) => s.bonus_kinds));
+}
+
+/* ============================================================================================
+   G129 - IS A TICKED FILTER A HARD GATE OR A PREFERENCE?
+
+   ⛔ THIS WAS BURIED INSIDE G96, A ROW MARKED DONE, SO IT NEVER REACHED THE OPEN LIST AND WAS
+   NEVER PUT TO THE OPERATOR. Split out 2026-08-20c. The question, in one line: when the reader
+   ticks a filter, is that a HARD GATE or a PREFERENCE?
+
+     A GATE is a fact about whether the site EXISTS as a site. A parcel in a floodway is not a
+     worse parcel, it is not a parcel you can build on.
+     A PREFERENCE is a fact about how well the site FITS THIS SEARCH. 90 acres against a 100-acre
+     ask is a near miss, and a screener that silently drops it is hiding a real candidate.
+
+   ⛔ EVERY FILTER ON THIS PAGE WAS A HARD EXCLUSION - `return false` for all of them alike - so
+   the ranking was wrong in both directions at once: it dropped good near-misses AND it let a
+   reader believe an acreage miss and a floodway were the same kind of no.
+
+   ⭐ WHAT IS IMPLEMENTED HERE, and what is still the operator's call.
+   The operator is away, so this ships the SMALLER and more conservative of the two honest
+   options: (a) a FIXED PUBLISHED CLASSIFICATION, with the mode shown on screen against every
+   filter. The other option, (b) a per-filter gate/preference toggle, is more honest and more
+   work, and it is a product decision rather than a defect - it stays with the operator.
+   ⚠ Gates still exclude, exactly as before. Preferences still exclude BY DEFAULT so the page
+   behaves as it did, but a site that clears every gate and misses a single preference by 10% or
+   less is now recoverable as a NEAR MISS instead of vanishing.
+   ⛔ THE SCREEN SAYS WHICH MODE EACH FILTER IS IN. Without that a reader cannot tell a
+   zero-result search from a filtered-out one, which is the failure this row exists to prevent.
+   ============================================================================================ */
+const NEAR_MISS_TOLERANCE = 0.10;      /* within 10% of a preference threshold */
+
+const FILTER_MODE = {
+  /* GATES - the site is not a site. Physical, legal or jurisdictional facts about the land. */
+  "s-noflood":  ["gate", "A mapped 1-in-100 flood hazard. Not a worse site - often not a site."],
+  "s-nowet":    ["gate", "Federal wetland permitting. A boundary decides how much parcel remains."],
+  "s-noprot":   ["gate", "Protected land. Usually ends the conversation."],
+  "s-county":   ["gate", "You either are in this county or you are not."],
+  "s-sitekind": ["gate", "A category, not a quantity - nothing is 10% of a land type."],
+  "s-keying":   ["gate", "How the signal reached the parcel. Provenance, not degree."],
+  "s-conf":     ["gate", "How the bus was placed. Provenance, not degree."],
+  "s-plottable":["gate", "Either we hold a point for it or we do not."],
+  "s-bonus":    ["gate", "A designated zone. A parcel is inside it or outside it."],
+  "s-bonuskind":["gate", "A named zone type."],
+  "s-needbus":  ["gate", "You asked to see only sites we have actually measured."],
+  /* ⚠ THESE SIX WERE ENFORCED AS GATES AND CARRIED NO BADGE until audit_g129_gates.py said so on
+     its first run. A filter that excludes without declaring its mode is the original G129 defect
+     wearing a smaller hat: the reader still cannot tell why a site vanished. */
+  "s-lineon":   ["gate", "Either a line crosses the parcel or it does not."],
+  "s-si":       ["gate", "You asked for sites with an owner-motivation signal. Categorical."],
+  "s-binding":  ["gate", "A named binding facility. Text match, not a quantity."],
+  "s-nomil":    ["gate", "Military proximity, as you set it. ⚠ A DoD Siting Clearinghouse review "
+                       + "adds months rather than refusing - this is the strictest reading."],
+  "s-nosua":    ["gate", "Special-use airspace. A parcel is under it or it is not."],
+  "s-notribal": ["gate", "Tribal trust land. A different sovereign, not a worse site."],
+
+  /* PREFERENCES - the site exists; this is about how well it fits THIS search. */
+  "s-target":   ["pref", "Deliverable MW against your target. A near miss is still a site."],
+  "s-acres":    ["pref", "Acreage. 90 against a 100-acre ask is worth seeing."],
+  "s-outdoor":  ["pref", "Open acreage."],
+  "s-mwavail":  ["pref", "Available MW at the bus."],
+  "s-busmi":    ["pref", "Distance to a bus. Miles are continuous."],
+  "s-submi":    ["pref", "Distance to a substation."],
+  "s-linemi":   ["pref", "Distance to a transmission line."],
+  "s-subkv":    ["pref", "Substation voltage."],
+  "s-linekv":   ["pref", "Line voltage."],
+  "s-buskv":    ["pref", "Bus voltage."],
+  "s-structmax":["pref", "Structure count."],
+  "s-minevents":["pref", "How many owner-motivation events."],
+  /* ⛔ s-siyears is NOT listed. It is a PARAMETER of the s-si gate, read inside signalState(),
+     not a filter in its own right - and audit_g129_gates.py failed it as "declared a preference
+     but tested nowhere", which is a badge promising a behaviour nothing implements. */
+};
+
+/* Label every control with its mode, once, at boot. A badge rather than a sentence - G123 is in
+   force on this page and the mode is a field, not an explanation. */
+function paintFilterModes() {
+  for (const [id, [mode, why]] of Object.entries(FILTER_MODE)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const host = el.closest("label") || el.parentElement;
+    if (!host || host.querySelector(".fmode")) continue;
+    const b = document.createElement("span");
+    b.className = "fmode fmode-" + mode;
+    b.textContent = mode === "gate" ? "GATE" : "PREF";
+    b.title = (mode === "gate"
+      ? "HARD GATE - a site failing this is excluded outright. "
+      : "PREFERENCE - a site failing this by 10% or less is kept as a near miss. ") + why;
+    host.appendChild(b);
+  }
+}
+
+/* Which PREFERENCE thresholds does this site miss, and by how much?
+   Returns [] when it clears them all. Only called for sites that already clear every gate. */
+function preferenceMisses(s) {
+  const out = [];
+  const near = (id, have, want, dir) => {
+    if (!want) return;
+    if (have == null) return;
+    const ok = dir === "min" ? have >= want : have <= want;
+    if (ok) return;
+    const off = dir === "min" ? (want - have) / want : (have - want) / want;
+    out.push({ id, have, want, dir, off });
+  };
+  near("s-acres", acresOf(s).acres, N("s-acres"), "min");
+  near("s-target", capacityMW(s), Number($("s-target").value), "min");
+  near("s-outdoor", outdoorOf(s), N("s-outdoor"), "min");
+  const g = gridOf(s);
+  if (g) {
+    near("s-mwavail", g.mw, N("s-mwavail"), "min");
+    near("s-busmi", g.mi, N("s-busmi"), "max");
+    near("s-buskv", g.kv, N("s-buskv"), "min");
+  }
+  near("s-submi", s.sub_mi, N("s-submi"), "max");
+  near("s-subkv", s.sub_kv, N("s-subkv"), "min");
+  near("s-linemi", s.line_mi, N("s-linemi"), "max");
+  near("s-linekv", s.line_kv, N("s-linekv"), "min");
+  if ($("s-structmax").value !== "")
+    near("s-structmax", Number(s.structure_count || 0), Number($("s-structmax").value), "max");
+  near("s-minevents", Number(s[$("s-evwindow").value] || 0), N("s-minevents"), "min");
+  return out;
+}
+
+/* A near miss clears EVERY gate and misses exactly ONE preference, by the tolerance or less.
+   ⚠ One, not "any number of small misses": a site that is 9% short on four separate measures is
+   not a near miss, it is a different site, and stacking tolerances is how a screener quietly
+   widens until the filters mean nothing. */
+function nearMissOf(s) {
+  const m = preferenceMisses(s);
+  if (m.length !== 1) return null;
+  return m[0].off <= NEAR_MISS_TOLERANCE ? m[0] : null;
+}
+
+/* Only the GATE conditions from passes(). ⚠ Kept as its own function rather than a flag on
+   passes(), because a near miss must clear every gate EXACTLY as a normal match does, and a
+   shared function with a "relax preferences" argument is one edit away from relaxing a gate by
+   accident. If a gate is added to passes(), add it here too - audit_g129_gates.py fails the
+   checkpoint when the two lists drift apart. */
+function passesGates(s) {
+  if (!classOK(s)) return false;
+  if ($("s-needbus").checked && !gridOf(s)) return false;
+  if ($("s-lineon").checked && !s.line_on_parcel) return false;
+  if ($("s-si").checked && signalState(s).qualifies !== true) return false;
+  if ($("s-noflood").checked && s.sfha_flood) return false;
+  if ($("s-nowet").checked && s.wetland_on_parcel) return false;
+  if ($("s-noprot").checked && s.protected_land) return false;
+  if ($("s-nomil").checked && s.mil_mi != null && s.mil_mi <= N("s-milmi")) return false;
+  if ($("s-nosua").checked && s.sua_name) return false;
+  if ($("s-notribal").checked && s.tribal_name) return false;
+  if ($("s-bonus").checked && !s.bonus_kinds) return false;
+  if ($("s-county").value && s.county_name !== $("s-county").value) return false;
+  if ($("s-sitekind").value && s.site_kind !== $("s-sitekind").value) return false;
+  const bind = $("s-binding").value.trim().toLowerCase();
+  if (bind && !String((gridOf(s) && gridOf(s).binding) || "").toLowerCase().includes(bind)) return false;
+  if ($("s-conf").value && String(s.wd_conf || "") !== $("s-conf").value) return false;
+  const sigOn = [...document.querySelectorAll("input.s-sig:checked")].map((e) => e.value);
+  if (sigOn.length && !sigOn.some((c) => String(s.signals || "").includes(c))) return false;
+  if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
+  if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
+  if ($("s-plottable").checked && (s.lat == null || s.lon == null) && s.map_lat == null) return false;
+  return true;
 }
 
 function passes(s) {
@@ -946,7 +1108,21 @@ function siteDetail(s) {
 function render() {
   activeChips();
   sectionCounts();
+  /* ⭐ G129: gates exclude; a single preference missed by <=10% is RECOVERED as a near miss.
+     The near misses are tagged, counted and sorted after the exact matches, never mixed in
+     silently - a reader must be able to see that a row is here because the tolerance let it in. */
   VIEW = DATA.sites.filter(passes);
+  NEAR = [];
+  if ($("s-nearmiss") && $("s-nearmiss").checked) {
+    const inView = new Set(VIEW.map((s) => s.parcel_key));
+    for (const s of DATA.sites) {
+      if (inView.has(s.parcel_key)) continue;
+      if (!passesGates(s)) continue;                 /* a gate is never relaxed */
+      const nm = nearMissOf(s);
+      if (nm) { s._nearMiss = nm; NEAR.push(s); }
+    }
+    VIEW = VIEW.concat(NEAR);
+  }
   const k = SORT.key, dir = SORT.dir;
   const val = (s) => k === "mw" ? capacityMW(s) : k === "acres" ? acresOf(s).acres
     : k === "grid" ? (gridOf(s)?.mw ?? -1) : k === "gridmi" ? (gridOf(s)?.mi ?? 9e9)
@@ -984,9 +1160,17 @@ function render() {
       ? `<span class="bdg bdg-ol" title="${st.why}">older than your cutoff</span> ` : "";
   const rows = VIEW.slice(0, 500).map((s, i) => {
     const g = gridOf(s), a = acresOf(s), sst = signalState(s);
-    return `<tr class="siterow" data-i="${i}">
+    /* ⭐ G129: a row admitted only by the 10% tolerance is MARKED. Mixing a near miss into the
+       exact matches without saying so would swap one silent lie for another - the reader has to
+       be able to see that this row is here because a preference was relaxed, and by how much. */
+    const nm = s._nearMiss;
+    const nmTag = nm
+      ? ` <span class="nm-tag" title="clears every gate; misses ${nm.id.replace(/^s-/, "")} by ${(nm.off * 100).toFixed(0)}% (has ${
+          typeof nm.have === "number" ? nm.have.toFixed(1) : nm.have}, you asked for ${nm.want})">NEAR MISS</span>`
+      : "";
+    return `<tr class="siterow${nm ? " nearmiss" : ""}" data-i="${i}">
       <td class="exp" title="show everything we hold for this site">&#9656;</td>
-      <td>${s.county_name || "&mdash;"}<div class="sub2" title="${escHtml(landPlainTitle(s.occ_group, s.structure_count))}">${landPlain(s.occ_group, s.structure_count)}${
+      <td>${s.county_name || "&mdash;"}${nmTag}<div class="sub2" title="${escHtml(landPlainTitle(s.occ_group, s.structure_count))}">${landPlain(s.occ_group, s.structure_count)}${
         landPlainTitle(s.occ_group, s.structure_count) ? ' <span class="warn" title="see tooltip">&#9888;</span>' : ""}</div></td>
       <td>${a.acres.toFixed(1)}${a.disputed ? ' <span class="warn" title="the recorded and measured acreage disagree; the smaller is used">±</span>' : ""}</td>
       <td class="num"><b>${fmt(capacityMW(s))}</b></td>
@@ -1047,6 +1231,11 @@ function render() {
       <h2>Matching sites</h2>
       ${VIEW.length > 500 ? `<p class="hint">Showing the first 500 of ${fmt(VIEW.length)} matches,
         sorted by the column you picked. Download the CSV for all of them.</p>` : ""}
+      ${NEAR.length ? `<p class="hint"><span class="nm-tag">NEAR MISS</span> <b>${fmt(NEAR.length)}</b>
+        of these clear every <span class="fmode fmode-gate">GATE</span> and miss one
+        <span class="fmode fmode-pref">PREF</span> by 10% or less (G129). They are marked in the
+        table. ⚠ Sorted by merit like everything else, so at this sort they may fall outside the
+        first 500 &mdash; they are all in the CSV.</p>` : ""}
       <table class="rtable">
         <tr><th style="width:18px"></th>${head.map(([k2, l]) => `<th data-k="${k2}" class="sortable${SORT.key === k2 ? " on" : ""}">${l}${
           SORT.key === k2 ? (SORT.dir < 0 ? " ▼" : " ▲") : ""}</th>`).join("")}</tr>
@@ -1271,7 +1460,7 @@ function toXLSX() {
   if (scrRestored) $("s-use-note").innerHTML = USE_NOTE[$("s-use").value] || USE_NOTE.dc;
 
   renderCoverage();
-  render();
+  paintFilterModes(); render();
   if (scrRestored) {
     const el = document.createElement("div");
     el.className = "hint";
