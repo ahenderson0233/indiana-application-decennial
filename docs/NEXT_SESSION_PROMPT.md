@@ -6,7 +6,7 @@ Repo: `C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Califo
 
 ---
 
-## ⛔ DO THESE THREE THINGS FIRST. Propose nothing before you have.
+## ⛔ DO THESE FOUR THINGS FIRST. Propose nothing before you have.
 
 ### 1. Is the PJM harvest alive?
 
@@ -14,151 +14,169 @@ Repo: `C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Califo
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | Where-Object { $_.CommandLine -like '*pull_pjm*' } | ForEach-Object { 'PID ' + $_.ProcessId + ' :: ' + $_.CommandLine }"
 ```
 
-⚠ **A count of 2 is almost always your own command self-matching** — the filter string appears in
-your own process's command line. Confirm by parentage before believing it.
+⚠ **A count of 2 is almost always your own command self-matching.** Confirm by parentage.
 
-**If nothing is running, resume. This one command resumes, continues AND repairs, and it is safe to
-run even while one is going** — it polls for the ABSENCE of a QueueScope process rather than waiting
-on a handle, which is the exact failure that once spawned a duplicate harvester:
+**If nothing is running, resume. This one command resumes, continues AND repairs, and is safe to
+run even while one is going** — it polls for the ABSENCE of a QueueScope process:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts\run_pjm_ladder.ps1
 ```
 
-⛔ **NEVER start a second QueueScope process.** ⛔ **NEVER delete `data/`** — the markers live there
-and deleting them forces a duplicating re-harvest; **archive, never delete**. ⛔ **Owner is 1568,
-not 739** — 739 loads **0 rows and exits successfully**.
+⛔ **NEVER start a second QueueScope process.** ⛔ **NEVER delete `data/`** — the batch markers live
+there and deleting them forces a duplicating re-harvest; **archive, never delete**. ⛔ **Owner is
+1568, not 739** — 739 loads **0 rows and exits successfully**.
 
-**As of 2026-08-19 ~13:00:** 8 rungs complete at 1,826/1,826 buses (5,000 · 10 · 15 · 100 MW, both
-directions). Withdrawal 25 MW running. 25 inj, then 50 · 200 · 300 · 500 · 1000 · 1500 · 2000 · 3000
-queued both ways.
+**Ladder state at handoff (2026-08-20), measured by distinct buses out of 1,826:**
+COMPLETE — injection 10 / 15 / 5000, withdrawal 10 / 15 / 25 / 5000. RUNNING — injection 50.
+⛔ **Two rungs are SHORT and one registered anyway:** `inj_25` is 1,797 of 1,826 **with a registry
+row**, and `wd_50` is 1,625 of 1,826 and unregistered. **Neither affects a shipped figure** —
+`in_bus_capacity_tier0` reads the 5,000 rung only, and both 5,000 rungs audit CLEAN.
 
-### 2. Checkpoint
+### 2. Start a web server, or every page hangs
+
+```bash
+python -m http.server 8123 --directory "C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California\ca-capacity-deploy\indiana-application-decennial"
+```
+
+⚠ This is not optional housekeeping. On 2026-08-19b the operator's server died, the cached HTML
+still drew the page, and the screener sat on "Loading sites…" — reported as a code bug, debugged
+as a code bug, and it was a dead port. `common.js` now paints a banner naming the file instead of
+hanging silently, but the server still has to be up.
+
+### 3. Checkpoint and the two ledger audits
 
 ```bash
 python scripts/checkpoint.py
+python scripts/audit_backlog_state.py     # is the LEDGER coherent?
+python scripts/audit_backlog_truth.py     # is an "open" item secretly finished?
+python scripts/audit_handoff_docs.py      # are the numbers in the HANDOFF still true?
 ```
 
-**Expect 3 failures and expect them to be correct:**
+⭐ **Run all four before believing anything you read.** `audit_handoff_docs.py` re-measures every
+load-bearing figure in the handoff, this prompt and the backlog — it was written because the
+project's rule is *never quote a count from a document*, and it caught the handoff quoting a
+figure that had gone stale within hours of being written. **18 checks, 0 failing at handoff.**
+
+**Expect 3 checkpoint failures and expect them to be correct:**
 
 | failing check | why |
 |---|---|
-| `wiring census: ~291 of 309` | new tables not yet on a surface. **G72 closes it** |
-| `honesty audit: 1 failure` + `1 unregistered` | **the unregistered table IS whichever ladder rung is mid-flight.** It registers on completion |
+| `wiring census: ~240 of 323` | G72/G80. ⚠ Read its note below before trusting the number |
+| `honesty audit: 1 failure` | known |
+| `2 unregistered tables` | the in-flight ladder rung **plus the short `wd_50`** |
 
-⛔ **Anything else failing is real.** The five D85 guards, `no EXPORT reads energy`, `shipped payload
-agrees with the warehouse`, payload freshness and required keys must all PASS.
+⛔ **Anything else failing is real.** The five D85 guards, `no EXPORT reads energy`, payload-vs-
+warehouse agreement, payload freshness and required keys must all PASS.
 
-### 3. Read, in this order
+### 4. Read, in this order
 
 | # | file | why |
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
-| 2 | ⭐ **`docs/HANDOFF_2026-08-19b.md`** | **THE CURRENT ONE.** Everything below, in full |
-| 3 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row first, then the G-index (G1–G109) |
-| 4 | ⭐ **`docs/TABLE_PURPOSE_INDEX.md`** | generated. 310 objects → purpose → the control. **The G72 worklist** |
+| 2 | ⭐ **`docs/HANDOFF_2026-08-20.md`** | **THE CURRENT ONE.** Everything below, in full |
+| 3 | `docs/BACKLOG.md` | the **⚠ IN FLIGHT** row first, then the G-index (G1–G121) |
+| 4 | ⭐ `docs/TABLE_PURPOSE_INDEX.md` | generated — the G72 worklist |
 | 5 | `docs/FEATURE_INVENTORY.md` | every feature, how it works, its BigQuery table |
-| 6 | `docs/BUS_PARITY_2026-08-18.md` | the vendor comparison — ⚠ **§Finding 1 is superseded**, see the handoff |
-| 7 | `docs/BUILDABLE_AREA_BASIS.md` | what is and is not netted out of a parcel (G28) |
-| 8 | `docs/REFERENCE_TOOL_GAP.md` | ⚠ **its #1 item is now DECLINED** — read the ruling at the top |
+| 6 | `docs/BUILDABLE_AREA_BASIS.md` | what is and is not netted out of a parcel |
+| 7 | `docs/REFERENCE_TOOL_GAP.md` | ⚠ **its #1 item is DECLINED** — read the ruling at the top |
 
-⚠ `HANDOFF_2026-08-19.md` and every earlier handoff are **HISTORY**. Read them for *how*, never for
-*what is true now*.
-
-**Then run this before you believe any backlog row:**
-
-```bash
-python scripts/audit_backlog_truth.py
-```
+⚠ `HANDOFF_2026-08-19b.md` and earlier are **HISTORY**. Read them for *how*, never for *what is
+true now*. 19b is still correct on the PJM parity derivation and stale on everything else.
 
 ---
 
-## ⭐ START WITH THIS — the operator's own instruction, and the one thing not begun
+## ⭐ START HERE — the operator's own sequencing
 
-**G105 — a full-scale audit of the tool, including every clicking and hovering action.**
+The operator ruled that **G115 comes second-to-last and G105 comes LAST**. Both are now next.
 
-> Operator, 2026-08-19: *"run a full-scale audit of the tool and fix anything that is not complete,
-> including all of the clicking/hovering actions throughout the tool."*
+**G115 — refresh every table to current state.** Rowcount drift is already 6 → 0, but
+**295 of 320 registry rows carry NO `RE-SCRAPE COMMAND`** and 1 is orphaned. Run
+`scripts/audit_registry_truth.py`.
 
-⚠ **`scripts/audit_map_clicks.py` already exists — run it FIRST** rather than starting by hand.
-⚠ **The map does not boot headless**, so a click cannot be simulated by loading the page. Verify by
-calling handler functions directly with a real feature — that is how every front-end fix on
-2026-08-19 was checked, and it caught a garbage distance and two render throws.
-⭐ **Precedent for what this finds:** the G65 sweep found four layers DRAWN and unclickable, and
-three logistics layers with a hover and no click at all — visible for weeks, unexplainable.
+**G105 — the full-scale audit of the tool, including every click and hover.**
+> Operator: *"run a full-scale audit of the tool and fix anything that is not complete, including
+> all of the clicking/hovering actions throughout the tool."*
 
-Then **G106**: batch the remaining **non-scraping** backlog and work it.
+⚠ **`scripts/audit_map_clicks.py` already exists — run it FIRST.** Its last run found **3 layers
+drawn and unclickable**: `deeplink-pt`, `terr-label`, `terr-line`.
+⭐ **And the map DOES boot headless now** — see §8 of the handoff and
+`scripts/boot_map_harness.js`. Every front-end fix this session was verified that way.
 
----
-
-## ⛔ OPERATOR RULINGS — DO NOT RE-LITIGATE (backlog G107)
-
-- ⛔ **RADIUS-FROM-A-POINT SEARCH IS DECLINED.** *"We do NOT need radius from a point in this
-  analysis."* `REFERENCE_TOOL_GAP.md` ranked it #1 and the previous prompt starred it. **It is dead.**
-- ⭐ **Scraping goes to an Opus (non-Fable) agent**, stated twice, for token cost. **Brief it with
-  the write boundary, no-CAPTCHA / no-UA-spoof, and BLOCKED-is-a-success — agents do not inherit
-  them.**
-- ⭐ **All 13 decimal places stay** on parcel coordinates (G30b). The 45% payload saving is refused.
-- ⭐ **New items batch into the LAST group**, not a separate queue.
+Then the rest: **G72/G80** (the wiring sweep — but read the note below), **G120(b)(e)**,
+**G70 · G71 · G104** (one purchase), **G75 · G87 · G79**.
 
 ---
 
-## ⭐ WHAT CHANGED ON 2026-08-19 THAT YOU MUST NOT UNDO
+## ⛔ FIVE THINGS THAT WILL MISLEAD YOU IF NOBODY SAYS THEM
 
-**The screener's bus headroom was reading two superseded sources.** `wd_mw` spanned 13–132 MW, so
-nothing could reach the page's own 300 MW default, and **there was no MISO load-side data at all**.
-Repointed at `in_bus_capacity_tier0`: **sites at ≥300 MW went 0 → 5,396.**
+**① The wiring census overstates what a "surface" is, and it was overstating by 60.** It counts an
+object as reaching a surface if any page NAMES it. `app.js` used to carry `FEATURE_HOME`, a
+dictionary naming 132 tables read by one dead modal; removing it dropped the census from 291/309
+to 235/316. Nothing broke — a fake signal went away. ⚠ **Most of the ~80 still-unwired objects are
+ladder rungs and working tables that CORRECTLY reach no surface.** The real list is short:
+`in_water_parcel`, the NHD water geometry, `in_si_warn_normalised`, `in_gov_surplus_nces`,
+`in_faa_obstacles`.
 
-**PJM parity: the vendor's cutoff is not one number.** Their file's `Shift Factor Cutoff Ratio` is
-**0.05 when the facility is healthy and 0.20 when it is already overloaded**, and an overloaded
-binder means **ZERO**. We now match: >0 went 100.0% → **95.7%** against their 96.8%, median ratio
-**1.056**, and *"they say 0 and we don't"* went **18 → 0**.
-⭐ **Where we pick the same binding facility the ratio is median 1.001.** The remaining gap is that
-**41.5% of their binding facilities are absent from our harvest** — not the maths.
+**② "No structure" means "no building as of January 2020".** `nat_usa_structures` has a newest
+Indiana production date of **2020-01-27**. The join is sound (0 false positives in 6,341 tested
+empty parcels) — the corpus is six years old. This bounds the BESS open-ground basis, the `f-vac`
+filter, and G81's 99.4% figure.
 
-**The ladder DOES surface constraints** — injection 5,000 vs 100 MW adds **443 keys** — but **0 new
-facilities**, which is why it cannot close parity. `in_bus_capacity_tier0` now sources the 5,000 MW
-rung: **986 of 1,814 injection buses changed, 466 tighter**.
+**③ The flagged parcel count is 23,795, not 24,277.** G84 demoted plain ECHO `violation` (676
+parcels, no defensible mechanism to a sale). One predicate reverses it.
 
-**Of 227 located PJM buses only 42 are in Indiana.** The screener was silently matching 3,993 parcels
-to two out-of-state buses; those rows now say **"Bus location: OUTSIDE INDIANA"**.
+**④ The screener now carries TWO capacity figures and they mean different things.** `mw_dc` is
+LAND (acres × density); `deliv_wd_mw` is GRID (the lower of the two end-bus headrooms on the
+nearest line). **The grid binds on 190,178 parcels and the land on 73,058.** Never collapse them.
 
----
-
-## ⭐ THE ONE ACQUISITION THAT UNBLOCKS FIVE BACKLOG ROWS
-
-`mat_parcel_attrs` declares `assessed_value`, `zoning`, `parcel_owner`, `land_use`, `year_built` —
-and **all five are 100% NULL for Indiana**, 0 of 3,553,381, while the same table holds **40.8M
-assessed values across 43 states**. Not a clip defect; the vendor lacks Indiana.
-
-**G104, G70, G71, G81 and G90's parcel half are one purchase** — the DLGF Gateway pull.
+**⑤ Nine gas capacity boards exist; only TWO can be placed in Indiana.** The other seven post the
+operator's whole system with no state column. Wiring them would attach Louisiana capacity to an
+Indiana pipeline.
 
 ---
 
-## ⛔ TRAPS THAT COST REAL TIME. Read these or repeat them.
+## ⛔ OPERATOR RULINGS — DO NOT RE-LITIGATE (G107)
 
-1. **A `SHORT` line in the harvest log is NOT data loss.** Use `audit_pjm_short_reads.py`, never the
-   log. Stopping a healthy harvest over one created a 25-bus gap that then had to be repaired.
-2. **Killing the ladder supervisor kills its python child** seconds later.
-3. **`nulls` and `rows` are BigQuery reserved words.**
-4. **Never guess a column name OR A VALUE VOCABULARY.** 2026-08-19: `value` (it is `rate`), and
-   `investor_owned` vs **`INVESTOR OWNED`** — which silently greyed out all 145 territories while
-   looking deliberately coloured.
-5. **Never write a regex through a shell heredoc.** Use the Write tool and self-test at import.
-6. ⭐ **A dry run that writes is worse than no dry run.**
-7. ⭐ **A re-check may CONFIRM or ADVANCE a row — never silently DEMOTE one.**
-8. ⭐ **Do not sample one row and generalise.**
-9. **`Number(null)` is 0, and 0 is finite.**
-10. ⚠ **`fetchGz()` sends no cache-buster** (G101) — after a rebuild the browser serves the old
-    payload, which **masquerades as a build failure**.
-
-**The pattern: a clean, alarming or UNCHANGED number is a claim about your INSTRUMENT first.** Three
-audits cried wolf or stayed silent on 2026-08-19 — G76's criterion, the G8 codename probe, and the
-superseded-table check (**G108**, still open).
+- ⛔ **RADIUS-FROM-A-POINT SEARCH IS DECLINED.**
+- ⭐ **All 13 decimal places stay** on parcel coordinates (G30b).
+- ⭐ **New items batch into the LAST group.**
+- ⭐ **Scraping goes to an Opus (non-Fable) agent** — brief it with the write boundary,
+  no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
+- ⭐ **Min-of-both-ends** for deliverable capacity is the operator's rule and electrically right.
+- ⛔ **Vendor data is a yardstick, never a source** — one exception,
+  `in_bus_headroom_miso_vendor`, licence lapsing late 2027.
 
 ---
 
-## THE STANDING RULES, each earned by getting it wrong
+## ⛔ TRAPS THAT COST REAL TIME THIS SESSION
+
+1. ⭐ **HARD-RELOAD (Ctrl+Shift+R) before debugging a front-end change.** `stamp_assets.py`
+   versions the JS and CSS; the HTML cannot version itself, so a cached page runs the previous
+   script and the fix looks dead.
+2. ⭐ **A dead web server looks exactly like a code bug.** See §2.
+3. ⭐ **Two features that pass separately can be fatal together.** G117 enumerated every input in
+   the screener rail; G119 then put a FILE PICKER in that rail; setting `.value` on
+   `<input type=file>` throws, before `render()`, so the page never booted. **Reload the affected
+   page after any change to shared machinery.**
+4. ⛔ **Never write a regex through a shell heredoc.** Broken again this session — inside the fix
+   for a regex bug. Write tool, self-test at import.
+5. ⛔ **A sentinel is not a value.** FEMA `-9999.0` BFE (97.4% of SFHA polygons), HIFLD `-999999`
+   kV (335 lines), NOAA `mag = -9`.
+6. ⛔ **A bounding box around Indiana contains Illinois** — the search guard flew to Chicago. Use
+   `countyOf()`.
+7. ⚠ **Measure fan-out after any LEFT JOIN.** One append fanned tier0 1,814 → 1,862 on an
+   unchanged bus count.
+8. ⚠ **Value vocabularies lie:** space-padded `'IN      '`, `'Indiana   '`, `prop_st` as a full
+   state name, ECHO's `operator` being the SHIPPER not the pipeline.
+9. ⛔ **An audit that cries wolf gets ignored — three of mine did.** Fix the instrument before
+   acting on its output.
+
+**The pattern: a clean, alarming or UNCHANGED number is a claim about your INSTRUMENT first.**
+
+---
+
+## THE STANDING RULES
 
 **Write boundary.** `energy-platfrom.energy` is **READ-ONLY**; everything goes to
 `energy-platfrom.indiana_app`. The one permitted write is an APPEND to `energy.registry_sources`.
@@ -166,21 +184,19 @@ superseded-table check (**G108**, still open).
 ⚠ **Builds may read `energy`; EXPORTS MAY NOT.**
 
 **Every table gets a `_registry` row in the same run**, with `source`, `method` and a verbatim
-`RE-SCRAPE COMMAND:`. ⚠ **Update it when you repoint a build** — on 2026-08-19 a registry row still
-named two retired tables after the code had moved on.
+`RE-SCRAPE COMMAND:`. ⚠ **Update it when you repoint a build.**
 
-**⛔ Check the warehouse before you explore or scrape.** **Read the schema. Never guess.**
-**Unpublished is NULL, never 0** — but a **stated** zero is a fact, not a gap.
-**⚠ EXCLUDE `parcels_in/080500000047000018`** from every spatial join (D85); prove it by measuring
-fan-out (~1.0, not ~2.0).
+**⛔ Check the warehouse before you explore or scrape.** **Read the schema. Never guess a column
+name OR a value vocabulary.**
+**Unpublished is NULL, never 0** — but a **stated** zero is a fact.
+**⚠ EXCLUDE `parcels_in/080500000047000018`** from every spatial join (D85); prove it by fan-out.
 **⛔ No centroid where a footprint exists.** **Never `git add -A`.** **Use a commit-message FILE.**
 
 **After ANY front-end change:** `python scripts/stamp_assets.py` → `python scripts/audit_frontend.py`
-→ verify in a browser. ⚠ **`app.js` is boot-critical and the map does NOT boot headless** — verify
-by calling functions directly.
-⚠ **`data/sites/` is ~224 MB of gzipped files and `git push` FAILS on it** (`SEC_E_MESSAGE_ALTERED`).
+→ `python scripts/audit_js_duplicates.py` → **hard-reload and verify in a browser**.
 
 ---
 
-**Start by** telling me whether the harvest is alive and what the checkpoint printed, then what you
-read, then your plan — and **lead with G105, the click/hover audit**, unless I say otherwise.
+**Start by** telling me whether the harvest is alive, what the checkpoint printed, and what the two
+ledger audits printed — then what you read, then your plan. **Lead with G115 then G105**, unless I
+say otherwise.

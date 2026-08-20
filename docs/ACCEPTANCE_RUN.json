@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-19T21:52:10.245592+00:00",
+ "run_at": "2026-08-20T05:49:55.655813+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 125 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
+   "detail": "scanned 126 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 237 of 320 registered objects reach a surface \u00b7 83 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_300', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry']"
+   "detail": "MEASURED this run: 240 of 323 registered objects reach a surface \u00b7 83 unwired: ['in_acs_county', 'in_balancing_authority_areas', 'in_bus_headroom_300', 'in_bus_headroom_miso_ladder', 'in_candidate_sites_colleges', 'in_cbp_county_industry']"
   },
   {
    "criterion": 2,
