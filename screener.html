@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=6d6d89c3">
+<link rel="stylesheet" href="style.css?v=a1bb43e9">
 </head>
 <body>
 <header id="topbar">
@@ -51,7 +51,7 @@
       <div class="accbody">
         <label class="blk">Project type
           <select id="s-use">
-            <option value="dc">Data centre</option>
+            <option value="dc">Data center</option>
             <option value="bess">Battery storage</option>
           </select></label>
         <p class="hint" id="s-use-note"></p>
@@ -61,13 +61,13 @@
         <p class="hint">⭐ Type any figure. This was a six-option dropdown, so 240 MW had to be
           rounded to 100 or 300 &mdash; a fixed option list is a silent filter on the answer, the
           same defect class as a capped input (G68). <b>0 = any size.</b></p>
-        <p class="hint">Megawatts (MW) of electrical demand. A large data centre campus is
+        <p class="hint">Megawatts (MW) of electrical demand. A large data center campus is
           roughly 300&ndash;1,000&nbsp;MW; a battery site here is 5&nbsp;MW or less.</p>
 
         <label class="blk">Land needed per megawatt
           <span class="inline"><input type="number" id="s-density" value="4" min="0.1" step="0.1"> MW per acre</span></label>
         <p class="hint">How much power you assume you can fit on an acre. <b>4</b> is a common
-          planning figure for a data centre, <b>10</b> for batteries. This is your assumption to
+          planning figure for a data center, <b>10</b> for batteries. This is your assumption to
           change &mdash; it is not something we measured.</p>
       </div>
     </details>
@@ -114,7 +114,7 @@
           <b>Two different questions, and they are not interchangeable.</b>
           <table class="mini">
             <tr><td><b>Can this site GET power?</b></td>
-                <td>What a data centre needs. The grid calls this <i>withdrawal</i>.</td></tr>
+                <td>What a data center needs. The grid calls this <i>withdrawal</i>.</td></tr>
             <tr><td><b>Can this site SEND power?</b></td>
                 <td>What a power plant or a solar farm needs. The grid calls this <i>injection</i>.</td></tr>
           </table>
@@ -125,7 +125,7 @@
 
         <label class="blk">Which do you need?
           <select id="s-dir">
-            <option value="wd" selected>Getting power &mdash; data centre or any large load</option>
+            <option value="wd" selected>Getting power &mdash; data center or any large load</option>
             <option value="inj">Sending power &mdash; generation or export</option>
             <option value="any">Either &mdash; show me both</option>
           </select></label>
@@ -135,7 +135,7 @@
           <p class="hint" style="margin:4px 0 0"><b>PJM</b> figures are <b>ours</b>, harvested from
             QueueScope case 23 (2028 TC2 Phase II, Summer Peak). <b>MISO</b> figures come from our
             <b>licensed Orennia DPP-2025 proxy</b>, because <b>MISO publishes no public load-side
-            headroom at all</b> &mdash; that licence lapses <b>late 2027</b>. Every site row says
+            headroom at all</b> &mdash; that license lapses <b>late 2027</b>. Every site row says
             which of the two it is. ⚠ Both are <b>screening</b> figures: only the utility&rsquo;s
             own study binds.</p>
         </div>
@@ -316,7 +316,7 @@
   </main>
 </div>
 
-<script src="common.js?v=b6a36660"></script>
+<script src="common.js?v=9a0640f5"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -325,7 +325,7 @@ const N = (id) => Number($(id).value) || 0;
 let DATA = null, VIEW = [], SORT = { key: "mw", dir: -1 };
 
 const USE_NOTE = {
-  dc: "A data centre replaces or builds over whatever is there, so we measure the <b>whole parcel</b>.",
+  dc: "A data center replaces or builds over whatever is there, so we measure the <b>whole parcel</b>.",
   bess: "A battery installation fits <i>around</i> existing buildings, so we measure only the <b>open ground</b> (parcel minus building footprints).",
 };
 
@@ -612,18 +612,43 @@ let SCREENER_NCOL = 8;
    ⭐ Full precision is preserved in the copy text (G30b keeps all 13 decimals); only the DISPLAY
    is rounded, because 13 decimals in a table cell is unreadable and 5 decimals is ~1 m. */
 function siteCoords(s) {
-  if (!("lat" in s) || !("lon" in s) || s.lat == null || s.lon == null) return null;
-  const la = Number(s.lat), lo = Number(s.lon);
+  /* ⭐ G125, 2026-08-20d: fall back to the DERIVED point. Measured, `lat` is published on only
+     2,284,133 of 3,553,194 in_sites rows, so this cell read "no coordinate held" for roughly six
+     parcels in ten - on a screener whose whole job is to hand a siter somewhere to go and look.
+     Every one of those parcels HAS a polygon, so the build derives an interior point and
+     `coord_basis` records which kind it is. The distinction is shown, never hidden. */
+  const hasPub = ("lat" in s) && ("lon" in s) && s.lat != null && s.lon != null;
+  const rawLat = hasPub ? s.lat : (s.map_lat != null ? s.map_lat : null);
+  const rawLon = hasPub ? s.lon : (s.map_lon != null ? s.map_lon : null);
+  if (rawLat == null || rawLon == null) return null;
+  const la = Number(rawLat), lo = Number(rawLon);
   if (!Number.isFinite(la) || !Number.isFinite(lo)) return null;
-  return { lat: la, lon: lo, full: `${s.lat}, ${s.lon}`, short: `${la.toFixed(5)}, ${lo.toFixed(5)}` };
+  if (la === 0 && lo === 0) return null;          /* trap 9: Number(null) is 0 and 0 is finite */
+  return { lat: la, lon: lo, full: `${rawLat}, ${rawLon}`,
+           short: `${la.toFixed(5)}, ${lo.toFixed(5)}`,
+           derived: !hasPub || s.coord_basis === "parcel_interior_point" };
 }
 function siteLocationCell(s) {
   const c = siteCoords(s);
-  if (!c) return `<span class="cannot" title="we hold no coordinate for this parcel">no coordinate held</span>`;
+  const addr = s.prop_address || null;
+  const place = [s.prop_city, s.prop_zip].filter(Boolean).join(" ");
+  /* ⭐ G125: the ADDRESS, and it is NOT Marion-only. The DLGF property address is held on 527,038
+     of the 531,325 candidates across all 92 counties - the "Marion-only" belief came from the
+     address SEARCH crosswalk, which is a different corpus doing a different job. */
+  const addrHtml = addr
+    ? `<div>${addr}${place ? `<span class="hint"> · ${place}</span>` : ""}</div>`
+    : "";
+  if (!c) {
+    return addrHtml
+      || `<span class="cannot" title="we hold neither an address nor a coordinate for this parcel">not held</span>`;
+  }
   const label = `${s.county_name || ""} parcel`.trim();
   const href = `index.html?lat=${c.lat}&lon=${c.lon}&z=15`
              + `&label=${encodeURIComponent(label)}&src=screener`;
-  return `<a href="${href}" title="open this point on the map console">${c.short}</a>`;
+  const est = c.derived
+    ? ` <span class="cannot" title="the assessor publishes no point for this parcel; this is derived from the parcel outline">est.</span>`
+    : "";
+  return `${addrHtml}<a href="${href}" title="open this point on the map console">${c.short}</a>${est}`;
 }
 
 /* ---------- G116 + G118: WHAT CAN ACTUALLY BE DELIVERED HERE ----------------------------------
@@ -716,21 +741,7 @@ function assemblyBlock(s) {
   if (!s.neighbours) return "";
   const self = Number(s.exact_parcel_acres || s.parcel_acres || 0);
   const big = s.largest_neighbour_acres;
-  return `<div class="sowhat" style="margin-bottom:8px">
-    <b>This parcel adjoins ${fmt(s.neighbours)} other${s.neighbours === 1 ? "" : "s"}.</b>
-    ${s.sliver_neighbours
-      ? ` <b>${fmt(s.sliver_neighbours)} of them ${s.sliver_neighbours === 1 ? "is a sliver" :
-          "are slivers"}</b> under half an acre (${Number(s.sliver_acres).toFixed(2)} ac in total)
-          — the case where a single holding is recorded as several parcels.` : ""}
-    ${s.same_class_acres
-      ? ` Adjoining land of the same character adds <b>${fmt(Math.round(s.same_class_acres))}
-          acres</b>, taking the site to about <b>${fmt(Math.round(s.assembly_acres_same_class))}
-          acres</b> from ${fmt(Math.round(self))}.` : ""}
-    ${big >= 25
-      ? ` The largest single neighbour is <b>${fmt(Math.round(big))} acres</b>.` : ""}
-    <span class="hint">⛔ Adjoining is not co-owned. Indiana publishes no parcel owner outside
-    Marion County, so this says what the land next door would add, not that you can buy it.</span>
-  </div>`;
+  return ``;
 }
 
 /* ---------- G72: water stress at PARCEL grain --------------------------------------------------
@@ -738,16 +749,7 @@ function assemblyBlock(s) {
    county's whole public-supply withdrawal; this gives the basin the parcel actually sits in. */
 function waterBlock(s) {
   if (!s.water_stress && !s.water_depletion) return "";
-  return `<div class="sowhat" style="margin-bottom:8px">
-    <b>Water, at this parcel:</b> baseline stress <b>${escHtml(s.water_stress || "not rated")}</b>${
-      s.water_depletion ? `, depletion ${escHtml(s.water_depletion)}` : ""}${
-      s.water_gw_decline ? `, groundwater decline ${escHtml(s.water_gw_decline)}` : ""}.
-    ${s.water_basins > 1
-      ? ` ⚠ This parcel spans <b>${s.water_basins} basins</b>, so two different allocation
-          regimes and possibly two different objectors apply to one site.` : ""}
-    <span class="hint">WRI Aqueduct basin ratings joined to the parcel. Stress is the ratio of
-    withdrawals to available supply in the basin — it governs how contested a new withdrawal
-    will be, not whether water is physically present.</span></div>`;
+  return ``;
 }
 
 function deliverableBlock(s) {
@@ -768,7 +770,7 @@ function deliverableBlock(s) {
   return `<table class="dtable" style="margin-bottom:8px">
     ${detailRow("Deliverable to a LOAD (withdrawal)", wd != null ? `<b>${fmt(wd)} MW</b>` : null,
       "not published at the limiting bus",
-      "The lower of the two end-bus headrooms on the nearest line. This is what a data centre "
+      "The lower of the two end-bus headrooms on the nearest line. This is what a data center "
       + "could actually draw, as distinct from what fits on the land.")}
     ${detailRow("Deliverable from GENERATION (injection)", inj != null ? `<b>${fmt(inj)} MW</b>` : null,
       "not published at the limiting bus",
@@ -783,16 +785,7 @@ function deliverableBlock(s) {
       "The weaker of the two ends — the one that caps this site.")}
     ${detailRow("First constraint to bind there", s.deliv_wd_binding)}
     </table>
-    <div class="sowhat" style="margin-bottom:8px">${
-      wd == null ? "The limiting bus publishes no withdrawal figure."
-      : gridBinds
-        ? `<b>The GRID is the binding constraint here, not the land.</b> The ground could host
-           about ${fmt(land)} MW, but the weaker end of the nearest line can deliver
-           <b>${fmt(wd)} MW</b>. Building to the acreage figure would strand
-           ${fmt(Math.max(0, land - wd))} MW you cannot get power to.`
-        : `<b>The LAND is the binding constraint here, not the grid.</b> The line can deliver
-           about ${fmt(wd)} MW and the ground only fits ${fmt(land)} MW, so more acreage — or an
-           adjacent parcel — is what unlocks this site.`}</div>`;
+`;
 }
 
 function siteDetail(s) {
@@ -819,7 +812,7 @@ function siteDetail(s) {
             + `&label=${encodeURIComponent((s.county_name || "") + " parcel")}&src=screener">open on the map</a>`
           : null,
           "we hold no coordinate for this parcel",
-          "Full stored precision, WGS84 lat/lon. The table above rounds to 5 decimals (about a metre) for legibility; this is the value as held.")}
+          "Full stored precision, WGS84 lat/lon. The table above rounds to 5 decimals (about a meter) for legibility; this is the value as held.")}
       ${detailRow("Parcel id", s.parcel_key ? `<code>${s.parcel_key}</code>` : null, null,
           "The key this row is stored under. Quote it when asking us to re-check a site.")}
       ${detailRow("Land record type", s.site_kind, null,
@@ -837,7 +830,7 @@ function siteDetail(s) {
     </table>
     <div class="dgrid">
       <div>
-        <h4>Getting power &mdash; what a data centre needs</h4>
+        <h4>Getting power &mdash; what a data center needs</h4>
         <table class="dtable">
           ${detailRow("Nearest bus", s.wd_bus, "no withdrawal point within 25 miles",
             "This is the direction a load draws. It is a published screening figure; only the utility's own study binds.")}
@@ -854,7 +847,7 @@ function siteDetail(s) {
                 MISO proxy, so on most rows this line is the disclosure. */
             detailRow("Where this figure comes from",
               s.wd_conf === "vendor_licensed_proxy"
-                ? "our LICENSED Orennia DPP-2025 proxy — MISO publishes no public load-side headroom at all. Licence lapses late 2027."
+                ? "our LICENSED Orennia DPP-2025 proxy — MISO publishes no public load-side headroom at all. License lapses late 2027."
                 : s.wd_conf === "own_harvest"
                   ? "our own PJM QueueScope harvest, case 23 (2028 TC2 Phase II Summer Peak)"
                   : s.wd_conf,
@@ -889,10 +882,10 @@ function siteDetail(s) {
           ${detailRow("Acres used", `${a.acres.toFixed(2)} ac`, null,
             a.disputed ? "⚠ Recorded and measured acreage disagree — the SMALLER is used, never the larger."
                        : "Recorded and measured acreage agree.")}
-          ${detailRow("Fits a data centre", s.mw_dc != null ? mw(s.mw_dc) : null, null,
+          ${detailRow("Fits a data center", s.mw_dc != null ? mw(s.mw_dc) : null, null,
             "At 4 MW/acre. Below 25 MW a hyperscale search will not look at it.")}
           ${detailRow("Fits a battery", s.mw_bess != null ? mw(s.mw_bess) : null, null,
-            "At 10 MW/acre. A BESS clears at a far smaller size than a data centre.")}
+            "At 10 MW/acre. A BESS clears at a far smaller size than a data center.")}
           ${detailRow("What is on it", landPlain(s.occ_group, s.structure_count)
             + (landPlainTitle(s.occ_group, s.structure_count)
                ? ` <span class="warn">&#9888; as of ${STRUCTURES_VINTAGE}</span>` : ""), null,
@@ -1172,7 +1165,7 @@ function toXLSX() {
     ...(chips.length ? chips.map((c) => ["", c]) : [["", "(none - this is everything shipped)"]]),
     [],
     ["WHAT THE COLUMNS MEAN"],
-    ["wd_*", "GETTING power - what a load such as a data centre can pull out. PJM publishes this."],
+    ["wd_*", "GETTING power - what a load such as a data center can pull out. PJM publishes this."],
     ["inj_*", "SENDING power - what a generator can push in. MISO publishes this."],
     ["", "A bus can be wide open one way and full the other. Never merge them."],
     ["mw_dc / mw_bess", "land supports up to this, at your MW-per-acre assumption. GROSS land, not a fit."],
@@ -1377,7 +1370,7 @@ function toXLSX() {
     scrRenderMapper();
     $("s-upload-status").innerHTML = (scrUp.mapping.lat !== undefined && scrUp.mapping.lon !== undefined)
       ? "Found coordinates automatically. Check the mapping and load."
-      : `<span class="cannot">No coordinate columns recognised — pick them above.</span>`;
+      : `<span class="cannot">No coordinate columns recognized — pick them above.</span>`;
   });
   $("s-upload-clear").onclick = () => {
     SiteStore.clear();

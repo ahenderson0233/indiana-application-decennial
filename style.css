@@ -362,3 +362,14 @@ body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
 .sitoc .tocg i::after { content: ":"; }
 .sitoc a { color: #2563eb; text-decoration: none; white-space: nowrap; }
 .sitoc a:hover { text-decoration: underline; }
+
+/* G123: prose hidden by applyDensePolicy() in common.js. Kept in the DOM rather than deleted
+   so no generator loses a node it is holding. */
+.dense-hidden { display: none !important; }
+
+/* G125: the copyable coordinate. Monospace so a reader can compare digits, and a small inline
+   button so the full 13 decimal places (G30b) can be taken without them being on screen. */
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.mini { font-size: 10px; padding: 1px 5px; margin-left: 6px; cursor: pointer;
+        border: 1px solid var(--line, #cbd5e1); background: #fff; border-radius: 3px; }
+.mini:hover { background: #f1f5f9; }

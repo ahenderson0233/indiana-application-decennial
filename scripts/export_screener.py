@@ -107,6 +107,24 @@ for r in client.query(f"""
          occ_cls,
          structure_count, parcel_acres, exact_parcel_acres, outdoor_acres, exact_outdoor_acres,
          mw_dc, mw_bess, lat, lon,
+
+         -- ⭐ G125: WHERE AM I? Operator: "EITHER coordinates OR addresses ... so they can
+         --    self-verify the results."
+         -- ⛔ THE ROW'S OWN PREMISE WAS WRONG TWICE AND BOTH CORRECTIONS SHIP HERE.
+         --    (1) "Address is Marion-only and must say so." It is not. That claim rests on
+         --        in_si_address_parcel_bridge (51,309 Marion rows), which is the ADDRESS SEARCH
+         --        crosswalk. energy.parcels_in is a different source - the DLGF's own property
+         --        address - and it is populated on 3,578,398 of 3,637,663 Indiana parcels
+         --        (98.4%) across all 92 counties. Measured on candidates: 527,038 of 531,325.
+         --    (2) "The parcel payload ships lat/lon on every row." It does not - `lat` is
+         --        populated on 2,284,133 of 3,553,194 in_sites rows, so only 40.3% of candidates
+         --        carry a PUBLISHED point. Every one of them has a polygon, so a display point
+         --        is derived from it and LABELLED by coord_basis.
+         -- ⚠ map_lat/map_lon are for the reader's eye and the imagery deep link. They are NOT in
+         --    any distance calculation - every distance on this payload was measured to a
+         --    geography, and "no centroid where a footprint exists" is untouched.
+         -- ⚠ Full precision is kept (G30b). The page displays 5 decimals and copies all of it.
+         prop_address, prop_city, prop_zip, map_lat, map_lon, coord_basis,
          has_signal, signals, signal_types, signal_events,
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
          events_3y, events_5y, events_10y, keying,

@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner signals — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
+<link rel="stylesheet" href="style.css?v=a1bb43e9"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
 <nav id="nav"></nav>
@@ -38,15 +38,6 @@
   </div>
 
   <div class="card" data-group="How many, and why"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
-    <div class="sowhat"><b>This is the question the page exists to answer.</b> Every parcel below is
-      non-residential and carries at least one admitted owner-motivation signal. They are ranked by
-      how many <b>different kinds</b> of distress stack up on one property, because a single signal
-      can be noise while a demolition order sitting on top of an unsafe building on top of repeated
-      violations is a story you can open a conversation with. Read the <b>why</b> column, then take
-      the parcel to the map console for its grid and land position.
-      <br><b>Recency does not mean the same thing for every signal.</b> A foreclosure goes stale;
-      contamination does not heal because the record is old. A parcel whose evidence is all old is
-      marked as such rather than dropped.</div>
     <div class="scroll" style="max-height:430px"><table id="t-lead"><tr>
       <th>parcel</th><th>what it is</th><th>why we believe the owner may sell</th>
       <th>kinds</th><th>most recent</th><th>last 3 yrs</th></tr></table></div>
@@ -81,11 +72,6 @@
        the reader cannot see it. There are exactly THREE, and they are named here with the rows
        each one removed, measured from the live tables. -->
   <div class="card" data-group="How many, and why"><h2>Every severity filter we apply, named &mdash; and what each one removes</h2>
-    <div class="sowhat"><b>A severity threshold decides which parcels you see, and you cannot audit
-      what you cannot see.</b> There are exactly three, plus the standing non-residential rule.
-      Each one is a judgement we made, so each is stated with the vocabulary it acts on, the count
-      it removed, and the reason a surviving row plausibly points at a willing seller. ⛔ Nothing
-      is deleted &mdash; excluded rows keep an <code>admit_status</code> and stay queryable.</div>
     <table>
       <tr><th>filter</th><th>what it keeps</th><th>what it removes</th><th>why a survivor means something</th></tr>
       <tr>
@@ -114,15 +100,12 @@
         <td><b>Non-residential only</b><div class="hint">standing operator ruling</div></td>
         <td>every non-residential occupancy class</td>
         <td class="cannot">76,612 parcels</td>
-        <td>A ~300&nbsp;MW data centre and a ~5&nbsp;MW battery both need land a house does not
+        <td>A ~300&nbsp;MW data center and a ~5&nbsp;MW battery both need land a house does not
           have. The rows are kept with <code>admit_status='excluded_residential'</code>.</td></tr>
     </table>
   </div>
 
   <div class="card" data-group="How many, and why"><h2>⚠ Does an environmental violation really mean someone will sell?</h2>
-    <div class="sowhat">Operator, 2026-08-19: <i>&ldquo;an environmental violation usually
-      doesn&rsquo;t result in a sale, so why do we believe our environmental violations
-      will?&rdquo;</i> <b>Taken as a live challenge to the signal, and it only half survives.</b></div>
     <div class="hint" style="margin:6px 0"><b>First, the volume was never real.</b> The corpus is
       often quoted at 58,003 rows, but <b>50,334 of those (86.8%) carry
       <code>no_distress_marker</code></b> and were never admitted. What is left is small enough to
@@ -192,18 +175,18 @@
     <div class="hint" id="cap-note"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="cap-bess">…</div><div class="hint">can host ≥5 MW BESS (≥0.5 ac)</div></div>
-      <div class="card"><div class="bigstat" id="cap-dc">…</div><div class="hint">can host ≥25 MW datacentre</div></div>
+      <div class="card"><div class="bigstat" id="cap-dc">…</div><div class="hint">can host ≥25 MW datacenter</div></div>
       <div class="card"><div class="bigstat" id="cap-small">…</div><div class="hint">too small for either — filtered out, not deleted</div></div>
     </div>
     <div class="prov">indiana_app.in_si_sites_flags_v2 · <code>fits_min_bess_5mw</code> /
       <code>fits_dc_25mw</code> · the screener's MW filter applies the same test at whatever
       density and MW floor you set</div></div>
-  <div class="card" data-group="Where it comes from, and how fresh"><h2>Signal inventory — the upstream corpus table, not the whole programme</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Signal inventory — the upstream corpus table, not the whole program</h2>
     <div class="sowhat"><b>Read this as one upstream table, not as leads and not as the full
       signal set.</b> It holds <b id="inv-total">&hellip;</b> observations across
       <b id="inv-n">&hellip;</b> signals, before any ruling is applied. Two cautions, because this
       table has read as more complete than it is:
-      <br><b>1. It is not the whole programme.</b> <b id="inv-cov">&hellip;</b> signals appear in the
+      <br><b>1. It is not the whole program.</b> <b id="inv-cov">&hellip;</b> signals appear in the
       coverage table further down, because owner-grain signals, absentee ownership and environmental
       enforcement are held in their own tables and never flowed through this one. A signal missing
       here is not a signal we lack.
@@ -380,7 +363,7 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=b6a36660"></script>
+<script src="common.js?v=9a0640f5"></script>
 <script>
 (async () => {
   const s = await loadProv();

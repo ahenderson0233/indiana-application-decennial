@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=6d6d89c3">
+<link rel="stylesheet" href="style.css?v=a1bb43e9">
 </head>
 <body>
 <header id="topbar">
@@ -60,16 +60,16 @@
       <div class="accbody">
         <label class="blk">Project type
           <select id="f-usecase">
-            <option value="dc">Data centre &mdash; whole parcel</option>
+            <option value="dc">Data center &mdash; whole parcel</option>
             <option value="bess">Battery storage &mdash; open ground only</option>
           </select></label>
-        <div class="hint">A data centre builds over or removes what is there, so
+        <div class="hint">A data center builds over or removes what is there, so
           its buildable area is the <b>whole parcel</b>. A battery fits <i>around</i> existing
           buildings, so it uses <b>open ground</b> (parcel &minus; building footprints).</div>
         <label><input type="checkbox" id="f-mw" checked> Fits at least
           <input type="number" id="f-mw-val" value="25" min="1"> MW</label>
         <div class="hint">at <input type="number" id="f-density" value="4" min="0.1" step="0.1">
-          MW per acre &mdash; 4 for a data centre, 10 for batteries. <b>Your assumption</b>, not
+          MW per acre &mdash; 4 for a data center, 10 for batteries. <b>Your assumption</b>, not
           something we measured.</div>
         <div class="hint" style="margin-top:5px">this is the first cut. A motivated
           owner on a two-acre lot is not a site.</div>
@@ -100,13 +100,6 @@
         <div class="hint" id="L-screener-note" style="margin:-2px 0 6px 18px">Loads on first use
           &mdash; 3.7&nbsp;MB. Not every screener site carries a location; the count is stated
           once it loads.</div>
-        <div class="sowhat"><b>These two are the shortlist itself, drawn geographically.</b>
-          Parcels are everything passing the filters you set on the left; the <b>Site Screener
-          results</b> layer is the ranked shortlist from the <a href="screener.html">screener</a>.
-          Seeing them on a map answers what a table cannot: whether your best sites
-          <i>cluster</i>, and how they sit against transmission, water and county posture. A
-          shortlist that scatters across eight counties is a different plan from one that
-          concentrates in two.</div>
         <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,115)</span></label>
         <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(217 &mdash; interstates and US routes)</span></label>
         <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(855)</span></label>
@@ -124,17 +117,6 @@
           <span class="hint">(195 placed &mdash; consent already given, project gone)</span></label>
         <label><input type="checkbox" id="L-campus"> Colleges &amp; food plants
           <span class="hint">(151 + 90)</span></label>
-        <div class="sowhat">Rail and highway access decide how construction loads and
-          transformers reach the site. <b>Declared surplus</b> is the cleanest owner-motivation
-          signal we hold: every other one infers willingness from distress, while a Report of
-          Excess is an owner <i>publicly stating in a federal filing</i> that it does not want the
-          property. There are only 20, and that is the honest number &mdash; the other 1,533
-          federal points are in active use and are context, not leads.
-          <b>A cancelled grid project</b> is the same idea from a different direction: the
-          landowner already signed an interconnection agreement, so consent and a studied grid
-          position exist and the project does not. <b>Colleges</b> are where operations staff come
-          from; <b>USDA-inspected food plants</b> are heavy industrial sites that already carry
-          large power, large water and a discharge permit.</div>
       </div>
     </details>
 
@@ -146,10 +128,6 @@
           <input type="number" id="f-dsub-kv" value="69" min="0"> kV</label>
         <label><input type="checkbox" id="f-dline"> Within
           <input type="number" id="f-dline-mi" value="1" min="0.1" step="0.1"> mi of a transmission line</label>
-        <div class="sowhat">These measure <i>distance to a wire</i>, which is not the
-          same as capacity to spare. A parcel beside a full substation is worse than one three miles
-          from a bus with headroom. For capacity, use the
-          <a href="screener.html">Site screener</a>.</div>
         <div class="subhead">Shown on the map</div>
         <label><input type="checkbox" id="L-subs" checked> Substations</label>
         <label><input type="checkbox" id="L-lines" checked> Transmission lines</label>
@@ -169,40 +147,16 @@
         <!-- G21, operator 2026-08-19: a layer does not have to say the words "so what", but it
              must outline why the dataset matters to an energy developer. Section 3 carried 14
              layers and one line, and that line was about voltage colour. -->
-        <div class="sowhat"><b>Substations, lines and buses are three different answers, and only
-          one of them is about capacity.</b> A line tells you power passes nearby; a substation
-          tells you it is transformed nearby; a <b>bus</b> is the only one of the three that
-          carries a number for <i>how much you could actually take</i>. A parcel beside a full
-          substation is a worse site than one three miles from a bus with headroom &mdash; so use
-          distance to decide construction cost, and the bus to decide whether the project is
-          possible at all. See the <a href="grid.html">Power &amp; grid</a> page for every bus in
-          both directions.</div>
         <!-- G15/G87, 2026-08-20: the only layer on this console about capacity that does not
              exist yet. Tier 1 only — see the so-what. -->
         <label><input type="checkbox" id="L-gridplan"> Planned utility work
           <span class="hint">(119 placed of 618 &mdash; sized by voltage)</span></label>
-        <div class="sowhat"><b>This is the future, and everything else here is the present.</b>
-          A substation being rebuilt to a higher voltage in 2027 changes what a site beside it can
-          ask for in 2028 &mdash; and a utility that has already committed capital near your
-          parcel is a very different negotiation from one that has not.
-          ⚠ <b>Only 119 of 618 planned items name a station we can place.</b> The other 499 name
-          only a utility; they are shown against that utility&rsquo;s service territory on the
-          <a href="grid.html">grid page</a> rather than invented into a point here.</div>
         <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(315 &mdash; projects competing for the same study slots)</span></label>
         <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(42 &mdash; estimated positions, not published)</span></label>
-        <div class="sowhat"><b>The queue is your competition for the same study slots and the same
-          headroom.</b> Every point here is a project that got there first; a cluster of them
-          around a bus is a warning that the number you are reading may already be spoken for by
-          the time your study runs. &#9888; <b>Candidate buses are ESTIMATED positions</b> &mdash;
+        <div class="sowhat">&#9888; <b>Candidate buses are ESTIMATED positions</b> &mdash;
           no operator publishes a public coordinate feed for PJM buses, so these are matched from a
           substation gazetteer. Treat them as &ldquo;about here&rdquo;, never as surveyed.</div>
         <label><input type="checkbox" id="L-terr"> Utility service territories</label>
-        <div class="sowhat"><b>This decides who you negotiate with, and it is the first phone call
-          you make.</b> The territory owning your parcel sets the tariff you pay, runs the load
-          study, and determines whether the state commission is involved at all &mdash; an
-          investor-owned utility answers to the IURC, a municipal or a REMC largely does not.
-          &#9888; A parcel straddling two territories is <b>reported as straddling</b> rather than
-          assigned to one, because guessing which one serves it would decide your rate for you.</div>
         <label><input type="checkbox" id="L-gas-pipe"> Gas pipelines <span class="hint">(213 &mdash; can you feed on-site generation)</span></label>
         <label><input type="checkbox" id="L-gas-comp"> Gas compressor stations <span class="hint">(24)</span></label>
         <label><input type="checkbox" id="L-gas-stor"> Gas storage fields <span class="hint">(22 &mdash; buffered supply nearby)</span></label>
@@ -211,12 +165,6 @@
         <label><input type="checkbox" id="L-fac-wind"> Wind farms <span class="hint">(1,652 &mdash; competing for the same queue slots)</span></label>
         <label><input type="checkbox" id="L-ghgrp"> Large emitters nearby
           <span class="hint">(neighbours already holding air permits)</span></label>
-        <div class="sowhat">Voltage class is the fastest read on the map &mdash; a
-          765&nbsp;kV backbone and a sub-100&nbsp;kV lateral look the same on a plain map and are not
-          remotely the same siting fact. <b>Unknown voltage has its own colour</b> and is never drawn
-          as low voltage. Gas matters if you intend on-site generation; a 300&nbsp;MW plant needs
-          roughly 50&nbsp;MMcf/d. Large emitters signal neighbours who already hold air permits, so
-          the permitting path is precedented rather than novel.</div>
       </div>
     </details>
 
@@ -229,12 +177,6 @@
         <label><input type="checkbox" id="f-cand"> Include candidate signals not yet admitted</label>
         <label><input type="checkbox" id="f-keepundated" checked> Keep records where we never got a
           date <span class="hint">(recency cannot be judged for them)</span></label>
-        <div class="sowhat">Public records &mdash; unpaid taxes, a foreclosure, a
-          demolition order &mdash; suggesting an owner may transact. Non-residential only, and only
-          trouble serious enough to plausibly move someone to sell.<br>
-          <b>Undated is not old.</b> 90% of our largest signal (unpaid taxes) carries no date, so a
-          bare &ldquo;last 90 days&rdquo; cut would delete nine tenths of it for a reason about our
-          collection, not about the property. They are kept by default; untick to exclude them.</div>
       </div>
     </details>
 
@@ -270,9 +212,6 @@
           see where the constraint lies. Use the flag to judge a parcel; use the layer to read the
           landscape.</div>
         <label><input type="checkbox" id="f-bonus"> Only federal energy-community tax-credit areas</label>
-        <div class="sowhat">The first three are hard constraints that can stop a
-          project. The last is an upside &mdash; areas where a coal plant or mine closed carry a
-          larger federal tax credit.</div>
         <div class="subhead">Shown on the map</div>
         <!-- G110: the two gates that had no layer at all. Loaded on first tick (4.7 MB together),
              and each prints its own coverage from the payload rather than a hardcoded claim. -->
@@ -291,35 +230,6 @@
         <label><input type="checkbox" id="L-bonus-qct"> Qualified census tract <span class="hint">(337)</span></label>
         <label><input type="checkbox" id="L-bonus-oz"> Opportunity zone <span class="hint">(156)</span></label>
         <label><input type="checkbox" id="L-bonus-hab"> Critical habitat <span class="hint">(10 &mdash; a CONSTRAINT, not a credit)</span></label>
-        <div class="sowhat"><b>Five of these six are money and the sixth can stop the project.</b>
-          An <b>energy community</b> or <b>low-income</b> designation adds up to 10 percentage
-          points to the investment tax credit, which on a capital-heavy build is the largest single
-          swing on this whole console &mdash; worth chasing deliberately rather than discovering
-          later. <b>Critical habitat is the opposite</b>: a federal consultation that can add a
-          year or end the siting outright. They were one checkbox until 2026-08-19, which meant a
-          developer chasing the adder could not separate it from the blocker.
-          <!-- G99, operator 2026-08-19: "A description of the environmental checkboxes — how do
-               qualified census tract zones differ from opportunity zones." They look
-               interchangeable (both are low-income tract designations) and they are not: three
-               different agencies, three different benefits, and only ONE is what an energy
-               project is actually chasing. -->
-          <br><br><b>⚠ THREE OF THESE LOOK ALIKE AND ONLY ONE IS YOUR CREDIT.</b> All three are
-          low-income tract designations, drawn by three different agencies for three different
-          purposes:
-          <br>&bull; <b>Energy community</b> &mdash; the IRA designation (Treasury/IRS). A closed
-          coal mine or plant, or a fossil-employment tract meeting an unemployment test.
-          <b>This is the one that pays you</b>: up to <b>10 percentage points</b> on the
-          investment tax credit for the project itself.
-          <br>&bull; <b>Opportunity zone</b> &mdash; a 2017 Act designation (Treasury/IRS),
-          nominated by the governor. The benefit belongs to an <b>INVESTOR</b>, not the project:
-          capital-gains deferral and reduction for someone rolling a realised gain into a
-          qualified fund. It changes who can cheaply finance you, not what you can claim.
-          <br>&bull; <b>Qualified census tract</b> &mdash; a <b>HUD</b> designation (≥50% of
-          households under 60% of area median income, or a poverty rate ≥25%). It exists to
-          allocate the <b>Low-Income Housing</b> Tax Credit. <b>It gives an energy project
-          nothing at all</b> &mdash; it is shown because it is a useful read on the community you
-          would be building in, and because a reader who sees it beside the other two would
-          otherwise assume it is money.</div>
         <label><input type="checkbox" id="L-watershed"> Watersheds
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
@@ -329,13 +239,6 @@
              nowhere. -->
         <label><input type="checkbox" id="L-water"> Rivers &amp; lakes
           <span class="hint">(2,595 bodies + 7,202 named reaches)</span></label>
-        <div class="sowhat">A 100 MW evaporative-cooled campus consumes roughly
-          <b>1&ndash;2 million gallons a day</b> of make-up water, so the question is not whether
-          water is nearby but whether a body is large enough to permit an intake against.
-          <b>Only named reaches over a kilometre and bodies over 12 acres are drawn</b> &mdash;
-          farm ponds are left out deliberately, because drawing them would answer the question
-          wrongly in the reassuring direction. Pair it with the county water panel, which gives
-          the county&rsquo;s entire public-supply withdrawal in the same units.</div>
         <!-- G72: four objects that were clipped in BigQuery and reached no control at all. They
              answer a question the console could not ask before: who ELSE already holds a say over
              this land. One control per kind - a base, a sovereign boundary and an altitude ceiling
@@ -348,27 +251,6 @@
           <span class="hint">(19 &mdash; MOAs &amp; restricted)</span></label>
         <label><input type="checkbox" id="L-obst"> Tall obstructions &ge;200 ft
           <span class="hint">(4,590 &mdash; <b style="color:#16a34a">green = wind turbine</b>)</span></label>
-        <div class="sowhat">These four say <b>who else already holds a say over the
-          land</b>, which is not something zoning or the environmental gates will tell you.
-          A large load near an active <b>installation</b> can draw a DoD Siting Clearinghouse
-          review that runs on the Department&rsquo;s clock, not the county&rsquo;s &mdash; it
-          rarely refuses, it adds months. <b>Tribal trust land</b> is a different sovereign
-          entirely, so the counterparty is the tribal government rather than the county.
-          <b>Special-use airspace</b> governs what may be built tall &mdash; cooling towers,
-          stacks and cranes, not the slab. And every <b>obstruction</b> drawn here is at or above
-          the 200 ft FAA notice threshold, so a cluster of them is cheap evidence that a tall
-          structure of your own will clear the same review.
-          <b style="color:#16a34a">Green obstructions are wind turbines</b>, and those are a
-          signal rather than a constraint: <b>1,816 of the 4,590</b> are turbines, and a standing
-          turbine is proof that this exact ground already cleared landowner consent, an
-          interconnection and a local permit &mdash; three of the four things a siter has to
-          establish from scratch anywhere else.</div>
-        <div class="sowhat">A watershed is the unit water is actually allocated and
-          argued over in &mdash; two parcels a mile apart in different subbasins can face different
-          objections and different permitting bodies. Click one to see the rivers, reservoirs and
-          lakes it holds. Power generation is already Indiana&rsquo;s largest water user
-          (3,822 of 7,177 Mgal/d) and <b>99.5% of that is surface water</b>, so a new thermal load
-          competes for exactly what these layers show.</div>
       </div>
     </details>
 
@@ -378,34 +260,27 @@
         <label><input type="checkbox" id="f-sent"> Opposition intensity at most
           <input type="number" id="f-sent-max" value="2" min="0" step="1"></label>
         <label><input type="checkbox" id="f-norestrict"> Exclude counties with a local restriction</label>
-        <div class="sowhat">County-level, not parcel-level. Opposition intensity partly
-          tracks <i>news volume</i>, so large metros read higher for reasons that are not posture.
-          <b>Absence of a recorded rule is not evidence there is no rule</b> &mdash; Indiana's
-          data-centre regulation is mostly county moratoria that no code library carries.</div>
         <div class="subhead">Shown on the map</div>
-        <label><input type="checkbox" id="L-dc"> &#11088; Existing data centres</label>
+        <label><input type="checkbox" id="L-dc"> &#11088; Existing data centers</label>
         <div class="hint" style="margin-left:18px">solid = the publisher gave a site coordinate &middot;
-          <span style="color:#b45309">hollow amber = city centre only, so the position is
+          <span style="color:#b45309">hollow amber = city center only, so the position is
           approximate</span></div>
         <div class="subhead">Shade counties by</div>
         <select id="county-metric">
           <option value="class_union">how many screened sites</option>
-          <option value="action_tone">what the county has DONE about data centres</option>
+          <option value="action_tone">what the county has DONE about data centers</option>
           <option value="opposition_intensity">opposition intensity</option>
           <!-- G88: "active queue MW" removed as a county shading on the operator's instruction.
                It was an interconnection-queue figure standing in for development activity, and
                G35 measured that 49 of 87 counties have had >=50% of everything ever queued
                withdrawn. The figure is still held and still shown in the parcel evidence panel,
                where it is framed as competition for study slots rather than as demand. -->
-          <option value="dc_listed">data centres operating here</option>
-          <option value="dc_pipeline">data centres approved or proposed</option>
+          <option value="dc_listed">data centers operating here</option>
+          <option value="dc_pipeline">data centers approved or proposed</option>
           <option value="ge25mw">parcels fitting 25 MW+</option>
           <option value="none">no shading</option>
         </select>
         <div class="hint" id="metric-legend" style="margin-top:5px"></div>
-        <div class="sowhat">Existing data centres are both competition for the same
-          power and evidence a county has already accepted one. ⚠ <b>An approval never cancels a
-          ban:</b> where a county has both, the restriction still governs.</div>
       </div>
     </details>
 
@@ -543,7 +418,7 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
-<script src="common.js?v=b6a36660"></script>
-<script src="app.js?v=c4f63e1b"></script>
+<script src="common.js?v=9a0640f5"></script>
+<script src="app.js?v=18b4d4aa"></script>
 </body>
 </html>

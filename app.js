@@ -475,7 +475,7 @@ map.on("load", async () => {
       if (state.measure.on) return;
       const p = e.features[0].properties;
       const rows_ = Object.entries(p).filter(([k]) => k !== "layer").slice(0, 10).map(([k, v]) => row(k, v)).join("");
-      show(p.layer === "dc" ? `Existing data centre: ${p.name || ""}` : `Facility (${p.layer})`,
+      show(p.layer === "dc" ? `Existing data center: ${p.name || ""}` : `Facility (${p.layer})`,
         `<table>${rows_}</table>${p.layer === "dc" && p.location_precision === "city"
            ? `<div class="cannot">THIS IS NOT THE FACILITY'S LOCATION. datacentermap publishes
               <code>precision=city</code> for this record, and the coordinate is a census-gazetteer
@@ -483,7 +483,7 @@ map.on("load", async () => {
               sits in, not the site. ${Number(p.pins_at_this_point) > 1
                 ? `<b>${p.pins_at_this_point} facilities share this exact point</b>, so they are drawn on
                    top of one another. ` : ""}It is shown hollow, it is excluded from distance
-              calculations, and it must not be used to site anything. 92 of our 242 data-centre
+              calculations, and it must not be used to site anything. 92 of our 242 data-center
               records are like this.</div>` : ""}
          ${p.layer === "dc" && String(p.unnamed_cannot_dedupe) === "true"
            ? `<div class="cannot">This point has no name in its source (OpenStreetMap), so the
@@ -615,9 +615,9 @@ const METRIC_LEGEND = {
     <span class="swatch" style="background:#f2f2f0;border:1px solid #cbd5e1"></span> nothing recorded.
     <b>Verified at an official source.</b> Grey means we found nothing — <b>not that nothing
     exists</b>; Indiana's rules are mostly county moratoria no code library carries.
-    <br><b>A restriction outranks a development.</b> 10 counties have approved a data centre and
+    <br><b>A restriction outranks a development.</b> 10 counties have approved a data center and
     <b>6 of them are still amber or red</b> — Lake County has an approval <i>and</i> a moratorium.
-    An existing project does not erase a ban, so the colour shows the restriction. The approval is
+    An existing project does not erase a ban, so the color shows the restriction. The approval is
     still worth knowing: a county that has said yes before may be readier to say yes again, which
     is why it is kept as its own fact rather than averaged away.
     <br>This is the one shading that can <b>stop a project outright</b>, and it is
@@ -637,15 +637,15 @@ const METRIC_LEGEND = {
     buildable. A high reading says start community engagement before you file, and plan for a longer
     hearing process. <b>Context only — it never disqualifies a parcel</b>; for something that can,
     switch to <i>what the county has DONE</i>.`,
-  dc_listed: `<b>Data centres a directory already lists in this county.</b> The closest thing we
+  dc_listed: `<b>Data centers a directory already lists in this county.</b> The closest thing we
     hold to "completed" — but it is a listing, not a certificate of occupancy.
-    <br>It cuts both ways and both matter. A county with operating data centres has
+    <br>It cuts both ways and both matter. A county with operating data centers has
     <b>demonstrated it will permit one</b>, and usually has the transmission and fibre to match.
     It is also <b>competition</b> for the same substation capacity and the same local goodwill.
     <br>⚠ <b>92 of our 249 pins are city centroids</b>, not facility locations, and 32 of those sit
     on a single point. Open a county to see how many of ITS pins are city-precision before reading
     a high number as a dense cluster.`,
-  dc_pipeline: `<b>Data centres approved or proposed but not yet listed as operating</b> —
+  dc_pipeline: `<b>Data centers approved or proposed but not yet listed as operating</b> —
     approvals and pending petitions from county and municipal bodies, each verified at the
     authority's own published record.
     <br>This is the forward-looking half, and it is the better predictor of
@@ -695,7 +695,7 @@ const LINE_KV_LEGEND = `
   <span class="swatch" style="background:#4a7bd0"></span>100&ndash;199 ·
   <span class="swatch" style="background:#93b4e3"></span>under 100 ·
   <span class="swatch" style="background:#b6bdc9"></span>unknown (dashed).
-  <b>Unknown is its own colour, not the bottom of the scale</b> — a line whose voltage we do not
+  <b>Unknown is its own color, not the bottom of the scale</b> — a line whose voltage we do not
   know is not a small line. 270 lines are genuinely unrated.`;
 function setLineKv(v) {
   // document.getElementById, NOT the $ helper — this is called at module scope, above `const $`.
@@ -890,7 +890,7 @@ function renderActiveFilters() {
   const on = (id) => { const e = $(id); return e && e.checked; };
   const c = [];
   const uc = $("f-usecase");
-  if (uc) c.push(uc.value === "bess" ? "battery storage" : "data centre");
+  if (uc) c.push(uc.value === "bess" ? "battery storage" : "data center");
   if (on("f-mw")) c.push(`fits ${fmt(V("f-mw-val"))}+ MW @ ${V("f-density")} MW/acre`);
   const cls = [["f-ci", "commercial/industrial"], ["f-ag", "farmland"], ["f-vac", "undeveloped"]]
     .filter(([id]) => !on(id)).map(([, l]) => l);
@@ -981,7 +981,7 @@ const TERR_FILL = ["match", ["get", "utility_type"],
                    ...TERR_TYPES.flatMap(([v, c]) => [v, c]), "#cbd5e1"];
 const BUS_BANDS = [
   { colour: "#b91c1c", label: "0 MW - already at or over its limit" },
-  { colour: "#f59e0b", label: "under 25 MW - below the datacentre floor" },
+  { colour: "#f59e0b", label: "under 25 MW - below the datacenter floor" },
   { colour: "#84cc16", label: "25-99 MW" },
   { colour: "#16a34a", label: "100-299 MW" },
   { colour: "#065f46", label: "300 MW and above - hyperscale-capable" },
@@ -1102,7 +1102,7 @@ async function openScreenerSite(fips, key, fallback) {
     <table class="ev">
       ${row("County", fallback && fallback.county)}
       ${row("Parcel", key)}
-      ${row("Fits (MW, data centre)", fallback && fallback.mw_dc)}
+      ${row("Fits (MW, data center)", fallback && fallback.mw_dc)}
       ${row("Acres", fallback && fallback.acres)}
       ${row("Owner shows a reason to sell", fallback && fallback.sig ? "yes" : "no",
             "measured — no signal on this parcel")}
@@ -1266,7 +1266,7 @@ const WIRED_PROV = {
     "would answer the question wrongly in the reassuring direction."],
   flowline: ["in_nhd_flowline_geom", "Named NHD reaches of at least 1 km.",
     "163,976 flowlines are held; an unnamed 500 m ditch is not an intake, so only the 7,202 " +
-    "named reaches over a kilometre are drawn."],
+    "named reaches over a kilometer are drawn."],
   fedprop: ["in_si_gov_surplus_v2", "Every federally-held property in Indiana, with what it IS.",
     "⛔ THIS CONTROL USED TO SAY “Federal surplus property” AND DRAW ALL 1,594 POINTS. Measured: " +
     "1,540 of them are Current Mission Need — the label was true of 17. Each point now states " +
@@ -1542,8 +1542,8 @@ function renderLayerLegend() {
     const chip = sw === null
       ? `<i class="lg-sw lg-pending" title="not loaded yet"></i>`
       : sw.banded
-        ? `<i class="lg-sw lg-banded" title="several colours - banded by value"></i>`
-        : `<i class="lg-sw" style="background:${escHtml(sw.colour)}"></i>`;
+        ? `<i class="lg-sw lg-banded" title="several colors - banded by value"></i>`
+        : `<i class="lg-sw" style="background:${escHtml(sw.color)}"></i>`;
     rows.push(`<div class="lg-row">${chip}<span>${escHtml(name)}</span>` +
               (sw && sw.banded && box !== "L-bus" ? ` <span class="hint">banded</span>` : "") +
               (sw === null ? ` <span class="hint">loading</span>` : "") + `</div>`);
@@ -1553,12 +1553,12 @@ function renderLayerLegend() {
     if (box === "L-terr")
       for (const [, colour, label] of TERR_TYPES)
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${colour}"></i>` +
+                  `<i class="lg-sw" style="background:${color}"></i>` +
                   `<span class="hint">${escHtml(label)}</span></div>`);
     if (box === "L-bus")
       for (const b of BUS_BANDS)
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${b.colour}"></i>` +
+                  `<i class="lg-sw" style="background:${b.color}"></i>` +
                   `<span class="hint">${escHtml(b.label)}</span></div>`);
     /* G112: the data-centre pins are TWO colours and the reader had to click one to find out why.
        The distinction is a claim about how much the coordinate can be trusted, which is exactly
@@ -1566,7 +1566,7 @@ function renderLayerLegend() {
     if (box === "L-dc")
       for (const [colour, label] of dcTiers())
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${colour}"></i>` +
+                  `<i class="lg-sw" style="background:${color}"></i>` +
                   `<span class="hint">${escHtml(label)}</span></div>`);
   }
   /* G96: while a ranking is painted, the parcel colour means something completely different from
@@ -1574,10 +1574,10 @@ function renderLayerLegend() {
      interpretation across. */
   if (state.rankPainted) {
     rows.push(`<div class="lg-row lg-metric"><i class="lg-sw lg-banded"></i>` +
-              `<span>parcel colour = <b>your ranking score</b>, not owner signal</span></div>`);
+              `<span>parcel color = <b>your ranking score</b>, not owner signal</span></div>`);
     for (const [, colour, label] of RANK_BANDS)
       rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                `<i class="lg-sw" style="background:${colour}"></i>` +
+                `<i class="lg-sw" style="background:${color}"></i>` +
                 `<span class="hint">${escHtml(label)}</span></div>`);
   }
   const metric = $("county-metric") ? $("county-metric").value : "none";
@@ -1826,7 +1826,7 @@ function applyParcelHighlight() {
       }
     el.innerHTML = measured
       ? `<b>${fmt(hit)}</b> of ${fmt(measured)} loaded parcels carry it, drawn in red. `
-        + `Parcels we never measured stay the ordinary colour rather than being called clear.`
+        + `Parcels we never measured stay the ordinary color rather than being called clear.`
       : `Zoom in until parcels load to see the highlight.`;
   }
 }
@@ -1972,7 +1972,7 @@ function msIndex() {
   for (const f of ((state.fac && state.fac.features) || [])) {
     const p = f.properties, c = (f.geometry || {}).coordinates;
     if (!c || p.layer !== "dc") continue;
-    push("data centre", p.name, c[1], c[0], p.location_precision === "city"
+    push("data center", p.name, c[1], c[0], p.location_precision === "city"
       ? "The publisher gives CITY precision for this record — this is a town centroid, not the facility."
       : null);
   }
@@ -1985,7 +1985,7 @@ function msIndex() {
     let bb;
     try { bb = bboxOf(g); } catch (e) { continue; }
     push("utility territory", p.utility, (bb[1] + bb[3]) / 2, (bb[0] + bb[2]) / 2,
-         "Territory centre, not an office or an asset.");
+         "Territory center, not an office or an asset.");
   }
   return out;
 }
@@ -2124,7 +2124,7 @@ async function msRun(q) {
         <br><b>1. Only Marion County publishes an address register we can use</b>, and we search
         it directly — <b>${fmt(ai.n || 0)} addresses</b>. The other 91 counties publish no
         equivalent, and this application has <b>no geocoder</b> on purpose: an address would
-        resolve to a street <i>centreline</i>, and a centreline is not a parcel — siting from one
+        resolve to a street <i>centerline</i>, and a centerline is not a parcel — siting from one
         puts your site in the road.
         <br><b>2. Even in Marion, only SITING CANDIDATES are indexed.</b> The map draws
         ${fmt(ai.drawn_parcels || 0)} of Marion's 340,765 parcels — the screened, non-residential
@@ -2146,7 +2146,7 @@ async function msRun(q) {
     .sort((a, b) => a.name.length - b.name.length).slice(0, 12);
   if (!hits.length) {
     say(`<div class="ms-note">Nothing matching <b>${escHtml(q)}</b> among the counties,
-      substations, buses, data centres and territories currently loaded.
+      substations, buses, data centers and territories currently loaded.
       ${state.grid ? "" : "<b>The grid layers are still loading</b> — try again in a moment."}</div>`);
     return;
   }
@@ -2520,7 +2520,7 @@ function scoreP5(p, fips) {
     why.push("a local restriction is on the books, and no verified action supersedes it");
   } else if (cp.approved) {
     s = Math.max(s, cfg.posture.quiet);
-    why.push("this county has APPROVED a data centre - precedent exists");
+    why.push("this county has APPROVED a data center - precedent exists");
   } else if (cp.verified && cp.why) {
     why.push(cp.why);
   }
@@ -2594,7 +2594,7 @@ function paintRanked(rows) {
     } catch (e) { /* a county mid-load has no layer yet; it will paint on its next rank */ }
   }
   /* ⛔ ONLY CLAIM IT IF IT HAPPENED. This was `state.rankPainted = true` unconditionally, so when
-     no parcel layer existed the legend still announced "parcel colour = your ranking score" over
+     no parcel layer existed the legend still announced "parcel color = your ranking score" over
      a map with no coloured parcel on it — a key describing a paint job that was never applied. */
   state.rankPainted = painted > 0;
   renderLayerLegend();
@@ -2761,7 +2761,7 @@ function naaSoWhat(p) {
     ? `<br><a href="${p.classification_url}" target="_blank" rel="noopener">EPA's published finding</a>`
     : "";
   return `<div class="sowhat">${sev}<br><b>Solar or battery-only? Largely moot.</b> The burden lands
-    on combustion &mdash; it bites a gas-fired or diesel-backed data centre, not a BESS.${src}</div>`;
+    on combustion &mdash; it bites a gas-fired or diesel-backed data center, not a BESS.${src}</div>`;
 }
 /* THREE states, not two (operator, 2026-08-18: "say something that is more truthful to the user").
  *
@@ -3149,7 +3149,7 @@ function renderPowerPlan(p, fips) {
     ? `<b class="cannot">Too small for either use case</b> — ${acr.acres.toFixed(2)} ac cannot host a ~5 MW BESS`
     : fitsDC ? `<b>Viable for a hyperscale search</b> — land supports up to ${fmt(mw)} MW at ${density} MW/acre
                 <span class="hint">(${mwReality(mw, density).band})</span>`
-             : `<b>BESS-scale only</b> — land supports ~${mw} MW at ${density} MW/acre; below the 25 MW datacentre floor`;
+             : `<b>BESS-scale only</b> — land supports ~${mw} MW at ${density} MW/acre; below the 25 MW datacenter floor`;
 
   const partRows = Object.keys(PART_NAME).map((k) => {
     const s = r.parts[k];
@@ -3270,7 +3270,7 @@ function renderPowerPlan(p, fips) {
       if (cp.legacyRestricted) return gateRow("Local rules", "RESTRICTION ON RECORD",
         "A local restriction is recorded for this county and no verified action supersedes it. Read the instrument before spending anything - the Community page carries what we hold.", "cannot");
       if (cp.approved) return gateRow("Local rules", `${cp.headline} — has approved before`,
-        "This county has already approved a data centre, which is the strongest positive precedent a siter can cite. Find that approval and read its conditions.");
+        "This county has already approved a data center, which is the strongest positive precedent a siter can cite. Find that approval and read its conditions.");
       if (cp.verified) return gateRow("Local rules", cp.headline,
         `${cp.why} Not a block, but it is movement — track it.`);
       return gateRow("Local rules",
@@ -3311,7 +3311,7 @@ function renderPowerPlan(p, fips) {
         <td>${ba || '<span class="cannot">not resolved</span>'}</td>
         <td class="hint">${ba === "MISO"
           ? "MISO runs the grid here. ⚠ MISO publishes only the sending-power direction publicly; the load-side figure below comes from our licensed Orennia subscription, which is the only source that carries it."
-          : ba === "PJM" ? "PJM runs the grid here, and publishes load-side (withdrawal) capacity — the direction a data centre needs."
+          : ba === "PJM" ? "PJM runs the grid here, and publishes load-side (withdrawal) capacity — the direction a data center needs."
           : "Sets the interconnection process and study queue."}</td></tr>
     </table>`;
 
@@ -3320,7 +3320,7 @@ function renderPowerPlan(p, fips) {
     fitsDC ? `The land supports <b>up to ${fmt(mw)} MW</b> at your ${density} MW/acre assumption
       (${acr.acres.toFixed(0)} acres, ${acr.basis}). ${mwReality(mw, density).note}`
       : `<b>Size is the binding constraint.</b> ${acr.acres.toFixed(2)} acres supports about ${fmt(mw)} MW
-         — below the 25 MW datacentre floor.`,
+         — below the 25 MW datacenter floor.`,
     /* Undeveloped land is NOT an owner-motivation signal — emptiness says nothing about whether
        the owner will sell (G10, and the D5 split parked 945,896 footprint-absence rows as
        NOT_A_SIGNAL). But it IS a genuine build advantage, and the app kept these parcels for
@@ -3366,7 +3366,7 @@ function renderPowerPlan(p, fips) {
         on record.</b> ${cp.why}`;
       if (cp.legacyRestricted) return `<b class="cannot">A local restriction is recorded for this
         county</b> and no verified action supersedes it — read the instrument before committing.`;
-      if (cp.approved) return `<b>This county has already APPROVED a data centre.</b> That is the
+      if (cp.approved) return `<b>This county has already APPROVED a data center.</b> That is the
         strongest positive precedent available to you; find the approval and read its conditions.`;
       if (cp.verified) return `County has ${cp.nActions} verified action(s) on record, led by
         <b>${cp.headline}</b>. ${cp.why || ""}`;
@@ -3417,7 +3417,7 @@ function renderPowerPlan(p, fips) {
     po.has_local_restriction
       ? `⚠ Local restrictions are recorded in this county — confirm current zoning status and any
          moratorium expiry before spending on diligence.`
-      : `Confirm local zoning and whether any moratorium is pending. Indiana's data-centre rules are
+      : `Confirm local zoning and whether any moratorium is pending. Indiana's data-center rules are
          largely county-level and often uncodified, so absence from our data is not proof of absence.`,
     acr.disputed ? `Resolve the acreage dispute with the county assessor before relying on capacity.` : null,
   ].filter(Boolean);
@@ -3430,6 +3430,12 @@ function renderPowerPlan(p, fips) {
       <div><b>The Power Plan</b> — ${po.county_name || fips} County, Indiana</div>
       <div class="hint">Parcel ${p.parcel_key} · prepared ${dateStr}</div>
     </div>
+
+    <!-- ⭐ G125: the dossier opens by saying WHERE the site is. A document a reader is expected to
+         act on has to be checkable against imagery before anything else in it means much, and
+         until now the dossier printed a parcel key and no location at all. -->
+    <h3>Where this site is</h3>
+    <table class="pp">${locationRows(p)}</table>
 
     <table class="pp">
       <tr><th style="width:31%">Interconnection status</th>
@@ -3480,14 +3486,14 @@ function renderPowerPlan(p, fips) {
              ${wdBus.provenance === "vendor_licensed_proxy" ? `<div class="hint"><b>⚠ Licensed
                vendor figure.</b> MISO publishes no load-side headroom at all, so this comes from
                our Orennia subscription rather than from a public source. It is the best number
-               that exists for this direction, and it is not ours — the licence lapses late 2027,
+               that exists for this direction, and it is not ours — the license lapses late 2027,
                after which this row goes back to reading "not published".</div>`
                : wdBus.probe_mw ? `<div class="hint">⚠ Headroom at a <b>${fmt(wdBus.probe_mw)} MW
                probe</b>, not this bus's maximum — we hold no other scenario yet, so a larger
                request could bind on a different facility.</div>` : ""}`
           : `<span class="cannot">Not published for this location.</span>`}</td>
         <td class="hint">${wdBus
-          ? `This is the direction a data centre needs. It is a published screening figure, not a
+          ? `This is the direction a data center needs. It is a published screening figure, not a
              service guarantee — only the utility's own study is binding.`
           : `<b>A gap in OUR coverage, not a property of the site.</b> ${ba === "PJM"
              ? `We hold PJM's current case for 1,826 buses, but only 227 of them carry a location
@@ -3541,10 +3547,10 @@ function renderPowerPlan(p, fips) {
               : `<div class="hint">no verified county action on record</div>`;
             if (cp.blocking) return `<td><span class="cannot"><b>${String(cp.headline).toUpperCase()}</b></span>${detail}</td>`;
             if (cp.legacyRestricted) return `<td><span class="cannot"><b>restriction recorded</b></span>${detail}</td>`;
-            if (cp.approved) return `<td><b>has approved a data centre</b>${detail}</td>`;
+            if (cp.approved) return `<td><b>has approved a data center</b>${detail}</td>`;
             return `<td>${cp.headline || '<span class="cannot">not assessed</span>'}${detail}</td>`;
           })()}
-        <td class="hint">Indiana's decision-relevant data-centre regulation is mostly county
+        <td class="hint">Indiana's decision-relevant data-center regulation is mostly county
           moratoria published on county websites, which no code library contains.
           <b>Absence here is not evidence of absence.</b></td></tr>
     </table>
@@ -3593,7 +3599,7 @@ function renderPowerPlan(p, fips) {
     <table class="pp">
       <tr><th style="width:31%">Question</th><th>What we can show</th></tr>
       ${row("Land &amp; size", `${acr.acres.toFixed(2)} ac — ${acr.basis}`)}
-      ${row("Fits a 25 MW datacentre", fitsDC ? "yes" : "no")}
+      ${row("Fits a 25 MW datacenter", fitsDC ? "yes" : "no")}
       ${row("Fits a 5 MW battery", fitsBESS ? "yes" : "no")}
       ${acr.disputed ? `<tr><td>Acreage dispute</td><td class="cannot">recorded and measured
         acreage disagree — the SMALLER is used, never the larger</td></tr>` : ""}
@@ -3635,6 +3641,62 @@ function renderPowerPlan(p, fips) {
   $("ev-dossier").classList.remove("hidden");
 }
 
+/* ============================================================================================
+   G125 - WHERE AM I? Operator, 2026-08-20c: *"we need to ensure that EITHER coordinates OR
+   addresses are visible somewhere in the popups/dossier, which is crucial for the user to
+   identify exactly where we are, so they can self-verify the results."*
+
+   ⛔ TWO THINGS THE ROW ASSUMED WERE WRONG, AND BOTH ARE HANDLED HERE.
+     1. "Address is Marion-only and must say so." It is NOT. That rests on
+        in_si_address_parcel_bridge (51,309 Marion rows), which is the address SEARCH crosswalk.
+        energy.parcels_in carries the DLGF's own property address on 3,578,398 of 3,637,663
+        Indiana parcels - 98.4%, all 92 counties. Measured on candidates: 527,038 of 531,325.
+     2. "The payload already carries the coordinate on every row." It does not - `lat` is
+        published on 2,284,133 of 3,553,194 in_sites rows, so 59.7% of parcels had none. Every
+        one HAS a polygon, so a display point is derived from it and LABELLED as derived.
+
+   ⚠ NEVER PRINT 0,0. `Number(null)` is 0 and 0 is finite, and that once put a military base in
+   the Gulf of Guinea. A parcel with no point says so.
+   ⭐ Full precision is kept in the copy field (G30b, all 13 places); 5 decimals are displayed,
+   which is about a metre - the right resolution for finding a site in imagery.
+   ⛔ These coordinates are for the reader and the imagery link. Nothing measures with them.
+   ============================================================================================ */
+function locationRows(p) {
+  const lat = p.x_map_lat != null ? Number(p.x_map_lat)
+            : (p.map_lat != null ? Number(p.map_lat)
+            : (p.lat != null ? Number(p.lat) : null));
+  const lon = p.x_map_lon != null ? Number(p.x_map_lon)
+            : (p.map_lon != null ? Number(p.map_lon)
+            : (p.lon != null ? Number(p.lon) : null));
+  const basis = p.x_coord_basis || p.coord_basis
+    || (p.lat != null ? "published" : null);
+  const addr = p.x_addr || p.prop_address || null;
+  const city = p.x_city || p.prop_city || null;
+  const zip = p.x_zip || p.prop_zip || null;
+
+  const hasPt = lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon)
+                && !(lat === 0 && lon === 0);
+  const pair = hasPt ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : null;
+  const full = hasPt ? `${lat}, ${lon}` : "";
+  const full1 = String(full).replace(/'/g, "&#39;");
+
+  const line = [addr, [city, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return `
+    ${row("address", line || null, "no address published for this parcel")}
+    ${row("coordinates", hasPt
+        ? `<span class="mono">${pair}</span>` +
+          ` <button class="mini" onclick="navigator.clipboard&&navigator.clipboard.writeText('${full1}')"
+             title="copy all 13 decimal places">copy</button>` +
+          ` <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}"
+             target="_blank" rel="noopener">imagery</a>`
+        : null, "no coordinate held for this parcel")}
+    ${basis === "parcel_interior_point"
+        ? `<tr><td>coordinate basis</td><td><span class="cannot">derived from the parcel
+             outline</span> — the assessor publishes no point for this parcel</td></tr>`
+        : (basis ? row("coordinate basis", "published by the assessor") : "")}
+    ${row("parcel id", p.parcel_key)}`;
+}
+
 function openParcelEvidence(p, fips) {
   state.dossierFor = { p, fips };
   $("ev-dossier").classList.remove("hidden");
@@ -3643,6 +3705,7 @@ function openParcelEvidence(p, fips) {
   const density = V("f-density");
   const acr = acreageOf(p);
   show(`Parcel ${p.parcel_key}`, `
+    <h3>Where</h3><table>${locationRows(p)}</table>
     <h3>Land & size (P3)</h3><table>
       ${row("class", p.occ_group)}${row("parcel acres", a(p.parcel_acres))}
       ${row("outdoor acres (EXACT: parcel − measured building intersection)", a(p.exact_outdoor_acres))}
@@ -3757,7 +3820,7 @@ function openParcelEvidence(p, fips) {
              p.si_excl_lowsev ? `${p.si_excl_lowsev} below the severity bar` : null]
             .filter(Boolean).join(" · ") : null)}</table>
     <div class="prov">${prov("in_si_sites_flags_v2")} · admitted at the NON-RESIDENTIAL level only
-      — a ~300 MW datacentre and a ~5 MW BESS both need land a house does not have — and only where
+      — a ~300 MW datacenter and a ~5 MW BESS both need land a house does not have — and only where
       severity would plausibly move an owner to sell, so a weed citation and a residential teardown
       do not qualify. Undeveloped land still renders for BESS siting; footprint absence simply stopped
       counting as intent. Where a date basis reads "layer name", the publisher wrote the event date
@@ -3770,7 +3833,7 @@ function openParcelEvidence(p, fips) {
     <div class="prov">${prov("in_site_gates")}</div>
     ${/* G72/G92: the gates reach the PARCEL POPUP too, not only the dossier and the screener.
          G51 applies cleanly here because in_land_gates is a COMPLETE Indiana clip - 33 polygons
-         covering every square metre we care about - so "none" is a measured finding rather than
+         covering every square meter we care about - so "none" is a measured finding rather than
          an absence of measurement, and each row says which it is. */
       (() => {
         const g = gatesForPoint(Number(p.lat), Number(p.lon));
@@ -3804,7 +3867,7 @@ function openParcelEvidence(p, fips) {
    Operator, 2026-08-19: *"The buses should show both withdrawal and injection amounts, since a
    developer may be concerned with co-locating their site prospect with generation."*
 
-   ⭐ The reason matters as much as the ask. A data centre that brings its own generation asks TWO
+   ⭐ The reason matters as much as the ask. A data center that brings its own generation asks TWO
    questions of one bus -- how much load can I pull OUT, and how much can I push IN -- and they are
    genuinely different numbers, not two views of one. A bus can be wide open one way and full the
    other. Answering them on separate surfaces made the co-location case impossible to evaluate.
@@ -3826,7 +3889,7 @@ function busSourceLine(d) {
   if (!d) return "";
   return d.provenance === "vendor_licensed_proxy"
     ? "licensed Orennia DPP-2025 proxy — MISO publishes no public load-side figure at all, " +
-      "and this licence lapses late 2027"
+      "and this license lapses late 2027"
     : `our own PJM QueueScope harvest${d.probe_mw ? ` at a ${fmt(d.probe_mw)} MW probe` : ""}`;
 }
 function busDirectionBlock(d, label, whatItMeans) {
@@ -3859,7 +3922,7 @@ function busBothDirections(p) {
     ${row("Bus number", p.bus_number)}${row("Bus name", p.bus_name)}
     ${row("kV", p.kv)}${row("Area", p.area_name)}${row("Grid operator", p.iso)}</table>
     ${busDirectionBlock(wd, "Withdrawal — what a LOAD can pull out",
-      "This is the data-centre question. It is what the site itself can draw.")}
+      "This is the data-center question. It is what the site itself can draw.")}
     ${busDirectionBlock(inj, "Injection — what a GENERATOR can push in",
       "This is the co-location question. If you intend to build your own generation on or beside " +
       "the site, this is the number that decides whether it can reach the grid here.")}
@@ -4132,7 +4195,7 @@ function dcPostureBlock(c) {
             franchise</span>` : ""}`
     : null;
   return `
-    <h3>Data centres in this county</h3><table>
+    <h3>Data centers in this county</h3><table>
       ${row("Operating (directory-listed)", d.listed ? `${fmt(d.listed)}${cityNote}` : null,
             "none listed by any of our four directories")}
       ${row("Approved by a local body", d.approved || null, "none recorded")}
@@ -4145,12 +4208,12 @@ function dcPostureBlock(c) {
       ${row("Utilities whose area touches this county", d.n_utilities)}
     </table>
     <div class="sowhat">${d.listed || d.approved
-      ? "<b>This county has said yes before.</b> An operating or approved data centre is the " +
+      ? "<b>This county has said yes before.</b> An operating or approved data center is the " +
         "strongest evidence that a board will permit one — and simultaneously competition for " +
         "the same substation capacity."
       : (d.denied
         ? "<b>This county has refused one.</b> That is a posture signal a queue figure cannot give you."
-        : "No data centre is recorded here either way. That is <b>not</b> evidence of a welcome — " +
+        : "No data center is recorded here either way. That is <b>not</b> evidence of a welcome — " +
           "it means no precedent exists in either direction.")}</div>
     <div class="prov">${prov("in_dc_county_posture")} · operating counts are a spatial join of
       directory listings; approvals are verified at the authority's own record.
@@ -4310,16 +4373,16 @@ function countyExtrasBlock(c) {
       a land-cost question here, never a location question.</div>
 
     <h3>Is the industry already here?</h3><table>
-      ${row("data-centre establishments", x.dc_industry_establishments, "none in this county")}
+      ${row("data-center establishments", x.dc_industry_establishments, "none in this county")}
       ${row("people employed in them", x.dc_industry_employment, "none in this county")}
       ${row("utilities employment", x.utilities_employment, "none reported")}
       ${row("telecoms employment", x.telecom_employment, "none reported")}</table>
     <div class="sowhat">${x.dc_industry_employment
-      ? `<b>The data-centre industry already employs ${fmt(x.dc_industry_employment)} people in
+      ? `<b>The data-center industry already employs ${fmt(x.dc_industry_employment)} people in
          ${x.dc_industry_establishments} establishments here.</b> That usually means the
          substation capacity, the fibre and — most valuable of all — the permit precedent already
          exist, and somebody at the county has done this before.`
-      : `<b>No data-centre industry employment is recorded in this county.</b> Only 15 of
+      : `<b>No data-center industry employment is recorded in this county.</b> Only 15 of
          Indiana's 92 counties have any, so this is the normal case rather than a warning — but
          it does mean you would be the first, and first movers write the ordinance rather than
          inheriting one.`}</div>`;
@@ -4757,8 +4820,8 @@ function renderUploadMapper() {
         `<label class="blk" style="margin-bottom:3px">${label}${role === "lat" || role === "lon" ? " <b>*</b>" : ""}
            <select class="up-role" data-role="${role}">${opts(u.mapping[role])}</select></label>`).join("")}
       <div class="hint" style="margin-top:4px"><b>*</b> Latitude and longitude are required to place
-        a site. We do <b>not</b> geocode an address to a street centreline — that is a project rule,
-        because a centreline is not a parcel. Rows without coordinates are still kept and exported.</div>
+        a site. We do <b>not</b> geocode an address to a street centerline — that is a project rule,
+        because a centerline is not a parcel. Rows without coordinates are still kept and exported.</div>
       <button id="up-apply" style="margin-top:5px">Load these ${Math.max(0, rows.length - u.headerRow - 1)} rows</button>
     </div>`;
   const resync = () => {
@@ -4798,7 +4861,7 @@ $("upload").addEventListener("change", async (e) => {
   renderUploadMapper();
   $("upload-status").innerHTML = g.lat !== undefined && g.lon !== undefined
     ? `Found coordinates automatically. Check the mapping and load.`
-    : `<span class="cannot">No coordinate columns recognised — pick them above.</span>`;
+    : `<span class="cannot">No coordinate columns recognized — pick them above.</span>`;
 });
 
 function ingestRecords(recs, latK, lonK, meta) {

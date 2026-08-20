@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Community &amp; Regulatory — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
+<link rel="stylesheet" href="style.css?v=a1bb43e9"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Community &amp; Regulatory</span></div></header>
 <nav id="nav"></nav>
@@ -10,11 +10,6 @@
   <h1>Community &amp; Regulatory</h1>
   <div class="sub">County posture with receipts, IURC dockets, and the Indiana legislative preview (the scope-limited P7). Grey = no receipts held — <b>cannot assess, not calm</b>.</div>
   <div class="card"><h2>Receipts browser — every item, newest first</h2>
-    <div class="sowhat">This is the <b>evidence behind every county colour on the
-      map</b>. Before you trust a posture, read what produced it — a single news article and an
-      adopted ordinance are not the same weight, and the difference decides whether you walk away
-      or send a lawyer. When you do file, this is where the specific docket number or ordinance to
-      cite comes from. <b>Audit trail, not a site test.</b></div>
     <div style="margin-bottom:8px">
       <select id="f-kind"><option value="">all kinds</option><option value="news">news</option><option value="iurc_docket">iurc_docket</option><option value="dc_action">dc_action</option><option value="county_action">county_action</option><option value="ordinance">ordinance</option></select>
       <input id="f-q" placeholder="filter text / county…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px">
@@ -23,20 +18,14 @@
     <div class="scroll"><table id="t-rec"><tr><th>kind</th><th>county</th><th>item</th><th>date</th></tr></table></div>
     <div class="prov" id="p-rec"></div></div>
   <div class="card"><h2>County posture (from held receipts)</h2>
-    <div class="sowhat">The county-level go / think-hard / no-go read, and the fastest
-      way to cut a target list before you look at a single parcel. ⚠ <b>A restriction outranks a
-      development</b> — a county that has approved a data centre AND holds a moratorium is still
+    <div class="sowhat">⚠ <b>A restriction outranks a
+      development</b> — a county that has approved a data center AND holds a moratorium is still
       governed by the moratorium. <b>Grey is “cannot assess”, never “calm”</b>: it means we hold no
       receipts for that county, and Indiana’s rules are mostly county moratoria that no code library
       carries — so grey is a phone call, not a green light.</div>
     <div class="scroll"><table id="t-post"><tr><th>county</th><th>posture</th><th>opposition</th><th>restriction</th><th>queue MW</th><th>utilities</th></tr></table></div>
     <div class="prov">source: energy.vw_county_dc_posture + county aggregates · one counter under verification is not shown</div></div>
-  <div class="card"><h2>County data-centre actions — the layer no code library carries</h2>
-    <div class="sowhat">This is <b>the only thing on any page that can stop a project
-      outright</b>, and it is measured in council calendar — months, not design weeks. Everything else
-      in this application changes cost or schedule; a ban changes whether the site exists for you.
-      Read the expiry where one is shown: a moratorium with a date is a timing problem, while a ban
-      with none is a siting decision.</div>
+  <div class="card"><h2>County data-center actions — the layer no code library carries</h2>
     <div class="hint" id="cda-lead"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="cda-restrict">…</div><div class="hint">VERIFIED restrictive postures — moratorium, ban, or adopted uncodified ordinance</div></div>
@@ -70,21 +59,15 @@
       from the codified <code>in_ordinances_dc_v2</code> below — three different instruments, never
       merged. Publisher's own dates throughout; the pull timestamp is a separate column.</div></div>
 
-  <div class="card"><h2>Local data-centre ordinances — what is codified, and what is not</h2>
-    <div class="sowhat"><b>Codified and uncodified are different risks, not different
-      wordings.</b> A <b>codified</b> ordinance is a known quantity: you can read the setbacks, noise
-      limits and district table and design to them. An <b>uncodified</b> moratorium or resolution is a
-      moving target that can be extended, tightened or replaced at a single meeting, so it needs a
-      diary entry rather than a design response. ⚠ A district table with <b>every cell blank</b> means
-      permitted nowhere — that is a prohibition written as silence.</div>
+  <div class="card"><h2>Local data-center ordinances — what is codified, and what is not</h2>
     <div class="hint" id="ord-caveat"></div>
     <div class="gridcards" style="margin:8px 0">
-      <div class="card"><div class="bigstat" id="ord-named">…</div><div class="hint">code sections that actually NAME a data centre</div></div>
+      <div class="card"><div class="bigstat" id="ord-named">…</div><div class="hint">code sections that actually NAME a data center</div></div>
       <div class="card"><div class="bigstat" id="ord-rel">…</div><div class="hint">sections that regulate one as a land use (after triage)</div></div>
       <div class="card"><div class="bigstat" id="ord-cand">…</div><div class="hint">raw candidate rows the search returned</div></div>
     </div>
-    <div class="hint" style="margin-bottom:6px"><b>Sections that regulate a data centre as a land
-      use.</b> A wireless telecommunications facility is a tower, not a data centre — 43 candidate
+    <div class="hint" style="margin-bottom:6px"><b>Sections that regulate a data center as a land
+      use.</b> A wireless telecommunications facility is a tower, not a data center — 43 candidate
       rows matched that phrase and none are admitted here.</div>
     <div class="scroll" style="max-height:300px"><table id="t-ord"><tr><th>county</th><th>jurisdiction</th><th>section</th><th>verdict</th><th>why</th></tr></table></div>
     <div class="hint" style="margin:10px 0 6px"><b>Triage of every candidate row</b></div>
@@ -95,17 +78,12 @@
     <div class="prov">indiana_app.in_ordinances_* · triage by scripts/triage_ordinances_v2.py ·
       exported by scripts/export_ordinances.py</div></div>
 
-  <div class="card"><h2>Indiana legislature — energy &amp; data-centre bills <span class="hint">(the P7 preview)</span></h2>
-    <div class="sowhat">State law is the one thing that can move every county at once —
-      it can pre-empt local restrictions, or hand counties new powers to impose them, and it sets the
-      sales-tax treatment that changes a build’s economics outright. <b>But a bill is not law.</b> Use
-      this to see what could change inside your development timeline, not as a fact about today’s
-      rules — the county tables above are what governs right now.</div>
+  <div class="card"><h2>Indiana legislature — energy &amp; data-center bills <span class="hint">(the P7 preview)</span></h2>
     <div id="leg-stats" class="hint" style="margin-bottom:8px"></div>
     <div style="margin-bottom:8px">
       session <select id="leg-session"><option value="">all</option></select> ·
       chamber <select id="leg-chamber"><option value="">both</option><option value="lower">House</option><option value="upper">Senate</option></select> ·
-      <label style="display:inline"><input type="checkbox" id="leg-dc"> data-centre bills only</label> ·
+      <label style="display:inline"><input type="checkbox" id="leg-dc"> data-center bills only</label> ·
       <input id="leg-q" placeholder="filter title / sponsor…" style="padding:3px 7px;border:1px solid #ccd3de;border-radius:5px;width:200px">
     </div>
     <div class="scroll" style="max-height:420px"><table id="t-leg">
@@ -130,17 +108,9 @@
 
   <div class="gridcards">
     <div class="card"><h2>Federal disaster declarations — Indiana history</h2>
-      <div class="sowhat">Repeated federal declarations of the same hazard in a county
-        are what an insurer and a structural engineer price. It shows up as <b>premium, design
-        standard and expected downtime</b> — not as a reason to reject a site, but as a cost you should
-        carry in the model rather than discover later. <b>County-grain context.</b></div>
       <div class="scroll" style="max-height:260px"><table id="t-dis"><tr><th>incident</th><th>declarations</th><th>counties</th><th>first</th><th>latest</th></tr></table></div>
       <div class="prov" id="p-dis">source: <code>in_fema_disaster_declarations</code></div></div>
     <div class="card"><h2>Severe weather events by type (NOAA storm events)</h2>
-      <div class="sowhat">The hazard mix matters more than the count. Tornado and hail
-        frequency drive the structural and roof spec on a very large single-storey building, and wind
-        events drive how much you spend hardening the interconnection you just paid for. Pair it with
-        the flood and wetland gates on the map. <b>County-grain context, not a site test.</b></div>
       <div class="scroll" style="max-height:260px"><table id="t-storm"><tr><th>event type</th><th>events</th><th>years</th><th>direct injuries</th></tr></table></div>
       <div class="prov">source: <code>in_storm_events</code> · county-grain hazard history — the
         physical-risk complement to the flood and wetland gates on the map</div></div>
@@ -162,10 +132,6 @@
       <div class="prov">indiana_app.in_drought_by_state · US Drought Monitor.
         ⚠ <b>A STATE figure, not a county one</b> &mdash; it must never be read onto a parcel.</div></div>
     <div class="card"><h2>Water stress in the basins Indiana sits in</h2>
-      <div class="sowhat">A withdrawal permit is argued at BASIN level, not county level, so two
-        parcels a few miles apart can face different objectors. <b>Baseline water stress is the
-        ratio of withdrawals to available supply</b> &mdash; it governs how CONTESTED a new
-        withdrawal will be, which is a different question from whether water is physically there.</div>
       <div class="scroll" style="max-height:260px"><table id="t-aq">
         <tr><th>basin</th><th>baseline stress</th><th>depletion</th>
           <th>year-to-year variability</th><th>drought risk</th></tr></table></div>
@@ -179,11 +145,6 @@
     <div class="prov" id="p-cwa"></div></div>
 
   <div class="card"><h2>Court activity by county — mortgage foreclosures &amp; evictions (IOCS)</h2>
-    <div class="sowhat">A read on <b>local economic distress</b>, which is what makes land
-      loose and prices negotiable — useful for choosing which county to shop in. ⛔ <b>It can never
-      identify a building</b>, and must not be read as one: the source counts cases per court, so a high
-      number tells you about a county’s economy, never about the parcel you are looking at. The
-      parcel-level version of this question is the Owner-motivation feed.</div>
     <div class="hint" style="margin-bottom:6px">Distress context at <b>county grain only</b>. The source is a
       court-statistics workbook: one row per court, with each case-type code as a COLUMN of counts. There are
       no per-address events here, so this can never become a parcel-level signal — it tells you what a county's
@@ -193,7 +154,7 @@
       TOTAL, 21,300 MF) and the <code>nan</code> residue (10,235) — together 62% of the raw MF sum and the reason
       the unfiltered county list read 94 names for a 92-county state. All 92 join county boundaries exactly.</div></div>
 </div>
-<script src="common.js?v=b6a36660"></script>
+<script src="common.js?v=9a0640f5"></script>
 <script>
 (async () => {
   await loadProv();
@@ -466,7 +427,7 @@
   const L = await fetchGz("data/legislature.json.gz");
   const c_ = L.counts;
   document.getElementById("leg-stats").innerHTML =
-    `<b>${fmt(c_.bills)}</b> energy bills across 3 sessions · <b>${fmt(c_.dc_bills)}</b> name data centres
+    `<b>${fmt(c_.bills)}</b> energy bills across 3 sessions · <b>${fmt(c_.dc_bills)}</b> name data centers
      directly · <b>${fmt(c_.bills_with_votes)}</b> reached a recorded vote (${fmt(c_.votes)} vote events,
      ${fmt(c_.rollcall_rows)} individual member votes) · ${fmt(c_.actions)} actions · ${fmt(c_.versions)} bill versions.
      Bills without a vote are not failures — most are still in committee.`;
@@ -498,7 +459,7 @@
         const sp = sponsorNames(b.id), la = latestAction(b.id);
         const vs = L.votes_by_bill[b.id] || [];
         const last = vs.length ? vs[vs.length - 1] : null;
-        return `<tr><td><a data-bill="${b.id}">${esc_(b.identifier)}</a>${b.is_dc ? ' <span title="names data centres">🖥</span>' : ""}
+        return `<tr><td><a data-bill="${b.id}">${esc_(b.identifier)}</a>${b.is_dc ? ' <span title="names data centers">🖥</span>' : ""}
           <div class="hint">${CH[b.chamber] || b.chamber || ""}</div></td>
           <td>${esc_(b.title)}<div class="hint">qualified on: ${b.match_on.join(" + ")}</div></td>
           <td>${b.session}</td>

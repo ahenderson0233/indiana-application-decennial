@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Data — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
+<link rel="stylesheet" href="style.css?v=a1bb43e9"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Data</span></div></header>
 <nav id="nav"></nav>
@@ -64,13 +64,13 @@
     <div class="scroll" style="max-height:260px"><table id="t-gasop"><tr><th>operator</th><th>latest report</th><th>reports held</th><th>plastic miles</th><th>coated steel miles</th></tr></table></div>
     <div class="prov">source: <code>in_gas_phmsa_distribution</code> · distribution-system operators
       serving Indiana; the local-delivery counterpart to the interstate pipeline capacity on Market</div></div>
-  <div class="card"><h2>Cloudscene cross-check — how complete is our data-centre layer?</h2>
+  <div class="card"><h2>Cloudscene cross-check — how complete is our data-center layer?</h2>
     <div class="hint" id="cs-summary"></div>
     <div class="scroll" style="max-height:320px"><table id="t-cs"><tr><th>cloudscene name</th><th>city</th><th>market</th><th>held with coordinates?</th></tr></table></div>
     <div class="prov">indiana_app.in_cloudscene_crosscheck · Indiana rows found through <code>market</code>,
       which IS cloudscene's state key (<code>&lt;state&gt;-regional</code> buckets run across the table;
       <code>state</code> is blank for 5,283 of 5,388 rows). <b>Cloudscene holds no coordinates</b>, so it can
-      never be a map layer — its only job is to tell us what our 242 pinned data centres might be missing.</div></div>
+      never be a map layer — its only job is to tell us what our 242 pinned data centers might be missing.</div></div>
   <div class="card"><h2>…and the answer: every "missing" colo, resolved</h2>
     <div class="hint" id="colo-lead" style="margin-bottom:8px"></div>
     <div class="scroll" style="max-height:320px"><table id="t-colo"><tr><th>facility</th><th>operator</th><th>verdict</th><th>address</th><th>already pinned as</th><th>evidence</th></tr></table></div>
@@ -98,7 +98,7 @@
     <input id="f-q" placeholder="filter…" style="padding:4px 8px;border:1px solid #ccd3de;border-radius:5px;width:260px;margin-bottom:8px">
     <div class="scroll" style="max-height:640px"><table id="t-prov"><tr><th>table</th><th>rows</th><th>source</th><th>built</th></tr></table></div></div>
 </div>
-<script src="common.js?v=b6a36660"></script>
+<script src="common.js?v=9a0640f5"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -213,7 +213,7 @@
   document.getElementById("cs-summary").innerHTML =
     `Cloudscene lists <b>${fmt(rowsCs.length)}</b> Indiana facilities, but <b>${fmt(telco.length)}</b> of them are
      carrier central offices (${fmt(rowsCs.filter((r) => /^frontier/i.test(r.name || "")).length)} Frontier alone) —
-     telecom plant, not data centres, and correctly outside our layer.
+     telecom plant, not data centers, and correctly outside our layer.
      Of the <b>${fmt(colo.length)}</b> genuine colo/enterprise facilities, <b>${fmt(matched)}</b> match something we
      already hold pinned and <b>${fmt(colo.length - matched)}</b> do not. Those are the ones worth a look: either
      absent from our layer, or the same site under a different name. Name matching is evidence, not proof —
@@ -226,7 +226,7 @@
                           "no building exists"}</b>
               <div class="hint">investigated: ${String(r.res.already_pinned_as || r.res.same_building_as || r.res.facility_name || "")}
               ${r.res.confidence ? " · " + r.res.confidence : ""}</div>`
-                  : r.telco ? `<span class="hint">carrier central office — not a data centre</span>`
+                  : r.telco ? `<span class="hint">carrier central office — not a data center</span>`
                     : r.hit ? (r.viaAlias ? `yes — already pinned <span class="hint">(matched through an operator rename)</span>`
                                           : "yes — already pinned")
                             : `<span class="cannot">no name match in our 242</span>`}</td></tr>`).join(""));

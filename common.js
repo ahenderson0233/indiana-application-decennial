@@ -254,7 +254,7 @@ const GLOSSARY = {
   SAIFI: ["System Average Interruption Frequency Index", "average number of outages a customer sees per year"],
   BESS: ["Battery Energy Storage System", "a grid-connected battery installation"],
   kV: ["kilovolt", "a measure of line voltage; higher generally means more capacity"],
-  MW: ["megawatt", "a measure of electrical power; a large data centre campus is 300-1,000 MW"],
+  MW: ["megawatt", "a measure of electrical power; a large data center campus is 300-1,000 MW"],
 };
 /* <span class="abbr">MISO</span> style inline expansion */
 function abbr(k) {
@@ -387,7 +387,7 @@ function mwReality(mw, density) {
   if (m >= 2000) return { band: "land-area artefact", note:
     `<b>Treat ${Math.round(m).toLocaleString()} MW as an upper bound on LAND, not a site capacity.</b> ` +
     `It is gross acreage${d}, before setbacks, easements, internal water and existing structures — ` +
-    `and it exceeds every data-centre campus ever built. Large parcels like this are phased over ` +
+    `and it exceeds every data-center campus ever built. Large parcels like this are phased over ` +
     `years, and power will bind long before land does.` };
   if (m >= 1000) return { band: "very large, phase it", note:
     `At ${Math.round(m).toLocaleString()} MW this is at the very top of what exists anywhere — the ` +
@@ -396,8 +396,8 @@ function mwReality(mw, density) {
   if (m >= 25) return { band: "hyperscale-capable", note:
     `Gross acreage${d}, before setbacks, easements, internal water and existing structures, so real ` +
     `buildable capacity is lower. Land is rarely the binding constraint at this size — power is.` };
-  return { band: "below the data-centre floor", note:
-    `Below the 25 MW datacentre floor${d}, though it may still suit a BESS. Gross acreage, before ` +
+  return { band: "below the data-center floor", note:
+    `Below the 25 MW datacenter floor${d}, though it may still suit a BESS. Gross acreage, before ` +
     `setbacks and easements.` };
 }
 
@@ -625,7 +625,7 @@ function tariffCells(q, mw, lf) {
     return [`${q.utility}<div class="hint"><span class="cannot">no rate we hold applies at
              ${fmt(mw)} MW</span></div>`,
             `We hold no schedule this load is eligible for at this utility. That is usually a
-             CEILING - small municipal schedules cap out well below a data centre - and it means
+             CEILING - small municipal schedules cap out well below a data center - and it means
              the rate would be individually negotiated.`];
   }
   if (q.urdbOnly) {
@@ -885,4 +885,131 @@ function mapSheetRows(rows, headerRow, mapping) {
     out.push(rec);
   }
   return { header, records: out };
+}
+
+/* ============================================================================================
+   G123 - FIELD AND VALUE ON THE WORKING SURFACES. One policy, in one place.
+
+   Operator, 2026-08-20c: "cut out all of the 'Why' statements ... everything should be field +
+   associated number (especially on the popup, throughout the tables, and in the screener - we
+   need to assume that the user is an energy professional) ... but we should keep the insights tab
+   as something that people can refer to."
+
+   WHY THIS IS A RENDER-TIME POLICY AND NOT 60 EDITS TO 60 GENERATORS.
+   The static .sowhat blocks were relocated to insights.html by
+   scripts/relocate_prose_to_insights.py - 49 of them. What remains is generated: measured on
+   si.html alone, 1,266 .hint elements, 1,225 of them inside a table cell. They are produced by
+   dozens of template literals spread across si/market/community/grid and app.js, and rewriting
+   every one of those by hand is a large diff with a large blast radius for a presentation
+   decision. This is a presentation decision, so it lives in one function that any page can be
+   reasoned about through.
+
+   ⛔ WHAT IS NEVER REMOVED, because it is DISCLOSURE and not explanation:
+       - anything carrying the project's own disclosure markers, mostly the warning signs
+       - the cap line, the three-state wording, the vendor-licence badge, the 2020 structures
+         vintage, the estimate-vs-published flag
+       - anything SHORT. Measured: 852 of the 1,266 hints are under 25 characters. Those are
+         units, weights, record counts and "· 2 records" annotations - they ARE the value, and a
+         blanket strip would have eaten them.
+   ⛔ AND INSIGHTS IS EXEMPT WHOLESALE. That page is where the reasoning now lives.
+
+   ⚠ It hides rather than deletes. A generator may hold a reference to a node it just wrote, and
+   removing it from under a script is how the L-frpp checkbox took the whole map down. Hiding is
+   reversible, costs nothing at read time, and leaves the DOM shape every other audit expects.
+   ============================================================================================ */
+const DENSE_MIN_CHARS = 60;          /* below this a .hint is an annotation, not an essay */
+const DENSE_KEEP = /[\u26a0\u26d4\u2b50]|showing (?:the )?first|showing [\d,]+ of|not measured|cannot assess|measured, not missing|left out of the denominator|orennia|licens|vendor|subscription|january 2020|2020-01|newest indiana record|estimate|not published|approximate/i;
+
+function applyDensePolicy(root) {
+  const page = location.pathname.split("/").pop() || "index.html";
+  if (page === "insights.html") return 0;
+  let n = 0;
+  for (const el of (root || document).querySelectorAll(".hint, .sowhat")) {
+    if (el.dataset.denseChecked) continue;
+    el.dataset.denseChecked = "1";
+    const t = (el.textContent || "").trim();
+    if (t.length < DENSE_MIN_CHARS) continue;      /* an annotation, and often the value itself */
+    if (DENSE_KEEP.test(t)) continue;              /* disclosure - survives the cut by rule */
+    el.hidden = true;
+    el.classList.add("dense-hidden");
+    n++;
+  }
+  return n;
+}
+
+/* Tables are rendered late and repeatedly - on filter, on sort, on payload arrival - so a single
+   pass at DOMContentLoaded would catch almost nothing. The observer is debounced to one pass per
+   frame so a 2,000-row re-render costs one sweep, not two thousand. */
+(function denseObserver() {
+  let queued = false;
+  const run = () => {
+    queued = false;
+    applyDensePolicy(document);
+    applyAmericanSpelling(document.body);
+  };
+  /* ⛔ setTimeout, NOT requestAnimationFrame. rAF does not fire in a tab that is not compositing
+     - a background tab, or a headless check - so the first version applied nothing at all and
+     the page still showed every hint. This project already knows that hazard from the other end:
+     scripts/boot_map_harness.js exists solely to patch rAF so the map can boot without a visible
+     pane. A presentation policy must not depend on the tab being on screen. */
+  const kick = () => { if (!queued) { queued = true; setTimeout(run, 0); } };
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", kick);
+  else kick();
+  new MutationObserver(kick).observe(document.documentElement,
+    { childList: true, subtree: true });
+})();
+
+/* ============================================================================================
+   G127 - AMERICAN SPELLING IN TEXT THAT ARRIVES FROM THE WAREHOUSE.
+
+   ⛔ THE SOURCE FIX WAS NOT ENOUGH AND THE AUDIT AGREED WITH IT FOR THE WRONG REASON.
+   fix_american_spelling.py cleaned every rendered string in the pages and in app.js/common.js,
+   and audit_spelling.py then reported ZERO - while the browser showed nine British spellings on
+   the screener. Both were right about what they measured: the remaining text is not IN the
+   front-end at all. It arrives in the PAYLOADS, inside registry `method` and `notes` strings that
+   build scripts wrote into BigQuery ("a data centre is load and needs withdrawal", "the licence
+   lapses late 2027"), which the provenance lines render verbatim.
+
+   Those strings cannot be corrected at the source without rewriting dozens of build scripts and
+   re-registering, and `_registry` is APPEND-ONLY by contract, so a correction there is a new row
+   rather than an edit - the old text would still be the newest for some tables.
+
+   ⚠ THIS NORMALISES SPELLING ONLY, AND ONLY IN TEXT NODES. It never touches numbers, names,
+   identifiers, URLs or the meaning of a sentence. A provenance line still says exactly what it
+   said; it says it in American English. Anything more than spelling would be the tool editing its
+   own evidence, which is not a thing this project does.
+   ============================================================================================ */
+const SPELL_MAP = [[/\bcentres\b/g, "centers"], [/\bCentres\b/g, "Centers"],
+  [/\bcentre\b/g, "center"], [/\bCentre\b/g, "Center"],
+  [/\bmetres\b/g, "meters"], [/\bmetre\b/g, "meter"],
+  [/\bcolours\b/g, "colors"], [/\bcolour\b/g, "color"],
+  [/\bbehaviour\b/g, "behavior"], [/\blicences\b/g, "licenses"], [/\blicence\b/g, "license"],
+  [/\bprogramme\b/g, "programme".replace("mme", "m")],
+  [/\bnormalised\b/g, "normalized"], [/\borganisation\b/g, "organization"],
+  [/\bdefence\b/g, "defense"], [/\banalysed\b/g, "analyzed"]];
+const SPELL_ANY = /centre|metre|colour|behaviour|licence|programme|normalised|organisation|defence|analysed/i;
+
+function applyAmericanSpelling(root) {
+  let n = 0;
+  const w = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const p = node.parentNode;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      const tag = p.nodeName;
+      /* ⛔ never inside a script, a style or an editable field */
+      if (tag === "SCRIPT" || tag === "STYLE" || tag === "TEXTAREA")
+        return NodeFilter.FILTER_REJECT;
+      return SPELL_ANY.test(node.nodeValue || "")
+        ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const hits = [];
+  while (w.nextNode()) hits.push(w.currentNode);
+  for (const node of hits) {
+    let v = node.nodeValue;
+    for (const [rx, rep] of SPELL_MAP) v = v.replace(rx, rep);
+    if (v !== node.nodeValue) { node.nodeValue = v; n++; }
+  }
+  return n;
 }

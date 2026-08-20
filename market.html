@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market &amp; Rates — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
+<link rel="stylesheet" href="style.css?v=a1bb43e9"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Market &amp; Rates</span></div></header>
 <nav id="nav"></nav>
@@ -32,7 +32,7 @@
   <div class="gridcards">
     <div class="card"><h2>How reliable is each utility?</h2>
       <p class="sowhat">The figure below is <b>how many minutes a typical
-        customer is without power each year</b>. A data centre targeting high availability has to
+        customer is without power each year</b>. A data center targeting high availability has to
         cover that gap with its own generation and batteries, so a poor utility is not a
         dealbreaker &mdash; it is a capital cost. <b>525 minutes is roughly 8.75 hours a year.</b></p>
       <div class="scroll"><table id="t-rel"><tr><th>Utility</th><th>Hours off per year</th>
@@ -69,18 +69,6 @@
       operator&rsquo;s whole system with no state column, so the missing input is a point-level
       location on the boards we already have, not another board.</div></div>
   <div class="card"><h2>Yearly cost proxy — from published tariff structures (cross-check grade)</h2>
-    <div class="sowhat">A first-pass power bill for your load, good enough to
-      <b>rank utilities and rule out obviously expensive service</b> before you spend anything.
-      Change the MW and load factor above and the ordering is the useful output &mdash; not the
-      absolute figure.
-      <br>⚠ <b>It will UNDERSTATE, and by a lot.</b> This is built from URDB, which is flattened:
-      no riders, no fixed charges, no seasonal blocks. From the tariff books we now hold, the rider
-      stack alone adds about <b>+8.6&nbsp;$/kW-month</b> of demand-side charges at I&amp;M, and the
-      voltage you take service at moves the bill by <b>$9.42/kW-month at AES Indiana</b> &mdash;
-      roughly <b>$4.0M a year on 35&nbsp;MW</b>, from one line in the tariff. <b>The itemised rate
-      engine below is built</b>: it prices every schedule at every service voltage with all riders
-      folded in, so use that for a number you would put in a board paper and this card only to
-      rank.</div>
     <div style="margin-bottom:8px">
       Load: <input id="rp-mw" type="number" value="300" min="1" style="width:70px"> MW ·
       load factor <input id="rp-lf" type="number" value="0.85" min="0.1" max="1" step="0.05" style="width:60px"> ·
@@ -99,15 +87,6 @@
     own tariff books at every service voltage with every applicable rider, and a labelled URDB floor
     for the 50 more where we hold no book. This card remains as an independent cross-check.</div></div>
   <div class="card"><h2>Gas OAC — Indiana locations (Panhandle Eastern &amp; Trunkline publish county)</h2>
-    <div class="sowhat">This is the only gas number at a grain you can site
-      against — a named delivery point, in a named county, with what the pipeline says is unsold
-      <i>today</i>. The last column turns that into <b>the generation it could actually
-      support</b>. Roughly <b>50 MMcf/d feeds a 300 MW plant</b>, so a point posting a few
-      thousand dekatherms a day is a boiler connection, not a data-centre power supply.
-      <br><b>What to do with it:</b> shortlist points whose spare capacity clears your load with
-      margin, then confirm with the pipeline — posted capacity is a daily operational figure,
-      not a reservation, and it can be sold to someone else tomorrow. Texas Eastern and REX are
-      BLOCKED (walls recorded), so a gap here is not an absence of gas.</div>
     <div class="est-badge">MW column is an ESTIMATE — derived by us, not published by the pipeline</div>
     <div class="hint" style="margin-bottom:6px">⚠ <b>The unit is inferred, not captured.</b>
       Energy Transfer's iPost bulletin boards post quantities in <b>dekatherms/day</b>
@@ -123,36 +102,20 @@
       capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
   <div class="gridcards">
     <div class="card"><h2>Delivered fuel cost at Indiana plants ($/MMBtu)</h2>
-      <div class="sowhat">This is the <b>floor under your power price</b> — what
-        Indiana generators actually paid for fuel, before any margin, delivery or rider. The
-        &cent;/kWh column converts it at a combined-cycle heat rate so you can hold it against a
-        retail tariff: a bundled quote sitting near this number is a modelling error, not a
-        bargain. It also sets the economics of running <b>your own</b> generation.</div>
       <div class="est-badge">¢/kWh is an ESTIMATE — fuel only, at an assumed 6.5 MMBtu/MWh heat rate</div>
       <div class="scroll" style="max-height:280px"><table id="t-fuel"><tr><th>month</th><th>fuel</th><th>$/MMBtu</th><th>&asymp; &cent;/kWh fuel only</th><th>MMBtu received</th></tr></table></div>
       <div class="prov">source: <code>in_eia923_fuel_receipts_costs</code> · what generators
         actually paid for fuel — the input under the wholesale price your tariff sits on top of</div></div>
     <div class="card"><h2>Demand response — load the utilities can already shed</h2>
-      <div class="sowhat">Two readings. It measures how much peak the utility can
-        already remove <i>without building anything</i>, so a utility with deep demand response has
-        more room for a new large load than its headline capacity suggests. It also signals whether
-        an <b>interruptible or curtailable tariff</b> is likely to be offered to you — those trade a
-        lower price for the utility's right to cut you, which suits a BESS far better than a data
-        centre carrying an uptime commitment. <b>Context for the negotiation, not a site test.</b></div>
       <div class="scroll" style="max-height:280px"><table id="t-dr"><tr><th>utility</th><th>class</th><th>year</th><th>actual MW</th><th>potential MW</th></tr></table></div>
       <div class="prov" id="p-dr">source: <code>in_eia861_demand_response</code></div></div>
   </div>
   <div class="card"><h2>FERC EQR filers with an Indiana contact address</h2>
-    <div class="sowhat">These are <b>counterparties, not sites</b> — companies
-      already selling wholesale power that list an Indiana contact address, which makes this a
-      starting call-list for a PPA or a block purchase rather than anything about land. Quarters
-      filed is a crude liveness check: a filer that stopped years ago is not a counterparty today.
-      <b>Context only.</b></div>
     <div class="scroll" style="max-height:260px"><table id="t-eqr"><tr><th>company</th><th>contact city</th><th>quarters filed</th><th>first</th><th>latest</th></tr></table></div>
     <div class="prov">source: <code>in_eqr_identity</code>. <b>Read this as a contact address, not a
       location of operations</b> — the state field is where the filer's contact sits. Checked rather
       than assumed: of 58 companies, exactly one (AES Armenia Mountain Wind) names another state in
-      its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
+      its own name, so this slice is genuinely Indiana-centerd — but a filer here may still trade
       elsewhere.</div></div>
 
   <!-- ============================================================================================
@@ -160,11 +123,7 @@
        the two smallest are the most valuable things on this page. Row count was never the right
        way to triage that list.
        ============================================================================================ -->
-  <div class="card"><h2>⭐ What the last five data centres in Indiana actually got</h2>
-    <div class="sowhat">Every other figure on this page is a <i>modelled</i> price. These are the
-      deals themselves — the utility, the site and the terms, as reported by the utilities' own
-      trade body. <b>A siter asking &ldquo;what should I expect to be offered&rdquo; is asking
-      about this table, not about a tariff sheet.</b></div>
+  <div class="card"><h2>⭐ What the last five data centers in Indiana actually got</h2>
     <div class="scroll"><table id="t-dcdeals">
       <tr><th>utility</th><th>customer</th><th>where</th><th>what was agreed</th></tr></table></div>
     <div class="prov">indiana_app.in_dc_eei_tariffs · Edison Electric Institute member reporting.
@@ -181,13 +140,6 @@
       available to you — they are the comparable, not the menu.</div></div>
 
   <div class="card"><h2>What each utility's industrial customers actually paid</h2>
-    <div class="sowhat">The tariff engine below <b>models</b> a bill from published rate
-      structures. This is the other direction entirely: revenue divided by MWh from each
-      utility's own EIA-861 filing, so it is <b>what industrial customers were actually billed
-      last year</b>. Where the two disagree by a lot, the engine's assumptions are the thing to
-      question. ⚠ It is an average across every industrial customer on the system, carries no
-      demand/energy split and no rider stack, and is <b>not</b> a large-load rate — a hyperscale
-      contract is negotiated well away from this number.</div>
     <div class="scroll" style="max-height:320px"><table id="t-impl">
       <tr><th>utility</th><th>industrial MWh</th><th>customers</th>
         <th>implied ¢/kWh</th><th>all classes ¢/kWh</th></tr></table></div>
@@ -201,17 +153,6 @@
       operations, all sectors.</div></div>
 
   <div class="card"><h2>What would power cost here?</h2>
-    <div class="sowhat">A yearly bill and an effective price per kWh for your load, built from the
-      utility's own tariff &mdash; the rate schedule <b>plus every rider that bills on it</b>. Riders
-      are not a separate topic; at I&amp;M the stack alone is worth about <b>+8.6&nbsp;$/kW-month</b>.
-      <br><b>Every service voltage is priced side by side</b>, because taking service at
-      transmission rather than primary distribution is usually the largest controllable line on a
-      large bill &mdash; a <b>$9.30/kW-month</b> spread at AES Indiana, roughly <b>$3.9M a year on
-      35&nbsp;MW</b>. You should not need to know which voltage you want before you can see what the
-      choice costs.
-      <br>&#11088; <b>Each figure is checked against what that utility's industrial customers
-      actually paid</b> (EIA-861). A tariff model that does not land near the realized average is
-      wrong, so the check is shown rather than hidden.</div>
     <div style="margin:10px 0">
       Load <input id="tf-mw" type="number" value="300" min="1" max="5000" style="width:74px"> MW
       &middot; load factor <input id="tf-lf" type="number" value="0.85" min="0.05" max="1" step="0.05" style="width:64px">
@@ -222,12 +163,6 @@
     <div class="prov" id="tf-prov"></div></div>
 
   <div class="card"><h2>Indiana C&amp;I tariffs (URDB)</h2>
-    <div class="sowhat">Use this to see <b>which utility territory is worth being
-      in</b>, and whether a large-load tariff exists at all — not to price a deal. These rates are
-      <b>flattened</b>: no riders, no fixed charges, no seasonal blocks, so the energy column is a
-      <b>lower bound</b> on what you would actually pay. A large-load tariff also carries a <b>MW
-      floor you must clear to qualify</b>, which the eligibility table below tests at your load.
-      For a number you can defend, read the wholesale floor and the rate engine beneath this.</div>
     <div class="scroll"><table id="t-tar"><tr><th>utility</th><th>rate</th><th>sector</th><th>demand-charged</th><th>energy ≤ $/kWh</th></tr></table></div>
     <div class="prov" id="p-tar"></div></div>
 
@@ -237,18 +172,6 @@
       tariff eligibility test, and an explicit list of the components no Indiana publisher has put
       in the public record.</div>
 
-    <div class="sowhat"><b>Operator ruling, 2026-08-17: this is NOT a floor under an Indiana
-      bundled rate, and it is no longer presented as one.</b> The old framing was borrowed from a
-      restructured market, where a retail supplier prices energy off the wholesale market and the
-      utility bills regulated wires on top — there, wholesale really does flow through.
-      <br><b>Indiana is vertically integrated.</b> The utility owns its generation and recovers it
-      through base rates set in an IURC rate case, so a bundled customer never buys at the market
-      price. What actually passes fuel and purchased-power cost through is the <b>Fuel Adjustment
-      Clause</b>, plus the RTO cost rider — and the utility’s embedded generation cost can sit
-      <i>either side</i> of today’s market price, so a rate below LMP is not evidence of an error.
-      <br><b>What it is still good for:</b> the cost of energy if you buy it <i>as energy</i> — a PPA,
-      a block purchase, or behind-the-meter generation — and as a read on regional energy cost.
-      Treat it as an alternative procurement route, not as a bound on the tariff.</div>
     <div class="scroll"><table id="t-floor"><tr><th>ISO</th><th>market</th><th>window actually returned</th><th>intervals</th><th>avg ¢/kWh</th><th>median ¢/kWh</th><th>min credible retail ¢/kWh</th></tr></table></div>
     <div class="hint cannot" id="h-floor" style="margin:6px 0"></div>
 
@@ -262,7 +185,7 @@
     <div class="scroll"><table id="t-gaps"><tr><th>utility</th><th>tariff</th><th>component</th><th>rate</th><th>state</th><th>source</th></tr></table></div>
     <div class="prov" id="p-rate"></div></div>
 </div>
-<script src="common.js?v=b6a36660"></script>
+<script src="common.js?v=9a0640f5"></script>
 <script>
 /* G21 requirement 4 -- translate into the reader's DECISION unit. Both conversions are ESTIMATES
    and both say so on screen via .est-badge; "estimates never style as published".
@@ -535,8 +458,8 @@ function mmbtuToCents(v) {
     ? `<b>The largest subsidy package in the tracker for Indiana is ${top.company} at
        ${usdBig(top.subsidy_usd)}</b> (${top.year})${top.subsidy_2023_usd
          ? `, ${usdBig(top.subsidy_2023_usd)} in 2023 dollars` : ""} — and it is a
-       <b>data-centre</b> deal. ${dcDeals.length > 1
-         ? `${dcDeals.length} of the ${mg.length} megadeals on record go to data-centre or
+       <b>data-center</b> deal. ${dcDeals.length > 1
+         ? `${dcDeals.length} of the ${mg.length} megadeals on record go to data-center or
             hyperscaler operators.` : ""}
        <b>That is the order of magnitude an Indiana package has actually reached</b>, which is a
        far more useful anchor than a percentage-of-capex rule of thumb — and it is public, so the
@@ -637,14 +560,6 @@ function mmbtuToCents(v) {
       }).sort((a, b) => a.lo - b.lo);
       const tooBigFor = (r) => r.kw_max != null && kW > Number(r.kw_max);
       document.getElementById("tf-body").innerHTML = `
-        <div class="sowhat"><b>&#9888; We do not hold a tariff book for this utility.</b> What
-          follows is <b>URDB's flattened summary</b> &mdash; the published energy and demand rates
-          only. It carries <b>no riders, no fixed charges, no seasonal blocks and no service-voltage
-          split</b>. On the utilities where we hold both, the rider stack alone is worth roughly
-          <b>1.5&ndash;2&cent;/kWh</b>, so <b>read every figure below as a FLOOR</b>, not a quote,
-          and do not compare it like-for-like against the itemised utilities.
-          <br><b>What to do with it:</b> use it to decide whether this utility is worth a phone
-          call. A real number needs their book.</div>
         <div class="scroll"><table>
           <tr><th>Rate</th><th>Sector</th><th>Energy</th><th>Demand</th><th>Eligibility</th>
               <th>Per year (floor)</th><th>Effective (floor)</th></tr>
@@ -684,7 +599,7 @@ function mmbtuToCents(v) {
        * "exceeds" - which is how I&M's Tariff G.S. states its 1,000 kW limit - this copy did not.
        * `sch.max_kw` is computed once, in the exporter, from the whole estate's vocabulary; use
        * it for the DECISION and search the components only for the prose that explains it. */
-      /* ⛔ NEVER DEREFERENCE THE PROSE ROW WITHOUT GUARDING IT. `sch.max_kw` is normalised to kW
+      /* ⛔ NEVER DEREFERENCE THE PROSE ROW WITHOUT GUARDING IT. `sch.max_kw` is normalized to kW
        * by the exporter, which CONVERTS units - a ceiling stated as "70 MW" becomes 70000 while
        * the component's own rate stays 70 - so an exact-rate lookup finds nothing and
        * `maxKW.rate` throws. That killed the ENTIRE body render for any utility whose ceiling was
@@ -698,15 +613,8 @@ function mmbtuToCents(v) {
         && (c.rate === sch.max_kw || c.rate * 1000 === sch.max_kw));
       const tooBig = sch.max_kw != null && kW > sch.max_kw;
       const elig = tooBig
-        ? `<div class="sowhat"><b>&#9888; You CANNOT take service on this schedule at ${fmt(mw)} MW.</b>
-           It carries a ceiling of <b>${fmt(sch.max_kw)} kW (${(sch.max_kw / 1000).toFixed(0)} MW)</b>
-           ${maxKW ? `&mdash; ${esc(maxKW.basis || maxKW.name || "")}` : ""}. You are
-           <b>${(kW / sch.max_kw).toFixed(1)}&times; over it</b>. The figures below are what the
-           published rates would compute to, and are shown only so the exclusion is checkable
-           &mdash; <b>they are not a price available to you</b>. Look for this utility's large-load
-           schedule instead.</div>`
-        : tooSmall ? `<div class="sowhat"><b>You would not qualify at ${fmt(mw)} MW.</b>
-           This schedule requires at least ${fmt(minKW.rate)} kW of contract demand.</div>` : "";
+        ? ``
+        : tooSmall ? `` : "";
 
       /* ⛔ A NEGOTIATED CONTRACT IS NOT A PUBLISHED RATE. AES's CSC states "All charges — per
        * contract" and carries no rate at all; once riders began costing correctly it printed a
@@ -714,11 +622,7 @@ function mmbtuToCents(v) {
       if (sch.by_contract) {
         return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
             <span class="hint">· negotiated, not published</span></summary>
-          <div class="accbody"><div class="sowhat"><b>There is no rate to project here.</b> This
-            schedule sets out how a contract is negotiated, not what it costs &mdash; the tariff
-            says only <i>"all charges: per contract"</i>. A load of your size would negotiate
-            against the published large-load schedule, so price that one and treat this as the
-            route, not the number.</div>${elig}</div></details>`;
+          <div class="accbody">${elig}</div></details>`;
       }
       /* Load factor is published two different ways and the difference decides eligibility. AES
        * makes it a SERVICE CLASS inside one schedule, already handled below at LLF_MAX. Duke makes
@@ -727,21 +631,14 @@ function mmbtuToCents(v) {
       if (sch.low_load_factor && lf > LLF_MAX) {
         return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
             <span class="hint">· not available at ${(lf * 100).toFixed(0)}% load factor</span></summary>
-          <div class="accbody"><div class="sowhat"><b>This is a LOW load factor schedule.</b> It
-            exists for customers who run rarely, and at <b>${(lf * 100).toFixed(0)}%</b> you are
-            the opposite of the customer it is written for. Its rates are not a price available to
-            you &mdash; take this utility's high-load-factor schedule instead.</div>${elig}</div>
+          <div class="accbody">${elig}</div>
           </details>`;
       }
 
       if (sch.modifier) {
         return `<details class="acc"><summary><b>${esc(sch.code)}</b>${sch.name ? ` — ${esc(sch.name)}` : ""}
             <span class="hint">· a framework on another schedule, not a standalone rate</span></summary>
-          <div class="accbody"><div class="sowhat"><b>This is not a standalone rate.</b> It has no
-            energy charge of its own &mdash; it modifies another schedule (adding an embedded
-            capacity charge, a longer term and a heavier ratchet), so costing it alone would
-            understate a bill badly. Price the underlying schedule, then apply these terms.</div>
-            <div class="scroll"><table><tr><th>component</th><th>rate</th><th>applies to</th></tr>
+          <div class="accbody">            <div class="scroll"><table><tr><th>component</th><th>rate</th><th>applies to</th></tr>
             ${sch.components.map((c) => `<tr><td>${esc(c.name || "")}</td>
               <td>${c.rate == null ? '<span class="cannot">not published in the tariff</span>' : `<b>${c.rate}</b> <span class="hint">${esc(c.unit || "")}</span>`}</td>
               <td class="hint">${esc(c.basis || c.applies_to || "")}</td></tr>`).join("")}
@@ -900,27 +797,7 @@ function mmbtuToCents(v) {
               <td class="hint">${mark}</td></tr>`;
             }).join("")}
           </table></div>
-          ${sch.riders_not_held ? `<div class="sowhat"><b>&#9888; The rider stack for this schedule
-            is NOT HELD, so every figure below is a FLOOR.</b> This utility's own roster sheet states
-            that riders apply to it, but every rider factor we extracted is scoped to its other
-            schedules &mdash; and riders are filed per schedule with different factors, so borrowing
-            another schedule's numbers would be inventing them. On the schedules where we DO hold
-            them, the stack adds roughly <b>1.5&ndash;2&cent;/kWh</b>. Treat these totals as
-            <b>understated by about that much</b>, not as a cheaper option.</div>` : ""}
-          <div class="sowhat">${check}${runs.length > 1 ? (spread < 1
-            /* A $0 spread must not be narrated as "cheapest on X, dearest on Y". NIPSCO 631 prices
-             * transmission and sub-transmission identically - its demand charge is written across
-             * both - and claiming a cheaper end invites a siter to chase a difference that is not
-             * there. Say the voltage does not move the bill, because that is itself the finding. */
-            ? `<br>This schedule prices <b>${runs.length} service voltages identically</b> &mdash;
-               ${esc(runs.map((x) => vlabel(x.vc)).join(" and "))} come to the same
-               <b>${usd(best.r.total)} a year</b>. The voltage you interconnect at does not change
-               what you pay here, so choose it on what you can physically reach.`
-            : `<br>Across the voltages this schedule prices, the spread is
-            <b>${usd(spread)} a year</b> (${(100 * spread / worst.r.total).toFixed(1)}% of the bill) &mdash;
-            cheapest on ${esc(vlabel(best.vc))}, dearest on ${esc(vlabel(worst.vc))}.
-            <b>Which one you can actually take is set by what is in the ground near the site</b>, so
-            price the voltage you can reach, not the cheapest row.`) : ""}</div>
+          ${sch.riders_not_held ? `` : ""}
           ${runs.map(({ vc, r }) => `<details style="margin-top:6px"><summary class="hint">Line by line at
             <b>${esc(vlabel(vc))}</b> &mdash; ${usd(r.total)}/yr, schedule and riders together</summary>
             <div class="scroll" style="max-height:320px"><table>
@@ -940,7 +817,7 @@ function mmbtuToCents(v) {
             hours in each period the tariff states (super off-peak 12-4am, on-peak 5-9pm plus winter
             mornings, off-peak the remainder), and <b>every</b> time-differentiated demand charge
             bills the full kW because a constant load peaks in every period. That is usually why TOU
-            suits a data centre poorly. ` : ""}
+            suits a data center poorly. ` : ""}
             <b>All-firm service assumed</b>; where a schedule offers a non-firm or market-indexed
             tier, electing it changes the answer more than any rider.</div>
         </div></details>`;
