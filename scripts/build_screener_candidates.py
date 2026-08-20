@@ -213,6 +213,15 @@ SELECT
   -- ⛔ Still NULL on ~1.6%, and a parcel with no address must say so rather than print a blank.
   loc.prop_address, loc.prop_city, loc.prop_zip, loc.dlgf_class_code,
 
+  -- ⭐ G53, the half the operator named and that never shipped. The row asked for the withdrawn
+  -- queue to be "filterable by date of withdrawn application"; the data was built and placed on
+  -- 2026-08-20b and the screener carried no such field - measured, the word "withdrawn" appeared
+  -- 0 times in screener.html. The row was corrected back from DONE for exactly that.
+  -- ⚠ AGGREGATED PER PARCEL, because a parcel can carry more than one cancelled request and a
+  -- LEFT JOIN to the raw table would fan the candidate set out. The fan-out assertion below is
+  -- what would have caught that.
+  wdq.wd_requests, wdq.wd_last_date, wdq.wd_max_mw,
+
   -- ⛔ G125 SECOND FINDING, AND IT CONTRADICTS THE ROW AS WRITTEN. G125 says "the parcel payload
   -- ships lat/lon on every row" and the popup merely fails to print it. Measured 2026-08-20d:
   -- `lat` is populated on 2,284,133 of 3,553,194 in_sites rows, so only 40.3% of CANDIDATES carry
@@ -249,6 +258,18 @@ LEFT JOIN (
   WHERE state_parcel_id IS NOT NULL AND state_parcel_id != '{D85}'
   GROUP BY 1
 ) loc ON loc.loc_key = c.parcel_key
+LEFT JOIN (
+  -- one row per parcel: how many cancelled requests, the most recent withdrawal date, and the
+  -- largest capacity that was given up there. ⭐ The SIZE figure is the other half of G53: a
+  -- cancelled 5 MW solar project does not imply land for a 300 MW campus.
+  SELECT parcel_source, parcel_key,
+         COUNT(*)                                   AS wd_requests,
+         CAST(MAX(wd_date) AS STRING)               AS wd_last_date,
+         ROUND(MAX(capacity_mw), 1)                 AS wd_max_mw
+  FROM `{DS}.in_si_queue_withdrawn`
+  WHERE parcel_key IS NOT NULL
+  GROUP BY 1, 2
+) wdq USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2`   f  USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)
@@ -317,8 +338,21 @@ client.query(
         bigquery.ScalarQueryParameter("n", "INT64", int(m.n)),
         bigquery.ScalarQueryParameter("g", "FLOAT64", round(job.total_bytes_processed / 1024**3, 2)),
         bigquery.ScalarQueryParameter("no", "STRING",
+            # ⛔ THIS ROW CARRIED NO `RE-SCRAPE COMMAND:` AT ALL and audit_registry_truth.py said
+            # so - one of only three objects in the estate missing one, and the other two are
+            # ladder rungs the running harvest has not registered yet. G16's test is whether a
+            # stranger could re-run the work from the registry row alone, and for the table the
+            # whole screener is built from, they could not.
+            "RE-SCRAPE COMMAND: python scripts/build_screener_candidates.py . "
+            "IDEMPOTENCY: replace_safe - CREATE OR REPLACE from upstream tables only. "
+            "CADENCE: whenever in_sites, in_bus_capacity_tier0, in_parcel_row_class or "
+            "in_si_sites_flags_v2 is rebuilt. "
             "Grid capacity, not grid proximity. INJECTION (MISO, generator-side) and WITHDRAWAL "
             "(PJM, load-side) are separate columns and must never be fused or compared - a data "
-            "centre is load and needs withdrawal. Reads the LIVE v2 signal flag, never "
-            "in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land).")])).result()
+            "center is load and needs withdrawal. Reads the LIVE v2 signal flag, never "
+            "in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land). "
+            "G122: confirmed road and rail rights-of-way are EXCLUDED via in_parcel_row_class. "
+            "G125: carries the DLGF address and a labelled display coordinate. "
+            "G53: carries the withdrawn-queue aggregate (wd_requests, wd_last_date, wd_max_mw).")
+        ])).result()
 print("registered in_screener_candidates")

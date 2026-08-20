@@ -244,6 +244,15 @@
     <details class="acc">
       <summary><span class="step">5</span> Environmental constraints <span class="acount" id="c-env"></span></summary>
       <div class="accbody">
+        <div class="subhead">Cancelled interconnection requests (G53)</div>
+        <label><input type="checkbox" id="s-wdonly"> Only parcels where a request was WITHDRAWN</label>
+        <label class="blk">Withdrawn since <span class="inline"><input type="number" id="s-wdsince"
+          value="" min="1990" max="2030" step="1" placeholder="year"></span></label>
+        <label class="blk">Cancelled request was at least <span class="inline"><input type="number"
+          id="s-wdmw" value="0" min="0" step="1"> MW</span></label>
+        <p class="hint">A withdrawn request is consent already given and then given up &mdash;
+          somebody studied this land, signed for it and walked away. ⚠ The <b>MW</b> gate matters:
+          a cancelled 5 MW solar project does not imply land for a 300 MW campus.</p>
         <label><input type="checkbox" id="s-nearmiss" checked> Keep near misses &mdash; a site that clears every GATE and misses one PREFERENCE by 10% or less</label>
         <p class="hint">G129. A flood zone is a <b>gate</b>: the site is not a site. Acreage is a <b>preference</b>: 90 acres against a 100-acre ask is a near miss worth seeing. Every filter below and to the left carries its mode.</p>
         <label><input type="checkbox" id="s-noflood"> Exclude land in a mapped flood zone</label>
@@ -505,6 +514,7 @@ const FILTER_MODE = {
   "s-bonus":    ["gate", "A designated zone. A parcel is inside it or outside it."],
   "s-bonuskind":["gate", "A named zone type."],
   "s-needbus":  ["gate", "You asked to see only sites we have actually measured."],
+  "s-wdonly":   ["gate", "Either a request was withdrawn on this parcel or it was not."],
   /* ⚠ THESE SIX WERE ENFORCED AS GATES AND CARRIED NO BADGE until audit_g129_gates.py said so on
      its first run. A filter that excludes without declaring its mode is the original G129 defect
      wearing a smaller hat: the reader still cannot tell why a site vanished. */
@@ -529,6 +539,8 @@ const FILTER_MODE = {
   "s-buskv":    ["pref", "Bus voltage."],
   "s-structmax":["pref", "Structure count."],
   "s-minevents":["pref", "How many owner-motivation events."],
+  "s-wdsince":  ["pref", "How recently the request was withdrawn. A year is a quantity."],
+  "s-wdmw":     ["pref", "How big the cancelled request was. A near miss is still evidence."],
   /* ⛔ s-siyears is NOT listed. It is a PARAMETER of the s-si gate, read inside signalState(),
      not a filter in its own right - and audit_g129_gates.py failed it as "declared a preference
      but tested nowhere", which is a badge promising a behaviour nothing implements. */
@@ -580,6 +592,11 @@ function preferenceMisses(s) {
   if ($("s-structmax").value !== "")
     near("s-structmax", Number(s.structure_count || 0), Number($("s-structmax").value), "max");
   near("s-minevents", Number(s[$("s-evwindow").value] || 0), N("s-minevents"), "min");
+  near("s-wdmw", s.wd_max_mw != null ? Number(s.wd_max_mw) : null, N("s-wdmw"), "min");
+  {
+    const y = s.wd_last_date ? Number(String(s.wd_last_date).slice(0, 4)) : null;
+    near("s-wdsince", y, N("s-wdsince"), "min");
+  }
   return out;
 }
 
@@ -620,6 +637,7 @@ function passesGates(s) {
   if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
   if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
   if ($("s-plottable").checked && (s.lat == null || s.lon == null) && s.map_lat == null) return false;
+  if ($("s-wdonly").checked && !(Number(s.wd_requests) > 0)) return false;
   return true;
 }
 
@@ -672,6 +690,18 @@ function passes(s) {
   if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
   if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
   if ($("s-plottable").checked && (s.lat == null || s.lon == null)) return false;
+  /* ⭐ G53, the half the operator named explicitly: "filterable by date of withdrawn
+     application". The data has been built and placed since 2026-08-20b; the screener carried no
+     field for it, which is why the row was corrected back from DONE. */
+  if ($("s-wdonly").checked && !(Number(s.wd_requests) > 0)) return false;
+  const wdSince = N("s-wdsince");
+  if (wdSince) {
+    const y = s.wd_last_date ? Number(String(s.wd_last_date).slice(0, 4)) : null;
+    /* ⚠ a parcel with no withdrawal, or one whose withdrawal is undated, cannot satisfy a
+       "withdrawn since" question. It is excluded from THIS search, not marked as having none. */
+    if (!y || y < wdSince) return false;
+  }
+  if (N("s-wdmw") && !(Number(s.wd_max_mw) >= N("s-wdmw"))) return false;
   return true;
 }
 

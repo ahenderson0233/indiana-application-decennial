@@ -125,6 +125,15 @@ for r in client.query(f"""
          --    geography, and "no centroid where a footprint exists" is untouched.
          -- ⚠ Full precision is kept (G30b). The page displays 5 decimals and copies all of it.
          prop_address, prop_city, prop_zip, map_lat, map_lon, coord_basis,
+
+         -- ⭐ G53: the CANCELLED interconnection request, which the operator asked to be
+         -- "filterable by date of withdrawn application" and which the screener has never
+         -- carried. A withdrawn request is consent already given and then given up: somebody
+         -- studied this land, signed for it, and walked away - so the site is buildable and the
+         -- owner has already shown they will deal.
+         -- ⚠ wd_max_mw is the SIZE half of that row: a cancelled 5 MW solar project does not
+         -- imply land for a 300 MW campus, and without it the signal flatters small sites.
+         wd_requests, wd_last_date, wd_max_mw,
          has_signal, signals, signal_types, signal_events,
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
          events_3y, events_5y, events_10y, keying,

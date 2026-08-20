@@ -111,9 +111,9 @@ first attempt (18 fatal findings).
 
 ---
 
-## THE BACKLOG BEHIND THAT — 98 DONE · 18 PARTIAL · 8 OPEN
+## THE BACKLOG BEHIND THAT — 99 DONE · 17 PARTIAL · 8 OPEN
 
-**Six rows closed** on 2026-08-20d (G122, G123, G124, G125, G127, G129) and two more were answered
+**Seven rows closed** on 2026-08-20d (G53, G122, G123, G124, G125, G127, G129) and two more were answered
 and advanced (G126, G128). ⭐ **OPEN halved, 16 → 8**, and the operator's whole priority batch is
 either closed or answered.
 
@@ -133,12 +133,16 @@ PJM bus coordinates · G15's cost re-extraction from the workpaper header row.
 ⭐ **Scraping goes to an Opus (non-Fable) agent** — brief it with the write boundary,
 no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
 
-### ③ TWO SMALL THINGS WORTH DOING EARLY
+### ③ TWO DECISIONS THAT ARE YOURS, NOT CODE'S
 
-- **G53's withdrawn-date filter** on the screener, plus the SIZE gate that row also specifies.
-  Small, and it belongs with G113.
 - ⚠ **G129 option (b)** — a per-filter GATE/PREFERENCE toggle instead of the fixed published
-  classification. More honest and more work; a product decision, not a defect. Option (a) is live.
+  classification that shipped. More honest and more work; a product decision, not a defect.
+  Option (a) is live: 18 gates, 14 preferences, badged on screen, 259 near misses recovered.
+- ⚠ **How aggressive should the G122 exclusion be?** 3,159 road and 1,861 rail corridors are gone.
+  A further **28,187 parcels are ribbon-shaped with NO road along them** — creeks, pipeline
+  easements and genuinely long narrow industrial land — and they are REPORTED, not excluded.
+  ⛔ Widening the shape threshold until they disappear is how a heuristic eats its own corpus, so
+  it was not done. If you want them out, that is a call, not a fix.
 
 ---
 
