@@ -1,5 +1,5 @@
 {
- "built_at_utc": "2026-08-19T19:54:25+00:00",
+ "built_at_utc": "2026-08-20T07:15:55+00:00",
  "state": "IN",
  "totals": {
   "all_parcels": 3553194,
@@ -43,8 +43,16 @@
    "source": "indiana_app.in_gas_capacity_panhandle_eastern + in_gas_capacity_trunkline (Energy Transfer iPost)",
    "method": "TRIM(state)=IN and TRIM(requested_gas_day)=current only; capacity read from `oac` (the long-form operationally_available_capacity column is NULL on every Indiana row); keyed by `pipeline`, NOT `operator` (operator is the shipper at the delivery point); MW is a derived estimate at Dth/day/156 and is badged. RE-SCRAPE COMMAND: python scripts/export_gas_capacity.py",
    "n_rows": 29,
-   "built_at": "2026-08-19 19:35:45.617713+00",
+   "built_at": "2026-08-19 22:11:59.217200+00",
    "notes": "G92. The gas pipeline popup previously showed operator and type only. Coverage is 2 of the 12 pipelines drawn (34 of 213 segments); the other 179 render an explicit no-feed-captured line rather than a blank, because a missing number must not read as zero capacity."
+  },
+  {
+   "table_name": "data/marion_addresses.json.gz",
+   "source": "indiana_app.in_marion_parcel_crosswalk x in_sites",
+   "method": "street number + normalised street stem -> 18-digit state parcel key, for rows whose parcel we actually hold; normalisation identical to build_si_address_to_parcel.py so the two cannot disagree about which addresses exist. Loaded on first address search, never at boot. RE-SCRAPE COMMAND: python scripts/export_marion_addresses.py",
+   "n_rows": 33795,
+   "built_at": "2026-08-19 22:03:15.531787+00",
+   "notes": "G121b. Makes address search work for Marion County WITHOUT geocoding - it is a lookup of the county published record, so the result is a parcel and not a point near one. Marion only; no other county publishes an equivalent crosswalk."
   },
   {
    "table_name": "in_acs_county",
@@ -66,9 +74,9 @@
    "table_name": "in_asset_distance_parcel",
    "source": "energy-platfrom.indiana_app.in_screener_candidates x energy-platfrom.indiana_app.in_sites x energy-platfrom.indiana_app.in_transmission_union + energy-platfrom.indiana_app.in_substations_dedup",
    "method": "G29: exact ST_DISTANCE(parcel_geog, asset) within 25 mi, so an asset crossing a parcel returns 0.0 rather than the first-vertex approximation the map console computes. Substations restricted to asset_class='substation' (taps and dead ends excluded, G19). Line kv <= 0 or NULL -> NULL (HIFLD -999999 marker, G13); never 0. D85 excluded by key before any spatial work; fan-out asserted < 1.01. RE-SCRAPE COMMAND: python scripts/build_asset_distance_parcel.py",
-   "n_rows": 532868,
-   "built_at": "2026-08-17 18:10:40.875851+00",
-   "notes": "Closes G29 for transmission and substations. 41,986 parcels have a transmission line PHYSICALLY ON them (0.0 mi) where app.js repPt() reports ~0.55 mi. Bus distances were already exact in in_screener_candidates (inj_mi/wd_mi/sub_mi); TRANSMISSION LINE distance did not exist anywhere in the estate before this table, and it is the asset where the error is largest because a LineString can cross a polygon. line_kv_unknown is carried explicitly so an unlabelled line is never rendered as 0 kV."
+   "n_rows": 532693,
+   "built_at": "2026-08-20 06:34:40.580041+00",
+   "notes": "Closes G29 for transmission and substations. 41,979 parcels have a transmission line PHYSICALLY ON them (0.0 mi) where app.js repPt() reports ~0.55 mi. Bus distances were already exact in in_screener_candidates (inj_mi/wd_mi/sub_mi); TRANSMISSION LINE distance did not exist anywhere in the estate before this table, and it is the asset where the error is largest because a LineString can cross a polygon. line_kv_unknown is carried explicitly so an unlabelled line is never rendered as 0 kV."
   },
   {
    "table_name": "in_balancing_authority_areas",
@@ -80,11 +88,11 @@
   },
   {
    "table_name": "in_bonus_geo",
-   "source": "energy.coal_closure_communities",
-   "method": "APPEND coal_closure kind",
+   "source": "energy communities + LIC tracts + opportunity zones + critical habitat",
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 836 rows; the live table holds 1394. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: one-time clip 2026-08-14",
    "n_rows": 1394,
-   "built_at": "2026-08-18 00:26:21.538981+00",
-   "notes": "coal_closure added: 221 IN features"
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_bus_capacity_tier0",
@@ -181,6 +189,14 @@
    "n_rows": 1,
    "built_at": "2026-08-15 06:18:18.823400+00",
    "notes": "WIRE-NEXT batch 4 (audit tail)"
+  },
+  {
+   "table_name": "in_county_context_extras",
+   "source": "indiana_app.in_water_use (USGS 2015), in_qcew_county_labor (BLS 2024), in_acs_county (ACS 2023), in_fema_nri_counties (FEMA National Risk Index), in_solar_potential (NREL GHI), in_usa_structures_county, in_cbp_county_industry (Census CBP), in_workforce_ipeds_directory + in_workforce_ipeds_cs_eng",
+   "method": "eight county-grain objects that reached NO surface, merged on the 5-digit county FIPS from in_county_rollup. FEMA joins on stcofips (5 digits) NOT countyfips (3 digits). IPEDS joins on a normalised county NAME because its own fips column is the state. Row count asserted at 92 to catch LEFT JOIN fan-out. construction_breakout_held is FALSE because BLS suppresses the construction split on all 92 rows - carried as a three-state flag, never as zero. RE-SCRAPE COMMAND: python scripts/build_county_context_extras.py",
+   "n_rows": 92,
+   "built_at": "2026-08-20 06:14:28.673478+00",
+   "notes": "G72/G80. Vintages differ by up to nine years (water 2015, ACS 2023, QCEW 2024) and each one travels with its figure. IPEDS reaches 34 of 92 counties because that is where the campuses are - an absent row means no institution, which is a finding, not a gap."
   },
   {
    "table_name": "in_county_fibre",
@@ -281,10 +297,10 @@
   {
    "table_name": "in_dc_actions",
    "source": "CORRECTION note (no data change)",
-   "method": "source wall record",
-   "n_rows": 0,
-   "built_at": "2026-08-14 23:12:59+00",
-   "notes": "datacenterwatch.org quarterly pages (/q22025, /q3-q4-2025, /q1-2026) render content client-side from /api/* which robots.txt DISALLOWS -> quarterly content BLOCKED for compliant crawling (0 'Indiana' strings in served HTML). Original /report page is server-rendered: parsed; its 2nd IN entry (Burns Harbor) split-format missed by parser but already held in energy.dc_opposition_tracker."
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 0 rows; the live table holds 79. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: source wall record",
+   "n_rows": 79,
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_dc_actions_county_v2",
@@ -816,11 +832,11 @@
   },
   {
    "table_name": "in_grid_plans",
-   "source": "IURC TDSIC public XLSX workpapers (iurc.portal.in.gov filings)",
-   "method": "APPEND pass-3: openpyxl extraction from public xlsx exhibits/workpapers of current TDSIC dockets",
-   "n_rows": 7,
-   "built_at": "2026-08-14 23:09:28+00",
-   "notes": "table total now 618. Pulled 2026-08-14 23:09:13 UTC."
+   "source": "IURC IRP page (filtered) + TDSIC dockets 45894/45647/45557 pass-2 PDFs",
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 26 rows; the live table holds 618. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: CORRECTION: deleted 152 unfiltered IRP-page rows (individual public-comment PDFs excluded; no individuals profiled); re-appended utility IRP plan volumes only. Pass-2 pdfplumber extraction on newest TDSIC plan dockets.",
+   "n_rows": 618,
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_grid_plans_located",
@@ -901,6 +917,14 @@
    "n_rows": 116,
    "built_at": "2026-08-15 06:06:44.069730+00",
    "notes": "WIRE-NEXT batch 3 (audit batch 3)"
+  },
+  {
+   "table_name": "in_line_bus_endpoints",
+   "source": "indiana_app.in_transmission_union x in_bus_capacity_tier0",
+   "method": "line endpoints taken GEOMETRICALLY via ST_DUMP(ST_BOUNDARY(geog),0) - not from sub_1/sub_2, which name a real substation at both ends on only 289 of 3,737 lines; each endpoint matched to the nearest located bus within 100 m, a tolerance read off the bimodal distance distribution; both directions folded per bus; the MINIMUM is emitted only when BOTH ends resolve. RE-SCRAPE COMMAND: python scripts/build_line_bus_endpoints.py",
+   "n_rows": 3736,
+   "built_at": "2026-08-19 21:14:34.750705+00",
+   "notes": "G116, and the input to G118. 1018 of 3736 lines resolve at both ends. A line with one end resolved reports NULL for the minimum, never the single end we happen to hold - the operator asked for the lower of two because flow comes from both ends, and one end is a different and weaker claim."
   },
   {
    "table_name": "in_marion_address_crosswalk",
@@ -993,10 +1017,10 @@
   {
    "table_name": "in_news_dc",
    "source": "CORRECTION note (no data change)",
-   "method": "provider outcome record",
-   "n_rows": 0,
-   "built_at": "2026-08-14 23:12:56+00",
-   "notes": "Of the two permitted providers, Bing News RSS produced all 283 rows (114 queries OK). GDELT DOC API returned HTTP 429 on every call despite 5.5s spacing (server text demands 5s) - 0 rows this run; treat GDELT as rate-limited-unavailable from this network, retry later if needed."
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 0 rows; the live table holds 283. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: provider outcome record",
+   "n_rows": 283,
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_nfirs_basicincident_2020",
@@ -1114,8 +1138,8 @@
    "table_name": "in_nfirs_structure_fires",
    "source": "indiana_app.in_nfirs_basicincident_2020/2021 x in_nfirs_incidentaddress_* x in_nfirs_fireincident_*",
    "method": "INC_TYPE 111-123 (building/structure fires) only, STATE='IN' enforced on every input",
-   "n_rows": 16264,
-   "built_at": "2026-08-15 23:09:09.759084+00",
+   "n_rows": 45607,
+   "built_at": "2026-08-20 07:05:03.608770+00",
    "notes": "D16 candidate at ADDRESS grain - not yet keyed to parcels, and not claimed to be. Two defects fixed on the way in: (1) only ~21% of NFIRS incidents are structure fires, so admitting the raw tables would have inflated D16 about fivefold; (2) in_nfirs_fireincident_2024 is NOT Indiana-clipped - 407 of 1,255 rows (32%) are from 43 other states - so STATE='IN' is enforced explicitly rather than trusting the in_* name. Keying quality is carried per row: ~91% have number+street."
   },
   {
@@ -1359,12 +1383,28 @@
    "notes": null
   },
   {
+   "table_name": "in_parcel_assembly",
+   "source": "indiana_app.in_screener_candidates x indiana_app.in_sites (self-join for adjacency) x indiana_app.in_roads_primary + in_roads_secondary",
+   "method": "Two computations per candidate parcel. (1) Road-right-of-way likelihood from the isoperimetric quotient 4*pi*area/perimeter^2, combined with structure_count = 0 and whether a held road actually crosses the polygon; graded high / shape_only / possible / no, never a bare boolean, because only PRIMARY and SECONDARY roads are held and a local street cannot confirm. (2) Adjacency assembly via ST_DWITHIN(1.0 m) rather than ST_TOUCHES, because parcel corpora carry rounding gaps at shared boundaries; plus the nearest parcel WITH a structure within 150 m, which is the redirect for a geocode that landed on a road. D85 excluded on both sides of the self-join. RE-SCRAPE COMMAND: python scripts/build_parcel_assembly.py",
+   "n_rows": 532693,
+   "built_at": "2026-08-20 06:49:13.026188+00",
+   "notes": "G120(b) + G120(e). Adjacency is NOT common ownership - Indiana parcel owner is NULL on all 3,553,381 rows outside Marion, so assembly_basis says adjacency only. rowlike is a HEURISTIC: creeks, rail spurs and pipeline easements are ribbons too."
+  },
+  {
    "table_name": "in_parcel_attrs",
    "source": "energy.mat_parcel_attrs x in_sites",
    "method": "CORRECTION",
    "n_rows": 1143873,
    "built_at": "2026-08-15 04:04:54.316021+00",
    "notes": "DEFECT: the IN slice of mat_parcel_attrs is 100 pct NULL on owner/zoning/land_use/year_built/assessed_value (all 3,553,381 rows) - upstream build gap, question filed with operator; keys join at 95.2 pct so the wiring is ready when values land"
+  },
+  {
+   "table_name": "in_parcel_line_headroom",
+   "source": "indiana_app.in_asset_distance_parcel x in_line_bus_endpoints",
+   "method": "parcel -> nearest transmission line by exact edge-to-edge ST_DISTANCE -> the two endpoint buses -> MIN(headroom) per direction, per the operator stated method. The minimum is emitted ONLY where both ends resolve; one end or none yields NULL with an explicit cannot_assess basis, never 0. RE-SCRAPE COMMAND: python scripts/build_parcel_line_headroom.py",
+   "n_rows": 532870,
+   "built_at": "2026-08-19 21:17:39.434945+00",
+   "notes": "G118. The DELIVERABLE figure, to sit beside the LAND figure (mw_dc = acres x density) rather than replace it - a site is capped by the lower of the two and which one binds is the point. Coverage is bounded by G114: only 27.2% of lines resolve at both ends because only 15.1% of PJM buses carry a coordinate."
   },
   {
    "table_name": "in_peeringdb_facilities",
@@ -1437,6 +1477,14 @@
    "n_rows": 655404,
    "built_at": "2026-08-19 17:11:45.116656+00",
    "notes": "PJM QueueScope INJECTION direction. 1826 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
+  },
+  {
+   "table_name": "in_pjm_qs_c23_inj_25",
+   "source": "queuescope.pjm.com/queuescope/pages/public/evaluator.jsf",
+   "method": "playwright JSF/PrimeFaces harvest via scripts/pull_pjm_injection.py (wraps ingest/load_pjm_queuescope_bq.py with DATASET rebound to indiana_app)",
+   "n_rows": 647984,
+   "built_at": "2026-08-19 22:16:41.374951+00",
+   "notes": "PJM QueueScope INJECTION direction. 1797 buses, owners=1, case=2028 TC2 Phase II Case (Summer Peak). OBSERVED VINTAGE: case label above is the publisher's own study-case name; PJM publishes no separate file date on this tool. PJM's own caveats ride along: THERMAL IMPACTS ONLY (no voltage, stability or short-circuit) and 'results are not reflective of current PJM system conditions'. desired_mw=100 is an INPUT, so available_mw is headroom measured against a 100 MW test injection at that POI."
   },
   {
    "table_name": "in_pjm_qs_c23_inj_5000",
@@ -1698,8 +1746,8 @@
    "table_name": "in_screener_candidates",
    "source": "in_sites x in_si_sites_flags_v2 x in_site_gates x in_sites_county x in_bus_capacity_tier0 (BOTH directions, BOTH ISOs) x in_substations x in_asset_distance_parcel",
    "method": "candidates = fits>=25MW OR carries a v2 owner-motivation signal; nearest bus within 40 km computed SEPARATELY per direction; D85 excluded by key before any spatial join; fan-out asserted < 1.01. REPOINTED 2026-08-19 from in_bus_headroom_miso(300 MW probe, injection only) + vw_pjm_bus_withdrawal_located(PJM only, 227 buses) onto in_bus_capacity_tier0 - the old pair capped wd_mw at 132 MW and inj_mw at exactly 300, and carried NO MISO load-side data at all. Bus coverage is limited by COORDINATES: MISO 1,731 of 1,731 per direction, PJM 227 of 1,826 withdrawal and 223 of 1,814 injection (the G62 gazetteer ceiling)",
-   "n_rows": 532870,
-   "built_at": "2026-08-19 19:50:23.532134+00",
+   "n_rows": 532693,
+   "built_at": "2026-08-20 06:35:56.406978+00",
    "notes": "Grid capacity, not grid proximity. INJECTION (MISO, generator-side) and WITHDRAWAL (PJM, load-side) are separate columns and must never be fused or compared - a data centre is load and needs withdrawal. Reads the LIVE v2 signal flag, never in_sites.has_si_signal which is the v1 flag (847,410, ~99% empty land)."
   },
   {
@@ -1719,6 +1767,22 @@
    "notes": ""
   },
   {
+   "table_name": "in_severe_weather_county",
+   "source": "indiana_app.in_spc_severe_events (NOAA Storm Prediction Center), counties from bigquery-public-data.geo_us_boundaries.counties",
+   "method": "events placed by ST_CONTAINS on the event START point; mag = -9 treated as NULL (publisher unknown, not an EF rating); all-time and since-2000 counts both carried because reporting practice changed enormously over the window. RE-SCRAPE COMMAND: python scripts/build_severe_weather_county.py",
+   "n_rows": 92,
+   "built_at": "2026-08-19 22:16:10.778905+00",
+   "notes": "G72/G80. in_spc_severe_events held 24,716 located events and reached NO surface. County grain deliberately: a tornado is a TRACK and this table carries only its start point, so a per-parcel risk figure would be invented precision."
+  },
+  {
+   "table_name": "in_si_address_parcel",
+   "source": "indiana_app.in_si_d11_admitted + in_si_d27_admitted x in_marion_parcel_crosswalk",
+   "method": "street address normalised (unit dropped, directional and street-type stripped) to (number, street stem, city) and matched against the county crosswalk; exact first, then a unique prefix fallback recorded as address_nostem; ambiguous addresses and PO boxes are NOT placed; NO GEOCODING - a centreline is not a parcel. RE-SCRAPE COMMAND: python scripts/build_si_address_to_parcel.py",
+   "n_rows": 172,
+   "built_at": "2026-08-19 20:05:49.993229+00",
+   "notes": "G82. MARION ONLY, and that is the finding: there is no statewide parcel address column in the estate, so 342 of 1,139 D11/D27 rows are even addressable and the rest wait on the DLGF Gateway pull with G104/G70/G71/G81. addr_state carries two vocabularies (IN and a space-padded Indiana). zip_conflict flags rows whose mailing ZIP disagrees with the parcel ZIP."
+  },
+  {
    "table_name": "in_si_address_parcel_bridge",
    "source": "energy-platfrom.energy.mat_si_address_location + energy-platfrom.indiana_app.in_sites",
    "method": "address_norm (EXISTING upstream normaliser, not re-derived) -> build_id -> in_sites.build_id; fallback ST_CONTAINS(in_sites.parcel_geog, rooftop point). D85 globe parcel excluded.",
@@ -1729,10 +1793,10 @@
   {
    "table_name": "in_si_candidates",
    "source": "in_si_evansville_demolition_permits x in_sites",
-   "method": "normalized parcel-id join",
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 3841 rows; the live table holds 4170. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: normalized parcel-id join",
    "n_rows": 4170,
-   "built_at": "2026-08-15 04:30:45.930636+00",
-   "notes": "CANDIDATE signals for THIS app only - never the national engine; southbend orders are address-keyed, county-grain pending"
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_si_d11_admitted",
@@ -1895,6 +1959,30 @@
    "notes": "D1_tax_sale outcome (Vanderburgh tax-sale TRANSFERS 2006-2011) | layers: 0:Tax Sale Transfers - 2011=146(pub 146); 1:Tax Sale Transfers - 2010=228(pub 228); 2:Tax Sale Transfers - 2009=165(pub 165); 3:Tax Sale Transfers - 2008=57(pub 57); 4:Tax Sale Transfers - 2007=183(pub 183); 5:Tax Sale Transfers - 2006=162(pub 162) | Parcels actually transferred at tax sale, one layer per year (year in src_layer_name = observed event year). StatePIN parcel-keyed, owner + assessment attributes."
   },
   {
+   "table_name": "in_si_funnel",
+   "source": "indiana_app.in_si_signals + in_sites + in_si_parcel_signals_v2",
+   "method": "stage-by-stage count of the owner-motivation pipeline; the raw feed key is state-prefixed and must have IN: stripped before it will join the parcel corpus. RE-SCRAPE COMMAND: python scripts/build_si_funnel.py",
+   "n_rows": 1,
+   "built_at": "2026-08-19 21:05:27.312069+00",
+   "notes": "G81. Answers why the flagged count is what it is and not larger. Dominant cause: D5_vacancy is 52% of all raw rows and 99.4% of its parcels have NO STRUCTURE, so excluding it is correct, not an oversight. Second: 76,612 signal-carrying parcels are residential. Third: 865,312 rows never resolve to a parcel because owner is NULL statewide and only Marion publishes an address crosswalk. The row-grain and parcel-grain tracks are DIFFERENT populations and must not be presented as one subtracting chain."
+  },
+  {
+   "table_name": "in_si_gov_surplus_parcel",
+   "source": "indiana_app.in_gov_surplus_frpp (GSA Federal Real Property Profile) + indiana_app.in_sites",
+   "method": "asset_status and utilization read as the publisher writes them: declared_excess = Report of Excess Submitted or Determination to Dispose; unutilized/underutilized_not_declared come from the utilization column independently. Dates are m/d/Y strings parsed with SAFE.PARSE_DATE. RE-SCRAPE COMMAND: python scripts/build_si_gov_surplus.py",
+   "n_rows": 20,
+   "built_at": "2026-08-20 06:18:09.485230+00",
+   "notes": "G97. Places the declared/unutilized subset on parcels by ST_CONTAINS. D85 excluded and fan-out measured at build time (assert < 1.6). A LEFT JOIN so an asset with no parcel under it stays visible as an unplaced lead rather than disappearing."
+  },
+  {
+   "table_name": "in_si_gov_surplus_v2",
+   "source": "indiana_app.in_gov_surplus_frpp (GSA Federal Real Property Profile) + indiana_app.in_sites",
+   "method": "asset_status and utilization read as the publisher writes them: declared_excess = Report of Excess Submitted or Determination to Dispose; unutilized/underutilized_not_declared come from the utilization column independently. Dates are m/d/Y strings parsed with SAFE.PARSE_DATE. RE-SCRAPE COMMAND: python scripts/build_si_gov_surplus.py",
+   "n_rows": 1594,
+   "built_at": "2026-08-20 06:18:08.223918+00",
+   "notes": "G97. Classifies every Indiana FRPP row by whether the federal government has actually DECLARED it surplus. 1,540 of 1,594 are Current Mission Need, so the map checkbox reading \"Federal surplus property\" was true of 17 points, not 1,594. acres is held on 78 rows (4.9%) and on ZERO declared-excess rows, so no acreage may be printed for a lead. assets_at_point exists because FRPP reports per ASSET, not per site."
+  },
+  {
    "table_name": "in_si_ibtr_placed",
    "source": "energy-platfrom.indiana_app.in_si_refresh_ibtr_appeals + in_sites",
    "method": "IBTR assessment appeals placed by their own stateParcelNumber rather than through the corpus copy's 'IN:'-prefixed key. Carries appealTypeName (Form 131/133/132/139) and attachmentDescriptions, neither of which had ever been surfaced. D85 excluded.",
@@ -1987,7 +2075,7 @@
    "source": "indiana_app.in_si_signals + in_si_signals_parcel_dated + in_si_southbend_* + in_si_evansville_* + in_si_indy_abandoned_vacant + in_si_refresh_indy_code_enforcement",
    "method": "every parcel-reachable SI signal after normalising THREE key namespaces (IN: prefix strip, punctuated state-id strip, address bridge), with a SEVERITY gate on South Bend code enforcement (95% litter/weeds) and Evansville demolition (90% residential teardowns). D85 whole-Earth parcel excluded. admit_status records WHY a row was excluded; nothing dropped.",
    "n_rows": 135590,
-   "built_at": "2026-08-18 02:11:31.100166+00",
+   "built_at": "2026-08-19 20:17:12.604133+00",
    "notes": null
   },
   {
@@ -1997,6 +2085,14 @@
    "n_rows": 4,
    "built_at": "2026-08-17 13:07:05.855627+00",
    "notes": "Built to close the ONE place an export still depended on the platform dataset. Build scripts may read energy; exports may not \u2014 an export is on the path to what the user sees, and the app must be rebuildable from indiana_app alone. Refresh this whenever the platform rebuilds mat_si_plottable."
+  },
+  {
+   "table_name": "in_si_queue_withdrawn",
+   "source": "indiana_app.in_queue (LBNL Queued Up 2026), indiana_app.in_pjm_gis_queues (PJM ArcGIS queue point service), indiana_app.in_queue_miso, indiana_app.in_substations, indiana_app.in_sites; Indiana polygon from bigquery-public-data.geo_us_boundaries.counties",
+   "method": "PJM/LBNL requests are placed by joining q_id to the PJM published QUEUE_ID coordinate. MISO requests are placed by reducing poiname to a station stem (voltage and the words SUBSTATION/STATION/SUB/GEN STA removed) and matching in_substations, REFUSING any name that matches more than one station. Every point is tested with ST_CONTAINS against the union of the Indiana county polygons, never a bounding box. placement_grain records whether a row is a parcel lead, a placed point, or county-only. RE-SCRAPE COMMAND: python scripts/build_si_queue_withdrawn.py",
+   "n_rows": 872,
+   "built_at": "2026-08-20 06:21:18.629995+00",
+   "notes": "G53 + G98. NO SCRAPING: the coordinate route uses data already held, which is what G98 predicted. A queue point is the INTERCONNECTION point, not the generator parcel - parcel_under_point is a lead, not the site. Recency and capacity_mw ship on every row because the operator made both a gate. Double-count warning: the same withdrawal reads as bad for the county queue (G48) and good for the parcel."
   },
   {
    "table_name": "in_si_refresh_brownfield_epa_in",
@@ -2051,7 +2147,7 @@
    "source": "indiana_app.in_si_signals + in_si_parcel_signals_v2",
    "method": "per-signal coverage: corpus rows, keying, publisher date range, parcels reached and admitted, and what each ruling excluded. source_block keeps the corpus and new publisher tables apart.",
    "n_rows": 25,
-   "built_at": "2026-08-18 02:11:37.542377+00",
+   "built_at": "2026-08-19 20:17:25.860973+00",
    "notes": null
   },
   {
@@ -2075,7 +2171,7 @@
    "source": "indiana_app.in_si_parcel_signals_v2",
    "method": "per-parcel roll-up the app reads: has_si_signal (NON-RESIDENTIAL, severity-gated), signal list, first/last event date and 3/5/10-year event counts so recency is filterable on screen.",
    "n_rows": 106659,
-   "built_at": "2026-08-18 02:11:34.457470+00",
+   "built_at": "2026-08-19 20:17:15.855957+00",
    "notes": null
   },
   {
@@ -2208,18 +2304,18 @@
   },
   {
    "table_name": "in_substations",
-   "source": "energy.mat_grid_substations (HIFLD+OSM deduped)",
-   "method": "one-time clip 2026-08-14",
+   "source": "indiana_app.in_substations repaired in place (originally energy.mat_grid_substations, which merges HIFLD and OpenStreetMap)",
+   "method": "REPAIR, not a rebuild: 933 rows whose lat/lon were NULL had a valid footprint_geojson all along, because OSM maps substations as ways (polygons) and only node records carry a latitude. Adds a geog column carrying the FOOTPRINT where held so distance math never uses a centroid; lat/lon are filled from ST_CENTROID for map markers only and geom_kind/coord_source record that they are derived. max_kv recovered from osm_voltage_raw (volts, semicolon-separated, max taken) with max_kv_inferred TRUE on every recovered value. RE-SCRAPE COMMAND: python scripts/repair_substation_geometry.py",
    "n_rows": 3858,
-   "built_at": "2026-08-14 22:19:05.190261+00",
-   "notes": null
+   "built_at": "2026-08-20 06:31:18.012411+00",
+   "notes": "G20 + G109 + G62. G20 reported these as name-only shells with no coordinates; that measurement tested lat IS NULL and the location was in footprint_geojson on 933 of 933. Located rows 2925 -> 3659; usable gazetteer names 2072 -> 2233. RE-RUN build_substations_dedup.py, then build_asset_distance_parcel.py and build_screener_candidates.py, or the repair never reaches a user."
   },
   {
    "table_name": "in_substations_dedup",
    "source": "energy-platfrom.indiana_app.in_substations",
    "method": "group on 4dp coordinate + upper(name); keep the most informative row (known voltage > real name over UNKNOWN/TAP placeholder > higher line_count > merged source); footprint-only rows passed through untouched",
    "n_rows": 3010,
-   "built_at": "2026-08-17 15:53:32.240203+00",
+   "built_at": "2026-08-20 06:33:09.858712+00",
    "notes": "Collapsed 848 duplicate rows inherited from energy.mat_grid_substations, which holds 3,858 Indiana rows on only 2,077 distinct coordinates. Counts of 'N substations' previously overstated by ~41%. Nearest-substation DISTANCE was never affected - the nearest of three identical points is still the nearest. `duplicates_collapsed` records how many rows each surviving row absorbed."
   },
   {
@@ -2257,10 +2353,10 @@
   {
    "table_name": "in_tribal_land",
    "source": "energy.tribal_land",
-   "method": "SPATIAL clip ST_INTERSECTION to Indiana (REPLACES a census-keyed geoid join)",
+   "method": "ROW-COUNT RECONCILIATION 2026-08-19b (G115). The prior registry row claimed 14 rows; the live table holds 1. The build itself was not changed by this reconciliation and the earlier row is retained as history. Original method: census-keyed clip (geoid:geoid)",
    "n_rows": 1,
-   "built_at": "2026-08-19 13:54:30.526165+00",
-   "notes": "REPAIRED 2026-08-19: the previous build used method=census-keyed clip (geoid:geoid) and returned 14 rows of which ZERO intersect Indiana (Laguna Pueblo NM, LAnse MI, Kootenai ID, Lake Traverse SD ...). Indiana holds exactly 1: Pokagon Off-Reservation Trust Land, 178.1 acres in-state. Tribal trust land is a SEPARATE SOVEREIGN - not county zoning, not state permitting | RE-SCRAPE COMMAND: python scripts/build_land_gates.py"
+   "built_at": "2026-08-19 21:41:13.718317+00",
+   "notes": "Appended by scripts/reconcile_registry_counts.py. This row corrects a COUNT only - it does not assert that the source or method were re-verified."
   },
   {
    "table_name": "in_txexp_miso_mtep_appendix_a_status",
@@ -2655,6 +2751,6 @@
    "latest": "2026-06-05"
   }
  ],
- "registry_rows_total": 349,
+ "registry_rows_total": 378,
  "registry_note": "provenance lists the LATEST build row per table; _registry itself keeps every build as an audit trail, so its raw row count is higher"
 }
