@@ -114,24 +114,17 @@ for r in client.query(f"""
     n_fl += 1
 print(f"  water: {n_wb:,} bodies + {n_fl:,} named flowlines")
 
-# ---- 2. FAA obstacles ------------------------------------------------------------------------
-# ⚠ TRIM: `type` arrives space-padded to a fixed width.
+# ---- 2. FAA obstacles: NOT EXPORTED HERE, AND THAT IS THE POINT --------------------------------
+# ⛔ The first version of this script shipped an obstacle layer. `gates.geojson.gz` ALREADY
+#    carries all 4,590 of them behind the "Tall obstructions >=200 ft" checkbox, with a click
+#    handler. Two copies of one layer is the §2.15c defect: they drift, and the loser is
+#    invisible. The census listed in_faa_obstacles as unwired, which is what prompted the
+#    duplicate - and that was an INSTRUMENT false negative, now fixed in audit_wiring_census.py.
+# ⭐ The one thing the new draft had that the shipped layer lacked survived: 1,816 of the 4,590
+#    are WINDMILLS, and a standing turbine is a siting SIGNAL, not an obstruction. app.js now
+#    colours them green on the existing layer.
 n_ob = 0
-for r in client.query(f"""
-  SELECT TRIM(type) AS kind, SAFE_CAST(agl AS INT64) AS agl_ft,
-         SAFE_CAST(amsl AS INT64) AS amsl_ft, city, TRIM(lighting) AS lighting,
-         TRIM(verified_status) AS verified,
-         SAFE_CAST(latdec AS FLOAT64) AS la, SAFE_CAST(londec AS FLOAT64) AS lo
-  FROM `{DS}.in_faa_obstacles`
-  WHERE SAFE_CAST(latdec AS FLOAT64) IS NOT NULL
-    AND (SAFE_CAST(agl AS INT64) >= 200 OR TRIM(type) = 'WINDMILL')"""):
-    d = dict(r)
-    la, lo = d.pop("la"), d.pop("lo")
-    d["layer"] = "obstacle"
-    feats.append({"type": "Feature", "properties": d,
-                  "geometry": {"type": "Point", "coordinates": [rc(lo), rc(la)]}})
-    n_ob += 1
-print(f"  obstacles: {n_ob:,} (200 ft+ or windmill)")
+print("  obstacles: 0 exported here - already shipped in gates.geojson.gz (see the note above)")
 
 # ---- 3. federal property, correctly classified -----------------------------------------------
 n_fp = 0
@@ -228,20 +221,6 @@ wired = {
                                  NULLIF(SUM(nris_mw), 0)) / 1000, 1) AS usd_k_per_nris_mw
         FROM `{DS}.in_miso_dpp2025_ph1_project_costs`
         GROUP BY 1, 2 ORDER BY cost_musd DESC"""),
-
-    # ⭐ THE PRICE CHECK. in_eia861_sales_ult_cust held every Indiana utility's INDUSTRIAL revenue
-    #    and MWh and reached no surface. revenue / sales is the implied industrial rate actually
-    #    BILLED last year - a yardstick against the tariff engine's modelled figure, from a
-    #    different source entirely.
-    #    ⚠ It is an AVERAGE across every industrial customer, not a large-load rate, and it is
-    #    NOT a substitute for the tariff: it carries no demand/energy split and no rider stack.
-    "utility_implied_industrial": rows(f"""
-        SELECT utility_name, data_year, ownership, ba_code,
-               ROUND(ind_sales_mwh) AS ind_mwh, ROUND(ind_customers) AS ind_customers,
-               ROUND(100 * SAFE_DIVIDE(ind_rev_kusd, ind_sales_mwh), 2) AS implied_cents_kwh,
-               ROUND(100 * SAFE_DIVIDE(tot_rev_kusd, tot_sales_mwh), 2) AS all_class_cents_kwh
-        FROM `{DS}.in_eia861_sales_ult_cust`
-        WHERE ind_sales_mwh > 0 ORDER BY ind_sales_mwh DESC"""),
 
     # in_bus_headroom_300 held 642 rows and reached no surface. tier0 answers at one request size;
     # this answers at 300 MW, which is a realistic hyperscale ask.

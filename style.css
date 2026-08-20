@@ -346,3 +346,19 @@ body.basemap-dark #layer-legend > summary { color: #e5e7eb; }
   letter-spacing: .03em; }
 #ms-out .ms-note { padding: 6px 9px; color: #6b7280; }
 #ms-out .ms-est { color: #b45309; font-weight: 600; }
+
+/* ---------- G6 / G83: the grouped contents strip on the owner-signals page --------------------
+   si.html carries 30 cards on one page. The operator's complaint was structure, not emptiness -
+   "27 tables and 25 headings on one page with no grouping" - so the page renders this from each
+   card's data-group rather than being reordered. Sticky, because the value of a contents list on
+   a very long page is that it is there when you are halfway down it. */
+.sitoc { position: sticky; top: 0; z-index: 40; background: var(--bg, #fff);
+         border-bottom: 1px solid #e5e7eb; padding: 7px 10px; margin: 0 0 12px;
+         font-size: 11.5px; line-height: 1.7; display: flex; flex-wrap: wrap;
+         gap: 4px 14px; align-items: baseline; }
+.sitoc > b { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+.sitoc .tocg { display: inline-flex; flex-wrap: wrap; gap: 3px 8px; align-items: baseline; }
+.sitoc .tocg i { font-style: normal; font-weight: 600; color: #374151; }
+.sitoc .tocg i::after { content: ":"; }
+.sitoc a { color: #2563eb; text-decoration: none; white-space: nowrap; }
+.sitoc a:hover { text-decoration: underline; }

@@ -407,7 +407,14 @@ map.on("load", async () => {
     filter: ["==", ["get", "layer"], "obstacle"], layout: { visibility: "none" },
     paint: { "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "agl_ft"], 200],
                                200, 2.5, 500, 5, 1200, 9],
-             "circle-color": "#78716c", "circle-opacity": 0.75,
+             // ⭐ G72/G80, 2026-08-20: 1,816 of these 4,590 records are WIND TURBINES, and a
+             //    turbine is a siting SIGNAL rather than an obstruction. It is standing proof
+             //    that this exact ground already cleared landowner consent, an interconnection
+             //    and a local permit. Drawn green so it separates from the towers and stacks,
+             //    which are the gate half of the layer.
+             "circle-color": ["case", ["==", ["get", "obstacle_type"], "WINDMILL"],
+                              "#16a34a", "#78716c"],
+             "circle-opacity": 0.75,
              "circle-stroke-color": "#292524", "circle-stroke-width": 0.5 } });
 
   state.fac = await fetchGz("data/facilities.geojson.gz");
@@ -1004,7 +1011,14 @@ const LAYER_MAP = { "L-subs": ["grid-subs", "grid-subs-fp"], "L-lines": ["grid-l
 // Schools and weather stations were removed by operator ruling 2026-08-15 — schools were staged
 // for a separate Illinois experiment, and a GHCN station location is not something a siter acts
 // on. Both are recorded as waivers on the Data page rather than silently dropped.
-const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp", "L-frpp": "ctx-frpp" };
+// ⛔ `L-frpp` / `ctx-frpp` REMOVED 2026-08-20 (G97), NOT just relabelled. It drew all 1,594
+//    federal points under a checkbox reading "Federal surplus property" while 1,540 of them are
+//    Current Mission Need. `wired-fedprop` replaces it and states each point's actual status,
+//    and `wired-surplus` carries the 20 that are genuinely a signal.
+//    ⚠ Leaving the key here while deleting the checkbox from index.html is what took the whole
+//    app down for one cycle: the loop below did `$(box).addEventListener` on a null. Two changes
+//    that were each fine and were fatal together — trap 3, again.
+const CONTEXT_LAYERS = { "L-ghgrp": "ctx-ghgrp" };
 
 /* ---------- G110: THE ENVIRONMENTAL GATES YOU CAN FILTER ON, YOU CAN NOW SEE ------------------
    Operator, 2026-08-19: *"The flood zones, wetlands, and the protected land should also show the
@@ -1101,8 +1115,36 @@ async function openScreenerSite(fips, key, fallback) {
    preset mentioned L-fac at all, so wind and solar kept drawing after switching to Environmental,
    which is exactly what the operator reported. Every preset now states every layer, unstated boxes
    default to OFF rather than persisting, and a gap is reported loudly at boot. */
+/* ---------- G72/G80/G97/G98: the objects that reached NO surface, as layers -------------------
+   Six new controls, one payload, loaded on FIRST TOGGLE like the context and env-gate layers.
+
+   ⭐ EACH ONE HAS TO EARN ITS PLACE (the governing principle is a veto, not a polish step):
+     water        a 100 MW evaporative campus wants 1-2 MGD of make-up water. Only bodies you
+                  could actually permit an intake against are drawn - named, or over 12 acres.
+     fedprop      ⛔ REPLACES the old "Federal surplus property" control, which drew 1,594 points
+                  of which 1,540 are Current Mission Need. See the note on `L-fedprop`.
+     surplus      the 20 that ARE declared surplus or unutilised - an owner publicly stating it
+                  does not want the land, with no inference at all.
+     withdrawn    a landowner who signed an interconnection agreement, then had the project
+                  cancelled: consent already given, grid position already studied.
+     campus       colleges (workforce) and USDA-inspected food plants (heavy industrial sites
+                  with big power and water service already in the ground).                    */
+/* ⛔ NO OBSTACLE LAYER HERE, AND THAT IS DELIBERATE. The first draft of this block added one —
+   and `L-obst` / `gate-obst` already draws the same 4,590 FAA records from gates.geojson.gz,
+   with a click handler. Two copies of one layer is §2.15c: they WILL drift and the loser is
+   invisible. The one thing the new draft had that the old layer lacked — that 1,816 of these
+   are WINDMILLS, and an existing turbine is proof that this exact ground already cleared
+   landowner consent, an interconnection and a local permit — was added to `gate-obst` instead. */
+const WIRED_LAYERS = {
+  "L-water": ["wired-waterbody", "wired-flowline"],
+  "L-fedprop": ["wired-fedprop"],
+  "L-surplus": ["wired-surplus"],
+  "L-withdrawn": ["wired-withdrawn"],
+  "L-campus": ["wired-college", "wired-foodplant"],
+};
 const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS),
-                         ...Object.keys(ENVGATE_LAYERS), "L-parcels", "L-screener"];
+                         ...Object.keys(ENVGATE_LAYERS), ...Object.keys(WIRED_LAYERS),
+                         "L-parcels", "L-screener"];
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
   if (state.ctxLoaded) return true;
@@ -1114,9 +1156,6 @@ async function ensureContextLayers() {
       filter: ["==", ["get", "layer"], "ghgrp"], layout: { visibility: "none" },
       paint: { "circle-radius": 5, "circle-color": "#dc2626", "circle-opacity": 0.7,
                "circle-stroke-color": "#7f1d1d", "circle-stroke-width": 1 } });
-    map.addLayer({ id: "ctx-frpp", type: "circle", source: "ctx",
-      filter: ["==", ["get", "layer"], "frpp"], layout: { visibility: "none" },
-      paint: { "circle-radius": 4, "circle-color": "#0d9488", "circle-opacity": 0.75 } });
     for (const id of Object.values(CONTEXT_LAYERS)) {
       map.on("mousemove", id, (e) => showTip(e, ctxTip(e.features[0].properties)));
       map.on("mouseleave", id, hideTip);
@@ -1130,9 +1169,154 @@ async function ensureContextLayers() {
 function ctxTip(p) {
   if (p.layer === "ghgrp") return `GHGRP emitter: ${p.name || "?"}` +
     (p.co2e_latest ? ` · ${fmt(Math.round(p.co2e_latest))} t CO2e (${p.co2e_year})` : "");
-  if (p.layer === "frpp") return `Federal property: ${p.agency || "?"}`;
   return p.layer;
 }
+
+/* ---------- G72/G80/G97/G98 layers, loaded on first toggle ------------------------------------ */
+state.wiredLoaded = false; state.wiredLoading = null;
+const SURPLUS_PLAIN = {
+  declared_excess: "DECLARED SURPLUS — a Report of Excess or a Determination to Dispose is on file",
+  unutilized_not_declared: "unutilised — nobody has used it, but no disposal is filed",
+  underutilized_not_declared: "underutilised — partly used, no disposal filed",
+  disposed: "already disposed of — a comparable, not a lead",
+  in_use: "in use — Current or Future Mission Need. NOT surplus.",
+};
+async function ensureWiredLayers() {
+  if (state.wiredLoaded) return true;
+  if (state.wiredLoading) return state.wiredLoading;
+  state.wiredLoading = (async () => {
+    const [fc1, fc2] = await Promise.all([
+      fetchGz("data/wired.geojson.gz"), fetchGz("data/wired2.geojson.gz")]);
+    map.addSource("wired", { type: "geojson", data: fc1 });
+    map.addSource("wired2", { type: "geojson", data: fc2 });
+    const hid = { visibility: "none" };
+    map.addLayer({ id: "wired-waterbody", type: "fill", source: "wired",
+      filter: ["==", ["get", "layer"], "waterbody"], layout: hid,
+      paint: { "fill-color": "#2563eb", "fill-opacity": 0.28,
+               "fill-outline-color": "#1e40af" } });
+    map.addLayer({ id: "wired-flowline", type: "line", source: "wired",
+      filter: ["==", ["get", "layer"], "flowline"], layout: hid,
+      paint: { "line-color": "#3b82f6", "line-width": 1.1, "line-opacity": 0.75 } });
+    map.addLayer({ id: "wired-fedprop", type: "circle", source: "wired",
+      filter: ["==", ["get", "layer"], "fedprop"], layout: hid,
+      paint: { "circle-radius": 4,
+               "circle-color": ["case", ["==", ["get", "is_si_signal"], true], "#d97706", "#0d9488"],
+               "circle-opacity": 0.75 } });
+    map.addLayer({ id: "wired-surplus", type: "circle", source: "wired",
+      filter: ["all", ["==", ["get", "layer"], "fedprop"],
+               ["==", ["get", "is_si_signal"], true]], layout: hid,
+      paint: { "circle-radius": 9, "circle-color": "#d97706", "circle-opacity": 0.85,
+               "circle-stroke-color": "#7c2d12", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "wired-withdrawn", type: "circle", source: "wired",
+      filter: ["==", ["get", "layer"], "withdrawn"], layout: hid,
+      paint: { "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "mw"], 0],
+                                 0, 4, 100, 7, 500, 12, 1000, 16],
+               "circle-color": "#9333ea", "circle-opacity": 0.6,
+               "circle-stroke-color": "#581c87", "circle-stroke-width": 1 } });
+    map.addLayer({ id: "wired-college", type: "circle", source: "wired2",
+      filter: ["==", ["get", "layer"], "college"], layout: hid,
+      paint: { "circle-radius": 4, "circle-color": "#0891b2", "circle-opacity": 0.8 } });
+    map.addLayer({ id: "wired-foodplant", type: "circle", source: "wired2",
+      filter: ["==", ["get", "layer"], "foodplant"], layout: hid,
+      paint: { "circle-radius": 4, "circle-color": "#b45309", "circle-opacity": 0.8 } });
+    // ⛔ EVERY layer gets BOTH a hover and a click. G105's precedent is layers that were drawn
+    //    and unclickable for weeks; adding six more without handlers would repeat it exactly.
+    for (const ids of Object.values(WIRED_LAYERS)) for (const id of ids) {
+      map.on("mousemove", id, (e) => showTip(e, wiredTip(e.features[0].properties)));
+      map.on("mouseleave", id, hideTip);
+      map.on("click", id, (e) => { if (!state.measure.on) wiredEvidence(e.features[0].properties); });
+    }
+    state.wiredLoaded = true;
+    return true;
+  })();
+  return state.wiredLoading;
+}
+function wiredTip(p) {
+  switch (p.layer) {
+    case "waterbody": return `${p.name || p.kind || "waterbody"} — ${fmt(p.acres)} acres`;
+    case "flowline": return `${p.name} — ${p.km} km reach`;
+    case "fedprop": return `${p.agency || "federal property"} — ` +
+      (SURPLUS_PLAIN[p.surplus_class] || p.surplus_class);
+    case "withdrawn": return `${p.iso} ${p.project_id} — ${fmt(p.mw)} MW ${p.resource_type || ""}` +
+      ` withdrawn ${p.wd_date || "?"}`;
+    case "college": return `${p.name} (${p.city || "?"})`;
+    case "foodplant": return `${p.name} — USDA-inspected plant`;
+    default: return p.layer;
+  }
+}
+/* one entry per layer: [table, what it is, ⭐ what it changes about a decision] */
+const WIRED_PROV = {
+  waterbody: ["in_nhd_waterbody_geom", "NHD waterbodies, named or over 12 acres.",
+    "A 100 MW evaporative-cooled campus consumes roughly 1–2 million gallons a day of make-up " +
+    "water. The question is not whether water is nearby but whether a body is big enough to " +
+    "permit an intake against — farm ponds are deliberately not drawn, because showing them " +
+    "would answer the question wrongly in the reassuring direction."],
+  flowline: ["in_nhd_flowline_geom", "Named NHD reaches of at least 1 km.",
+    "163,976 flowlines are held; an unnamed 500 m ditch is not an intake, so only the 7,202 " +
+    "named reaches over a kilometre are drawn."],
+  fedprop: ["in_si_gov_surplus_v2", "Every federally-held property in Indiana, with what it IS.",
+    "⛔ THIS CONTROL USED TO SAY “Federal surplus property” AND DRAW ALL 1,594 POINTS. Measured: " +
+    "1,540 of them are Current Mission Need — the label was true of 17. Each point now states " +
+    "its own asset status, and the 20 that are genuinely declared surplus or unutilised have " +
+    "their own control beside this one."],
+  withdrawn: ["in_si_queue_withdrawn", "Cancelled interconnection requests, placed.",
+    "A landowner who signed an interconnection agreement already consented to host energy " +
+    "infrastructure and now has a studied grid position with no project on it — willingness " +
+    "revealed by preference rather than inferred from distress. ⚠ The point is the " +
+    "INTERCONNECTION point, not the generator parcel; those can be a mile apart down a gen-tie."],
+  college: ["in_candidate_sites_colleges", "Degree-granting institutions.",
+    "Operations staffing. A campus within commuting distance is where technicians come from, " +
+    "and it is also a large institutional landowner."],
+  foodplant: ["in_fsis_establishments", "USDA-inspected meat and poultry plants.",
+    "Heavy industrial sites with large electrical service, large water service and a discharge " +
+    "permit already in the ground — the cheapest kind of brownfield to convert, and a pool that " +
+    "closes often enough to be worth watching."],
+};
+function wiredEvidence(p) {
+  const [tbl, what, sowhat] = WIRED_PROV[p.layer] || ["", "", ""];
+  const skip = new Set(["layer"]);
+  let extra = "";
+  if (p.layer === "fedprop") {
+    extra = `<div class="sowhat"><b>${SURPLUS_PLAIN[p.surplus_class] || p.surplus_class}</b>` +
+      (p.assets_at_point > 1
+        ? ` · FRPP reports per ASSET, and ${p.assets_at_point} federal assets share this exact
+            coordinate — one installation, not ${p.assets_at_point} sites.` : "") +
+      (p.years_underutilized ? ` · unused for <b>${p.years_underutilized} years</b>.` : "") +
+      `</div>`;
+  }
+  if (p.layer === "withdrawn") {
+    extra = `<div class="sowhat">` +
+      (p.parcel_key
+        ? `A parcel sits under this point — <b>${p.parcel_key}</b>${p.parcel_acres
+            ? `, ${fmt(Math.round(p.parcel_acres))} acres` : ""}. ⚠ That is a LEAD, not the site:
+           the queue point is where the project would have interconnected, which can be a mile
+           from the generator.`
+        : `No parcel sits under this point, so this is vicinity-grade only.`) +
+      (p.years_since_withdrawal != null
+        ? ` Withdrawn <b>${p.years_since_withdrawal} year${p.years_since_withdrawal === 1 ? "" : "s"}
+            ago</b> — recency governs, because a 2006 cancellation says little about today's owner.`
+        : "") + `</div>`;
+  }
+  const rows_ = Object.entries(p).filter(([k]) => !skip.has(k))
+    .map(([k, v]) => row(landPlainLabel(k), v)).join("");
+  show(wiredTip(p), `${extra}<table>${rows_}</table>
+    <div class="sowhat">${sowhat}</div>
+    <div class="prov">${prov(tbl)} · ${what}</div>`);
+}
+/* the payload keys are database columns; a reader should not have to decode them */
+const WIRED_LABELS = {
+  agl_ft: "height above ground (ft)", amsl_ft: "height above sea level (ft)",
+  assets_at_point: "federal assets at this coordinate", surplus_class: "status",
+  is_si_signal: "counts as an owner-motivation signal", years_underutilized: "years unused",
+  ptype: "property type", use: "current use", excess_date: "reported excess on",
+  mw: "capacity requested (MW)", wd_date: "withdrawn on", poi_name: "interconnection point",
+  years_since_withdrawal: "years since withdrawal", placement_grain: "how precisely it is placed",
+  location_method: "how it was placed", parcel_key: "parcel under the point",
+  parcel_acres: "that parcel's acreage", resource_type: "what it would have been",
+  counterparty: "transmission owner", km: "reach length (km)", acres: "surface acres",
+  sqkm: "surface area (km²)", kind: "type", verified: "FAA verification",
+};
+const landPlainLabel = (k) => WIRED_LABELS[k] || k.replace(/_/g, " ");
 const CTX_PROV = {
   // NOTE: adjacent string literals do NOT concatenate in JavaScript (that is Python). Writing
   // them that way here threw `SyntaxError: Unexpected string` and took the ENTIRE app down —
@@ -1144,7 +1328,6 @@ const CTX_PROV = {
     "latest-year figure; the rest report no emissions in the most recent year held and show " +
     "nothing rather than a zero. in_ghgrp_emitter_facilities is a subset (all 246 of its ids " +
     "are among these) and supplies the reporting year."],
-  frpp: ["in_gov_surplus_frpp", "Federal Real Property Profile — federally-held property, a live acquisition lead rather than mere context."],
 };
 function ctxEvidence(p) {
   const [tbl, note] = CTX_PROV[p.layer] || ["", ""];
@@ -1275,6 +1458,12 @@ for (const [box, layerId] of Object.entries(ENVGATE_LAYERS)) {
 }
 
 for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
+  // ⛔ GUARD, ADDED AFTER THIS EXACT LINE TOOK THE WHOLE APP DOWN. A layer registry entry whose
+  //    checkbox has been removed from the HTML returns null here, and an unguarded
+  //    .addEventListener throws during boot — before the map is built, so the page renders
+  //    nothing at all and the cause is nowhere near the symptom. Every other registry loop in
+  //    this file already guards; this one did not.
+  if (!$(box)) { console.warn(`CONTEXT_LAYERS names ${box}, which is not on this page`); continue; }
   $(box).addEventListener("change", async (e) => {
     if (e.target.checked) {
       $(box).parentElement.style.opacity = "0.55";
@@ -1397,6 +1586,11 @@ function syncLayers() {
   for (const [box, id] of Object.entries(ENVGATE_LAYERS))
     if (map.getLayer(id) && $(box))
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
+  // G72/G80: same lazy path again. ONE visibility mechanism for every layer on the console —
+  // a second one would be the two-copies-drift defect, and the legend reads from this call.
+  for (const [box, ids] of Object.entries(WIRED_LAYERS))
+    for (const id of ids) if (map.getLayer(id) && $(box))
+      map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
   const showP = $("L-parcels").checked;
   for (const fips of state.loaded.keys())
     for (const suf of ["fill", "line"])
@@ -1409,6 +1603,22 @@ for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListene
 // the context and screener boxes are wired elsewhere, but the KEY must still update for them
 for (const id of [...Object.keys(CONTEXT_LAYERS), ...Object.keys(ENVGATE_LAYERS), "L-screener"])
   if ($(id)) $(id).addEventListener("change", () => setTimeout(renderLayerLegend, 0));
+
+/* G72/G80: load-on-first-toggle for the six new controls. ⚠ If the fetch fails the box is
+   UNTICKED again — a ticked box over an absent layer is the failure mode the logistics layers
+   had for weeks, where the reader believed they were looking at data that was never drawn. */
+for (const box of Object.keys(WIRED_LAYERS)) {
+  const el = $(box);
+  if (!el) continue;
+  el.addEventListener("change", async (e) => {
+    if (e.target.checked) {
+      try { await ensureWiredLayers(); } catch (err) {
+        reportBootFailure(err); e.target.checked = false; return;
+      }
+    }
+    syncLayers();
+  });
+}
 
 /* ---------- G110b: TICKING A GATE FILTER REVEALS THE GATE --------------------------------------
    Operator: the layers "should also show the map layer when checked, not just used as a filtering
@@ -1665,16 +1875,43 @@ async function ensureCountyLoaded(fips) {
    that flies to an estimate without saying so converts a caveat into a coordinate. */
 const MS_ADDRESSY = /\d+\s+[A-Za-z].*\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|blvd|boulevard|ct|court|hwy|highway|pike|way|pkwy)\b/i;
 
+/* ---------- G105: THE DEEP-LINK PIN, and why it needed its own function ------------------------
+   The amber pin was created in TWO places — the search bar and the deep-link handler — with the
+   same eleven lines copied, `properties: {}` in both, and NO CLICK BINDING in either. So the one
+   marker on the map that says "this is the thing you asked for" was the only marker you could not
+   ask about: click it and nothing happened, and once the panel was closed there was no way back
+   to it without searching again.
+
+   Two copies of one thing is §2.15c, so this is now one function. The properties travel WITH the
+   feature, which is what makes the click possible at all — a pin with empty properties has
+   nothing to re-show. */
+function dropPin(lat, lon, props) {
+  const gj = { type: "Feature", geometry: { type: "Point", coordinates: [lon, lat] },
+               properties: { lat, lon, ...props } };
+  if (map.getSource("deeplink-pt")) { map.getSource("deeplink-pt").setData(gj); return; }
+  map.addSource("deeplink-pt", { type: "geojson", data: gj });
+  map.addLayer({ id: "deeplink-pt", type: "circle", source: "deeplink-pt",
+    paint: { "circle-radius": 11, "circle-color": "#f59e0b", "circle-opacity": 0.35,
+             "circle-stroke-color": "#b45309", "circle-stroke-width": 2.5 } });
+  map.on("mousemove", "deeplink-pt", (e) =>
+    showTip(e, `${e.features[0].properties.label || "your search result"} — click to re-open`));
+  map.on("mouseleave", "deeplink-pt", hideTip);
+  map.on("click", "deeplink-pt", (e) => {
+    if (state.measure.on) return;
+    const p = e.features[0].properties;
+    show(p.label ? `Located: ${escHtml(String(p.label))}` : "Located", `
+      <table>${row("coordinate", `${Number(p.lat).toFixed(5)}, ${Number(p.lon).toFixed(5)}`)}
+        ${row("what it is", p.src || null)}</table>
+      ${p.estimate ? `<div class="cannot">⚠ <b>This position is an ESTIMATE.</b>
+        ${escHtml(String(p.estimate))} Treat it as "about here", not as a survey.</div>` : ""}
+      <div class="hint">This is the pin dropped by your search or by the link you followed. Every
+        layer under it is still clickable — the pin marks the spot, it does not own it.</div>`);
+  });
+}
+
 function msFlyTo(lat, lon, label, src, estimate) {
   map.flyTo({ center: [lon, lat], zoom: 15 });
-  const gj = { type: "Feature", geometry: { type: "Point", coordinates: [lon, lat] }, properties: {} };
-  if (map.getSource("deeplink-pt")) map.getSource("deeplink-pt").setData(gj);
-  else {
-    map.addSource("deeplink-pt", { type: "geojson", data: gj });
-    map.addLayer({ id: "deeplink-pt", type: "circle", source: "deeplink-pt",
-      paint: { "circle-radius": 11, "circle-color": "#f59e0b", "circle-opacity": 0.35,
-               "circle-stroke-color": "#b45309", "circle-stroke-width": 2.5 } });
-  }
+  dropPin(lat, lon, { label, src, estimate: estimate || "" });
   show(`Found: ${escHtml(label)}`, `
     <table>${row("Coordinate", `${lat.toFixed(5)}, ${lon.toFixed(5)}`)}
       ${row("What it is", src)}</table>
@@ -1961,17 +2198,10 @@ async function handleDeepLink() {
   if (Number.isFinite(qlat) && Number.isFinite(qlon)) {
     const z = Math.min(17, Math.max(4, parseFloat(q.get("z")) || 13));
     map.flyTo({ center: [qlon, qlat], zoom: z });
-    if (map.getSource("deeplink-pt")) map.getSource("deeplink-pt").setData(
-      { type: "Feature", geometry: { type: "Point", coordinates: [qlon, qlat] }, properties: {} });
-    else {
-      map.addSource("deeplink-pt", { type: "geojson",
-        data: { type: "Feature", geometry: { type: "Point", coordinates: [qlon, qlat] }, properties: {} } });
-      map.addLayer({ id: "deeplink-pt", type: "circle", source: "deeplink-pt",
-        paint: { "circle-radius": 11, "circle-color": "#f59e0b", "circle-opacity": 0.35,
-                 "circle-stroke-color": "#b45309", "circle-stroke-width": 2.5 } });
-    }
     const label = (q.get("label") || "").trim();
     const src = (q.get("src") || "").trim();
+    // one pin implementation, shared with the search bar — see dropPin
+    dropPin(qlat, qlon, { label, src });
     show(label ? `Located: ${escHtml(label)}` : "Located",
       `<table>${row("coordinate", `${qlat.toFixed(5)}, ${qlon.toFixed(5)}`)}
         ${row("what it is", label || null)}${row("source", src || null)}</table>
@@ -3953,6 +4183,97 @@ function severeWeatherBlock(c) {
       all-time ones. An unrated tornado is counted but carries no EF.</div>`;
 }
 
+/* ---------- G72/G80: eight county-grain objects that reached no surface ------------------------
+   ⚠ THE VINTAGES DIFFER BY UP TO NINE YEARS and each figure carries its own, rather than one
+     footnote covering all of them. USGS publishes water use every five years (2015 is current;
+     2020 is the next release), ACS is 2023, BLS 2024.
+   ⛔ A HELD-BUT-EMPTY COLUMN RENDERS AS ITSELF (G51). BLS suppresses the construction breakout on
+     all 92 counties, so the row says the publisher does not break it out. Printing 0 would invite
+     a reader to conclude the county has no builders. */
+function countyExtrasBlock(c) {
+  const x = c.extras;
+  if (!x) return "";
+  const mgd = (v) => v == null ? null : `${v.toFixed(2)} <span class="hint">Mgal/day</span>`;
+  // ⭐ THE WATER SENTENCE IS THE ONE THAT CHANGES A DECISION, so it is computed, not asserted.
+  const ps = x.public_supply_mgd;
+  const waterSoWhat = ps == null
+    ? `No county water-use figure is held, so the size of the ask cannot be put in context here.`
+    : ps === 0
+      ? `<b>This county has no public-supply withdrawal at all in the USGS survey.</b> That is a
+         stated zero, not a gap: there is no municipal system of any size to negotiate with, so a
+         cooling-water supply here means a well field or a pipeline, priced and permitted from
+         scratch.`
+      : `<b>A 100 MW evaporative-cooled campus wants roughly 1–2 Mgal/day of make-up water.</b>
+         This county's ENTIRE public supply withdraws ${ps.toFixed(2)} Mgal/day, so such a campus
+         would be asking for about <b>${Math.round(100 * 1.5 / ps)}%</b> of everything the public
+         system currently takes. ${x.public_supply_surface_mgd > x.public_supply_groundwater_mgd
+           ? `It is a SURFACE-water county, so the conversation is an intake permit and a
+              low-flow limit.`
+           : `It is a GROUNDWATER county, so the conversation is aquifer drawdown and a
+              significant-water-withdrawal registration, not a river intake.`}
+         Air-cooling avoids nearly all of it and costs efficiency instead — that trade is the
+         decision this number informs.`;
+  const risk = x.nri_risk_rating;
+  return `
+    <h3>Water supply <span class="hint">(USGS, ${x.water_use_year || "?"})</span></h3><table>
+      ${row("public supply, all withdrawals", mgd(ps), "not surveyed")}
+      ${row("… from groundwater", mgd(x.public_supply_groundwater_mgd), "none")}
+      ${row("… from surface water", mgd(x.public_supply_surface_mgd), "none")}
+      ${row("industrial self-supplied", mgd(x.industrial_selfsupplied_mgd), "none reported")}
+      ${row("thermoelectric (existing power)", mgd(x.thermoelectric_mgd), "none — no thermal plant draws here")}
+      ${row("every use in the county", mgd(x.all_uses_mgd), "not surveyed")}</table>
+    <div class="sowhat">${waterSoWhat}</div>
+    <div class="prov">${prov("in_county_context_extras")} · USGS county water use.
+      ⚠ 2015 is the most recent survey published; USGS releases every five years.</div>
+
+    <h3>Workforce &amp; economy</h3><table>
+      ${row("people employed", x.employment)}
+      ${row("establishments", x.estabs)}
+      ${row("average weekly wage", x.avg_weekly_wage ? `$${fmt(x.avg_weekly_wage)}` : null)}
+      ${row("civilian labour force", x.civilian_labor_force)}
+      ${row("median household income", x.median_hh_income ? `$${fmt(x.median_hh_income)}` : null)}
+      ${row("construction employment", null,
+            x.construction_breakout_held === false
+              ? "BLS does not publish the construction split at county grain" : "not measured here")}
+      ${row("CS &amp; engineering degrees awarded", x.campus_cs_eng_awards,
+            x.campus_institutions ? "campus present, none awarded" : "no institution in this county")}</table>
+    <div class="sowhat">A 300 MW build needs on the order of a thousand trades at peak, then a
+      few dozen permanent staff. <b>The wage sets the build cost and the labour force sets whether
+      the trades are local or imported</b> — imported crews carry per-diem, travel and a schedule
+      that moves with someone else's project. ⛔ The construction-specific figure is
+      <b>held-but-empty on all 92 counties</b> and is shown as such rather than as a zero.</div>
+
+    <h3>Hazard &amp; resilience <span class="hint">(FEMA National Risk Index)</span></h3><table>
+      ${row("composite risk", risk)}
+      ${row("expected annual loss", x.nri_expected_annual_loss_musd != null
+            ? `$${x.nri_expected_annual_loss_musd}M <span class="hint">across the whole county</span>` : null)}
+      ${row("community resilience", x.nri_resilience_rating)}
+      ${row("buildings on record", x.bldg_count)}
+      ${row("solar resource", x.ghi_kwh_m2_day
+            ? `${x.ghi_kwh_m2_day} <span class="hint">kWh/m²/day</span>` : null)}</table>
+    <div class="sowhat">FEMA's index is an <b>insurance and hardening</b> input, and it pairs with
+      the storm history above: that panel counts what has happened, this one prices what is
+      expected annually. <b>Community resilience is the half people skip</b> — it measures how
+      fast the county recovers, which is what decides whether a two-day outage is two days.
+      Indiana's solar resource barely varies (4.0–4.3 kWh/m²/day statewide), so on-site solar is
+      a land-cost question here, never a location question.</div>
+
+    <h3>Is the industry already here?</h3><table>
+      ${row("data-centre establishments", x.dc_industry_establishments, "none in this county")}
+      ${row("people employed in them", x.dc_industry_employment, "none in this county")}
+      ${row("utilities employment", x.utilities_employment, "none reported")}
+      ${row("telecoms employment", x.telecom_employment, "none reported")}</table>
+    <div class="sowhat">${x.dc_industry_employment
+      ? `<b>The data-centre industry already employs ${fmt(x.dc_industry_employment)} people in
+         ${x.dc_industry_establishments} establishments here.</b> That usually means the
+         substation capacity, the fibre and — most valuable of all — the permit precedent already
+         exist, and somebody at the county has done this before.`
+      : `<b>No data-centre industry employment is recorded in this county.</b> Only 15 of
+         Indiana's 92 counties have any, so this is the normal case rather than a warning — but
+         it does mean you would be the first, and first movers write the ordinance rather than
+         inheriting one.`}</div>`;
+}
+
 async function openCountyEvidence(p) {
   const c = state.ctx.by_fips[p.fips] || {};
   let html = `
@@ -3976,7 +4297,8 @@ async function openCountyEvidence(p) {
       ${row("local restriction", c.posture?.has_local_restriction)}${row("moratoriums", c.posture?.local_moratoriums)}</table>
     ${dcPostureBlock(c)}
     ${actionExpiryBlock(c)}
-    ${severeWeatherBlock(c)}`;
+    ${severeWeatherBlock(c)}
+    ${countyExtrasBlock(c)}`;
   if (!state.receipts) { try { state.receipts = await fetchGz("data/receipts.json.gz"); } catch { state.receipts = []; } }
   const name = (p.county_name || "").toUpperCase().replace(/ COUNTY$/, "");
   const rows_ = state.receipts.filter((r) => (r.county || "").toUpperCase().replace(/ COUNTY$/, "") === name).slice(0, 40);

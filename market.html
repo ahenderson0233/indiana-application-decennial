@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market &amp; Rates — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=e0291edb"></head>
+<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Market &amp; Rates</span></div></header>
 <nav id="nav"></nav>
@@ -141,6 +141,51 @@
       than assumed: of 58 companies, exactly one (AES Armenia Mountain Wind) names another state in
       its own name, so this slice is genuinely Indiana-centred — but a filer here may still trade
       elsewhere.</div></div>
+
+  <!-- ============================================================================================
+       G72/G80, 2026-08-20. Three objects that were clipped, registered and rendered NOWHERE, and
+       the two smallest are the most valuable things on this page. Row count was never the right
+       way to triage that list.
+       ============================================================================================ -->
+  <div class="card"><h2>⭐ What the last five data centres in Indiana actually got</h2>
+    <div class="sowhat">Every other figure on this page is a <i>modelled</i> price. These are the
+      deals themselves — the utility, the site and the terms, as reported by the utilities' own
+      trade body. <b>A siter asking &ldquo;what should I expect to be offered&rdquo; is asking
+      about this table, not about a tariff sheet.</b></div>
+    <div class="scroll"><table id="t-dcdeals">
+      <tr><th>utility</th><th>customer</th><th>where</th><th>what was agreed</th></tr></table></div>
+    <div class="prov">indiana_app.in_dc_eei_tariffs · Edison Electric Institute member reporting.
+      ⚠ Five rows, and they are summaries rather than filed tariffs — treat them as what was
+      announced, not as terms you can hold anyone to.</div></div>
+
+  <div class="card"><h2>⭐ The incentives actually granted at this scale</h2>
+    <div class="sowhat" id="mega-answer">measuring…</div>
+    <div class="scroll" style="max-height:320px"><table id="t-mega">
+      <tr><th>company</th><th>year</th><th>subsidy as awarded</th>
+        <th>in 2023 dollars</th></tr></table></div>
+    <div class="prov">indiana_app.in_econ_gjf_megadeals · Good Jobs First Subsidy Tracker
+      (megadeals). ⚠ These are STATE AND LOCAL packages as tracked by a third party, not offers
+      available to you — they are the comparable, not the menu.</div></div>
+
+  <div class="card"><h2>What each utility's industrial customers actually paid</h2>
+    <div class="sowhat">The tariff engine below <b>models</b> a bill from published rate
+      structures. This is the other direction entirely: revenue divided by MWh from each
+      utility's own EIA-861 filing, so it is <b>what industrial customers were actually billed
+      last year</b>. Where the two disagree by a lot, the engine's assumptions are the thing to
+      question. ⚠ It is an average across every industrial customer on the system, carries no
+      demand/energy split and no rider stack, and is <b>not</b> a large-load rate — a hyperscale
+      contract is negotiated well away from this number.</div>
+    <div class="scroll" style="max-height:320px"><table id="t-impl">
+      <tr><th>utility</th><th>industrial MWh</th><th>customers</th>
+        <th>implied ¢/kWh</th><th>all classes ¢/kWh</th></tr></table></div>
+    <div class="prov">indiana_app.in_eia861_sales_ult_cust · EIA-861, revenue ÷ sales.</div></div>
+
+  <div class="card"><h2>Where Indiana's power comes from &mdash; last twelve months</h2>
+    <div class="sowhat" id="genmix-answer">measuring…</div>
+    <div class="scroll" style="max-height:300px"><table id="t-genmix">
+      <tr><th>fuel</th><th>GWh</th><th>share</th></tr></table></div>
+    <div class="prov">indiana_app.in_elec_power_operational · EIA monthly electric power
+      operations, all sectors.</div></div>
 
   <div class="card"><h2>What would power cost here?</h2>
     <div class="sowhat">A yearly bill and an effective price per kWh for your load, built from the
@@ -458,6 +503,65 @@ function mmbtuToCents(v) {
    * a contract term; adding either to a dollar figure would be inventing money. Reactive
    * ($/kVAr) charges depend on a power factor the siter has not chosen, so they are excluded and
    * SAID to be excluded rather than assumed to zero. */
+  /* ---------- G72/G80, 2026-08-20: three objects that reached no surface ------------------- */
+  const W2 = await fetchGz("data/wired2.json.gz");
+  const usdBig = (v) => v == null ? null
+    : v >= 1e9 ? `$${(v / 1e9).toFixed(2)}bn` : v >= 1e6 ? `$${(v / 1e6).toFixed(0)}m` : `$${fmt(v)}`;
+
+  document.getElementById("t-dcdeals").insertAdjacentHTML("beforeend",
+    (W2.dc_deals || []).map((r) =>
+      `<tr><td><b>${r.utility}</b></td><td>${r.customer_type || "&mdash;"}</td>
+       <td>${r.location || "&mdash;"}</td>
+       <td>${escHtml(r.key_details || "").replace(//g, "•")}</td></tr>`).join(""));
+
+  const mg = W2.megadeals || [];
+  const top = mg[0] || {};
+  const dcDeals = mg.filter((r) => /data services|data center|amazon|google|microsoft|meta/i
+    .test(r.company + " " + (r.parent || "")));
+  document.getElementById("mega-answer").innerHTML = mg.length
+    ? `<b>The largest subsidy package in the tracker for Indiana is ${top.company} at
+       ${usdBig(top.subsidy_usd)}</b> (${top.year})${top.subsidy_2023_usd
+         ? `, ${usdBig(top.subsidy_2023_usd)} in 2023 dollars` : ""} — and it is a
+       <b>data-centre</b> deal. ${dcDeals.length > 1
+         ? `${dcDeals.length} of the ${mg.length} megadeals on record go to data-centre or
+            hyperscaler operators.` : ""}
+       <b>That is the order of magnitude an Indiana package has actually reached</b>, which is a
+       far more useful anchor than a percentage-of-capex rule of thumb — and it is public, so the
+       county you are negotiating with has seen it too.`
+    : `No megadeal is recorded for Indiana in this tracker.`;
+  document.getElementById("t-mega").insertAdjacentHTML("beforeend", mg.map((r) =>
+    `<tr><td>${r.company}${r.parent && r.parent !== r.company
+       ? ` <span class="hint">(${r.parent})</span>` : ""}</td>
+     <td>${r.year || "&mdash;"}</td><td>${usdBig(r.subsidy_usd) || "&mdash;"}</td>
+     <td>${usdBig(r.subsidy_2023_usd) || "&mdash;"}</td></tr>`).join(""));
+
+  document.getElementById("t-impl").insertAdjacentHTML("beforeend",
+    (W2.utility_implied_industrial || []).map((r) =>
+      `<tr><td>${r.utility_name}</td><td>${fmt(r.ind_mwh)}</td>
+       <td>${r.ind_customers ? fmt(r.ind_customers) : "&mdash;"}</td>
+       <td><b>${r.implied_cents_kwh != null ? r.implied_cents_kwh.toFixed(2) : "&mdash;"}</b></td>
+       <td>${r.all_class_cents_kwh != null ? r.all_class_cents_kwh.toFixed(2) : "&mdash;"}</td>
+       </tr>`).join(""));
+
+  const gm = (W2.generation_mix || []).filter((r) => !/^all fuels$/i.test(r.fuel));
+  const gmTot = gm.reduce((a, r) => a + (r.gwh || 0), 0);
+  const coal = gm.find((r) => /coal/i.test(r.fuel)) || {};
+  const gas = gm.find((r) => /^natural gas$/i.test(r.fuel)) || {};
+  document.getElementById("genmix-answer").innerHTML = gmTot
+    ? `⚠ <b>These categories OVERLAP and do not sum to the total</b> — EIA publishes rollups
+       (&ldquo;all fuels&rdquo;, &ldquo;natural gas &amp; other gases&rdquo;) alongside their
+       components, so the share column is each fuel against the largest single category, not a
+       pie. What it is for: <b>coal is still ${coal.gwh
+         ? `${fmt(Math.round(coal.gwh))} GWh` : "a large share"} of Indiana generation${gas.gwh
+         ? ` against ${fmt(Math.round(gas.gwh))} GWh of natural gas` : ""}</b>, and a coal fleet
+       that retires is simultaneously a carbon problem for your PPA and an interconnection
+       OPPORTUNITY — a retiring unit leaves a studied, energised point behind it.`
+    : `No generation figures are held for the last twelve months.`;
+  const gmMax = Math.max(1, ...gm.map((r) => r.gwh || 0));
+  document.getElementById("t-genmix").insertAdjacentHTML("beforeend", gm.map((r) =>
+    `<tr><td>${r.fuel}</td><td>${fmt(Math.round(r.gwh))}</td>
+     <td>${((100 * r.gwh) / gmMax).toFixed(0)}%</td></tr>`).join(""));
+
   const TF = await fetchGz("data/tariffs.json.gz");
   /* The publisher's own words for the service class beat any label we invent - "primary direct"
      and "transmission (69,000 V)" are real distinctions a siter has to make. VOLT_FAMILY is only

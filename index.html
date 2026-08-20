@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=e0291edb">
+<link rel="stylesheet" href="style.css?v=6d6d89c3">
 </head>
 <body>
 <header id="topbar">
@@ -110,10 +110,31 @@
         <label><input type="checkbox" id="L-log-rail"> Rail lines <span class="hint">(2,115)</span></label>
         <label><input type="checkbox" id="L-log-road1"> Primary roads <span class="hint">(217 &mdash; interstates and US routes)</span></label>
         <label><input type="checkbox" id="L-log-road2"> Secondary roads <span class="hint">(855)</span></label>
-        <label><input type="checkbox" id="L-frpp"> Federal surplus property</label>
+        <!-- ⛔ G97, 2026-08-20. THIS CONTROL USED TO READ "Federal surplus property" AND DRAW ALL
+             1,594 FEDERAL POINTS. Measured: 1,540 of them carry asset_status = "Current Mission
+             Need" — the label was true of 17 points and asserted of 1,594. A reader ticking it
+             and seeing a dense scatter would reasonably conclude the federal government is
+             disposing of hundreds of Indiana sites. It is not. Split in two: the property layer
+             says what each point IS, and the genuine signal gets its own control. -->
+        <label><input type="checkbox" id="L-fedprop"> Federal property, by status
+          <span class="hint">(1,553 &mdash; mostly in use, each pin says which)</span></label>
+        <label><input type="checkbox" id="L-surplus"> &#11088; Declared surplus or unused
+          <span class="hint">(20 &mdash; the actual signal)</span></label>
+        <label><input type="checkbox" id="L-withdrawn"> Cancelled grid projects
+          <span class="hint">(195 placed &mdash; consent already given, project gone)</span></label>
+        <label><input type="checkbox" id="L-campus"> Colleges &amp; food plants
+          <span class="hint">(151 + 90)</span></label>
         <div class="sowhat">Rail and highway access decide how construction loads and
-          transformers reach the site. Federal surplus is land a government body has already declared
-          it does not need &mdash; a rare case where the seller is publicly committed to disposing.</div>
+          transformers reach the site. <b>Declared surplus</b> is the cleanest owner-motivation
+          signal we hold: every other one infers willingness from distress, while a Report of
+          Excess is an owner <i>publicly stating in a federal filing</i> that it does not want the
+          property. There are only 20, and that is the honest number &mdash; the other 1,533
+          federal points are in active use and are context, not leads.
+          <b>A cancelled grid project</b> is the same idea from a different direction: the
+          landowner already signed an interconnection agreement, so consent and a studied grid
+          position exist and the project does not. <b>Colleges</b> are where operations staff come
+          from; <b>USDA-inspected food plants</b> are heavy industrial sites that already carry
+          large power, large water and a discharge permit.</div>
       </div>
     </details>
 
@@ -270,6 +291,18 @@
           <span class="hint">(39 Indiana subbasins)</span></label>
         <label><input type="checkbox" id="L-waterstress"> Water stress
           <span class="hint">(34 basins)</span></label>
+        <!-- G72, 2026-08-20: the watershed layer said which BASIN a parcel is in; it could not
+             show the water itself. Both NHD geometry tables were clipped, registered and drawn
+             nowhere. -->
+        <label><input type="checkbox" id="L-water"> Rivers &amp; lakes
+          <span class="hint">(2,595 bodies + 7,202 named reaches)</span></label>
+        <div class="sowhat">A 100 MW evaporative-cooled campus consumes roughly
+          <b>1&ndash;2 million gallons a day</b> of make-up water, so the question is not whether
+          water is nearby but whether a body is large enough to permit an intake against.
+          <b>Only named reaches over a kilometre and bodies over 12 acres are drawn</b> &mdash;
+          farm ponds are left out deliberately, because drawing them would answer the question
+          wrongly in the reassuring direction. Pair it with the county water panel, which gives
+          the county&rsquo;s entire public-supply withdrawal in the same units.</div>
         <!-- G72: four objects that were clipped in BigQuery and reached no control at all. They
              answer a question the console could not ask before: who ELSE already holds a say over
              this land. One control per kind - a base, a sovereign boundary and an altitude ceiling
@@ -281,7 +314,7 @@
         <label><input type="checkbox" id="L-sua"> Special-use airspace
           <span class="hint">(19 &mdash; MOAs &amp; restricted)</span></label>
         <label><input type="checkbox" id="L-obst"> Tall obstructions &ge;200 ft
-          <span class="hint">(4,591)</span></label>
+          <span class="hint">(4,590 &mdash; <b style="color:#16a34a">green = wind turbine</b>)</span></label>
         <div class="sowhat">These four say <b>who else already holds a say over the
           land</b>, which is not something zoning or the environmental gates will tell you.
           A large load near an active <b>installation</b> can draw a DoD Siting Clearinghouse
@@ -291,7 +324,12 @@
           <b>Special-use airspace</b> governs what may be built tall &mdash; cooling towers,
           stacks and cranes, not the slab. And every <b>obstruction</b> drawn here is at or above
           the 200 ft FAA notice threshold, so a cluster of them is cheap evidence that a tall
-          structure of your own will clear the same review.</div>
+          structure of your own will clear the same review.
+          <b style="color:#16a34a">Green obstructions are wind turbines</b>, and those are a
+          signal rather than a constraint: <b>1,816 of the 4,590</b> are turbines, and a standing
+          turbine is proof that this exact ground already cleared landowner consent, an
+          interconnection and a local permit &mdash; three of the four things a siter has to
+          establish from scratch anywhere else.</div>
         <div class="sowhat">A watershed is the unit water is actually allocated and
           argued over in &mdash; two parcels a mile apart in different subbasins can face different
           objections and different permitting bodies. Click one to see the rivers, reservoirs and
@@ -473,6 +511,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=b6a36660"></script>
-<script src="app.js?v=d665dd17"></script>
+<script src="app.js?v=9c3e4119"></script>
 </body>
 </html>

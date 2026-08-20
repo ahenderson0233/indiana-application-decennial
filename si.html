@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner signals — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=e0291edb"></head>
+<link rel="stylesheet" href="style.css?v=6d6d89c3"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
 <nav id="nav"></nav>
@@ -21,7 +21,7 @@
        actually truthful — why don't we have more?" The number is not a rendering error (the
        checkpoint asserts payload-vs-warehouse agreement on it every run), so the honest answer is
        the FUNNEL, with the loss at each stage named. -->
-  <div class="card"><h2><span id="funnel-h">Why this many</span> and not more? &mdash; the whole funnel, with every loss named</h2>
+  <div class="card" data-group="How many, and why"><h2><span id="funnel-h">Why this many</span> and not more? &mdash; the whole funnel, with every loss named</h2>
     <div class="sowhat" id="funnel-answer">measuring…</div>
     <div class="scroll" style="max-height:340px"><table id="t-funnel">
       <tr><th>stage</th><th>count</th><th>what is lost here, and why</th></tr></table></div>
@@ -37,7 +37,7 @@
     <div class="prov" id="funnel-prov"></div>
   </div>
 
-  <div class="card"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
+  <div class="card" data-group="How many, and why"><h2>Which owners might sell you land &mdash; and how strongly we believe it</h2>
     <div class="sowhat"><b>This is the question the page exists to answer.</b> Every parcel below is
       non-residential and carries at least one admitted owner-motivation signal. They are ranked by
       how many <b>different kinds</b> of distress stack up on one property, because a single signal
@@ -54,7 +54,7 @@
       <span id="lead-of">&hellip;</span> flagged parcels, ranked by distinct signal types
       &middot; residential excluded by ruling, never counted as zero</div></div>
 
-  <div class="card"><h2>Absentee owners, and how to reach them — <span class="hint">Marion County</span></h2>
+  <div class="card" data-group="The signals themselves"><h2>Absentee owners, and how to reach them — <span class="hint">Marion County</span></h2>
     <div class="hint cannot" id="d9-note" style="margin-bottom:8px"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="d9-oos">…</div><div class="hint">out-of-state owners</div></div>
@@ -80,7 +80,7 @@
        A severity threshold is a HIDDEN EDITORIAL DECISION — it changes which parcels appear and
        the reader cannot see it. There are exactly THREE, and they are named here with the rows
        each one removed, measured from the live tables. -->
-  <div class="card"><h2>Every severity filter we apply, named &mdash; and what each one removes</h2>
+  <div class="card" data-group="How many, and why"><h2>Every severity filter we apply, named &mdash; and what each one removes</h2>
     <div class="sowhat"><b>A severity threshold decides which parcels you see, and you cannot audit
       what you cannot see.</b> There are exactly three, plus the standing non-residential rule.
       Each one is a judgement we made, so each is stated with the vocabulary it acts on, the count
@@ -89,14 +89,14 @@
     <table>
       <tr><th>filter</th><th>what it keeps</th><th>what it removes</th><th>why a survivor means something</th></tr>
       <tr>
-        <td><b>South Bend code enforcement</b><div class="hint">D12 &middot; <code>Record_Type</code></div></td>
+        <td><b>South Bend code enforcement</b><div class="hint">repeated code violations &middot; from <code>Record_Type</code></div></td>
         <td><code>Sub-standard Housing</code>, <code>Secure Property</code><div class="hint"><b>871 of 20,414 rows (4.3%)</b></div></td>
         <td class="cannot">19,543 rows &mdash; overwhelmingly <b>litter, grass and weeds, vegetation</b> and graffiti</td>
         <td>Both surviving types are <b>structural findings against the building itself</b>. A weed
           citation says a lawn was not mown; a sub-standard-housing order says the structure is
           failing, which is a repair bill an owner may decline to pay.</td></tr>
       <tr>
-        <td><b>Evansville demolition permits</b><div class="hint">D21 &middot; <code>USER_Project_Activity</code></div></td>
+        <td><b>Evansville demolition permits</b><div class="hint">demolition ordered &middot; from <code>USER_Project_Activity</code></div></td>
         <td><code>BUILDING WRECKING COMMERCIAL</code><div class="hint"><b>419 of 4,190 rows (10.0%)</b></div></td>
         <td class="cannot">3,771 residential teardowns</td>
         <td>⚠ This filter also closes a hole: <b>a demolished house leaves a parcel classed
@@ -104,7 +104,7 @@
           non-residential test on parcel class alone. A commercial wrecking permit is an owner
           spending money to clear a site &mdash; usually before disposing of it.</td></tr>
       <tr>
-        <td><b>EPA ECHO environmental</b><div class="hint">D22 &middot; <code>distress_class</code></div></td>
+        <td><b>EPA ECHO environmental</b><div class="hint">environmental enforcement &middot; from <code>distress_class</code></div></td>
         <td><code>significant_violation</code> (251 parcels),
             <code>penalised</code> (251)</td>
         <td class="cannot">50,334 rows carrying <code>no_distress_marker</code>, excluded upstream;
@@ -119,7 +119,7 @@
     </table>
   </div>
 
-  <div class="card"><h2>⚠ Does an environmental violation really mean someone will sell?</h2>
+  <div class="card" data-group="How many, and why"><h2>⚠ Does an environmental violation really mean someone will sell?</h2>
     <div class="sowhat">Operator, 2026-08-19: <i>&ldquo;an environmental violation usually
       doesn&rsquo;t result in a sale, so why do we believe our environmental violations
       will?&rdquo;</i> <b>Taken as a live challenge to the signal, and it only half survives.</b></div>
@@ -159,14 +159,14 @@
       can be reversed with one predicate if you disagree with it.</div>
   </div>
 
-  <div class="card"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
+  <div class="card" data-group="How many, and why"><h2>Per-signal coverage — four numbers, because conflating them is how this went wrong before</h2>
     <div class="hint" style="margin-bottom:6px"><b>held</b> is rows in the corpus and says nothing about
       usability · <b>reached</b> is parcels the signal can be joined to · <b>admitted</b> passes both
       rulings · and the two exclusion columns show what each ruling removed, so nothing is dropped
       in silence.</div>
     <div class="scroll" style="max-height:460px"><table id="t-cov"><tr><th>signal</th><th>held</th><th>reached</th><th>admitted</th><th>C/I</th><th>event range</th><th>excl. resid</th><th>excl. low-sev</th></tr></table></div>
     <div class="prov">indiana_app.in_si_signal_coverage</div></div>
-  <div class="card"><h2>Signals about an OWNER, not a parcel — and why they cannot yet be placed on the map</h2>
+  <div class="card" data-group="What we cannot place yet"><h2>Signals about an OWNER, not a parcel — and why they cannot yet be placed on the map</h2>
     <div class="hint" id="own-note"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="scroll" style="max-height:280px"><table id="t-owncounty"><tr><th>county</th><th>dissolutions</th><th>UCC lapses</th><th>WARN</th><th>in 3 yrs</th></tr></table></div>
@@ -174,7 +174,7 @@
       <div class="card"><div class="scroll" style="max-height:280px"><table id="t-own"><tr><th>signal</th><th>party</th><th>event</th><th>city</th></tr></table></div>
         <div class="prov">indiana_app.in_si_owner_signals</div></div>
     </div></div>
-  <div class="card"><h2>State environmental enforcement — <span class="hint">now with real dates</span></h2>
+  <div class="card" data-group="The signals themselves"><h2>State environmental enforcement — <span class="hint">now with real dates</span></h2>
     <div class="hint cannot" id="idem-note" style="margin-bottom:8px"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="idem-n">…</div><div class="hint">actions now carrying an event date</div></div>
@@ -188,7 +188,7 @@
       <b>Read <code>date_precision</code>:</b> a <code>month</code> row sits on the 1st of the month
       as a placeholder and the day is <b>not known</b>. IDEM is owner-keyed and still cannot reach a
       parcel — dating makes it filterable context, not parcel-grain evidence.</div></div>
-  <div class="card"><h2>Can the parcel host anything? — signal and capability are different questions</h2>
+  <div class="card" data-group="What we cannot place yet"><h2>Can the parcel host anything? — signal and capability are different questions</h2>
     <div class="hint" id="cap-note"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="bigstat" id="cap-bess">…</div><div class="hint">can host ≥5 MW BESS (≥0.5 ac)</div></div>
@@ -198,7 +198,7 @@
     <div class="prov">indiana_app.in_si_sites_flags_v2 · <code>fits_min_bess_5mw</code> /
       <code>fits_dc_25mw</code> · the screener's MW filter applies the same test at whatever
       density and MW floor you set</div></div>
-  <div class="card"><h2>Signal inventory — the upstream corpus table, not the whole programme</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Signal inventory — the upstream corpus table, not the whole programme</h2>
     <div class="sowhat"><b>Read this as one upstream table, not as leads and not as the full
       signal set.</b> It holds <b id="inv-total">&hellip;</b> observations across
       <b id="inv-n">&hellip;</b> signals, before any ruling is applied. Two cautions, because this
@@ -214,13 +214,13 @@
       those are the leads, and they are at the top of this page.</div>
     <div class="scroll"><table id="t-sig"><tr><th>signal</th><th>rows</th><th>counties</th><th>latest event</th><th></th></tr></table></div>
     <div class="prov" id="p-sig"></div></div>
-  <div class="card"><h2>Federal environmental compliance — facilities on EPA's enforcement record</h2>
+  <div class="card" data-group="The signals themselves"><h2>Federal environmental compliance — facilities on EPA's enforcement record</h2>
     <div class="hint" id="d22-note"></div>
     <div class="scroll" style="max-height:320px;margin-top:8px"><table id="t-d22"><tr><th>county</th><th>facilities</th><th>in distress</th><th>significant violation</th><th>high-priority</th><th>inactive</th><th>penalties</th></tr></table></div>
     <div class="prov">indiana_app.in_si_d22_echo_indiana + in_si_d22_county_rollup · source: EPA ECHO
       <b>bulk export</b> (echo_exporter.zip), not the REST service — the county walk needed ~25,000
       requests against a 1,500/day quota. 133 columns kept.</div></div>
-  <div class="card"><h2>Structure fires severe enough to move an owner to sell</h2>
+  <div class="card" data-group="The signals themselves"><h2>Structure fires severe enough to move an owner to sell</h2>
     <div class="hint" style="margin-bottom:6px"><b>A signal only counts when it plausibly produces
       seller intent.</b> A contained kitchen fire does not, and a house is not a hyperscale site.
       So the raw file is narrowed three times: to structure fires, to <b>non-residential</b>
@@ -228,21 +228,21 @@
       than a number appearing from nowhere.</div>
     <div id="nfirs-funnel" class="hint" style="margin-bottom:8px"></div>
     <div class="gridcards">
-      <div class="card"><h2 style="font-size:12px">By year</h2>
+      <div class="card" data-group="sub"><h2 style="font-size:12px">By year</h2>
         <div class="scroll"><table id="t-nfirs"><tr><th>year</th><th>structure fires</th><th>non-res</th><th>any loss</th><th>SI-grade</th></tr></table></div></div>
-      <div class="card"><h2 style="font-size:12px">Severity × property class</h2>
+      <div class="card" data-group="sub"><h2 style="font-size:12px">Severity × property class</h2>
         <div class="scroll" style="max-height:230px"><table id="t-nfirs-sev"><tr><th>class</th><th>severity</th><th>n</th></tr></table></div></div>
     </div>
     <h3 style="margin:10px 0 4px;font-size:12.5px">The SI-grade incidents — non-residential, ≥$10k loss</h3>
     <div class="scroll" style="max-height:280px"><table id="t-nfirs-si"><tr><th>date</th><th>address</th><th>city</th><th>use</th><th>severity</th><th>loss</th></tr></table></div>
     <div class="prov" id="p-nfirs"></div></div>
   <div class="gridcards">
-    <div class="card"><h2>Highest-vacancy census tracts (ACS)</h2>
+    <div class="card" data-group="Context, not signal"><h2>Highest-vacancy census tracts (ACS)</h2>
       <div class="scroll" style="max-height:280px"><table id="t-vac"><tr><th>tract</th><th>units</th><th>vacant</th><th>rate %</th></tr></table></div>
       <div class="prov">source: <code>in_acs_tract_vacancy</code> · tracts with &gt;200 housing units
         only, so a 3-unit tract at 100% cannot top the list — small denominators make spectacular
         rates. Tract-grain context beneath the parcel-grain vacancy signal.</div></div>
-    <div class="card"><h2>SBA lending into Indiana businesses</h2>
+    <div class="card" data-group="Context, not signal"><h2>SBA lending into Indiana businesses</h2>
       <div class="scroll" style="max-height:280px"><table id="t-sba"><tr><th>FY</th><th>program</th><th>loans</th><th>gross approved</th></tr></table></div>
       <div class="prov">source: <code>in_sba_foia_loans</code> · a business-formation and
         expansion signal; the counterpart to the distress signals above</div></div>
@@ -253,12 +253,12 @@
       once asserted a signal was absent while 17,617 rows of it sat in the warehouse, and sections
       like these are what catch that. A developer does not open this page to read it.</div>
 
-  <div class="card"><h2>The flag was a vacancy flag — what changed</h2>
+  <div class="card" data-group="Context, not signal"><h2>The flag was a vacancy flag — what changed</h2>
     <div class="hint" id="v2-note"></div>
     <div class="scroll" style="margin-top:8px"><table id="t-v2class"><tr><th>class</th><th>parcels with an admitted signal</th></tr></table></div>
     <div class="prov">indiana_app.in_si_sites_flags_v2 · built by scripts/build_si_signal_v2.py ·
       full per-signal detail in <code>docs/SI_COVERAGE.md</code></div></div>
-  <div class="card"><h2>Columns we pulled and never wired — held, not lost</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Columns we pulled and never wired — held, not lost</h2>
     <div class="hint">Six sources were pulled with ALL columns, which turned up signal-bearing
       fields nobody had asked for. Two were <b>placement</b>, not enrichment: SRI publishes its own
       lat/lon (24,948 parcels) and IBTR publishes <code>stateParcelNumber</code> (3,338 parcels) —
@@ -266,18 +266,18 @@
     <div class="scroll" style="max-height:200px;margin-top:8px"><table id="t-laned-sum"><tr><th>source</th><th>column</th><th>distinct values</th><th>rows covered</th></tr></table></div>
     <div class="scroll" style="max-height:280px;margin-top:8px"><table id="t-laned"><tr><th>source</th><th>column</th><th>value</th><th>rows</th></tr></table></div>
     <div class="prov">indiana_app.in_si_lane_d_enrichment · built by scripts/wire_lane_d_columns.py</div></div>
-  <div class="card"><h2>Vacancy is two different things, and only one of them is a signal</h2>
+  <div class="card" data-group="Context, not signal"><h2>Vacancy is two different things, and only one of them is a signal</h2>
     <div class="hint" id="d5-note"></div>
     <div class="scroll" style="max-height:220px;margin-top:8px"><table id="t-d5"><tr><th>source</th><th>rows</th><th>parcel-keyed</th></tr></table></div>
     <div class="prov">indiana_app.in_si_d5_abandoned_buildings + in_si_d5_vacant_land_NOT_A_SIGNAL ·
       built by scripts/build_si_vacancy_split.py</div></div>
-  <div class="card"><h2>Evansville Land Bank — nine snapshots, and what leaving the list means</h2>
+  <div class="card" data-group="Context, not signal"><h2>Evansville Land Bank — nine snapshots, and what leaving the list means</h2>
     <div class="hint" id="lb-note"></div>
     <div class="scroll" style="max-height:240px;margin-top:8px"><table id="t-lb"><tr><th>snapshot</th><th>rows</th><th>parcels</th></tr></table></div>
     <div class="prov">indiana_app.in_si_evansville_landbank · pulled by
       scrapers/lane_f/pull_evansville_landbank.py · <b>availability, not distress</b> — admitted as
       <b>government surplus property</b>, never as an abandoned building</div></div>
-  <div class="card"><h2>Marion placement, checked by two instruments</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Marion placement, checked by two instruments</h2>
     <div class="hint" id="mar-note"></div>
     <div class="gridcards" style="margin:8px 0">
       <div class="card"><div class="scroll" style="max-height:200px"><table id="t-marchk"><tr><th>verdict</th><th>rows</th></tr></table></div></div>
@@ -286,28 +286,86 @@
     </div>
     <div class="prov">indiana_app.in_si_marion_route_check · built by scripts/verify_marion_routes.py ·
       sources: in_marion_parcel_crosswalk + in_si_indy_abandoned_vacant_spatial</div></div>
-  <div class="card"><h2>Admitted by operator sign-off — what was let in, and what was not</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Admitted by operator sign-off — what was let in, and what was not</h2>
     <div class="hint" style="margin-bottom:6px">Each row shows the admitted count against the source
       count, and the rule that separated them. A count without its denominator is a claim you cannot check.</div>
     <div class="scroll"><table id="t-adm"><tr><th>signal</th><th>admitted</th><th>of source</th><th>rule applied</th></tr></table></div>
     <div class="prov">operator sign-off 2026-08-15 · docs/SIGNOFF_PACKET.md · built by scripts/build_signoff_wiring.py</div></div>
   <div class="gridcards">
-    <div class="card"><h2>Dissolved companies — 983 that reached a terminal status</h2>
+    <div class="card" data-group="The signals themselves"><h2>Dissolved companies — 983 that reached a terminal status</h2>
       <div class="scroll" style="max-height:300px"><table id="t-d11"><tr><th>entity</th><th>status</th><th>observed</th><th>city</th></tr></table></div>
       <div class="prov">indiana_app.in_si_d11_admitted · <b>excludes</b> 1,146 'withdrawn' rows — surrendered
         or reinstatable authority is weaker evidence a property is coming free</div></div>
-    <div class="card"><h2>Lapsed security filings — all 156</h2>
+    <div class="card" data-group="The signals themselves"><h2>Lapsed security filings — all 156</h2>
       <div class="scroll" style="max-height:300px"><table id="t-d27"><tr><th>debtor</th><th>lapse</th><th>city</th></tr></table></div>
       <div class="prov">indiana_app.in_si_d27_admitted · every row address-keyed at quality 0.8</div></div>
   </div>
-  <div class="card"><h2>Rail abandonment — 127 real events out of 874 filings</h2>
+  <div class="card" data-group="The signals themselves"><h2>Rail abandonment — 127 real events out of 874 filings</h2>
     <div class="scroll" style="max-height:280px"><table id="t-d25"><tr><th>docket</th><th>filing type</th><th>filed</th><th>title</th></tr></table></div>
     <div class="prov" id="p-d25">indiana_app.in_si_d25_admitted · <b>excludes</b> 747 procedural filings
       (Reply, Extension, Certificate Of Service…) — correspondence about a docket is not an abandonment</div></div>
-  <div class="card"><h2>Staged acquisitions — held, awaiting the subject test</h2>
+  <!-- ============================================================================================
+       G90(a) / G97 / G98 / G120 — four signals added 2026-08-20, all from data already held.
+       ⭐ THE FIRST TWO ARE A DIFFERENT CLASS FROM EVERYTHING ABOVE. Every signal on this page so
+       far infers willingness to sell from DISTRESS — unpaid taxes, a foreclosure, a condemnation
+       order. A federal Report of Excess and a cancelled interconnection request are the owner
+       SAYING SO, in a public filing, with no inference in between.
+       ============================================================================================ -->
+  <div class="card" data-group="The signals themselves"><h2>Closures, not just layoffs &mdash; the WARN notices we were half-using</h2>
+    <div class="sowhat" id="warn-answer">measuring…</div>
+    <div class="gridcards">
+      <div class="card"><h3 style="margin-top:0">What the notices actually say</h3>
+        <table id="t-warn"><tr><th>type</th><th>notices</th><th>workers</th>
+          <th>vacates the site</th><th>industrial</th></tr></table>
+        <div class="hint" style="margin-top:6px">⛔ The <b>not stated</b> row is not a residual
+          bucket of layoffs. On those rows the type, the date <i>and</i> the worker count are all
+          the literal string &ldquo;N/A&rdquo; &mdash; the notice is empty, so it is classed as
+          unstated rather than defaulted into the majority.</div></div>
+      <div class="card"><h3 style="margin-top:0">⭐ Dated in the FUTURE &mdash; the scarcest thing here</h3>
+        <div class="hint">A site with a known vacating date is the only forward-looking
+          owner-motivation signal in the whole estate. Everything else is a record of something
+          that already happened.</div>
+        <table id="t-warnf"><tr><th>company</th><th>city</th><th>date</th><th>workers</th>
+          <th>kind</th></tr></table></div>
+    </div>
+    <div class="scroll" style="max-height:300px;margin-top:10px"><table id="t-warnr">
+      <tr><th>company</th><th>city</th><th>industry</th><th>date</th><th>workers</th></tr></table></div>
+    <div class="prov" id="p-warn"></div></div>
+
+  <div class="gridcards">
+    <div class="card" data-group="The signals themselves"><h2>Federal property &mdash; and why the map label was wrong</h2>
+      <div class="sowhat" id="surplus-answer">measuring…</div>
+      <table id="t-surplus"><tr><th>what the federal government says it is</th><th>assets</th>
+        <th>distinct locations</th></tr></table>
+      <div class="scroll" style="max-height:260px;margin-top:8px"><table id="t-surplusl">
+        <tr><th>status</th><th>where</th><th>use</th><th>parcel</th></tr></table></div>
+      <div class="prov">indiana_app.in_si_gov_surplus_v2 + in_si_gov_surplus_parcel ·
+        GSA Federal Real Property Profile · built by scripts/build_si_gov_surplus.py</div></div>
+    <div class="card" data-group="The signals themselves"><h2>Cancelled grid projects &mdash; consent given, project gone</h2>
+      <div class="sowhat" id="wd-answer">measuring…</div>
+      <table id="t-wd"><tr><th>how precisely it is placed</th><th>grid operator</th>
+        <th>requests</th><th>MW</th><th>parcels</th></tr></table>
+      <div class="hint" style="margin-top:6px">⚠ The coordinate is the <b>interconnection point</b>,
+        not the generator parcel &mdash; those can be a mile apart down a gen-tie. A parcel under
+        the point is a lead, not the site.</div>
+      <table id="t-wdr" style="margin-top:8px"><tr><th>withdrawn</th><th>requests</th>
+        <th>MW</th></tr></table>
+      <div class="prov">indiana_app.in_si_queue_withdrawn · LBNL Queued Up 2026 + the PJM published
+        queue-point service + the MISO queue · built by scripts/build_si_queue_withdrawn.py.
+        <b>No scraping</b> &mdash; every coordinate here was already in the warehouse.</div></div>
+  </div>
+
+  <div class="card" data-group="What we cannot place yet"><h2>⚠ Two ways a parcel answer can be right about the wrong land</h2>
+    <div class="sowhat" id="attr-answer">measuring…</div>
+    <table id="t-attr"><tr><th>shape verdict</th><th>parcels</th>
+      <th>can point at a built parcel instead</th><th>carrying a sliver</th></tr></table>
+    <div class="prov">indiana_app.in_parcel_assembly · built by scripts/build_parcel_assembly.py ·
+      the screener shows both on the individual site</div></div>
+
+  <div class="card" data-group="What we cannot place yet"><h2>Staged acquisitions — held, awaiting the subject test</h2>
     <div class="scroll"><table id="t-acq"><tr><th>source</th><th>rows</th><th>built</th></tr></table></div>
     <div class="prov">source: indiana_app._registry · county attribution by publisher identity</div></div>
-  <div class="card"><h2>Where the signals come from — every source, with its real freshness</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Where the signals come from — every source, with its real freshness</h2>
     <div class="hint" style="margin-bottom:6px">These 18 tables feed <code>in_si_signals</code>
       upstream. <b>Event range is the PUBLISHER'S date, never our pull stamp</b> — reporting when
       we fetched a file as if it were the data's currency would flatter our diligence and tell
@@ -315,7 +373,7 @@
     <div class="scroll" style="max-height:460px"><table id="t-src">
       <tr><th>source</th><th>signal</th><th>rows</th><th>one row is</th><th>publisher event range</th><th>we pulled</th></tr></table></div>
     <div class="prov" id="p-src"></div></div>
-  <div class="card"><h2>Freshness and what still needs repair</h2>
+  <div class="card" data-group="Where it comes from, and how fresh"><h2>Freshness and what still needs repair</h2>
     <div class="hint">Six sources re-pulled with ALL fields: SRI tax sales 83,547 · Indy code enforcement 910,483
     (publisher stale since 2024-02-27 — our copy matches theirs exactly) · IBTR appeals 10,152 · IOCS evictions 6,519
     (an unwired MF mortgage-foreclosure code found in the same workbook) · WARN 1,220 · brownfields 1,483.
@@ -360,7 +418,7 @@
     const d5tot = F.d5_vacancy_occ.reduce((x, y) => x + y.n, 0);
     const bare = (F.d5_vacancy_occ.find((x) => x.occ_group === "no_structure") || {}).n || 0;
     document.getElementById("funnel-d5-note").innerHTML =
-      `<b>D5 vacancy is 947,592 raw rows &mdash; 52% of everything we hold</b> &mdash; and it is
+      `<b>Undeveloped land is 947,592 raw rows &mdash; 52% of everything we hold</b> &mdash; and it is
        admitted nowhere. That looks like an oversight until you measure the parcels:
        <b>${fmt(bare)} of ${fmt(d5tot)} (${(100 * bare / d5tot).toFixed(1)}%) have NO STRUCTURE
        on them.</b> A postal vacancy flag on bare land is not evidence an owner wants to sell, and
@@ -637,6 +695,158 @@
      ${fmt(w.shared_keys)} company|city|date keys with an identical event range. They are the same
      source pulled twice; <code>in_si_state_warn_notices</code> is kept because it also carries
      <code>notice_pdf_urls</code>.`;
+
+  /* ---------- G6 / G83: GIVE THE PAGE A VISIBLE STRUCTURE ----------------------------------
+     Operator: si.html "still has 27 tables and 25 headings on one page with no grouping ... all
+     27 populate, so the clunk is volume and structure, not emptiness."
+
+     ⛔ NOT A REORDER. Moving 30 card blocks by hand on a page whose script binds ~40 element ids
+     is a large silent change where one mis-paired tag takes the page down with no error. The
+     reader's problem is that they cannot SEE the structure, not that the order is wrong — so
+     each card carries a `data-group`, and this builds a grouped contents strip from it.
+     ⚠ A card with NO group lands in "Ungrouped" rather than vanishing. A contents list that
+     silently omits a section is worse than one that admits it missed something. */
+  (() => {
+    const cards = [...document.querySelectorAll(".card[data-group] > h2, .card:not([data-group]) > h2")];
+    const groups = new Map();
+    cards.forEach((h, i) => {
+      const card = h.parentElement;
+      const g = card.getAttribute("data-group") || "Ungrouped";
+      // "sub" means a heading INSIDE a section (the two charts in the structure-fires card),
+      // not a section of its own. Skipped here, while a card nobody classified at all still
+      // shows up under "Ungrouped" - the point of that bucket is to catch an omission, and a
+      // deliberate sub-heading is not one.
+      if (g === "sub") return;
+      if (!h.id) h.id = "sec-" + i;
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(h);
+    });
+    if (!groups.size) return;
+    const strip = document.createElement("nav");
+    strip.className = "sitoc";
+    strip.innerHTML = `<b>On this page</b>` + [...groups.entries()].map(([g, hs]) =>
+      `<span class="tocg"><i>${g}</i>${hs.map((h) =>
+        `<a href="#${h.id}">${h.textContent.replace(/\s+/g, " ").trim()
+          .replace(/^[⚠⭐]\s*/, "").split("—")[0].split("&mdash;")[0].trim().slice(0, 46)}</a>`
+        ).join("")}</span>`).join("");
+    const main = document.querySelector("main") || document.body;
+    main.insertBefore(strip, main.firstChild);
+  })();
+
+  /* ---------- G90(a) / G97 / G98 / G120: the 2026-08-20 additions -------------------------- */
+  const W = await fetchGz("data/wired.json.gz");
+  /* ⚠ THE VOCABULARY IS UPPER-CASE. `notice_class` arrives as CLOSURE / LAYOFF / NOT_STATED /
+     POTENTIAL_CLOSURE / REDUCED_HOURS / TRANSFER / LAYOFF_AND_CLOSURE. A lower-cased lookup
+     table silently missed every one of them and would have rendered the raw codes plus an
+     "undefined" headline — the value-vocabulary trap, caught before it shipped. Normalise on
+     the way in, and fall back to the code with its underscores softened rather than to nothing. */
+  const wpl = (c) => ({ closure: "closure", layoff: "layoff",
+      potential_closure: "potential closure", not_stated: "not stated",
+      reduced_hours: "reduced hours", transfer: "transfer",
+      layoff_and_closure: "layoff and closure" }[String(c || "").toLowerCase()]
+      || String(c || "").toLowerCase().replace(/_/g, " "));
+  const ws = W.warn_summary || [];
+  const total = (k) => ws.reduce((a, r) => a + (r[k] || 0), 0);
+  const wfind = (c) => ws.find((r) => String(r.notice_class).toUpperCase() === c) || {};
+  const cl = wfind("CLOSURE");
+  const lo = wfind("LAYOFF");
+  document.getElementById("warn-answer").innerHTML =
+    `<b>${fmt(cl.notices)} closures against ${fmt(lo.notices)} layoffs</b> — the closures are the
+     MAJORITY, and the application was reading this feed as layoff data. The distinction is the
+     whole signal: <b>a layoff keeps the site operating; a closure vacates it.</b>
+     ${fmt(total("industrial"))} of the ${fmt(total("vacating"))} site-vacating notices are
+     industrial, which is the subset where the land is worth something to a developer —
+     a closing shop unit is not a siting opportunity.`;
+  document.getElementById("t-warn").insertAdjacentHTML("beforeend", ws.map((r) =>
+    `<tr><td>${wpl(r.notice_class)}</td><td>${fmt(r.notices)}</td>
+     <td>${r.workers ? fmt(r.workers) : `<span class="cannot">not stated</span>`}</td>
+     <td>${r.vacating ? fmt(r.vacating) : "&mdash;"}</td>
+     <td>${r.industrial ? fmt(r.industrial) : "&mdash;"}</td></tr>`).join(""));
+  document.getElementById("t-warnf").insertAdjacentHTML("beforeend", (W.warn_future || []).map((r) =>
+    `<tr><td><b>${r.company}</b></td><td>${r.city || "&mdash;"}</td><td><b>${r.event_date}</b></td>
+     <td>${r.affected_workers ? fmt(r.affected_workers) : "&mdash;"}</td>
+     <td>${wpl(r.notice_class)}</td></tr>`).join(""));
+  document.getElementById("t-warnr").insertAdjacentHTML("beforeend",
+    (W.warn_recent_closures || []).map((r) =>
+    `<tr><td>${r.company}</td><td>${r.city || "&mdash;"}</td>
+     <td>${r.industry || "&mdash;"}</td><td>${r.event_date}</td>
+     <td>${r.affected_workers ? fmt(r.affected_workers) : "&mdash;"}</td></tr>`).join(""));
+  const wp = (W.warn_precision || []).map((r) => `${fmt(r.n)} ${r.event_date_precision}`).join(" · ");
+  document.getElementById("p-warn").innerHTML =
+    `indiana_app.in_si_warn_normalised · built by scripts/build_warn_normalised.py. ` +
+    `<b>Date precision is carried per row and the shapes are not interchangeable:</b> ${wp}. ` +
+    `Two of the unparseable strings are dates that do not exist (10/37/2008, 2/29/2013), which is ` +
+    `why the parse reports a residue instead of coercing them.`;
+
+  const su = W.surplus_summary || [];
+  const decl = su.find((r) => r.surplus_class === "declared_excess") || {};
+  const inuse = su.find((r) => r.surplus_class === "in_use") || {};
+  const suTot = su.reduce((a, r) => a + r.assets, 0);
+  document.getElementById("surplus-answer").innerHTML =
+    `The map console drew all <b>${fmt(suTot)}</b> of these under a checkbox reading
+     &ldquo;Federal surplus property&rdquo;. <b>${fmt(inuse.assets)} of them are Current or Future
+     Mission Need</b> — the label was true of <b>${fmt(decl.points)} locations</b> and asserted of
+     ${fmt(suTot)} points. It is now split, and this is the honest count: <b>${fmt(decl.assets)}
+     assets at ${fmt(decl.points)} locations carry a Report of Excess or a Determination to
+     Dispose</b> (FRPP reports per ASSET, so one installation can be several rows).
+     Small, and worth more than most of the corpus above it — a Report of Excess is an owner
+     publicly stating it does not want the land, with no inference at all.
+     ⛔ Acreage is held on none of them, so none is quoted.`;
+  const SUR_PLAIN = { declared_excess: "declared surplus", disposed: "already disposed of",
+    unutilized_not_declared: "unutilised, not declared", in_use: "in use — NOT surplus",
+    underutilized_not_declared: "underutilised, not declared" };
+  document.getElementById("t-surplus").insertAdjacentHTML("beforeend", su.map((r) =>
+    `<tr><td>${SUR_PLAIN[r.surplus_class] || r.surplus_class}</td><td>${fmt(r.assets)}</td>
+     <td>${fmt(r.points)}</td></tr>`).join(""));
+  document.getElementById("t-surplusl").insertAdjacentHTML("beforeend",
+    (W.surplus_leads || []).map((r) =>
+    `<tr><td>${SUR_PLAIN[r.surplus_class] || r.surplus_class}</td>
+     <td>${r.city || "?"}, ${r.county || "?"}</td><td>${r.use || "&mdash;"}</td>
+     <td>${r.parcel_key
+       ? `<code>${r.parcel_key}</code>${r.parcel_acres ? ` · ${fmt(Math.round(r.parcel_acres))} ac` : ""}`
+       : `<span class="cannot">no parcel under this point</span>`}</td></tr>`).join(""));
+
+  const wd = W.withdrawn_summary || [];
+  const placed = wd.filter((r) => r.placement_grain !== "county_only");
+  const wdTot = wd.reduce((a, r) => a + r.requests, 0);
+  const wdPl = placed.reduce((a, r) => a + r.requests, 0);
+  const wdPar = placed.reduce((a, r) => a + (r.parcels || 0), 0);
+  document.getElementById("wd-answer").innerHTML =
+    `<b>${fmt(wdPl)} of ${fmt(wdTot)} cancelled requests carry a real coordinate</b>
+     (${(100 * wdPl / wdTot).toFixed(0)}%), and <b>${fmt(wdPar)} of them sit on a parcel</b> —
+     with no filing parse and no scraping. This signal sat open for two sessions on the premise
+     that the address lives in late-stage filings; it does not have to, because PJM publishes its
+     own queue-point coordinates and MISO names the interconnection substation in words.
+     ⚠ Recency governs: a 2006 cancellation says little about today's owner.`;
+  const WD_PLAIN = { parcel_under_point: "a parcel sits under the point",
+    placed: "placed, no parcel beneath", county_only: "county only — no coordinate" };
+  document.getElementById("t-wd").insertAdjacentHTML("beforeend", wd.map((r) =>
+    `<tr><td>${WD_PLAIN[r.placement_grain] || r.placement_grain}</td><td>${r.iso}</td>
+     <td>${fmt(r.requests)}</td><td>${fmt(r.mw)}</td>
+     <td>${r.parcels ? fmt(r.parcels) : "&mdash;"}</td></tr>`).join(""));
+  document.getElementById("t-wdr").insertAdjacentHTML("beforeend",
+    (W.withdrawn_recency || []).map((r) =>
+    `<tr><td>${r.band}</td><td>${fmt(r.requests)}</td><td>${fmt(r.mw)}</td></tr>`).join(""));
+
+  const at = W.attribution || [];
+  const ribbon = at.filter((r) => r.rowlike_confidence !== "no");
+  const nRib = ribbon.reduce((a, r) => a + r.parcels, 0);
+  const noRow = at.find((r) => r.rowlike_confidence === "no") || {};
+  document.getElementById("attr-answer").innerHTML =
+    `The operator reported retail stores rendering as &ldquo;no structure&rdquo; with a building
+     visible on satellite. <b>There are TWO faults behind that and they look identical on screen.</b>
+     The first is VINTAGE — the structures corpus stops at January 2020, so anything newer is
+     invisible. The second is the WRONG PARCEL: an address that geocodes onto the road selects the
+     road right-of-way, which genuinely has no building, so the tool answers correctly about the
+     wrong land. <b>${fmt(nRib)} candidate parcels are ribbon-shaped with no structure</b>, and
+     <b>${fmt(ribbon.reduce((a, r) => a + r.redirectable, 0) + (noRow.redirectable || 0))}
+     structure-less parcels have a built parcel within 150 m</b> to point at instead.`;
+  const AT_PLAIN = { high: "ribbon shape AND a road crosses it", shape_only: "ribbon shape only",
+    possible: "unusually elongated", no: "ordinary shape" };
+  document.getElementById("t-attr").insertAdjacentHTML("beforeend", at.map((r) =>
+    `<tr><td>${AT_PLAIN[r.rowlike_confidence] || r.rowlike_confidence}</td>
+     <td>${fmt(r.parcels)}</td><td>${fmt(r.redirectable)}</td>
+     <td>${fmt(r.with_sliver)}</td></tr>`).join(""));
 
   const CTX = await fetchGz("data/context.json.gz");
   document.getElementById("t-vac").insertAdjacentHTML("beforeend", CTX.vacancy_top.map(v =>

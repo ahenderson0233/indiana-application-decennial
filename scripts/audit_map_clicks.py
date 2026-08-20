@@ -42,6 +42,11 @@ WAIVED = {
     "measure-pts": "ditto",
     "sel-parcel-fill": "the highlight drawn ON a selected parcel; the parcel layer owns the click",
     "sel-parcel-line": "ditto",
+    # 2026-08-20 (G105): the same case as water-ws-line and grid-bus-label. terr-fill IS bound and
+    # covers the identical polygon, so a click anywhere on a territory already answers; binding
+    # the outline and the text as well would open the same panel from three overlapping hit areas.
+    "terr-line": "the service-territory OUTLINE; terr-fill carries the click for the same polygon",
+    "terr-label": "the text label for terr-fill, which is itself clickable",
 }
 
 added = set(re.findall(r'addLayer\(\{\s*id:\s*"([^"]+)"', APP))
@@ -65,9 +70,40 @@ for i, ln in enumerate(LINES):
 for m in re.finditer(r"const clickable = \{([\s\S]*?)\};", APP):
     clicked |= set(re.findall(r'"([a-z][a-z0-9-]+)"\s*:', m.group(1)))
 
-# 4. CONTEXT_LAYERS values, bound in their own loop over Object.entries
-for m in re.finditer(r"const CONTEXT_LAYERS = \{([\s\S]*?)\};", APP):
-    clicked |= set(re.findall(r':\s*"([^"]+)"', m.group(1)))
+# 4. LAYER-GROUP OBJECTS bound in a loop over Object.values / Object.entries.
+#
+# ⚠ FIXED 2026-08-20, AND IT WAS CRYING WOLF AGAIN — the third time this audit has. This rule
+#   used to name `CONTEXT_LAYERS` literally. G110 then added `ENVGATE_LAYERS` in exactly the same
+#   shape, bound in exactly the same way, and the audit reported `env-flood` and `env-wet` as
+#   "drawn and unclickable" for a whole session. They were bound the entire time, in
+#   `for (const id of Object.values(ENVGATE_LAYERS))`. The handoff carried that false finding
+#   forward as G105 work.
+#
+# ⛔ A HARDCODED LIST OF GROUP NAMES IS THE SAME DEFECT AS A HARDCODED WIRING COUNT: correct until
+#   someone adds one, then silently wrong. Detect the SHAPE instead — any `const X = {...}` whose
+#   members are iterated with Object.values/Object.entries in a body that binds a click. That
+#   covers CONTEXT_LAYERS, ENVGATE_LAYERS, WIRED_LAYERS and whatever comes next, with no list.
+# ⚠ BOTH SHAPES. CONTEXT_LAYERS and ENVGATE_LAYERS are declared on ONE line; WIRED_LAYERS spans
+#   many. A pattern requiring the closing brace on its own line silently dropped the single-line
+#   ones and re-broke ctx-ghgrp/ctx-frpp the moment it was introduced. Non-greedy to the first
+#   `};` is correct here because every one of these objects is flat.
+for gname, body in re.findall(r"const ([A-Z][A-Z_]*) = \{([\s\S]*?)\};", APP):
+    # Is this group iterated anywhere, and does THAT loop bind a click? Check every iteration
+    # site, not just the first: LAYER_MAP is iterated in syncLayers (no clicks) long before
+    # anywhere else, so stopping at the first occurrence would test the wrong loop.
+    hit = False
+    for it in re.finditer(r"Object\.(?:values|entries)\(" + re.escape(gname) + r"\)", APP):
+        # 1,200 characters is generous enough for an inner `for (const id of ids)` and the
+        # three handler lines that follow it.
+        if re.search(r'map\.on\(\s*"click",\s*\w+', APP[it.start():it.start() + 1200]):
+            hit = True
+            break
+    if not hit:
+        continue
+    # A member is either `"L-x": "layer-id"` or `"L-x": ["layer-a", "layer-b"]`. Harvesting EVERY
+    # quoted string in the body also picks up the checkbox keys, which is harmless: a key like
+    # "L-water" can never collide with a drawn layer id, so it cannot mark anything wired.
+    clicked |= set(re.findall(r'"([^"]+)"', body))
 
 tmpl = re.findall(r'map\.on\(\s*"click",\s*`([^`]+)`', APP)
 

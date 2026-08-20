@@ -102,6 +102,24 @@ w2 = {
         WHERE sectorDescription = 'All Sectors' AND fuelTypeDescription = 'all fuels'
         GROUP BY 1 ORDER BY period"""),
 
+    # ⚠ MOVED HERE FROM export_wired_layers.py, 2026-08-20. market.html reads wired2 and
+    #   this key was being written into wired.json.gz, so the panel would have rendered
+    #   empty forever. audit_frontend.py caught it: it checks every key a page reads
+    #   against the keys the export actually writes, which is exactly this class of bug.
+    # ⭐ THE PRICE CHECK. in_eia861_sales_ult_cust held every Indiana utility's INDUSTRIAL revenue
+    #    and MWh and reached no surface. revenue / sales is the implied industrial rate actually
+    #    BILLED last year - a yardstick against the tariff engine's modelled figure, from a
+    #    different source entirely.
+    #    ⚠ It is an AVERAGE across every industrial customer, not a large-load rate, and it is
+    #    NOT a substitute for the tariff: it carries no demand/energy split and no rider stack.
+    "utility_implied_industrial": rows(f"""
+        SELECT utility_name, data_year, ownership, ba_code,
+               ROUND(ind_sales_mwh) AS ind_mwh, ROUND(ind_customers) AS ind_customers,
+               ROUND(100 * SAFE_DIVIDE(ind_rev_kusd, ind_sales_mwh), 2) AS implied_cents_kwh,
+               ROUND(100 * SAFE_DIVIDE(tot_rev_kusd, tot_sales_mwh), 2) AS all_class_cents_kwh
+        FROM `{DS}.in_eia861_sales_ult_cust`
+        WHERE ind_sales_mwh > 0 ORDER BY ind_sales_mwh DESC"""),
+
     # weekly state drought. ⚠ a STATE series, not county - it must not render on a parcel.
     "drought": rows(f"""
         SELECT SUBSTR(validstart, 1, 10) AS week, none AS pct_none, d0, d1, d2, d3, d4

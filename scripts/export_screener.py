@@ -134,6 +134,11 @@ for r in client.query(f"""
          -- string only when it is one of the three positive grades) - absence means "not ribbon".
          IF(rowlike_confidence = 'no', NULL, rowlike_confidence) AS rowlike,
          IF(rowlike_confidence = 'no', NULL, ROUND(compactness, 3)) AS rowlike_compactness,
+         -- ⚠ this was computed in the CTE and never SELECTed, so the strongest half of the
+         --   "high" grade — that a road we hold physically crosses the polygon — never reached
+         --   the page and the sentence that reports it was dead code. Caught by rendering a
+         --   'high' row and noticing the clause was missing from the output.
+         IF(rowlike_confidence = 'no', NULL, road_crosses) AS road_crosses,
          -- the redirect: "you probably meant this parcel"
          nearest_structured_key, nearest_structured_m, nearest_structured_occ_group,
 
