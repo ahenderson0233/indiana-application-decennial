@@ -20,9 +20,21 @@ over an `UNKNOWN*`/`OSMUNKNOWN*` placeholder, then more line_count, then a HIFLD
 single-source row. Losing rows are counted, never silently dropped, and the count rides in the
 registry.
 
-⛔ Footprint-only rows (933, the OSM-only contributions, which carry a polygon instead of a point)
-are PASSED THROUGH UNTOUCHED. They have no coordinate to group on, and dropping them would repeat
-the error that made our coverage look a fifth worse than it is.
+⚠ UPDATED 2026-08-20 BY `repair_substation_geometry.py`, AND THE OLD NOTE HERE WAS THE CLUE.
+This docstring used to read "footprint-only rows (933, the OSM-only contributions, which carry a
+polygon instead of a point) are PASSED THROUGH UNTOUCHED". That was true and it was also the
+answer to G20, which had separately concluded those same rows had "no coordinates either" after
+testing `lat IS NULL`. The location was in `footprint_geojson` on 933 of 933.
+
+The repair now derives a centroid for the 734 that fall inside Indiana, so EVERY in-state row has
+a lat. That changes what this script must do:
+
+  - `geom_kind` is no longer "does lat exist". It is **'point'** where the publisher gave us a
+    point and **'footprint'** where the coordinate is a centroid we derived - because a derived
+    centroid must never be drawn in place of an exact polygon.
+  - 199 recovered footprints fall OUTSIDE Indiana (the upstream OSM slice is keyed on the scrape
+    region, not a border test). They are kept, counted, and given **geom_kind='none'** so no
+    exporter can put an out-of-state substation on an Indiana map.
 """
 import sys as _sys
 try:
@@ -84,19 +96,31 @@ ranked AS (
          ) AS rk
   FROM located
 )
-SELECT * EXCEPT(dup_key, rk, dup_group_size),
+-- ⚠ geom_kind is EXCEPT-ed from the input because repair_substation_geometry.py now writes its
+--    own, richer one (point_and_footprint / footprint_only_point_derived / point_only /
+--    no_location). This table keeps the two-value vocabulary app.js filters on, but it is now
+--    derived from coord_source rather than from "does lat exist", because after the repair EVERY
+--    in-state row has a lat and 734 of those coordinates are CENTROIDS WE DERIVED.
+-- ⛔ A DERIVED CENTROID MUST NOT REPLACE A REAL FOOTPRINT ON THE MAP. geom_kind='point' now means
+--    "the publisher gave us this point"; 'footprint' means "we only have the polygon, and the
+--    polygon is what gets drawn". Without this the repair would have silently converted 734
+--    exact footprints into invented points.
+SELECT * EXCEPT(dup_key, rk, dup_group_size, geom_kind),
        dup_group_size - 1 AS duplicates_collapsed,
-       'point' AS geom_kind,
+       IF(coord_source = 'published_point', 'point', 'footprint') AS geom_kind,
        {CLASS_SQL} AS asset_class
 FROM ranked WHERE rk = 1
 
 UNION ALL
 
--- footprint-only rows pass through untouched: no coordinate to group on, and they are exactly the
--- OSM-only contributions that a naive point-based completeness check would erase
-SELECT *, 0 AS duplicates_collapsed, 'footprint' AS geom_kind, {CLASS_SQL} AS asset_class
+-- Rows with no usable location at all. After the repair these are the 199 OSM footprints that
+-- fall OUTSIDE Indiana (the upstream slice is keyed on the scrape region, not a border test).
+-- They are carried so the count stays honest and DELIBERATELY given geom_kind='none' so no
+-- exporter can draw an out-of-state substation on an Indiana map.
+SELECT * EXCEPT(geom_kind), 0 AS duplicates_collapsed, 'none' AS geom_kind,
+       {CLASS_SQL} AS asset_class
 FROM `{DS}.in_substations`
-WHERE lat IS NULL AND footprint_geojson IS NOT NULL
+WHERE lat IS NULL
 """
 
 client.query(SQL).result()
@@ -105,8 +129,9 @@ m = list(client.query(f"""
 SELECT COUNT(*) n,
        COUNTIF(geom_kind = 'point') pts,
        COUNTIF(geom_kind = 'footprint') fps,
+       COUNTIF(geom_kind = 'none') nones,
        SUM(duplicates_collapsed) collapsed,
-       COUNT(DISTINCT FORMAT('%.4f|%.4f', lat, lon)) distinct_pts,
+       COUNT(DISTINCT IF(geom_kind='point', FORMAT('%.4f|%.4f', lat, lon), NULL)) distinct_pts,
        COUNTIF(max_kv IS NULL AND geom_kind = 'point') no_kv,
        COUNTIF(asset_class = 'substation') c_sub,
        COUNTIF(asset_class = 'tap') c_tap,
@@ -116,7 +141,8 @@ FROM `{DS}.in_substations_dedup`"""))[0]
 before = list(client.query(f"SELECT COUNT(*) n FROM `{DS}.in_substations`"))[0].n
 
 print(f"in_substations       : {before:,} rows (before)")
-print(f"in_substations_dedup : {m.n:,} rows  =  {m.pts:,} points + {m.fps:,} footprint-only")
+print(f"in_substations_dedup : {m.n:,} rows  =  {m.pts:,} published points + {m.fps:,} "
+      f"drawn as their footprint + {m.nones:,} with no in-state location")
 print(f"  duplicates collapsed : {m.collapsed:,}")
 print(f"  distinct coordinates : {m.distinct_pts:,}")
 print(f"  points with no voltage recorded: {m.no_kv:,}  <- NULL, never 0")

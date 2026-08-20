@@ -70,8 +70,19 @@ for r in client.query(f"""
            ROUND(h.a_wd_mw)            AS deliv_a_wd,
            h.b_bus_name                AS deliv_b_bus,
            ROUND(h.b_wd_mw)            AS deliv_b_wd,
+           -- G120(b)+(e), 2026-08-20. Two attribution facts the operator hit on real sites.
+           a.rowlike_confidence, a.compactness, a.road_crosses,
+           a.nearest_structured_key, a.nearest_structured_m, a.nearest_structured_occ_group,
+           a.neighbours, a.sliver_neighbours, a.sliver_acres,
+           a.same_class_neighbours, a.same_class_acres, a.assembly_acres_same_class,
+           a.largest_neighbour_acres,
+           -- G72: water stress at PARCEL grain. in_water_parcel held 532,868 rows and reached
+           -- no surface at all.
+           w.stress_label, w.depletion_label, w.groundwater_decline_label, w.basins_touched,
            ROW_NUMBER() OVER (PARTITION BY c.county_fips ORDER BY c.mw_dc DESC) AS rk
     FROM `{DS}.in_screener_candidates` c
+    LEFT JOIN `{DS}.in_parcel_assembly` a USING (parcel_source, parcel_key)
+    LEFT JOIN `{DS}.in_water_parcel`    w USING (parcel_source, parcel_key)
     -- G72 land-status and airspace gates. LEFT JOIN, because a parcel with no installation
     -- within 25 miles must come back NULL ("measured, nothing in range"), never 0 -- the same
     -- rule that stopped 95 false "below floor" tariff violations.
@@ -79,7 +90,9 @@ for r in client.query(f"""
     -- G116/G118: the DELIVERABLE figure. The nearest line followed to the bus at BOTH ends with
     -- the lower headroom taken, per the operator's stated method. Sits BESIDE mw_dc (the land
     -- figure), never replacing it -- a site is capped by the lower of the two, and which one
-    -- binds is the point. Measured: the grid binds on 190,216 parcels, the land on 73,094.
+    -- binds is the point. ⚠ Do not hand-type the split here - it moved twice already (190,216 /
+    -- 73,094 was quoted after the numbers had gone to 190,178 / 73,058). audit_handoff_docs.py
+    -- re-measures it; this comment names the finding, not the figure.
     LEFT JOIN `{DS}.in_parcel_line_headroom` h USING (parcel_source, parcel_key)
     WHERE c.county_fips IS NOT NULL
   )
@@ -109,7 +122,31 @@ for r in client.query(f"""
          -- a NULL under 'both_ends' would be a measured absence, a NULL under 'cannot_assess'
          -- means we could not follow the line to its buses. Opposite claims, same empty cell.
          deliv_wd_mw, deliv_inj_mw, deliv_basis, deliv_ends, deliv_limiting_end,
-         deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd
+         deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd,
+
+         -- ⭐ G120(b) 2026-08-20 - THE GEOCODE TRAP, MADE VISIBLE.
+         -- G120(a) proved structure_count is faithful and the corpus is six years old, which
+         -- explains a NEW building reading as empty. It does NOT explain a 1990s retail store
+         -- reading as empty, and this does: the address geocoded onto the ROAD, the road is its
+         -- own right-of-way parcel, and that parcel genuinely has no building. The tool was
+         -- answering correctly about the wrong parcel and the reader had no way to tell.
+         -- ⚠ 'no' is dropped from the payload (falsy-ish strings are kept, so it is emitted as a
+         -- string only when it is one of the three positive grades) - absence means "not ribbon".
+         IF(rowlike_confidence = 'no', NULL, rowlike_confidence) AS rowlike,
+         IF(rowlike_confidence = 'no', NULL, ROUND(compactness, 3)) AS rowlike_compactness,
+         -- the redirect: "you probably meant this parcel"
+         nearest_structured_key, nearest_structured_m, nearest_structured_occ_group,
+
+         -- ⭐ G120(e) - THE ASSEMBLY. A 40-acre campus is rarely one parcel.
+         -- ⛔ Adjacency is NOT common ownership: Indiana parcel owner is NULL on all 3,553,381
+         -- rows outside Marion, so this says "these adjoin", never "one person owns them".
+         neighbours, sliver_neighbours, sliver_acres,
+         same_class_neighbours, same_class_acres, assembly_acres_same_class,
+         largest_neighbour_acres,
+
+         -- ⭐ G72 - water stress at parcel grain (in_water_parcel, 532,868 rows, unwired until now)
+         stress_label AS water_stress, depletion_label AS water_depletion,
+         groundwater_decline_label AS water_gw_decline, basins_touched AS water_basins
   FROM ranked
   WHERE has_signal OR rk <= {TOP_PER_COUNTY}
   ORDER BY county_fips, mw_dc DESC"""):

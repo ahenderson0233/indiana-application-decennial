@@ -87,10 +87,18 @@ near_line AS (
 --    not a substation. Dropping it would silently move a parcel's nearest substation further away
 --    for a reason about our metadata, which is the same error as treating unknown voltage as 0.
 --    It is carried through as sub_class_unknown so the uncertainty is visible rather than hidden.
+-- ⛔ NO CENTROID WHERE A FOOTPRINT EXISTS - 2026-08-20. This read ST_GEOGPOINT(lon, lat), which
+--    was correct while every located substation carried a published point. It is not correct now:
+--    repair_substation_geometry.py recovered 734 substations whose only geometry is a POLYGON, and
+--    measuring to their centre point would overstate the distance to the fence by half the yard's
+--    width - on exactly the OSM-contributed stations that nothing had measured before.
+--    `geog` carries the footprint where held and the point otherwise, so ST_DISTANCE returns the
+--    distance to the boundary, and 0.0 when the parcel touches the substation.
+-- ⛔ geom_kind='none' is excluded: those are recovered footprints that fall outside Indiana.
 subs AS (
-  SELECT ST_GEOGPOINT(lon, lat) AS g, substation_name, max_kv, asset_class
+  SELECT geog AS g, substation_name, max_kv, asset_class
   FROM `{DS}.in_substations_dedup`
-  WHERE lat IS NOT NULL AND lon IS NOT NULL
+  WHERE geog IS NOT NULL AND geom_kind != 'none'
     AND asset_class IN ('substation', 'unknown')
 ),
 near_sub AS (

@@ -39,15 +39,24 @@ feats = []
 # mixes 503 line TAPs and 27 DEAD ENDs in with real substations: neither is a place you can
 # interconnect a data centre, and they must be separable rather than silently counted as stations.
 n_pt = n_poly = 0
+# ⛔ 2026-08-20: THE GEOMETRY CHOICE MOVED, AND NOT CHANGING IT HERE WOULD HAVE BEEN A SILENT
+# REGRESSION. repair_substation_geometry.py derived a centroid for 734 footprint-only substations,
+# so `lat IS NOT NULL` is now true for every in-state row. The old branch above chose a point
+# whenever a lat existed - which after the repair would have replaced 734 EXACT POLYGONS with
+# invented centre points and called it an improvement. The table now says which is which:
+#   geom_kind='point'      the publisher gave us this coordinate  -> draw the point
+#   geom_kind='footprint'  the coordinate is our centroid         -> draw the POLYGON
+#   geom_kind='none'       recovered footprint lands outside Indiana -> draw NOTHING
 for r in client.query(f"""
   SELECT substation_name, max_kv, min_kv, county, status, substation_type, line_count,
-         operator, sources, asset_class, duplicates_collapsed, lat, lon, footprint_geojson
+         operator, sources, asset_class, duplicates_collapsed, geom_kind, coord_source,
+         lat, lon, footprint_geojson
   FROM `{DS}.in_substations_dedup`
-  WHERE lat IS NOT NULL OR footprint_geojson IS NOT NULL"""):
+  WHERE geom_kind != 'none'"""):
     d = dict(r); lat, lon = d.pop("lat"), d.pop("lon"); fp = d.pop("footprint_geojson")
     d["layer"] = "substation"
-    if lat is not None and lon is not None:
-        d["geom_kind"] = "point"; n_pt += 1
+    if d["geom_kind"] == "point" and lat is not None and lon is not None:
+        n_pt += 1
         geom = {"type": "Point", "coordinates": [rc(float(lon)), rc(float(lat))]}
     else:
         try: geom = rc(json.loads(fp))
@@ -330,6 +339,26 @@ if _needs:
     assert _dc, ("county_context.json still has no dc_posture. The county panel's data-centre "
                  "counts, serving utility and moratorium lapse dates would all render empty. "
                  "Run scripts/build_county_dc_wiring.py.")
+
+# G72/G80 SELF-HEAL, added 2026-08-20 — THE THIRD BLOCK THIS FILE HAS SILENTLY DESTROYED.
+# Same mechanism, same day it was introduced: export_wired_layers.py merges an `extras` block
+# (county water use, labour, FEMA risk, solar, the data-centre industry cluster) into every
+# county, and this script's wholesale rewrite deleted all 92 within minutes of them landing.
+# ⚠ THE PATTERN IS NOW THREE-FOR-THREE, so the next person to merge anything into
+#   county_context.json should assume it WILL be destroyed and add a heal here in the same
+#   commit — the file has several writers and only this one rewrites it from scratch.
+_needs = sum(1 for v in _d.get("by_fips", {}).values()
+             if isinstance(v, dict) and not v.get("extras"))
+if _needs:
+    print(f"county_context.json lost the county extras on {_needs} counties - re-merging")
+    _rc3 = _sp.call([_sys.executable, os.path.join(REPO, "scripts", "export_wired_layers.py")])
+    _d = _json.load(open(_ctx, encoding="utf-8"))
+    _ex = sum(1 for v in _d.get("by_fips", {}).values()
+              if isinstance(v, dict) and v.get("extras"))
+    print(f"  restored: {_ex}/92 counties carry extras (export exit {_rc3})")
+    assert _ex, ("county_context.json still has no extras. The county panel's water-supply, "
+                 "labour, hazard-risk and data-centre-cluster blocks would render empty. "
+                 "Run scripts/export_wired_layers.py.")
 
 # ---------------------------------------------------------------------------------------------
 # G43 SELF-HEAL. This exporter rewrites grid.geojson.gz and facilities.geojson.gz straight from

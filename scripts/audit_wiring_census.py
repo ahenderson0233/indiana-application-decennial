@@ -66,6 +66,27 @@ for rel, src in files.items():
             dynamic_prefixes.add((m.group(1), rel))
 print(f"registry-driven family panels: {sorted(dynamic_prefixes) or 'none'}")
 
+# ---------------------------------------------------------------------------------------------
+# ⛔ 2026-08-20 INSTRUMENT FIX: the build detector could not see an f-string target, which is how
+#    most build scripts in this repo are written:
+#        OUT = f"{DS}.in_county_context_extras"
+#        CREATE OR REPLACE TABLE `{OUT}` AS ...
+#    The literal `CREATE ... TABLE `...in_county_context_extras`` never appears, so the file was
+#    filed as a READER of its own output and as a builder of NOTHING. Consequence: the derivative
+#    pass, which asks "does this file build something already reaching a surface", found no build
+#    for such a file and every INPUT to it stayed unwired. in_acs_county, in_fema_nri_counties,
+#    in_water_use and six more were reported unreached while their figures were on the county
+#    panel. Resolve the variable first, then match.
+VAR_TABLE = re.compile(r'^\s*([A-Za-z_]\w*)\s*=\s*f?["\'][^"\']*?\.([a-z_][a-z0-9_]*)["\']', re.M)
+CREATE_VAR = re.compile(r"CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW)\s+`?\{(\w+)\}", re.I)
+fstring_builds = {}          # rel -> set of table names this file creates via a variable
+for rel, src in files.items():
+    vt = {m.group(1): m.group(2) for m in VAR_TABLE.finditer(src)}
+    got = {vt[v] for v in (m.group(1) for m in CREATE_VAR.finditer(src)) if v in vt}
+    if got:
+        fstring_builds[rel] = got
+print(f"f-string CREATE targets resolved in {len(fstring_builds)} file(s)")
+
 # pass 1: who builds what, who reads what
 builds, reads = {}, {}
 for r in registered:
@@ -75,8 +96,9 @@ for r in registered:
     for rel, src in files.items():
         if not pat.search(src):
             continue
-        if re.search(r"CREATE\s+(OR\s+REPLACE\s+)?(TABLE|VIEW)\s+`?[^`\s]*" + re.escape(name),
-                     src, re.I):
+        if (re.search(r"CREATE\s+(OR\s+REPLACE\s+)?(TABLE|VIEW)\s+`?[^`\s]*" + re.escape(name),
+                      src, re.I)
+                or name in fstring_builds.get(rel, ())):
             builds[name].append(rel)
         else:
             reads[name].append(rel)
@@ -114,6 +136,40 @@ for _ in range(6):
                 break
     if not changed:
         break
+
+# ---------------------------------------------------------------------------------------------
+# pass 3: CO-BUILT reach — 2026-08-20, and this is an INSTRUMENT FIX, not a coverage change.
+#
+# ⛔ THE FALSE NEGATIVE. `in_faa_obstacles` (15,638 rows) has had its own checkbox on the map
+#    console — "Tall obstructions >=200 ft (4,591)" — for days, and this census reported it as
+#    reaching no surface. Cause: `build_land_gates.py` CREATEs `in_faa_obstacles` AND CREATEs
+#    `in_land_gate_parcel` from it in the same file. Passes 1 and 2 only ever look at `reads`,
+#    and a table consumed inside the very script that creates it has no `reads` entry at all. So
+#    the object was invisible to every route, and G72 has been carrying it on the worklist as
+#    unwired work that was already done.
+#
+# ⚠ THIS ROUTE IS WEAKER THAN THE OTHERS AND IS COUNTED SEPARATELY FOR THAT REASON. Two tables
+#    built by one script are not necessarily related — a housekeeping script could build two
+#    unrelated things and this would mark both reached. It is reported as its own category and
+#    listed member by member below, so the headline can be read with it and without it. The
+#    alternative — leaving it out — is worse: it sends sessions to re-wire layers already shipped.
+for _ in range(6):
+    changed = False
+    for name in reg_names:
+        if name in status:
+            continue
+        for f in builds[name]:
+            sibling = [b for b in file_builds.get(f, []) if b != name and b in status]
+            if sibling:
+                status[name] = ("co-built", [f"built beside `{sibling[0]}` in `{f}`"])
+                changed = True
+                break
+    if not changed:
+        break
+_cob = sorted(n for n in reg_names if status.get(n, ("",))[0] == "co-built")
+print(f"co-built route (weaker — audit these by hand): {len(_cob)}")
+for n in _cob:
+    print(f"    {n:44s} {status[n][1][0]}")
 
 rowsout, unwired = [], []
 for r in registered:

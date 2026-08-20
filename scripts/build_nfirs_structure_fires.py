@@ -37,31 +37,42 @@ from google.cloud import bigquery
 DS = "energy-platfrom.indiana_app"
 client = bigquery.Client(project="energy-platfrom")
 
+# ⛔ 2026-08-20 (G72/G80): THIS SIGNAL WAS THREE YEARS STALE AGAINST DATA WE ALREADY HELD.
+#    The union stopped at 2021 while `in_nfirs_basicincident_2022` (40,044),
+#    `_2023` (46,748) and `_2024` (49,811) sat in indiana_app, registered and unread. A fire is
+#    an EVENT signal, so its whole value is recency - the seller-intent case for a 2021 fire is
+#    much weaker than for a 2024 one, and we were showing only the weak half.
+#    ⚠ It also fixes a latent join defect: `fire` already unioned 2024 while `inc` did not, so
+#    every 2024 NOT_RES flag joined to nothing and was silently discarded.
+#
+# ⚠ fireincident COVERAGE IS UNEVEN AND MUST NOT BE READ AS AN ANSWER. 2020 and 2021 hold ~9,700
+#   rows each; 2022 holds 1,221 and 2024 holds 1,255, and 2023 IS NOT HELD AT ALL. So NOT_RES is
+#   available for some years and not others. `non_residential` is therefore NULL on most of the
+#   new rows and MUST render as "not stated", never as "residential" - the same three-state rule
+#   that stopped 95 false tariff violations. `property_class`, derived from PROP_USE on the
+#   basicincident table, is complete for every year and is the column a surface should use.
+YEARS = ["2020", "2021", "2022", "2023", "2024"]
+FIRE_YEARS = ["2020", "2021", "2022", "2024"]          # 2023 fireincident is not held
+
+_inc = "\n  UNION ALL\n  ".join(
+    f"""SELECT '{y}' AS yr, INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
+         PROP_LOSS, CONT_LOSS, PROP_VAL, PROP_USE, OTH_DEATH, OTH_INJ
+  FROM `{DS}.in_nfirs_basicincident_{y}` WHERE STATE = 'IN'""" for y in YEARS)
+_addr = "\n  UNION ALL\n  ".join(
+    f"""SELECT INCIDENT_KEY, NUM_MILE, STREET_PRE, STREETNAME, STREETTYPE, CITY, ZIP5
+  FROM `{DS}.in_nfirs_incidentaddress_{y}` WHERE STATE = 'IN'""" for y in YEARS)
+_fire = "\n  UNION ALL\n  ".join(
+    f"""SELECT INCIDENT_KEY, NOT_RES, BLDG_INVOL, ACRES_BURN
+  FROM `{DS}.in_nfirs_fireincident_{y}` WHERE STATE = 'IN'""" for y in FIRE_YEARS)
+
 SQL = f"""
 WITH inc AS (
-  SELECT '2020' AS yr, INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
-         PROP_LOSS, CONT_LOSS, PROP_VAL, PROP_USE, OTH_DEATH, OTH_INJ
-  FROM `{DS}.in_nfirs_basicincident_2020` WHERE STATE = 'IN'
-  UNION ALL
-  SELECT '2021', INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
-         PROP_LOSS, CONT_LOSS, PROP_VAL, PROP_USE, OTH_DEATH, OTH_INJ
-  FROM `{DS}.in_nfirs_basicincident_2021` WHERE STATE = 'IN'),
+  {_inc}),
 addr AS (
-  SELECT INCIDENT_KEY, NUM_MILE, STREET_PRE, STREETNAME, STREETTYPE, CITY, ZIP5
-  FROM `{DS}.in_nfirs_incidentaddress_2020` WHERE STATE = 'IN'
-  UNION ALL
-  SELECT INCIDENT_KEY, NUM_MILE, STREET_PRE, STREETNAME, STREETTYPE, CITY, ZIP5
-  FROM `{DS}.in_nfirs_incidentaddress_2021` WHERE STATE = 'IN'),
+  {_addr}),
 -- fireincident carries the NOT_RES flag: the non-residential subset is the C&I-relevant half
 fire AS (
-  SELECT INCIDENT_KEY, NOT_RES, BLDG_INVOL, ACRES_BURN
-  FROM `{DS}.in_nfirs_fireincident_2020` WHERE STATE = 'IN'
-  UNION ALL
-  SELECT INCIDENT_KEY, NOT_RES, BLDG_INVOL, ACRES_BURN
-  FROM `{DS}.in_nfirs_fireincident_2021` WHERE STATE = 'IN'
-  UNION ALL
-  SELECT INCIDENT_KEY, NOT_RES, BLDG_INVOL, ACRES_BURN
-  FROM `{DS}.in_nfirs_fireincident_2024` WHERE STATE = 'IN')
+  {_fire})
 SELECT i.yr, i.INCIDENT_KEY AS incident_key, i.FDID AS fdid,
        SAFE.PARSE_DATE('%m%d%Y', i.INC_DATE) AS incident_date,
        i.INC_TYPE AS inc_type,

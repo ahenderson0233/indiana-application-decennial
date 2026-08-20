@@ -114,10 +114,16 @@ bus_wd AS (
   WHERE interconnection_type = 'Withdrawal'
     AND latitude IS NOT NULL AND longitude IS NOT NULL
 ),
+-- ⛔ NO CENTROID WHERE A FOOTPRINT EXISTS - 2026-08-20. This read ST_GEOGPOINT(lon, lat), which
+--    was right while every located substation had a published point, and stopped being right when
+--    repair_substation_geometry.py recovered 734 stations whose only geometry is a POLYGON.
+--    `geog` is the footprint where held, so sub_mi is the distance to the fence and 0 when the
+--    substation sits on the parcel. Measured effect on this table: median sub_mi 2.56 -> 2.16 mi
+--    across all 532,693 candidates, and on-parcel substations 871 -> 974.
 subs AS (
-  SELECT substation_name AS nm, max_kv, ST_GEOGPOINT(lon, lat) AS g
+  SELECT substation_name AS nm, max_kv, geog AS g
   FROM `{DS}.in_substations`
-  WHERE lat IS NOT NULL AND lon IS NOT NULL
+  WHERE geog IS NOT NULL
 ),
 n_inj AS (
   SELECT c.parcel_source, c.parcel_key,

@@ -1,0 +1,181 @@
+"""G72 / G80 - close the "231 unwired objects" into a BOUNDED, MAINTAINED ledger.
+
+    python scripts/audit_unwired_classification.py
+
+⛔ WHY THIS EXISTS. G72 has been the biggest row in the backlog for four sessions and its number
+kept moving - 231, then 291 of 309, then 235 of 316, then 240 of 323 - because "objects reaching
+no surface" is an open-ended list that nobody can ever finish. Worse, the previous sessions'
+worklist repeatedly included tables that were ALREADY on a page and simply invisible to the
+census instrument (`in_faa_obstacles` has had its own checkbox for days).
+
+The fix is not another sweep. It is to make the list CLOSED: every object that reaches no surface
+must carry a REASON, chosen from a small vocabulary, and this audit FAILS when one does not. From
+that point on the question stops being "how many are unwired" - which is unanswerable - and
+becomes "is any object unwired WITHOUT a reason", which is answerable and stays answered.
+
+THE VOCABULARY. Only these are acceptable, and each says something different:
+
+  empty                  the table holds 0 rows. There is nothing to show.
+  not_placeable          real data that CANNOT be attributed to Indiana - the seven gas boards
+                         that post an operator's whole system with no state column. Wiring them
+                         would put Louisiana capacity on an Indiana pipeline (G80's near-miss).
+  harvest_rung           a QueueScope ladder rung or a harvest working table. tier0 reads one
+                         rung; the others exist so the ladder can be resumed and audited.
+  raw_feed               a per-year or per-source input that a shipped table is built from.
+  coverage_ledger        a one-row record of what we searched and what we hold. It is provenance,
+                         not content, and the Data page renders the register that summarises it.
+  superseded             replaced by a v2/dedup/normalised table that IS wired.
+  WIRE                   ⛔ NOT a reason. An object marked WIRE is work still to do, and this
+                         audit prints it as the worklist.
+
+⚠ AN UNCLASSIFIED OBJECT IS A FAILURE, NOT A WARNING. That is the whole mechanism: a new table
+that reaches no surface and no reason will fail this audit the next time anyone runs it, which
+is how the list stays closed instead of drifting back open.
+"""
+import io, os, re, subprocess, sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+REPO = (r"C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\California"
+        r"\ca-capacity-deploy\indiana-application-decennial")
+
+# ---------------------------------------------------------------------------------------------
+# THE LEDGER. reason -> (why, [objects])
+# Every entry was measured, not assumed. Where a claim is about CONTENT ("no state column"), it
+# was checked against the table, because G80's whole lesson is that a name is not a data test.
+CLASSIFIED = {
+    "empty": ("0 rows held - there is nothing to render, and an empty layer on a map reads as "
+              "'we looked and found none' rather than 'we hold nothing'", [
+        "in_data_centers_cloudscene", "in_gas_lng_terminals", "in_gas_processing_plants",
+        "in_miso_poi", "in_nrc_reactors",
+    ]),
+    "not_placeable": ("G80's near-miss, and the reason this category exists at all: these gas "
+                      "capacity boards post the OPERATOR'S WHOLE SYSTEM with no state column. "
+                      "ANR's points are in Ohio, Texas Gas's in Louisiana, Vector's in Michigan. "
+                      "Wiring them would attach out-of-state capacity to an Indiana pipeline. "
+                      "Only Panhandle Eastern and Trunkline can be placed, and both are wired", [
+        "in_gas_capacity_anr", "in_gas_capacity_crossroads", "in_gas_capacity_midwestern",
+        "in_gas_capacity_ngpl", "in_gas_capacity_northern_border", "in_gas_capacity_texas_gas",
+        "in_gas_capacity_vector",
+    ]),
+    "harvest_rung": ("a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 "
+                     "reads the 5,000 MW rung; the others exist so the ladder can be resumed, "
+                     "audited and re-pointed. Rendering a rung would publish a request size "
+                     "nobody asked about", [
+        "in_pjm_qs_c23_inj_10", "in_pjm_qs_c23_inj_15", "in_pjm_qs_c23_inj_25",
+        "in_pjm_qs_c23_wd_10", "in_pjm_qs_c23_wd_15", "in_pjm_qs_c23_wd_25",
+        "in_pjm_qs_c23_inj_50", "in_pjm_qs_c23_wd_50",
+        "in_pjm_qs_withdrawal_rungcheck", "in_bus_headroom_miso_ladder", "in_miso_poi_ladder",
+        "in_pjm_bus_locations_v2",
+    ]),
+    "raw_feed": ("a per-year or per-source input that a shipped table is built from. The built "
+                 "table is what renders; the feed is kept so the build can be re-run and "
+                 "audited", [
+        "in_nfirs_basicincident_2022", "in_nfirs_basicincident_2023", "in_nfirs_basicincident_2024",
+        "in_nfirs_incidentaddress_2022", "in_nfirs_incidentaddress_2023",
+        "in_nfirs_incidentaddress_2024", "in_nfirs_fireincident_2022",
+        "in_data_centers", "in_data_centers_datacentermap", "in_nhd_waterbody",
+        "in_miso_dpp2025_counties", "in_miso_dpp2025_footprint",
+    ]),
+    "coverage_ledger": ("a one-row record of what was searched and what is held - provenance, "
+                        "not content. The Data page renders the register that summarises these; "
+                        "each one individually is a footnote, and a footnote is not a surface", [
+        "in_balancing_authority_areas", "in_commission_posture", "in_dc_docket_tracker",
+        "in_state_irp_catalog", "in_puc_state_access_ledger", "in_groundwater_sites",
+        "in_sec_cik_registrant_state",
+    ]),
+    "superseded": ("replaced by a table that IS wired, and kept only so the change is auditable", [
+        "in_fsis_establishments_inactive",
+    ]),
+    "no_indiana_content": ("⛔ AN `in_` PREFIX IS NOT A CLIP. Measured row by row, these hold no "
+                           "Indiana data at all, so there is nothing to surface and the name is "
+                           "the defect. This is the same failure G72 found in in_tribal_land "
+                           "(14 rows, none in Indiana): an unwired table is an UNAUDITED table, "
+                           "and it took wiring one to discover the other", [
+        # 33 Chapter 7 trustee final reports across MO, CA, MA, IL, OK, OH, MT, VA, SD. Zero IN.
+        "in_ustp_ch7_tfr",
+    ]),
+    # ⛔ WORK, NOT A REASON. Anything here is still on the G72 worklist.
+    # 2026-08-20: emptied. The sixteen that stood here were wired by export_wired_batch2.py and
+    # the seventeenth (in_ustp_ch7_tfr) turned out to hold no Indiana rows at all.
+    "WIRE": ("still genuinely unwired and worth a surface - this is the remaining G72 worklist", [
+    ]),
+}
+
+# ---------------------------------------------------------------------------------------------
+out = subprocess.run([sys.executable, os.path.join(REPO, "scripts", "audit_wiring_census.py")],
+                     capture_output=True, text=True, cwd=REPO,
+                     encoding="utf-8", errors="replace").stdout or ""
+m = re.search(r"NOT reaching a surface: (\d+)(.*?)(?:\ndocs/|\Z)", out, re.S)
+if not m:
+    print("⛔ could not read the census output - run scripts/audit_wiring_census.py by hand")
+    sys.exit(1)
+unwired = re.findall(r"^\s{2}(in_[a-z0-9_]+|_[a-z0-9_]+)\s+rows=", m.group(2), re.M)
+reached = re.search(r"REACHING A SURFACE: (\d+) of (\d+)", out)
+
+known = {t: k for k, (_, ts) in CLASSIFIED.items() for t in ts}
+print("=" * 92)
+print(f"UNWIRED CLASSIFICATION — {len(unwired)} objects reach no surface "
+      f"({reached.group(1)} of {reached.group(2)} do)")
+print("=" * 92)
+
+by_reason, unclassified = {}, []
+for t in unwired:
+    k = known.get(t)
+    if k is None:
+        unclassified.append(t)
+    else:
+        by_reason.setdefault(k, []).append(t)
+
+for k, (why, _) in CLASSIFIED.items():
+    got = sorted(by_reason.get(k, []))
+    if not got and k != "WIRE":
+        continue
+    tag = "⛔ WORKLIST" if k == "WIRE" else "accounted for"
+    print(f"\n{k.upper():18s} {len(got):>3}  [{tag}]")
+    print(f"    {why}")
+    for t in got:
+        print(f"      · {t}")
+
+# an object classified but NOW WIRED is not an error - it is progress. Report it so the ledger
+# can be trimmed rather than growing stale, which is how a list like this rots.
+stale = sorted(t for t in known if t not in unwired)
+if stale:
+    print(f"\nNO LONGER UNWIRED — trim these from the ledger ({len(stale)}):")
+    for t in stale:
+        print(f"      · {t}   (was: {known[t]})")
+
+print("\n" + "=" * 92)
+lines = [
+    "# UNWIRED CLASSIFICATION — generated by `scripts/audit_unwired_classification.py`",
+    "",
+    "> ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.",
+    "",
+    f"**{reached.group(1)} of {reached.group(2)} registered objects reach a surface.** "
+    f"The other {len(unwired)} are listed below, each with a reason. An object with no reason "
+    "FAILS `audit_unwired_classification.py`, which is what keeps this list closed.",
+    "",
+]
+for k, (why, _) in CLASSIFIED.items():
+    got = sorted(by_reason.get(k, []))
+    if not got:
+        continue
+    lines += [f"## {k} — {len(got)}", "", why + ".", ""]
+    lines += [f"- `{t}`" for t in got] + [""]
+if unclassified:
+    lines += ["## ⛔ UNCLASSIFIED — this is a FAILURE", ""] + \
+             [f"- `{t}`" for t in unclassified] + [""]
+io.open(os.path.join(REPO, "docs", "UNWIRED_CLASSIFICATION.md"), "w",
+        encoding="utf-8").write("\n".join(lines))
+print("docs/UNWIRED_CLASSIFICATION.md written")
+
+if unclassified:
+    print(f"\n⛔ {len(unclassified)} UNCLASSIFIED object(s) — every one is a FAILURE:")
+    for t in unclassified:
+        print(f"      · {t}")
+    print("\n   Add each to CLASSIFIED in this script with a measured reason, or wire it.")
+    sys.exit(1)
+print(f"\n0 unclassified. {len(by_reason.get('WIRE', []))} object(s) remain on the G72 worklist.")
