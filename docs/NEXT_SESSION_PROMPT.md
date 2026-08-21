@@ -65,7 +65,7 @@ operator reported the problem twice and saw no change.
 | # | file | why |
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
-| 2 | ⭐ **`docs/HANDOFF_2026-08-21.md`** | **THE CURRENT ONE.** §1 is the unfinished work; §3 every parcel figure that moved; §4 the instrument failures |
+| 2 | ⭐ **`docs/HANDOFF_2026-08-21b.md`** | **THE CURRENT ONE.** §1 is the unfinished work; §3 every parcel figure that moved; §4 the instrument failures |
 | 3 | ⭐ **`docs/BACKLOG.md`** | **WHERE EVERY UNFINISHED ROW STANDS** opens with G130 and the seven things left in it |
 | 4 | ⭐ `docs/COMPARABLE_TOOLS.md` | what this product should look like; §3 names the ONE question each page answers |
 | 5 | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** — which loaders re-run, how often, safely, and what each clip drops |
@@ -76,87 +76,43 @@ now* — §3 of the current handoff lists the figures they get wrong.
 
 ---
 
-## ⛔ START HERE — THE SI SIGNALS ARE NOT SHOWING WHAT WE HOLD (G150)
+## ⛔ START HERE — WE READ A 13-COLUMN REDUCTION OF THE SI SOURCES (G152)
 
-**Operator, 2026-08-21:** *"Many of our SI signals still aren't representative of what we actually
-hold… we should really extensively audit whether or not we are displaying all of the sites that we
-have in BQ… this issue has been partially addressed in the past and I have seen no visible
-changes."* Then, after the WARN work: *"we have the wrong grain on MANY of the SI signals, and we
-should target those next."*
+**Operator, 2026-08-21:** *"we have 31 SI signals, and I guarantee that they live in more than
+eight sources, so this should be checked and audited for completeness."*
 
-⭐ **G130 IS CLOSED** — planned upgrades shipped, verified in a browser, and the four documentation
-errors it exposed are corrected. Do not reopen it.
+⛔ **THEY WERE RIGHT AND THE PREVIOUS SESSION'S ANSWER WAS WRONG.** `audit_si_column_capture.py`
+compared **8 sources**, found 0 gaps, and that was reported as *"yes, full column capture"*. It is
+true of those 8 and it is not the answer to the question.
 
-### What was done on G150, and what it proves about the rest
+⭐ **THE GAP IS A SHAPE, NOT A COUNT. Measured:**
+- `in_si_signals` draws on **19 distinct upstream `source_id`s**.
+- Its parent `energy.si_signals` is **97,240,585 rows NORMALISED TO 13 COLUMNS**.
+- Our clip is complete — 13 of 13 — **so the audit passed, on a reduction.**
+- ⭐ The full-width upstreams are reachable: `energy.gov_surplus_frpp` (307,919),
+  `energy.edgar_abs_ee_cmbs` (1,091,881), `energy.brownfield_epa_repowering` (190,976),
+  `energy.acs_tract_vacancy` (85,382), five years of `energy.nfirs_*` at ~2.4M each — **39 upstream
+  tables visible in `energy`**.
 
-⭐ **WARN went from 2 placed parcels to 51.** `in_si_warn_normalised` holds **1,220** Indiana
-notices and **carries no address column at all** — so the signal was never *placeable*, not
-"filtered down". The address is in the filing PDF. `extract_warn_addresses.py` reads them,
-`build_warn_placement.py` joins them to parcels.
+⛔ **THIS IS ALSO WHY WE DERIVE ONE SIGNAL PER SOURCE.** A source reduced to a date and a flag can
+produce exactly one signal by construction. The operator's question — *"did you find any additional
+signals beyond the ones you were searching for"* — cannot be answered until the clip is wider.
 
-⛔ **AND THE METHOD IS THE POINT, because the operator had to correct me four times to get it:**
-1. *"the addresses are seen in the actual filings"* — there is a source we were not reading.
-2. *"the two addresses in the header are NOT the site location"* — the DWD address and the local
-   **chief elected official** are in nearly every letter, and the second is in the RIGHT TOWN.
-3. *"each WARN notice is published differently… Some may NOT even contain the address of the site"*
-   — Block, Inc. files "Remote, Indiana 46032" and has no premises at all.
-4. ⭐ *"you should probably manually explore a large sample of these PDFs before you write a
-   one-size-fits-all code"* — **this is the instruction that mattered.** Reading 34 filings killed
-   the first design: multi-site notices are common (Franciscan lists four hospitals, Head Start
-   seven centres), rural addresses have no street suffix (`1501 County Road East 200 North`), and
-   the facility phrase varies per FILER, not per county.
+⚠ `energy` is READ-ONLY. The move is a **wider clip into `indiana_app`**, never an edit upstream.
+⚠ Do it source by source with a measured "what does this add" per table. `energy.si_signals` is
+97M rows; a naive full clip is not the plan.
 
-⚠ **Then measuring my own misses one at a time found MY normaliser was the bottleneck** — I had
-folded three street suffixes and no directionals, so `Bluffton Road` never met `BLUFFTON RD`.
-Fixing that took placement 21 → 37 → **51**.
+### THEN, IN THIS ORDER — agreed with the operator, deferred from the last session
 
-### ⭐ WHAT THE SI PASS ACTUALLY FIXED, 2026-08-21
-
-⛔ **AND THE FIRST ATTEMPT AT IT WAS THE LESSON.** WARN was placed into `in_si_warn_placed` and
-then classified `pending_pipeline_join` — accurate labelling, and **materially nothing changed for
-a reader**. The declared-intent family had the same shape: joined straight into
-`build_screener_candidates.py`, so it reached the screener and the map console and si.html stayed
-blind to it. Operator: *"all of the changes you made have to flow throughout the application, not
-just in one section."*
-
-⭐ **THE FIX IS ARCHITECTURAL AND IT IS THE THING TO REMEMBER.** `build_si_signal_v2.py` is the
-SPINE: it writes `in_si_parcel_signals_v2`, `in_si_sites_flags_v2` and `in_si_signal_coverage`, and
-the map payload, the screener, si.html and the county rollups all read those three. **A signal that
-does not enter the spine reaches nobody.** WARN is now a source block in it; the intent family is
-carried as separate columns on the flag table.
-
-| what moved | from | to |
+| # | row | why it is next |
 |---|---|---|
-| `D19_warn` parcels reached | **2** | **43** (32 admitted) |
-| declared-intent parcels on the MAP payload | 0 | **163** |
-| signals with an unmeasurable loss | **6** | **0** |
-| flagged parcels (warehouse / payload) | 23,795 / 23,766 | **23,819 / 23,790** |
+| 1 | **G145** | *"date unknown"* is printed while a date IS known, and only first/last is shown. ⛔ A false statement about our own holdings outranks new capability |
+| 2 | **`D22_facility_inactive`** | the last signal with no corpus count, so its loss cannot be computed |
+| 3 | **G154** | the 34 unplaced WARN addresses — geocode and spatially join, do not write more regex |
+| 4 | **G153** | show the user the source per signal. A real user asked for it and every field needed is already held |
+| 5 | **G140's non-SI half** | 74 objects the ledger marks `unknown` idempotency |
 
-⚠ **`base` IS A UNION, NOT `agg`, in the flag build — do not "simplify" it.** 167 of the 174
-declared-intent parcels carry no distress signal at all, so a LEFT JOIN from the distress aggregate
-drops every one of them, and because every consumer coalesces a missing row to FALSE it renders as
-"no signal here" rather than erroring.
-
-⚠ **Two impossible numbers caught the corpus map being wrong**, both times `reached > held` on
-`D21_demolition_order`. South Bend continuous enforcement emits D21, not D5_vacant_board_order; and
-`in_si_indy_code_widened` emits six signals and was missing from the map entirely. Ask the artefact
-which `source_block` produced the parcels — do not read the block names.
-
-### WHAT IS LEFT ON THE SI SIGNALS
-
-1. **`D22_facility_inactive` still has no corpus count** — it is derived from the IDEM status
-   vocabulary rather than from a table, and it carries a recorded reason. Give it a real
-   denominator if one exists.
-2. ⭐ **G151 — 1,048 of 1,220 WARN notices carry no filing URL in our clip.** 172 have one, and
-   those yielded 88 facility addresses and 51 placed parcels. Whether the publisher offers a PDF
-   for the other 1,048 decides if this is a re-scrape (**G140**) or a dead end.
-3. **34 of the 88 recovered WARN addresses still find no parcel.** The suffix/directional
-   normaliser fixed most of them; what remains is medical-campus and business-park addressing the
-   DLGF corpus does not carry.
-4. **G145 — the wrong grain**: "date unknown" printed while a date IS known, and only first/last
-   shown instead of every event.
-5. **The read-only rescrape rehearsal (G140)** — operator approved read-only: *"Yes, it is fine to
-   read only first."* ⛔ 3 loaders are append_only and 2 read their own output.
+---
 
 ---
 
