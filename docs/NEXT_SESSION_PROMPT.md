@@ -116,6 +116,155 @@ signals beyond the ones you were searching for"* — cannot be answered until th
 
 ---
 
+## ⭐ THE COMPLETE SI-SIGNAL CLOSEOUT PLAN — every remaining task, in order, with the method
+
+**Operator, 2026-08-21:** *"what are the immediate next steps (and ALL steps required to close out
+ALL SI signal tasks)? You should also provide the methodologies needed to complete these tasks
+effectively."*
+
+⛔ **THE ONE RULE THAT GOVERNS ALL SIX.** `build_si_signal_v2.py` is the SPINE — it writes
+`in_si_parcel_signals_v2`, `in_si_sites_flags_v2` and `in_si_signal_coverage`, and the map payload,
+the screener, si.html and the county rollups all read those three. **A signal that does not enter
+the spine reaches nobody.** Every task below ends with: rebuild the spine → re-export sites →
+rebuild + re-export the screener → re-export si surfaces → `audit_signal_display.py` → verify in a
+browser.
+
+---
+
+### ① G145 — "DATE UNKNOWN" IS PRINTED WHILE A DATE IS KNOWN. ⛔ DO THIS FIRST
+
+Operator: *"it records the observation as date unknown, when one of the dates is actually known —
+the correct display is seen in the dropdown, but the user shouldn't have to further explore to
+actually see if our presentation is factually correct. Additionally, we should show the date of
+every signal event, not just the first/last."*
+
+⛔ **This outranks everything else here, including G152, because it is not a gap — it is a FALSE
+STATEMENT about data we already hold, on the row the reader is looking at.**
+
+**Method.**
+1. **Find the decision, do not guess it.** `signalState()` in `screener.html` and its `badge()`
+   helper decide "date unknown". Read both before editing anything.
+2. **Diagnose against the artefact.** The suspected cause: `in_si_sites_flags_v2.si_last_event_date`
+   is `MAX(IF(si_admitted, last_past_event_date, NULL))`, so a parcel whose admitted signal is
+   undated reads unknown even when a SECOND admitted signal on the same parcel carries a date.
+   ⚠ Prove that with a query naming a specific parcel before changing a line. If the real cause is
+   different, the fix above is wrong and will look like it worked.
+3. **Ship every event date, not a rollup.** `in_si_parcel_signals_v2` already holds
+   `first_event_date`, `last_past_event_date`, `n_events` and `n_events_dated` PER SIGNAL.
+   Aggregate to an ARRAY on the flag table — `ARRAY_AGG(STRUCT(signal, first_event_date,
+   last_past_event_date, n_events, n_events_dated))` — and render one line per signal.
+4. ⚠ **Three-state, per signal (G51).** A signal with no date is *"the publisher does not date this
+   record"*, never *"date unknown"* — the second blames us for the publisher's silence.
+   `date_basis` already records which; use it rather than inventing a new test.
+5. Verify on a parcel carrying two signals where exactly one is dated. That is the failing case, so
+   it is the one that proves the fix.
+
+---
+
+### ② `D22_facility_inactive` — THE LAST SIGNAL WITH NO DENOMINATOR
+
+**Method.** It is DERIVED from the ECHO status vocabulary rather than loaded from a table of its
+own, which is why `pub_corpus` in `build_si_signal_v2.py` carries no entry for it. Add one: count
+the rows in `in_si_d22_parcel_join` carrying the INACTIVE marker, exactly as
+`D22_environmental_violation` already counts the violation marker beside it.
+⚠ **Do not attribute the whole 34,116-row table to both signals.** That is the mistake that forced
+a per-signal `GROUP BY` on `in_si_indy_code_placed`, and `reached > held` is how it announces
+itself. After this, `audit_signal_display.py` reaches 0 unmeasurable signals.
+
+---
+
+### ③ G152 — WE READ A 13-COLUMN REDUCTION. ⭐ THE BIGGEST ROW
+
+**Method — source by source, never a blanket clip.**
+1. **Map all 19.** For each `source_id` in `in_si_signals`, find its full-width table in `energy`.
+   Some are obvious (`gov_surplus_frpp`, `edgar_abs_ee_cmbs`, `acs_tract_vacancy`); the rest need a
+   `__TABLES__` probe. ⛔ Standing rule G25: enumerate what we hold before proposing anything.
+2. **Measure the prize per source, not the row count.** For each: how many columns beyond the 13,
+   and *what could a siter do with them*. A 1.09M-row CMBS table whose extra columns are internal
+   identifiers is worth less than a 932-row table carrying an operator name and a closure date.
+   ⭐ Rank by decision value and write the "so what" BEFORE the clip — the governing principle is a
+   veto on new work, not a polish step.
+3. **Clip Indiana-only, full width, into `indiana_app`, registered in the same run** with a verbatim
+   `RE-SCRAPE COMMAND:`. ⚠ `energy.si_signals` is 97,240,585 rows — filter at the clip, never after.
+   ⛔ `energy` is READ-ONLY; the move is a wider clip, never an edit upstream.
+4. ⭐ **Then ask the question that motivated this row: does the wider table support a SECOND
+   signal?** Operator: *"this is common, and we can generally derive multiple signals from one
+   source."* A closure date and an operator name is one signal; add a lease-expiry column and it is
+   two. Propose each with its own D-code, admission rule and "so what".
+5. **Fold into the spine as a new source block**, exactly as `w_warn` was, then run the full
+   re-export chain above.
+6. ⛔ Cost-flag anything above $25–50 before running it.
+
+---
+
+### ④ G154 — THE 34 UNPLACED WARN ADDRESSES
+
+**Method.** ⛔ **Stop matching strings.** The cause is not spelling: the DLGF address is the
+assessor's address for a LOT, and a medical campus or distribution park has none per building —
+Ascension's `2415A Mitchell Road` and `2512 Q Street` are suites on one parcel.
+1. **Geocode the recovered address to a coordinate.** The US Census Geocoder
+   (`geocoding.geo.census.gov`) is public, free, needs no key and supports batch — the same class
+   of public bulk endpoint as the TIGER loaders already in this repo. ⚠ Check its terms before the
+   first call and record the answer either way; BLOCKED-with-the-wall-quoted is a success.
+2. **`ST_INTERSECTS` the point against `in_sites.parcel_geog`**, excluding D85, exactly as
+   `in_si_gov_surplus_v2` already does. Assert fan-out ≈ 1.0.
+3. ⚠ **Grade the match and refuse the weak ones.** A rooftop geocode inside a polygon is a match; a
+   ZIP-centroid geocode is not, and placing it would be a pin someone plans around. The geocoder
+   returns its own match quality — carry it, never average it away.
+4. Expect this to recover most of the 34, not all. Report the residue with its reason.
+
+---
+
+### ⑤ G153 — SHOW THE USER WHERE EACH SIGNAL CAME FROM
+
+Operator, relaying a real user: *"provide documentation of the SI signals… a link to the source or
+document within the filings so that the user can double-check the validity themselves."*
+
+**Method.** ⭐ **Nothing needs acquiring — every field is already held and none of it reaches a
+surface.**
+1. `in_si_parcel_signals_v2` carries `source_ids`, `keying_methods`, `bridge_methods` and
+   `date_basis`, per parcel per signal.
+2. `in_si_warn_addresses` carries the actual `notice_pdf_url`; `in_si_warn_page` carries the
+   publisher's link for every notice.
+3. `_registry` carries a stable endpoint URL for every source table.
+4. Build ONE resolver: `source_id` → human label + clickable URL. Render it as a per-signal
+   provenance line in the dossier and in the screener detail row. ⛔ One resolver in `common.js`,
+   not a copy per page — the private `INTENT_PLAIN` map this session had to delete is the warning.
+5. ⚠ Where the source is a bulk file rather than a per-record page, link the DATASET and say so. A
+   link that promises a filing and delivers a homepage is worse than no link.
+6. ⭐ This is the accounting-tool pattern `docs/COMPARABLE_TOOLS.md` §2 already names as our
+   strongest suit, applied where a reader most needs it.
+
+---
+
+### ⑥ G144 — MINIMUM NUMBER OF SI SIGNALS, IN THE SCREENER
+
+**Method.** A number input, badged **GATE** (G129), counting `si_signal_types` — **signal TYPES,
+not events**. ⚠ Four code violations on one parcel is ONE signal; counting events would let a
+single chronically-cited address masquerade as four independent reasons to sell. `si_signal_types`
+is already on the flag table and already in the screener payload, so this is a control and a
+predicate, not a build.
+
+---
+
+### ⑦ THEN, AND ONLY THEN, CLOSE G150
+
+G150 is *"the SI signals under-represent what we hold"*. It is closeable when every signal has a
+denominator (②), nothing is silently truncated (`audit_signal_display.py` green), the widened clip
+has been assessed (③), and a reader can verify a signal themselves (⑤).
+⛔ **Do not close it before that.** Four rows in this project have been closed while still carrying
+live work — G130 was the fourth — which is why `audit_backlog_truth.py` probes the artefact rather
+than the ledger.
+
+### STILL OUTSIDE THE SI SET, AND UNCHANGED
+
+**G102** state surplus · **G103** water utilities · **land banks** (G133's third leg) — all three
+are ACQUISITIONS we hold nothing for, confirmed by warehouse check, not assumed. ⭐ Send to an Opus
+(non-Fable) agent and brief it with the write boundary, no-CAPTCHA / no-UA-spoof and
+BLOCKED-is-a-success, because **agents do not inherit them**.
+
+---
+
 ## THE BACKLOG — 102 DONE · 16 PARTIAL · 28 OPEN
 
 ⚠ **OPEN JUMPED 8 → 29 AND THAT IS NOT A REGRESSION.** The operator opened **21 new rows** on
