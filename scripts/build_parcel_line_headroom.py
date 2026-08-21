@@ -60,14 +60,26 @@ SELECT
   e.wd_min_mw   AS deliverable_wd_mw,
   e.inj_min_mw  AS deliverable_inj_mw,
   e.wd_binding_at_limit, e.inj_binding_at_limit, e.wd_limiting_end,
+  /* ⛔ WHOSE NUMBER IS THIS? G131. 89% of every deliverable figure we publish is bound by a MISO
+     bus, and the MISO half of in_bus_capacity_tier0 is a LICENSED VENDOR PROXY whose licence
+     lapses late 2027; the PJM half is our own harvest. A figure that is the MINIMUM of two
+     differently-produced numbers must say which one won, or the vendor badge cannot follow it. */
+  e.wd_limiting_iso,
+  e.a_match_via, e.b_match_via,
   /* ⛔ Three states, never two. NULL capacity with basis 'both_ends' would be a measured zero;
      NULL with 'cannot_assess' means we could not follow the line. A surface must tell them
-     apart, so the basis rides on every row. */
+     apart, so the basis rides on every row.
+     ⭐ G131, OPERATOR RULING 2026-08-21: *"When only one end resolves, we need to JUST take that
+     one bus value, since that is the only determinant of that line segment."* So
+     `cannot_assess_one_end_only` becomes `one_end_only` — a PUBLISHED figure with a weaker basis,
+     not a refusal. It moves 162,779 parcels from "cannot assess" to a real measured capacity.
+     ⚠ A one-end figure is an UPPER bound: the unresolved end could be tighter. The basis says so,
+     and every surface renders the basis beside the number. */
   CASE
     WHEN d.line_feature_id IS NULL      THEN 'no_line_within_25mi'
     WHEN e.feature_id IS NULL           THEN 'line_not_in_topology'
     WHEN e.ends_resolved = 2            THEN 'both_ends'
-    WHEN e.ends_resolved = 1            THEN 'cannot_assess_one_end_only'
+    WHEN e.ends_resolved = 1            THEN 'one_end_only'
     ELSE                                     'cannot_assess_no_end_located'
   END AS deliverable_basis
 FROM `{DS}.in_asset_distance_parcel` d

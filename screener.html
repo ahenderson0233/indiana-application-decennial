@@ -999,10 +999,20 @@ function siteLocationCell(s) {
    follow the line to a located bus. Never render either as 0 MW. */
 const DELIV_BASIS_NOTE = {
   both_ends: null,
-  cannot_assess_one_end_only:
-    "We found a located bus at ONE end of this line and not the other. The rule is the LOWER of "
-    + "the two ends, because power reaches a mid-line tap from both directions — so one end is "
-    + "not a weaker version of the answer, it is a different question. Reported as unknown.",
+  /* ⛔ G131, OPERATOR RULING 2026-08-21 — THIS ENTRY USED TO REFUSE, AND THE OLD TEXT IS KEPT
+     BECAUSE IT ARGUED THE CASE WELL AND WAS STILL WRONG:
+       "We found a located bus at ONE end of this line and not the other. The rule is the LOWER of
+        the two ends, because power reaches a mid-line tap from both directions — so one end is
+        not a weaker version of the answer, it is a different question. Reported as unknown."
+     Operator: *"When only one end resolves, we need to JUST take that one bus value, since that
+     is the only determinant of that line segment."* The buses are where the capacity is; refusing
+     to show the one we measured left **162,779 parcels** reading "cannot assess" beside a real
+     number. ⚠ It is now a CAVEAT on a published figure, not a refusal — and `one_end_only` is
+     handled separately below so the figure still renders. */
+  one_end_only:
+    "Only ONE end of this line resolves to a bus we hold a position for, so this figure is that "
+    + "single bus rather than the lower of two. ⚠ Treat it as an UPPER bound — the unresolved end "
+    + "could be tighter.",
   cannot_assess_no_end_located:
     "Neither end of the nearest line resolves to a bus we hold a coordinate for. Only 15.1% of "
     + "PJM buses carry a position at all, and the gap is concentrated in the AEP footprint across "
@@ -1088,7 +1098,11 @@ function deliverableBlock(s) {
   if (!basis) return "";
   const note = DELIV_BASIS_NOTE[basis];
   const land = capacityMW(s);
-  if (note) {
+  /* ⛔ G131: A NOTE NO LONGER MEANS "CANNOT ASSESS". `one_end_only` carries both a caveat AND a
+     real figure, and the old `if (note) return cannot-assess` would have swallowed the number for
+     all 158,713 of those parcels — turning a coverage WIN into an invisible one. The test is now
+     whether a figure exists, not whether a caveat exists. */
+  if (note && s.deliv_wd_mw == null && s.deliv_inj_mw == null) {
     return `<table class="dtable" style="margin-bottom:8px">
       ${detailRow("Deliverable capacity", null, "cannot assess — see below",
         "What the grid could actually deliver here, as opposed to what fits on the ground.")}
@@ -1098,7 +1112,19 @@ function deliverableBlock(s) {
   }
   const wd = s.deliv_wd_mw, inj = s.deliv_inj_mw;
   const gridBinds = wd != null && land != null && wd < land;
-  return `<table class="dtable" style="margin-bottom:8px">
+  /* ⭐ G131: the caveat rides ABOVE the number it qualifies. A one-end figure that looks identical
+     to a min-of-two figure is the same class of defect as a capped table that does not say so. */
+  const caveat = note
+    ? `<div class="cannot" style="margin-bottom:6px">⚠ ${escHtml(note)}</div>` : "";
+  /* ⛔ WHOSE NUMBER IS THIS? 89% of deliverable figures are bound by a MISO bus, and the MISO half
+     is a LICENSED VENDOR PROXY (Orennia DPP-2025) whose licence lapses late 2027. The project's
+     standing rule is that vendor data carries a badge; a MIN across two methods hides which one
+     won, so the badge has to follow the LIMITING end. */
+  const vendor = s.deliv_limiting_iso === "MISO"
+    ? `<div class="hint" style="margin-bottom:6px">The binding end is a <b>MISO</b> bus, and our
+       MISO headroom is a <b>licensed vendor proxy</b> (Orennia DPP-2025), not our own harvest.
+       The PJM half is ours.</div>` : "";
+  return caveat + vendor + `<table class="dtable" style="margin-bottom:8px">
     ${detailRow("Deliverable to a LOAD (withdrawal)", wd != null ? `<b>${fmt(wd)} MW</b>` : null,
       "not published at the limiting bus",
       "The lower of the two end-bus headrooms on the nearest line. This is what a data center "

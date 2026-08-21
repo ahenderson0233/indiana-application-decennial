@@ -47,6 +47,9 @@ from google.cloud import bigquery
 DS = "energy-platfrom.indiana_app"
 OUT = f"{DS}.in_line_bus_endpoints"
 TOL_M = 100          # read off the bimodal break, see the header
+END_SUB_M = 50       # G131: endpoint -> substation. Coincident to the 90th pct (0.65 m).
+SUB_BUS_M = 1000     # G131: substation -> its OWN nearest bus. Mutual-nearest makes this
+                     # a question about switchyard size, not about how far we will guess.
 client = bigquery.Client(project="energy-platfrom")
 
 SQL = f"""
@@ -78,15 +81,69 @@ bus AS (
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL
   GROUP BY bus_id
 ),
--- nearest bus to each endpoint, inside the tolerance
+/* ⭐ G131, OPERATOR 2026-08-21: *"to ensure this is accurate, we need to match the buses to the
+   substations, which are linked to the transmission lines."* That is the electrically correct
+   chain — a line TERMINATES at a substation, and a bus is a node INSIDE that substation — and it
+   reaches endpoints that a direct endpoint→bus proximity test cannot.
+   ⚠ Read alongside the operator's other ruling in the same exchange: *"the bus doesn't have to be
+   near the substation asset."* The substation is a BRIDGE, never a validity test. We do not reject
+   a bus for being far from a station; we use the station to FIND one.
+
+   MEASURED BEFORE BUILDING (all 7,472 endpoints):
+     · endpoint → nearest substation is essentially ZERO to the 90th percentile (0.65 m). Line
+       endpoints are geometrically coincident with substations, so hop 1 is nearly free.
+     · 5,011 of 7,472 endpoints sit on a substation within 50 m.
+     · the bridge adds +106 endpoints at 500 m, +156 at 1 km, +217 at 2 km over the direct match.
+   ⛔ MODEST, AND THE REASON IS THE POINT: only 2,006 of 5,371 buses carry a coordinate at all, so
+   most substations have no bus to offer. **1,945 endpoints sit on a known substation with no
+   located bus at it** — that is G114/G126's ceiling, now quantified per endpoint instead of
+   guessed. The other 2,396 have no substation at that end at all (taps and mid-span splits).
+
+   TOLERANCE: MUTUAL NEAREST at {SUB_BUS_M} m. Mutual-nearest is what makes the radius safe — a bus
+   is only offered to the substation that is ITS OWN closest station, so the distance is about how
+   big a switchyard is, not about how far we are willing to guess. 2 km adds only 61 more endpoints
+   and exceeds any plausible station footprint. */
+bus_home AS (
+  SELECT bus_id, asset_id FROM (
+    SELECT b.bus_id, s.asset_id,
+           ROW_NUMBER() OVER (PARTITION BY b.bus_id ORDER BY ST_DISTANCE(b.g, s.geog)) rn
+    FROM bus b JOIN `{DS}.in_substations` s ON ST_DWITHIN(b.g, s.geog, {SUB_BUS_M})
+  ) WHERE rn = 1
+),
+end_sub AS (
+  SELECT feature_id, end_no, asset_id FROM (
+    SELECT e.feature_id, e.end_no, s.asset_id,
+           ROW_NUMBER() OVER (PARTITION BY e.feature_id, e.end_no
+                              ORDER BY ST_DISTANCE(e.ep, s.geog)) rn
+    FROM ends e JOIN `{DS}.in_substations` s ON ST_DWITHIN(e.ep, s.geog, {END_SUB_M})
+  ) WHERE rn = 1
+),
+-- TIER 1: the endpoint is literally at the bus. Tightest and preferred; median 7.6 m.
+cand_direct AS (
+  SELECT e.feature_id, e.end_no, b.bus_id, ST_DISTANCE(e.ep, b.g) AS dist_m,
+         'direct' AS via, 1 AS tier
+  FROM ends e JOIN bus b ON ST_DWITHIN(e.ep, b.g, {TOL_M})
+),
+-- TIER 2: the endpoint is at a substation, and a bus calls that substation home.
+cand_bridge AS (
+  SELECT es.feature_id, es.end_no, h.bus_id,
+         ST_DISTANCE(e.ep, b.g) AS dist_m, 'substation_bridge' AS via, 2 AS tier
+  FROM end_sub es
+  JOIN bus_home h USING (asset_id)
+  JOIN ends e ON e.feature_id = es.feature_id AND e.end_no = es.end_no
+  JOIN bus  b ON b.bus_id = h.bus_id
+),
 matched AS (
   SELECT e.feature_id, e.kv, e.volt_class, e.owner, e.km, e.end_no,
          ARRAY_AGG(STRUCT(b.bus_id, b.bus_name, b.iso, b.bus_kv, b.wd_mw, b.inj_mw,
                           b.wd_binding, b.inj_binding, b.provenance,
-                          ST_DISTANCE(e.ep, b.g) AS dist_m)
-                   ORDER BY ST_DISTANCE(e.ep, b.g) LIMIT 1)[OFFSET(0)] AS m
+                          c.dist_m AS dist_m, c.via AS via)
+                   -- ⚠ tier FIRST: a direct hit always beats a bridged one, whatever the metres say
+                   ORDER BY c.tier, c.dist_m LIMIT 1)[OFFSET(0)] AS m
   FROM ends e
-  LEFT JOIN bus b ON ST_DWITHIN(e.ep, b.g, {TOL_M})
+  LEFT JOIN (SELECT * FROM cand_direct UNION ALL SELECT * FROM cand_bridge) c
+    ON c.feature_id = e.feature_id AND c.end_no = e.end_no
+  LEFT JOIN bus b ON b.bus_id = c.bus_id
   GROUP BY 1, 2, 3, 4, 5, 6
 ),
 wide AS (
@@ -100,6 +157,7 @@ wide AS (
          MAX(IF(end_no = 1, m.wd_binding,  NULL)) a_wd_binding,
          MAX(IF(end_no = 1, m.inj_binding, NULL)) a_inj_binding,
          MAX(IF(end_no = 1, m.dist_m,      NULL)) a_dist_m,
+         MAX(IF(end_no = 1, m.via,         NULL)) a_match_via,
          MAX(IF(end_no = 2, m.bus_id,      NULL)) b_bus_id,
          MAX(IF(end_no = 2, m.bus_name,    NULL)) b_bus_name,
          MAX(IF(end_no = 2, m.iso,         NULL)) b_iso,
@@ -107,24 +165,54 @@ wide AS (
          MAX(IF(end_no = 2, m.inj_mw,      NULL)) b_inj_mw,
          MAX(IF(end_no = 2, m.wd_binding,  NULL)) b_wd_binding,
          MAX(IF(end_no = 2, m.inj_binding, NULL)) b_inj_binding,
-         MAX(IF(end_no = 2, m.dist_m,      NULL)) b_dist_m
+         MAX(IF(end_no = 2, m.dist_m,      NULL)) b_dist_m,
+         MAX(IF(end_no = 2, m.via,         NULL)) b_match_via
   FROM matched GROUP BY feature_id
 )
 SELECT *,
   (CAST(a_bus_id IS NOT NULL AS INT64) + CAST(b_bus_id IS NOT NULL AS INT64)) AS ends_resolved,
-  /* ⛔ THE MINIMUM IS ONLY DEFINED WHEN BOTH ENDS ARE KNOWN. With one end we hold a number, but
-     it is not the answer to the operator's question and must not be served as one. */
-  IF(a_bus_id IS NOT NULL AND b_bus_id IS NOT NULL, LEAST(a_wd_mw,  b_wd_mw),  NULL) AS wd_min_mw,
-  IF(a_bus_id IS NOT NULL AND b_bus_id IS NOT NULL, LEAST(a_inj_mw, b_inj_mw), NULL) AS inj_min_mw,
-  IF(a_bus_id IS NOT NULL AND b_bus_id IS NOT NULL,
-     IF(IFNULL(a_wd_mw, 1e18) <= IFNULL(b_wd_mw, 1e18), a_wd_binding, b_wd_binding), NULL)
-     AS wd_binding_at_limit,
-  IF(a_bus_id IS NOT NULL AND b_bus_id IS NOT NULL,
-     IF(IFNULL(a_inj_mw, 1e18) <= IFNULL(b_inj_mw, 1e18), a_inj_binding, b_inj_binding), NULL)
-     AS inj_binding_at_limit,
-  IF(a_bus_id IS NOT NULL AND b_bus_id IS NOT NULL,
-     IF(IFNULL(a_wd_mw, 1e18) <= IFNULL(b_wd_mw, 1e18), a_bus_name, b_bus_name), NULL)
-     AS wd_limiting_end
+  /* ⭐ G131, OPERATOR RULING 2026-08-21: *"When only one end resolves, we need to JUST take that
+     one bus value, since that is the only determinant of that line segment."*
+
+     ⛔ THIS REVERSES WHAT THIS BLOCK USED TO DO, and the old comment is kept because the reasoning
+     was defensible and still wrong: *"THE MINIMUM IS ONLY DEFINED WHEN BOTH ENDS ARE KNOWN. With
+     one end we hold a number, but it is not the answer to the operator's question and must not be
+     served as one."* That refused 878 lines and left **162,779 parcels** reading *cannot assess*
+     while we held a real, measured bus capacity for the segment beside them.
+
+     ⭐ THE OPERATOR'S POINT IS ELECTRICAL, NOT STATISTICAL. The buses are where the capacity is.
+     If we resolved one end, that bus IS the determinant we have for this segment — withholding it
+     does not make the answer more honest, it makes it absent. What must not happen is presenting
+     a one-end figure as though it were a min-of-two, so the BASIS travels with the number and the
+     two are never averaged into one column.
+     ⚠ A one-end figure is an UPPER bound on the segment: the unresolved end could be tighter. The
+     basis says `one_end_only` so a reader can see that, and `deliverable_basis` is rendered. */
+  COALESCE(LEAST(a_wd_mw,  b_wd_mw),  a_wd_mw,  b_wd_mw)  AS wd_min_mw,
+  COALESCE(LEAST(a_inj_mw, b_inj_mw), a_inj_mw, b_inj_mw) AS inj_min_mw,
+  CASE WHEN a_wd_mw IS NOT NULL AND b_wd_mw IS NOT NULL
+         THEN IF(a_wd_mw <= b_wd_mw, a_wd_binding, b_wd_binding)
+       WHEN a_wd_mw IS NOT NULL THEN a_wd_binding
+       ELSE b_wd_binding END AS wd_binding_at_limit,
+  CASE WHEN a_inj_mw IS NOT NULL AND b_inj_mw IS NOT NULL
+         THEN IF(a_inj_mw <= b_inj_mw, a_inj_binding, b_inj_binding)
+       WHEN a_inj_mw IS NOT NULL THEN a_inj_binding
+       ELSE b_inj_binding END AS inj_binding_at_limit,
+  CASE WHEN a_wd_mw IS NOT NULL AND b_wd_mw IS NOT NULL
+         THEN IF(a_wd_mw <= b_wd_mw, a_bus_name, b_bus_name)
+       WHEN a_wd_mw IS NOT NULL THEN a_bus_name
+       ELSE b_bus_name END AS wd_limiting_end,
+  /* ⛔ WHOSE NUMBER IS THE BINDING ONE? Measured 2026-08-21: **86.4% of every deliverable figure
+     we publish is bound by a MISO bus**, and the MISO half of in_bus_capacity_tier0 is
+     `provenance_class = 'vendor_licensed_proxy'` — a licensed Orennia DPP-2025 proxy whose licence
+     lapses late 2027. The PJM half is our own QueueScope harvest.
+     ⚠ Taking LEAST() across two numbers produced by two different methods and printing one figure
+     is the defect this project already named for PJM/MISO headroom shown side by side — except
+     worse, because the min hides WHICH method won. The provenance of the BINDING end now travels
+     with the figure so the vendor badge can follow it onto the page. */
+  CASE WHEN a_wd_mw IS NOT NULL AND b_wd_mw IS NOT NULL
+         THEN IF(a_wd_mw <= b_wd_mw, a_iso, b_iso)
+       WHEN a_wd_mw IS NOT NULL THEN a_iso
+       ELSE b_iso END AS wd_limiting_iso
 FROM wide
 """
 

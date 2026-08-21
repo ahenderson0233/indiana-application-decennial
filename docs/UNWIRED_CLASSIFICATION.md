@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**310 of 367 registered objects reach a surface.** The other 57 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**310 of 368 registered objects reach a surface.** The other 58 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## document_surface — 1
 
@@ -20,7 +20,7 @@ the surface is a generated DOCUMENT rather than a page - docs/RESCRAPE_LEDGER.md
 - `in_miso_poi`
 - `in_nrc_reactors`
 
-## harvest_rung — 20
+## harvest_rung — 21
 
 a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads the 5,000 MW rung; the others exist so the ladder can be resumed, audited and re-pointed. Rendering a rung would publish a request size nobody asked about.
 
@@ -40,6 +40,7 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_qs_c23_wd_15`
 - `in_pjm_qs_c23_wd_1500`
 - `in_pjm_qs_c23_wd_200`
+- `in_pjm_qs_c23_wd_2000`
 - `in_pjm_qs_c23_wd_25`
 - `in_pjm_qs_c23_wd_300`
 - `in_pjm_qs_c23_wd_500`

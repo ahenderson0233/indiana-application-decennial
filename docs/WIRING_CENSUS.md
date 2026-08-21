@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 310 of 367 registered objects reach a surface
+## 310 of 368 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -55,12 +55,13 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_pjm_qs_c23_wd_15` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_1500` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_200` | 462654 | `—` |
+| `in_pjm_qs_c23_wd_2000` | 427887 | `—` |
 | `in_pjm_qs_c23_wd_25` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_300` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_500` | 462654 | `—` |
 | `in_pjm_qs_withdrawal_rungcheck` | 4686 | `—` |
 | `in_puc_state_access_ledger` | 1 | `—` |
-| `in_rescrape_ledger` | 337 | `—` |
+| `in_rescrape_ledger` | 367 | `—` |
 | `in_sec_cik_registrant_state` | 8 | `—` |
 | `in_si_up_bankruptcy` | 89 | `—` |
 | `in_si_up_brownfield` | 1483 | `—` |
@@ -287,6 +288,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_qs_c23_wd_15` | **none** | — |
 | `in_pjm_qs_c23_wd_1500` | **none** | — |
 | `in_pjm_qs_c23_wd_200` | **none** | — |
+| `in_pjm_qs_c23_wd_2000` | **none** | — |
 | `in_pjm_qs_c23_wd_25` | **none** | — |
 | `in_pjm_qs_c23_wd_300` | **none** | — |
 | `in_pjm_qs_c23_wd_500` | **none** | — |

@@ -1,5 +1,5 @@
 {
- "run_at": "2026-08-21T21:46:33.657626+00:00",
+ "run_at": "2026-08-21T22:48:43.053183+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
@@ -12,7 +12,7 @@
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 310 of 367 registered objects reach a surface \u00b7 57 unwired: ['in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_commission_posture', 'in_data_centers', 'in_data_centers_cloudscene', 'in_data_centers_datacentermap']"
+   "detail": "MEASURED this run: 310 of 368 registered objects reach a surface \u00b7 58 unwired: ['in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_commission_posture', 'in_data_centers', 'in_data_centers_cloudscene', 'in_data_centers_datacentermap']"
   },
   {
    "criterion": 2,

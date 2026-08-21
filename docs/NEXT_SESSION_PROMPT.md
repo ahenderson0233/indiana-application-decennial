@@ -68,16 +68,19 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G131**, BUS-TO-ASSET MATCHING
+## ⭐ START HERE — **G148**, THE 175 FLOATING BUSES
 
-**G131** is first because it is a CORRECTNESS row, not a coverage one: it asks whether the headroom
-we already publish is attached to the right asset. **G142 and G148 both depend on it being right
-first**, so doing it out of order means doing them twice.
+**G148** is first because G131 just handed it a named worklist. The operator asked me to fact-check
+whether Orennia places its bus points on substations; measured across both substation corpora, the
+median is **0.0 m** and 75.2% land within 50 m — but **175 of 1,731 (10.1%) are more than 2 km from
+any substation**, and 1,730 of them are inside Indiana, so a cross-border artefact explains at most
+one. Decide whether those 175 are a vendor artefact or a gap in our substation corpus, then make
+the invariant an audit. ⭐ Our own placement is *better* where it exists: **89 of the 90 PJM buses
+inside Indiana are within 250 m of a substation** — we have not placed worse, we have placed fewer.
 
-⭐ **G149 closed 2026-08-21** and is worth two minutes of reading before you touch the map: the
-whole legend was rendering `background:undefined` because the data said `colour` and the reader
-said `color`, and three layers threw a ReferenceError that killed the panel outright. Nine audits
-passed through it. `scripts/audit_legend_colours.py` now guards that boundary.
+⭐ **G131 and G149 closed 2026-08-21.** G131 is worth reading before touching the grid: three
+operator rulings turned a correctness check into a 66% coverage gain, and the substation is a
+BRIDGE (line → endpoint → substation → bus), never a validity test.
 
 ### Then the rest of the batch, in the order I would take it
 

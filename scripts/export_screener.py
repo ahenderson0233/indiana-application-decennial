@@ -70,6 +70,10 @@ for r in client.query(f"""
            h.deliverable_basis         AS deliv_basis,
            h.ends_resolved             AS deliv_ends,
            h.wd_limiting_end           AS deliv_limiting_end,
+           -- G131: whose number binds. 89% of deliverable figures are bound by a MISO bus, and
+           -- the MISO half of in_bus_capacity_tier0 is a licensed vendor proxy. The badge has to
+           -- follow the LIMITING end, because a MIN across two methods hides which one won.
+           h.wd_limiting_iso           AS deliv_limiting_iso,
            h.wd_binding_at_limit       AS deliv_wd_binding,
            h.a_bus_name                AS deliv_a_bus,
            ROUND(h.a_wd_mw)            AS deliv_a_wd,
@@ -195,6 +199,7 @@ for r in client.query(f"""
          -- a NULL under 'both_ends' would be a measured absence, a NULL under 'cannot_assess'
          -- means we could not follow the line to its buses. Opposite claims, same empty cell.
          deliv_wd_mw, deliv_inj_mw, deliv_basis, deliv_ends, deliv_limiting_end,
+         deliv_limiting_iso,
          deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd,
 
          -- ⭐ G120(b) 2026-08-20 - THE GEOCODE TRAP, MADE VISIBLE.
