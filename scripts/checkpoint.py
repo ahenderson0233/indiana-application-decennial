@@ -141,6 +141,14 @@ AUDITS = [
     # that is quietly hand-written by whoever last ran the script.
     ("signal reality", "scripts/audit_signal_reality.py",
      r"written: docs/SIGNAL_REALITY\.json"),
+
+    # ⭐ G149. Operator: *"The bus legend doesn't populate bus headroom colors anymore."* The row
+    # itself noted that no audit existed that would have caught it, and nine did not: the data
+    # said `colour` and the reader said `color`, in five places. `obj.color` is a silent
+    # `undefined`; a bare `${color}` is a ReferenceError that aborts the whole render. Neither is
+    # a missing element id, a redeclaration, or British prose, so nothing was looking.
+    ("legend colours", "scripts/audit_legend_colours.py",
+     r"(\d+) LEGEND COLOUR FAILURE\(S\)|0 legend colour failure"),
 ]
 
 print("=" * 90)
@@ -242,6 +250,11 @@ for label, script, pat in AUDITS:
         check(label, n == 0,
               f"{n} upstream SI source(s) not clipped Indiana-wide at full width"
               if n else "every upstream SI source is clipped Indiana-wide at FULL WIDTH")
+    elif label == "legend colours":
+        n = int(m.group(1)) if m.group(1) else 0
+        check(label, n == 0,
+              f"{n} swatch(es) the app draws with no colour behind them"
+              if n else "every legend swatch resolves to a real colour")
     elif label == "signal reality":
         # ⚠ This one is a GENERATOR as well as an audit. It cannot "fail" on content - its job is
         # to re-measure and rewrite docs/SIGNAL_REALITY.json. What is being checked is that it RAN.

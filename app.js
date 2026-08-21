@@ -283,18 +283,17 @@ map.on("load", async () => {
        though they were the lowest-voltage in the state, for the wrong reason.
        ⛔ `unknown` gets its OWN colour (dashed grey), never the bottom of the ramp: a line whose
        voltage we do not know is not a small line. */
+    /* ⭐ G149: built from LINE_KV_BANDS, the one definition the panel key and the corner Key also
+       read. The palette used to be typed out here AND typed out again in LINE_KV_LEGEND, and the
+       two had already drifted by a whole band. `slice(0, -1)` supplies the match arms; the last
+       band (`unknown`) is the FALLBACK, which is what makes an unrated line grey rather than the
+       bottom of the ramp. */
     paint: { "line-color": ["match", ["get", "volt_class"],
-               "735 and above", "#4c1d95",
-               "500-734",       "#6d28d9",
-               "300-499",       "#7c3aed",
-               "200-299",       "#2563eb",
-               "100-199",       "#4a7bd0",
-               "under 100",     "#93b4e3",
-               /* unknown */    "#b6bdc9"],
+               ...LINE_KV_BANDS.slice(0, -1).flatMap(([v, c]) => [v, c]),
+               LINE_KV_BANDS[LINE_KV_BANDS.length - 1][1]],
              "line-width": ["match", ["get", "volt_class"],
-               "735 and above", 3.0, "500-734", 2.8, "300-499", 2.6,
-               "200-299", 2.1, "100-199", 1.7, "under 100", 1.1,
-               /* unknown */ 1.1] } });
+               ...LINE_KV_BANDS.slice(0, -1).flatMap(([v, , w]) => [v, w]),
+               LINE_KV_BANDS[LINE_KV_BANDS.length - 1][2]] } });
   /* ⛔ `line-dasharray` is NOT a data-driven paint property in MapLibre — a ["case"] expression on
      it throws inside addLayer, and because that happens during boot it killed everything after it,
      including the parcel layers. The map simply lost its parcels with no visible error.
@@ -775,14 +774,36 @@ setCountyMetric("class_union");
 /* G13: filter transmission lines by voltage class, with a legend that names what each colour is
    AND admits what "unknown" means. 335 lines had HIFLD's -999999 not-available marker loaded as a
    real number; 65 of those had a recoverable band and were rescued rather than binned. */
-const LINE_KV_LEGEND = `
-  <span class="swatch" style="background:#4c1d95"></span>735+ ·
-  <span class="swatch" style="background:#7c3aed"></span>300&ndash;499 ·
-  <span class="swatch" style="background:#2563eb"></span>200&ndash;299 ·
-  <span class="swatch" style="background:#4a7bd0"></span>100&ndash;199 ·
-  <span class="swatch" style="background:#93b4e3"></span>under 100 ·
-  <span class="swatch" style="background:#b6bdc9"></span>unknown (dashed).
-  <b>Unknown is its own color, not the bottom of the scale</b> — a line whose voltage we do not
+
+/* ⛔ G149, 2026-08-21 — THE SECOND HALF, AND IT WAS A SILENT OMISSION RATHER THAN A BROKEN COLOUR.
+   Operator: *"we don't actually show what the color bands mean for transmission lines."*
+   Two things were wrong and only one of them is the one that was reported:
+     ① The band key existed but ONLY inside the layer panel, under the voltage dropdown. The map's
+        corner Key — the thing the operator means by "the legend" — listed transmission lines as
+        `banded` and stopped there, while the bus, territory, data-centre and ranking layers all
+        spelled their bands out. Lines were the one banded layer with no key where it is read.
+     ② ⛔ THE PANEL KEY WAS HAND-TYPED BESIDE THE PAINT EXPRESSION AND HAD ALREADY DRIFTED: it
+        listed SIX bands where the paint draws SEVEN. **`500–734 kV` was missing entirely** — a
+        whole voltage class, drawn on the map in `#6d28d9`, absent from its own key, and it is one
+        of the bands a hyperscale siter cares most about.
+   ⭐ ONE DEFINITION NOW FEEDS ALL THREE — the paint, the panel key and the corner Key — which is
+   the same G77 pattern the bus bands already use. A hand-maintained key is a second copy of the
+   palette and WILL drift; this one had. `audit_legend_colours.py` now asserts the count matches.
+   ⚠ Order: [volt_class value, colour, line width, reader-facing label]. The LAST entry is the
+   fallback arm of the match expressions, so `unknown` must stay last. */
+const LINE_KV_BANDS = [
+  ["735 and above", "#4c1d95", 3.0, "735 kV and above"],
+  ["500-734",       "#6d28d9", 2.8, "500–734 kV"],
+  ["300-499",       "#7c3aed", 2.6, "300–499 kV"],
+  ["200-299",       "#2563eb", 2.1, "200–299 kV"],
+  ["100-199",       "#4a7bd0", 1.7, "100–199 kV"],
+  ["under 100",     "#93b4e3", 1.1, "under 100 kV"],
+  ["unknown",       "#b6bdc9", 1.1, "voltage unknown (drawn dashed)"],
+];
+const LINE_KV_LEGEND =
+  LINE_KV_BANDS.map(([, colour, , label]) =>
+    `<span class="swatch" style="background:${colour}"></span>${label}`).join(" &middot; ") +
+  `. <b>Unknown is its own color, not the bottom of the scale</b> — a line whose voltage we do not
   know is not a small line. 270 lines are genuinely unrated.`;
 function setLineKv(v) {
   // document.getElementById, NOT the $ helper — this is called at module scope, above `const $`.
@@ -1605,6 +1626,27 @@ for (const [box, layerId] of Object.entries(CONTEXT_LAYERS)) {
    A layer whose colour is a MapLibre expression (transmission lines, coloured by kV band; the
    data-centre pins, tiered by location precision) has no single swatch, and says so rather than
    showing one of its colours and implying the rest. */
+/* ⛔ G149, 2026-08-21 — THE WHOLE KEY WAS COLOURLESS AND THREE LAYERS KILLED IT OUTRIGHT.
+   Operator: *"The bus legend doesn't populate bus headroom colors anymore."* Measured in a live
+   browser, it was worse than reported: **every one of the five bus bands rendered
+   `style="background:undefined"`**, and ticking service territories, the data-centre pins or a
+   painted ranking threw **`ReferenceError: color is not defined`**, which aborts this whole
+   function — so the key froze on its last good render and silently stopped tracking the map.
+
+   THE CAUSE IS A SPELLING SPLIT ACROSS A DECLARATION/USE BOUNDARY, in five places:
+     BUS_BANDS / TERR_TYPES / RANK_BANDS / dcTiers() / layerSwatch() all declare `colour`
+     …and every reader here said `color`.
+   `b.color` on an object is a silent `undefined`; a bare `${color}` on an UNDECLARED name is a
+   ReferenceError. Same typo, two completely different failure modes, which is why only one of
+   them was ever reported.
+
+   ⚠ NOTHING COULD SEE IT. `audit_frontend.py` checks element ids and payload keys; the map-click
+   and page-control audits check bindings; `audit_spelling.py` deliberately excludes identifiers.
+   A property name that does not exist is not a missing id and not a redeclaration.
+   ⭐ `scripts/audit_legend_colours.py` now exists for exactly this class and is in the checkpoint.
+   ⛔ THE STANDING RULE THIS EARNS: this file spells colour with a `u` in identifiers, and
+   MapLibre's own paint keys (`circle-color`, `line-color`) spell it without. Both are correct in
+   their own half; the boundary between them is where this bug lives. Cross it deliberately. */
 const PAINT_KEYS = ["circle-color", "line-color", "fill-color"];
 function layerSwatch(layerIds) {
   for (const id of layerIds) {
@@ -1637,9 +1679,15 @@ function renderLayerLegend() {
       ? `<i class="lg-sw lg-pending" title="not loaded yet"></i>`
       : sw.banded
         ? `<i class="lg-sw lg-banded" title="several colors - banded by value"></i>`
-        : `<i class="lg-sw" style="background:${escHtml(sw.color)}"></i>`;
+        : `<i class="lg-sw" style="background:${escHtml(sw.colour)}"></i>`;
+    /* ⚠ "banded" is an apology, not a key, so it is only shown for a layer whose bands we do NOT
+       go on to spell out below. This list used to be the single literal `box !== "L-bus"`, and
+       G149 added L-lines to the spelled-out set — leaving the exclusion behind would have printed
+       "banded" directly above the seven bands it was apologising for. */
+    const SPELLED_OUT = ["L-bus", "L-lines", "L-terr", "L-dc"];
     rows.push(`<div class="lg-row">${chip}<span>${escHtml(name)}</span>` +
-              (sw && sw.banded && box !== "L-bus" ? ` <span class="hint">banded</span>` : "") +
+              (sw && sw.banded && !SPELLED_OUT.includes(box)
+                 ? ` <span class="hint">banded</span>` : "") +
               (sw === null ? ` <span class="hint">loading</span>` : "") + `</div>`);
     /* G77: "banded" is not a key. Where the bands carry the whole meaning of the layer - and on
        the bus layer they ARE the answer to "can this host my project" - spell them out. Read from
@@ -1647,20 +1695,29 @@ function renderLayerLegend() {
     if (box === "L-terr")
       for (const [, colour, label] of TERR_TYPES)
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${color}"></i>` +
+                  `<i class="lg-sw" style="background:${colour}"></i>` +
                   `<span class="hint">${escHtml(label)}</span></div>`);
     if (box === "L-bus")
       for (const b of BUS_BANDS)
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${b.color}"></i>` +
+                  `<i class="lg-sw" style="background:${b.colour}"></i>` +
                   `<span class="hint">${escHtml(b.label)}</span></div>`);
+    /* ⭐ G149: transmission lines were the ONE banded layer whose bands the corner Key never
+       spelled out — it said "banded" and left the reader to go and find the panel. Voltage is the
+       first thing a siter reads off a line, so a key that will not name it is decoration. Read
+       from LINE_KV_BANDS, the same array the paint uses. */
+    if (box === "L-lines")
+      for (const [, colour, , label] of LINE_KV_BANDS)
+        rows.push(`<div class="lg-row" style="margin-left:14px">` +
+                  `<i class="lg-sw" style="background:${colour}"></i>` +
+                  `<span class="hint">${escHtml(label)}</span></div>`);
     /* G112: the data-centre pins are TWO colours and the reader had to click one to find out why.
        The distinction is a claim about how much the coordinate can be trusted, which is exactly
        the sort of thing a key is for. Sizes are now equal, so colour is the only channel left. */
     if (box === "L-dc")
       for (const [colour, label] of dcTiers())
         rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                  `<i class="lg-sw" style="background:${color}"></i>` +
+                  `<i class="lg-sw" style="background:${colour}"></i>` +
                   `<span class="hint">${escHtml(label)}</span></div>`);
   }
   /* G96: while a ranking is painted, the parcel colour means something completely different from
@@ -1671,7 +1728,7 @@ function renderLayerLegend() {
               `<span>parcel color = <b>your ranking score</b>, not owner signal</span></div>`);
     for (const [, colour, label] of RANK_BANDS)
       rows.push(`<div class="lg-row" style="margin-left:14px">` +
-                `<i class="lg-sw" style="background:${color}"></i>` +
+                `<i class="lg-sw" style="background:${colour}"></i>` +
                 `<span class="hint">${escHtml(label)}</span></div>`);
   }
   const metric = $("county-metric") ? $("county-metric").value : "none";

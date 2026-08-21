@@ -68,20 +68,22 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G149**, THE BUS LEGEND REGRESSION
+## ⭐ START HERE — **G131**, BUS-TO-ASSET MATCHING
 
-**G149** is first because *"anymore"* means a REGRESSION: the bus legend used to populate headroom
-colours and no longer does, and the transmission-line colour bands have never had a key at all.
-⛔ A colour scale with no key is decoration. Find what removed it, and note that **no audit exists
-that would have caught this** — write one, the way `audit_page_controls.py` was written after the
-last invisible-control defect.
+**G131** is first because it is a CORRECTNESS row, not a coverage one: it asks whether the headroom
+we already publish is attached to the right asset. **G142 and G148 both depend on it being right
+first**, so doing it out of order means doing them twice.
+
+⭐ **G149 closed 2026-08-21** and is worth two minutes of reading before you touch the map: the
+whole legend was rendering `background:undefined` because the data said `colour` and the reader
+said `color`, and three layers threw a ReferenceError that killed the panel outright. Nine audits
+passed through it. `scripts/audit_legend_colours.py` now guards that boundary.
 
 ### Then the rest of the batch, in the order I would take it
 
 | # | row | why this order |
 |---|---|---|
-| ① | **G149** — the bus legend lost its headroom colours; line colour bands have no key | ⚠ **"anymore" means REGRESSION.** Find what removed it. A colour scale with no key is decoration, and no audit exists that would have caught it — write one |
-| ② | **G131** — match buses to substations and transmission lines | a CORRECTNESS row: it asks whether the headroom we already publish is attached to the right asset. **G142 depends on it being right first** |
+| ① | **G131** — match buses to substations and transmission lines | a CORRECTNESS row: it asks whether the headroom we already publish is attached to the right asset. **G142 depends on it being right first** |
 | ③ | **G148** — floating buses | ⭐ a testable invariant, so it should become an AUDIT: every placed bus within X metres of a substation or a line. ⚠ Measured: where a line end DOES resolve to a bus the median distance is **17 m**, so the matched ones are tight and the problem is the unmatched |
 | ④ | **G143** — our MISO buses disagree with Orennia's **where we read Orennia's own table** | ⛔ sharper than G135: that is a defect in OUR derivation, not a coverage ceiling. Start from the named case, `16SUNNYS` |
 | ⑤ | **G142** — all bus headrooms off BOTH ends of every nearby line | a real modelling correction; nearest-line is a bad proxy for interconnectable |
