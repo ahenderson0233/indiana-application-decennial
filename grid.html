@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grid &amp; Capacity — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=3555f540"></head>
+<link rel="stylesheet" href="style.css?v=695d947c"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Grid &amp; Capacity</span></div></header>
 <nav id="nav"></nav>
@@ -83,11 +83,14 @@
     <div class="scroll"><table id="t-upcost">
       <tr><th>fuel</th><th>service</th><th>projects</th><th>network upgrade $M</th>
         <th>NRIS MW</th><th>$k per NRIS MW</th></tr></table></div>
-    <div class="prov">indiana_app.in_miso_dpp2025_ph1_project_costs · MISO DPP-2025 Phase 1
-      study report. ⚠ These are the costs assigned in ONE study cycle across the whole MISO
-      footprint, not Indiana alone, and network upgrade cost is only part of an interconnection
-      bill — it excludes the interconnection facilities themselves. It is an order of magnitude,
-      which is exactly what is missing when a developer is asked for a number early.</div></div>
+    <div class="prov">indiana_app.in_miso_dpp2025_ph1_project_costs joined to
+      indiana_app.in_queue_miso_extras for the state · MISO DPP-2025 Phase 1 study report.
+      ⭐ <b>INDIANA ONLY.</b> Until 2026-08-21 this card totalled all 202 projects in the study and
+      reported $29,522M at about $527k per MW — a FOURTEEN-STATE figure under an Indiana heading.
+      Indiana is 21 of those projects. ⚠ These are the costs assigned in ONE study cycle, and
+      network upgrade cost is only part of an interconnection bill — it excludes the
+      interconnection facilities themselves. It is an order of magnitude, which is exactly what is
+      missing when a developer is asked for a number early.</div></div>
 
   <div class="card"><h2>Which branches actually bind, and how loaded they already are</h2>
     <div class="sowhat" id="bind-answer">measuring…</div>
@@ -101,7 +104,7 @@
   <div class="card"><h2>⭐ Planned upgrades &mdash; how much of it we can actually place</h2>
     <div class="sowhat" id="pu-answer">measuring…</div>
     <table id="t-pu"><tr><th>source</th><th>projects</th><th>placed</th><th>still to come</th>
-      <th>cost on record</th></tr></table>
+      <th>still to come, placed</th><th>cost on record</th></tr></table>
     <h3 style="font-size:12px;margin:10px 0 2px">How well each placement is known</h3>
     <table id="t-pum"><tr><th>method</th><th>projects</th><th>ring</th><th>what it means</th></tr></table>
     <div class="prov" id="p-pu"></div></div>
@@ -163,7 +166,7 @@
     <div class="scroll" style="max-height:170px"><table id="t-rbq"><tr><th>confidence</th><th>join rows</th><th>distinct upgrades</th><th>reach a bus</th></tr></table></div>
     <div class="prov" id="p-rb"></div></div>
 </div>
-<script src="common.js?v=ce6884a7"></script>
+<script src="common.js?v=af56f606"></script>
 <script>
 (async () => {
   await loadProv();
@@ -172,12 +175,13 @@
     .sort((a, b) => (b.properties.withdrawal_mw || 0) - (a.properties.withdrawal_mw || 0));
   /* G86: every row that names a located thing links to it. These features carry their own
      coordinates, so the link is exact rather than a lookup. */
-  document.getElementById("t-pjm").insertAdjacentHTML("beforeend", rows.slice(0, 120).map(f => {
+    /* G138: capped WITH DISCLOSURE and a Show-all control - 120 of 546 was silent. */
+  renderCappedTable("t-pjm", rows, 120, (f) => {
     const p = f.properties, c = (f.geometry || {}).coordinates;
     const label = p.bus_label || p.bus_number;
     const link = c ? `<a href="index.html?lat=${c[1]}&lon=${c[0]}&z=13&label=${encodeURIComponent(label)}&src=${encodeURIComponent("PJM bus, " + (p.location_method || "located"))}">${escHtml(String(label))}</a>` : escHtml(String(label));
     return `<tr><td>${link}</td><td>${p.bus_kv ?? "—"}</td><td><b>${p.withdrawal_mw != null ? fmt(Math.round(p.withdrawal_mw)) : "—"}</b></td><td>${escHtml((p.wd_binding || "").slice(0, 44))}</td><td>${p.wd_existing_overloads ?? "—"}</td></tr>`;
-  }).join(""));
+  }, "PJM buses");
   /* ⚠ The count here is READ from the payload. It used to say "only the 227 we can place are
      shown here" while this table renders whatever pjm.geojson.gz holds -- which is 42 rows, not
      227. A caption that states a number the table does not contain is worse than no caption. */
@@ -203,13 +207,14 @@
     poiPairs.set(k, e);
   }
   const pois = [...poiPairs.values()].sort((a, b) => (b.wd ?? -1) - (a.wd ?? -1));
-  document.getElementById("t-miso").insertAdjacentHTML("beforeend", pois.slice(0, 120).map(e => {
+    /* G138: was a silent first-120 of 300. */
+  renderCappedTable("t-miso", pois, 120, (e) => {
     const link = e.c ? `<a href="index.html?lat=${e.c[1]}&lon=${e.c[0]}&z=13&label=${encodeURIComponent(e.name || "bus")}&src=${encodeURIComponent((e.iso || "") + " bus")}">${escHtml(String(e.name || ""))}</a>` : escHtml(String(e.name || ""));
     const mw = (v) => v == null ? '<span class="cannot">not published</span>' : `<b>${fmt(Math.round(v))}</b>`;
     return `<tr><td>${link}<div class="sub2">${escHtml(e.iso || "")}</div></td><td>${e.kv ?? "—"}</td>`
          + `<td>${mw(e.wd)}</td><td>${mw(e.inj)}</td>`
          + `<td>${escHtml(String(e.wdBind || e.injBind || "").slice(0, 40))}</td></tr>`;
-  }).join(""));
+  }, "MISO buses");
   document.getElementById("p-miso").textContent = prov("in_bus_capacity_tier0")
     + ` · ${pois.length} located buses, both directions on one row. MISO load-side figures are the`
     + ` LICENSED Orennia DPP-2025 proxy — MISO publishes no public load-side headroom.`;
@@ -287,7 +292,8 @@
     ? `<b>$${fmt(Math.round(ucTot))}M of network upgrades across ${
         fmt(uc.reduce((a, r) => a + r.projects, 0))} projects</b>, against
        ${fmt(Math.round(ucMw))} MW of network resource interconnection service — about
-       <b>$${(ucTot * 1000 / Math.max(ucMw, 1)).toFixed(0)}k per MW</b> on average.
+       <b>$${(ucTot * 1000 / Math.max(ucMw, 1)).toFixed(0)}k per MW</b> on average,
+       <b>in Indiana</b>.
        <b>This is the number nobody can give you early</b>, and the spread between fuel types is
        the part to read: it is driven by WHERE the queue put those projects, not by the
        technology, so a low figure is a statement about that cycle's geography rather than a
@@ -317,22 +323,61 @@
     const tot = pbs.reduce((a, r) => a + (r.projects || 0), 0);
     const pl = pbs.reduce((a, r) => a + (r.placed || 0), 0);
     const fut = pbs.reduce((a, r) => a + (r.still_to_come || 0), 0);
+    const futPl = pbs.reduce((a, r) => a + (r.placed_still_to_come || 0), 0);
     const cost = pbs.reduce((a, r) => a + (r.cost_usd_m || 0), 0);
+    /* ⭐ TWO DENOMINATORS, AND THE SECOND ONE LEADS. Operator ruling 2026-08-21: already-built
+       work is carried and defaults off, so a single coverage figure over all 2,672 mixes 1,248
+       finished projects into a number a reader will take as "how much of the future can you show
+       me". The still-to-come figure is the one that answers their question; the total follows it
+       so the arithmetic still reconciles. */
+    const pc = (a, b) => b ? Math.round(100 * a / b) : 0;
+    const pcost = (GS.planned_cost || [])[0] || {};
+    const palloc = (GS.planned_alloc || [])[0] || {};
+    const pref = GS.planned_refused || [];
     document.getElementById("pu-answer").innerHTML = tot
-      ? `<b>${fmt(pl)} of ${fmt(tot)} planned upgrades carry a position</b> — PJM RTEP, MISO MTEP
-         and the IURC utility grid plans, unified. <b>${fmt(fut)}</b> of them are still to come
-         rather than already built, and that is the set that means future capacity.
-         ⛔ <b>The other ${fmt(tot - pl)} name no location we can resolve</b> and are held and
-         reported, never drawn — an upgrade in the wrong place is a coordinate someone might plan
-         around. ⚠ Each placed item carries an uncertainty ring sized by <b>how well the location
+      ? `<b>${fmt(futPl)} of ${fmt(fut)} upgrades that have NOT yet been built carry a position
+         (${pc(futPl, fut)}%)</b> — that is the set that means future capacity, and it is the
+         number to plan against. Across everything we hold, including work already in service,
+         it is ${fmt(pl)} of ${fmt(tot)}.
+         Four feeds unified: PJM RTEP, MISO MTEP, the MISO DPP-2025 interconnection study and the
+         IURC utility grid plans.
+         ⛔ <b>${fmt(tot - pl)} name no location we can resolve</b> and are held and reported,
+         never drawn — an upgrade in the wrong place is a coordinate someone might plan around.
+         ${/* ⚠ A PLAIN-LANGUAGE MAP, NOT s/_/ /. Replacing underscores turned
+              `outside_indiana` into "outside indiana" - a lower-case proper noun on a page whose
+              whole brief is to stop looking like an intern built it (G8: no codenames in the UI).
+              An unmapped reason still renders, de-underscored, rather than vanishing. */
+           pref.length ? `⛔ A further <b>${fmt(pref.reduce((a, r) => a + r.projects, 0))}</b>
+           had a position and it was <b>refused</b>: ${pref.map((r) => {
+             const PLAIN = {
+               outside_indiana: "resolved to a point outside Indiana",
+               corridor_span_not_credible:
+                 "named two places too far apart to be one corridor",
+             };
+             return `${fmt(r.projects)} ${escHtml(PLAIN[r.reason]
+               || String(r.reason).replace(/_/g, " "))}`;
+           }).join("; ")}.` : ""}
+         ⚠ Each placed item carries an uncertainty ring sized by <b>how well the location
          is known</b>, never by how far along the project is: a fully approved project can still
-         be named only by its town.`
+         be named only by its town.
+         ${pcost.mw ? `<br><br>⭐ <b>What it costs to interconnect:</b> the ${fmt(pcost.projects)}
+           Indiana projects in MISO's DPP-2025 Phase 1 study carry
+           <b>$${fmt(pcost.cost_usd_m)}M of network upgrades across ${fmt(pcost.mw)} MW —
+           about $${fmt(pcost.k_per_mw)}k per MW</b>. ⚠ Indiana only. The published study covers
+           14 states and its headline total is not Indiana's.` : ""}
+         ${palloc.upgrades_with_allocation ? `<br>⭐ <b>Who pays:</b> PJM publishes a zone-by-zone
+           cost allocation for <b>${fmt(palloc.upgrades_with_allocation)} of the
+           ${fmt(palloc.pjm_upgrades)} RTEP upgrades</b> here
+           (${fmt(palloc.zone_shares)} zone shares). ⚠ 26 upgrades, not the 375 rows the source
+           holds — those rows are zones, not projects.` : ""}`
       : `<span class="cannot">planned-upgrade rollup not present in this payload</span>`;
     document.getElementById("t-pu").insertAdjacentHTML("beforeend", pbs.map((r) =>
       `<tr><td>${r.source}</td><td class="num">${fmt(r.projects)}</td>
        <td class="num">${fmt(r.placed)} <span class="hint">(${r.projects
          ? Math.round(100 * r.placed / r.projects) : 0}%)</span></td>
        <td class="num">${fmt(r.still_to_come)}</td>
+       <td class="num">${fmt(r.placed_still_to_come)} <span class="hint">(${pc(
+         r.placed_still_to_come, r.still_to_come)}%)</span></td>
        <td class="num">${r.cost_usd_m ? "$" + fmt(Math.round(r.cost_usd_m)) + "M"
          : '<span class="cannot">not published</span>'}</td></tr>`).join(""));
     document.getElementById("t-pum").insertAdjacentHTML("beforeend", pbm.map((r) =>
@@ -415,8 +460,9 @@
   document.getElementById("f-up").oninput = renderUp;
   renderUp();
   document.getElementById("p-up").textContent = prov("in_pjm_rtep_upgrade_details") + " · " + prov("in_pjm_rtep_cost_allocations");
-  document.getElementById("t-queue").insertAdjacentHTML("beforeend", pl.queue_projects.slice(0, 120).map(r =>
-    `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`).join(""));
+    /* G138: was a silent first-120. */
+  renderCappedTable("t-queue", pl.queue_projects, 120, (r) =>
+    `<tr><td>${r.county || "?"}</td><td>${(r.project_name || r.entity || "").slice(0, 50)}</td><td>${r.capacity_mw ? fmt(r.capacity_mw) : "—"}</td><td>${r.resource_type || ""}</td><td>${r.status || ""}</td></tr>`, "queue projects");
   document.getElementById("p-queue").textContent = prov("in_queue");
 
   const CTX = await fetchGz("data/context.json.gz");

@@ -265,16 +265,34 @@ wired = {
         SELECT event_date_precision, COUNT(*) AS n
         FROM `{DS}.in_si_warn_normalised` GROUP BY 1 ORDER BY n DESC"""),
 
-    # ⭐ WHAT AN INTERCONNECTION UPGRADE ACTUALLY COSTS. in_miso_dpp2025_ph1_project_costs held
-    #    202 projects and $29.5bn of network upgrades and reached no surface. This is the single
-    #    hardest number for a developer to estimate, and we had it and did not show it.
+    # ⭐ WHAT AN INTERCONNECTION UPGRADE ACTUALLY COSTS - INDIANA ONLY.
+    #
+    # ⛔ THIS PANEL SHIPPED A FOURTEEN-STATE TOTAL ON AN INDIANA TOOL, and it did so while three
+    # project documents described this table as "the best cost answer we hold and it reaches no
+    # surface". Both halves were wrong: it DID reach a surface - this card - and what it showed
+    # was $29,522M across 56,043 MW at ~$527k per MW for the WHOLE MISO FOOTPRINT. Measured by
+    # joining the project numbers to the queue: the 202 projects span 14 states and Indiana is
+    # 21 of them, $1,704M across 6,034 MW, about $282k per MW. A reader on a page headed "Grid &
+    # Capacity" for Indiana would have taken $527k/MW as an Indiana figure; it is nearly double.
+    #
+    # ⚠ THE PROVENANCE NOTE DID DISCLOSE THE SCOPE and that was not enough. It said "not Indiana
+    # alone" in small text under a card whose headline number was bold - which is the "estimate
+    # styling itself as published" failure pointing at geography instead of certainty.
+    #
+    # Operator ruling 2026-08-21, asked directly: Indiana only, and the MISO-wide figure is
+    # DROPPED rather than kept as a benchmark. So it is not computed here at all - a number that
+    # is not in the payload cannot be rendered by accident later.
     "miso_upgrade_costs": rows(f"""
-        SELECT fuel_type, service_type, COUNT(*) AS projects,
-               ROUND(SUM(total_dpp_2025_phase_1_network_upgrade_cost) / 1e6, 1) AS cost_musd,
-               ROUND(SUM(nris_mw)) AS nris_mw, ROUND(SUM(eris_mw)) AS eris_mw,
-               ROUND(SAFE_DIVIDE(SUM(total_dpp_2025_phase_1_network_upgrade_cost),
-                                 NULLIF(SUM(nris_mw), 0)) / 1000, 1) AS usd_k_per_nris_mw
-        FROM `{DS}.in_miso_dpp2025_ph1_project_costs`
+        SELECT c.fuel_type, c.service_type, COUNT(*) AS projects,
+               ROUND(SUM(c.total_dpp_2025_phase_1_network_upgrade_cost) / 1e6, 1) AS cost_musd,
+               ROUND(SUM(c.nris_mw)) AS nris_mw, ROUND(SUM(c.eris_mw)) AS eris_mw,
+               ROUND(SAFE_DIVIDE(SUM(c.total_dpp_2025_phase_1_network_upgrade_cost),
+                                 NULLIF(SUM(c.nris_mw), 0)) / 1000, 1) AS usd_k_per_nris_mw
+        FROM `{DS}.in_miso_dpp2025_ph1_project_costs` c
+        -- the join that establishes the state. in_queue_miso_extras is our own Indiana clip and
+        -- carries all 21 of the Indiana projects, so this needs no read of energy.
+        JOIN (SELECT DISTINCT projectnumber FROM `{DS}.in_queue_miso_extras`) q
+          ON q.projectnumber = c.project
         GROUP BY 1, 2 ORDER BY cost_musd DESC"""),
 
     # ⛔ `headroom_300` REMOVED 2026-08-20, AND NOT WIRED ANYWHERE. The table it came from holds

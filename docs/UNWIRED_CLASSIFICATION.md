@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**298 of 341 registered objects reach a surface.** The other 43 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**302 of 347 registered objects reach a surface.** The other 45 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## document_surface — 1
 
@@ -20,7 +20,7 @@ the surface is a generated DOCUMENT rather than a page - docs/RESCRAPE_LEDGER.md
 - `in_miso_poi`
 - `in_nrc_reactors`
 
-## harvest_rung — 17
+## harvest_rung — 18
 
 a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads the 5,000 MW rung; the others exist so the ladder can be resumed, audited and re-pointed. Rendering a rung would publish a request size nobody asked about.
 
@@ -28,6 +28,7 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_miso_poi_ladder`
 - `in_pjm_bus_locations_v2`
 - `in_pjm_qs_c23_inj_10`
+- `in_pjm_qs_c23_inj_1000`
 - `in_pjm_qs_c23_inj_15`
 - `in_pjm_qs_c23_inj_200`
 - `in_pjm_qs_c23_inj_25`
@@ -41,6 +42,12 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_qs_c23_wd_300`
 - `in_pjm_qs_c23_wd_500`
 - `in_pjm_qs_withdrawal_rungcheck`
+
+## pending_pipeline_join — 1
+
+built and correct, and not yet consumed by the pipeline it was built for. ⛔ Recorded as pending rather than as wired, because a table that exists is not a table that reaches a reader - and this project has closed four rows on exactly that confusion.
+
+- `in_si_warn_placed`
 
 ## raw_feed — 11
 

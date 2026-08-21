@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 298 of 341 registered objects reach a surface
+## 302 of 347 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -40,8 +40,9 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_nfirs_incidentaddress_2024` | 49895 | `—` |
 | `in_nhd_waterbody` | 186667 | `—` |
 | `in_nrc_reactors` | 0 | `—` |
-| `in_pjm_bus_locations_v2` | 1475 | `—` |
+| `in_pjm_bus_locations_v2` | 1529 | `—` |
 | `in_pjm_qs_c23_inj_10` | 655404 | `—` |
+| `in_pjm_qs_c23_inj_1000` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_15` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_200` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_25` | 647984 | `—` |
@@ -58,6 +59,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_puc_state_access_ledger` | 1 | `—` |
 | `in_rescrape_ledger` | 337 | `—` |
 | `in_sec_cik_registrant_state` | 8 | `—` |
+| `in_si_warn_placed` | 40 | `scripts/build_warn_placement.py` |
 | `in_state_irp_catalog` | 1 | `—` |
 | `in_ustp_ch7_tfr` | 33 | `—` |
 
@@ -188,7 +190,8 @@ headline can be audited rather than taken on trust:
 | `in_lbnl_interconnection_costs` | direct | `scripts/export_grid_siting.py` |
 | `in_line_bus_endpoints` | derivative | `feeds `in_parcel_line_headroom` via `scripts/build_parcel_line_headroom.py`` |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
-| `in_marion_parcel_crosswalk` | direct | `si.html`, `scripts/export_marion_addresses.py` |
+| `in_marion_owner_value` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
+| `in_marion_parcel_crosswalk` | direct | `screener.html`, `si.html` |
 | `in_miso_dpp2025_counties` | **none** | — |
 | `in_miso_dpp2025_footprint` | **none** | — |
 | `in_miso_dpp2025_ph1_project_costs` | direct | `grid.html`, `scripts/export_wired_layers.py` |
@@ -258,6 +261,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_gis_queues` | direct | `app.js`, `scripts/export_full_wiring.py` |
 | `in_pjm_nucra_costs` | direct | `scripts/export_full_wiring.py` |
 | `in_pjm_qs_c23_inj_10` | **none** | — |
+| `in_pjm_qs_c23_inj_1000` | **none** | — |
 | `in_pjm_qs_c23_inj_15` | **none** | — |
 | `in_pjm_qs_c23_inj_200` | **none** | — |
 | `in_pjm_qs_c23_inj_25` | **none** | — |
@@ -277,9 +281,10 @@ headline can be audited rather than taken on trust:
 | `in_pjm_qs_withdrawal_rungcheck` | **none** | — |
 | `in_pjm_queuescope_aep` | direct | `scripts/build_pjm_withdrawal.py` |
 | `in_pjm_queuescope_injection` | derivative | `feeds `vw_pjm_bus_injection_ladder` via `scripts/build_pjm_injection_rollup.py`` |
-| `in_pjm_rtep_cost_allocations` | direct | `grid.html`, `scripts/export_phase2_close.py` |
+| `in_pjm_rtep_cost_allocations` | direct | `grid.html`, `scripts/export_grid_siting.py` |
 | `in_pjm_rtep_upgrade_details` | direct | `grid.html`, `scripts/export_phase2_close.py` |
 | `in_pjm_rtep_upgrades` | derivative | `feeds `in_pjm_bus_locations_candidate` via `scrapers/lane_a/build_bus_locations_candidate.py`` |
+| `in_places` | derivative | `feeds `in_planned_upgrades` via `scripts/build_planned_upgrades.py`` |
 | `in_planned_upgrades` | direct | `app.js`, `grid.html` |
 | `in_power_plants` | direct | `scripts/export_facilities.py` |
 | `in_puc_state_access_ledger` | **none** | — |
@@ -339,6 +344,7 @@ headline can be audited rather than taken on trust:
 | `in_si_indy_code_widened` | direct | `scripts/checkpoint.py` |
 | `in_si_indy_surplus_parcels` | direct | `scripts/export_si_sources.py` |
 | `in_si_indy_taxsale_parcels` | direct | `scripts/export_si_sources.py` |
+| `in_si_intent_signals` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
 | `in_si_lane_d_enrichment` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_marion_route_check` | direct | `si.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
@@ -363,7 +369,9 @@ headline can be audited rather than taken on trust:
 | `in_si_southbend_vacant_abandoned` | direct | `scripts/export_si_sources.py` |
 | `in_si_sri_placed` | direct | `scripts/audit_honesty.py`, `scripts/checkpoint.py` |
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
+| `in_si_warn_addresses` | direct | `scripts/extract_warn_addresses.py` |
 | `in_si_warn_normalised` | direct | `si.html`, `scripts/export_wired_layers.py` |
+| `in_si_warn_placed` | **none** | — |
 | `in_site_gates` | direct | `app.js`, `scripts/acceptance_run.py` |
 | `in_sites` | direct | `app.js`, `screener.html` |
 | `in_sites_county` | direct | `scripts/build_p36_wiring.py`, `scripts/build_site_gates.py` |

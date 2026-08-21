@@ -434,3 +434,12 @@ table.rtable tr.siterow:hover > td { background: #f1f5f9; }
                     font-variant-numeric: tabular-nums; }
 .pagehead .ph-fig b { font-size: 15px; color: #0f172a; }
 @media (max-width: 720px) { .pagehead .ph-fig { margin-left: 0; } }
+
+/* G138: the capped-table disclosure. Quiet, but present on every capped table - a rendering
+   budget is never a claim about the data. */
+.capnote { margin: 6px 0 0; }
+.capbtn {
+  font: inherit; font-size: 11px; padding: 2px 8px; margin-left: 4px; cursor: pointer;
+  border: 1px solid var(--line, #cbd5e1); border-radius: 4px; background: #fff; color: #1d4ed8;
+}
+.capbtn:hover { background: #eff6ff; }

@@ -65,6 +65,93 @@ const map = new maplibregl.Map({
       attribution: "© OpenStreetMap contributors © CARTO" } },
     layers: [{ id: "basemap", type: "raster", source: "basemap" }] },
 });
+
+/* ==============================================================================================
+   G134 - WHY YOU COULD NOT CLICK A SUBSTATION WHILE PARCELS WERE ON.
+
+   Operator, 2026-08-21: *"We currently lack the ability to click on buses, substations,
+   transmission line, and other clickable features when parcels are in view … the user would like
+   to understand the grid assets … proximate to the prospected site location and is unable to
+   do so right now."*
+
+   ⛔ IT WAS NOT A MISSING HANDLER, WHICH IS WHY `audit_map_clicks.py` PASSED THROUGHOUT. Every
+   layer HAS a click handler; the audit checks exactly that and could never see this. Measured in
+   the browser on a substation sitting inside a candidate parcel, `show()` was called three times
+   in this order:
+       1. "Substation: UNKNOWN123164"
+       2. "Transmission line"
+       3. "Parcel 011003100005000005"     <- LAST, so it is the one left on screen
+   MapLibre delegates a layer-scoped click to EVERY layer with a feature under the cursor, in the
+   order the listeners were registered. The parcel handler is registered inside addCountyLayers(),
+   which runs when a county's parcels load - always AFTER the asset layers were bound at boot. So
+   the biggest, least specific target silently won every contested click.
+
+   ⭐ THE RULE: a small target beats a big one. A parcel polygon yields when something more
+   specific is under the same four pixels. Points, lines and labels are specific; county and
+   territory boundaries are context and are not; area fills lose unless they are a genuinely
+   small footprint.
+
+   ⛔ AND THE LIST OF CLICKABLE LAYERS IS COLLECTED, NEVER TYPED. A hardcoded list is the defect
+   this project files under "remove a control and its registry entry in one change" - it would go
+   stale the first time a layer was added. Wrapping map.on() means a layer becomes eligible by the
+   act of being given a handler, so the rule cannot drift from reality.
+   ⚠ The wrapper must be installed BEFORE any handler is registered, which is why it sits here,
+   immediately after the map is constructed, rather than beside the parcel code it protects.
+   ============================================================================================== */
+const PARCEL_LAYER_RE = /^sites-\d+-(fill|line)$/;
+/* context, not assets: these describe the region a parcel is IN, so they must never outrank it */
+const CLICK_CONTEXT = new Set(["basemap", "county-fill", "county-line", "terr-fill", "terr-line"]);
+/* fills small enough to BE the asset - a substation footprint is the substation */
+const CLICK_SMALL_FILL = new Set(["grid-subs-fp"]);
+/* lower rank wins. A dot is more specific than a line; a line than an area; an area than the
+   parcel it sits on; the parcel than the county around it. */
+const CLICK_RANK_BY_TYPE = { circle: 0, symbol: 0, line: 1, fill: 2 };
+const CLICK_LAYERS = new Set();
+
+function clickRank(id) {
+  if (CLICK_SMALL_FILL.has(id)) return 0;
+  if (PARCEL_LAYER_RE.test(id)) return 3;
+  if (CLICK_CONTEXT.has(id)) return 4;
+  const l = map.getLayer(id);
+  const r = l && CLICK_RANK_BY_TYPE[l.type];
+  return r === undefined ? 2 : r;
+}
+
+/* ⚠ RANK IS RESOLVED AT CLICK TIME, NOT AT REGISTRATION TIME. Most handlers are bound before
+   their layer exists (load-on-first-toggle), so map.getLayer() would be undefined here. */
+function clickWins(id, pt) {
+  const mine = clickRank(id);
+  if (mine === 0) return true;                    /* nothing outranks a point */
+  const pad = 4;                                  /* forgiving for a 3 px dot on a touchpad */
+  const feats = map.queryRenderedFeatures(
+    [[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]]);
+  return !feats.some((f) => f.layer.id !== id
+                         && CLICK_LAYERS.has(f.layer.id)      /* would actually open something */
+                         && clickRank(f.layer.id) < mine);
+}
+
+/* ⛔ EVERY LAYER-SCOPED CLICK HANDLER IS WRAPPED, RATHER THAN THIRTEEN HANDLERS BEING EDITED.
+   The first attempt guarded only the parcel handler. It stopped the parcel stealing the click and
+   then the TRANSMISSION LINE won instead - measured, clicking a substation dot opened
+   "Transmission line" - because the line's handler is simply bound after the substation's. Every
+   contested pair has this shape, so guarding one of them just moves the bug. One rule, applied
+   where the delegation happens, fixes all of them and cannot be forgotten for the next layer.
+   ⚠ Ties are left alone: two point layers exactly overlapping both fire, and the later-bound one
+   is what stays on screen. That is rare and harmless; ranking within a tier would be inventing a
+   preference nobody has stated. */
+(() => {
+  const _on = map.on.bind(map);
+  map.on = function (type, layerOrFn, fn) {
+    if (type === "click" && typeof layerOrFn === "string" && typeof fn === "function") {
+      CLICK_LAYERS.add(layerOrFn);
+      return _on(type, layerOrFn, function (e) {
+        if (!clickWins(layerOrFn, e.point)) return;
+        return fn.apply(this, arguments);
+      });
+    }
+    return _on.apply(map, arguments);
+  };
+})();
 /* #1 BASEMAP TOGGLE, 2026-08-19. Operator: the Illinois tool has one and this did not.
    ⛔ SWAPS THE RASTER SOURCE'S TILES, NEVER THE STYLE. map.setStyle() rebuilds the style object
    and would destroy all 42 layers, every per-county parcel source and every click binding we have
@@ -1220,11 +1307,15 @@ async function ensureWiredLayers() {
     map.addLayer({ id: "wired-foodplant", type: "circle", source: "wired2",
       filter: ["==", ["get", "layer"], "foodplant"], layout: hid,
       paint: { "circle-radius": 4, "circle-color": "#b45309", "circle-opacity": 0.8 } });
-    // ⛔ `wired-gridplan` WAS HERE AND IS RETIRED - G130, 2026-08-20f. It drew the 119 located
+    // ⛔ `wired-gridplan` WAS HERE AND IS RETIRED - G130, 2026-08-20f. It drew the located
     // utility grid plans as SOLID FILLED CIRCLES, the same primitive this console uses for real
     // substations, so planned work read as built work. It also showed nothing from PJM RTEP or
-    // MISO MTEP. The `L-planned` group supersedes it: all three sources, 700 placed items,
-    // violet / hollow / dashed, with an uncertainty ring per item.
+    // MISO MTEP. The `L-planned` group supersedes it: FOUR sources - PJM RTEP, MISO MTEP, the
+    // MISO DPP-2025 interconnection study and the IURC grid plans - violet / hollow / dashed,
+    // with an uncertainty ring per item.
+    // ⚠ NO COUNT IS TYPED HERE ANY MORE. This comment said "700 placed items" and G130's second
+    // pass moved it to 971; a figure in a comment is a figure nothing re-measures. The live
+    // number is on the grid page, generated.
     // ⚠ The checkbox, the WIRED_LAYERS entry and this addLayer were removed in ONE change.
     // Removing the control while a layer registry still named it is exactly how the L-frpp
     // edit threw during boot and rendered the whole page blank.
@@ -1280,8 +1371,8 @@ const WIRED_PROV = {
     "Planned utility work from IURC TDSIC and IRP filings, placed on the station it names.",
     "⭐ THIS IS CAPACITY THAT DOES NOT EXIST YET, and it is the only layer here that is about the " +
     "FUTURE. A substation being rebuilt to a higher voltage in 2027 changes what a site beside it " +
-    "can ask for in 2028. ⚠ Only 119 of 618 planned items name a station the gazetteer holds; the " +
-    "other 499 name only a utility and are placed to that utility's service TERRITORY on the grid " +
+    "can ask for in 2028. ⚠ Most of the 618 planned items name no station the gazetteer holds; " +
+    "those name only a utility and are placed to that utility's service TERRITORY on the grid " +
     "page rather than invented into a point here. ⛔ Cost is deliberately NULL on every row: the " +
     "workpaper's numeric columns arrive unlabelled, and guessing which one is dollars would print " +
     "a coin flip."],
@@ -1641,19 +1732,27 @@ for (const id of [...Object.keys(CONTEXT_LAYERS), ...Object.keys(ENVGATE_LAYERS)
    ⛔ SO THEY DO NOT. Existing steel on this console is a SOLID FILLED circle or a SOLID line.
    Planned work is VIOLET, HOLLOW and DASHED, and it sits under an uncertainty ring:
        ring      a translucent violet polygon showing where the asset COULD be
-       corridor  a DASHED line, for the 81 upgrades that are a rebuild between two named
-                 substations - drawing those as a dot at the midpoint would put the work up to
-                 13 miles from where it is
+       corridor  a DASHED line, for upgrades that are a rebuild between two named substations -
+                 drawing those as a dot at the midpoint would put the work miles from where it is
        point     a hollow violet marker, never a filled one
 
    ⭐ THE RING IS SIZED BY HOW WELL WE KNOW THE LOCATION, NEVER BY PROJECT STATUS. That is the
    design decision taken from the operator's Illinois tool, and it is the right one: a project can
-   be fully approved and still be named only by its town. verified_asset_match 0.5 mi ·
-   substation_match 1.5 mi · corridor midpoint half the span · one end 3 mi · town centroid 5 mi.
+   be fully approved and still be named only by its town.
+       verified_asset_match   NO RING - a known position must not be drawn as a guessed one
+       substation_match       NO RING
+       corridor midpoint      half the span, and the span is capped at 75 mi because past that
+                              the "corridor" is a comma-separated LIST of places, not a line
+       corridor one end       3 mi
+       town centroid          that town's own TIGER radius + 4 mi, which contains 86.7% of
+                              measured substation-to-town cases against 83.0% for the flat 5 mi
+                              it replaced
+       county centroid        the county's own equal-area radius
 
-   ⚠ 700 of 1,878 planned items carry a position. The other 1,178 are held and REPORTED, never
-   drawn - an upgrade in the wrong place is worse than one with no place, because it is a
-   coordinate someone might plan around.
+   ⚠ NOT EVERY PLANNED ITEM CARRIES A POSITION, and the ones that do not are held and REPORTED,
+   never drawn - an upgrade in the wrong place is worse than one with no place, because it is a
+   coordinate someone might plan around. ⛔ The counts are NOT typed here: they were, they went
+   stale inside one session, and the grid page generates them instead.
    ⛔ `in_service` work is ALREADY BUILT and is off by default: it is not future capacity.
    ============================================================================================== */
 const PLANNED_LAYERS = { "L-planned": ["planned-ring", "planned-corridor", "planned-point"] };
@@ -1760,6 +1859,21 @@ function plannedEvidence(p) {
           : ""}
       ${row("cost", p.cost_m != null ? `$${fmt(Math.round(p.cost_m))}M` : null,
             "no cost published for this project")}
+      ${/* ⭐ G130 item 2. MW exists only on the MISO DPP-2025 interconnection rows, so the row
+            appears only there rather than reporting "not measured" on 2,651 projects for which
+            the question is not even asked. */
+        p.mw != null
+          ? row("capacity it would enable", `${fmt(p.mw)} MW`) +
+            (p.cost_m ? row("cost per MW",
+              `$${fmt(Math.round(1000 * p.cost_m / p.mw))}k per MW`) : "")
+          : ""}
+      ${/* ⭐ G130 item 1. PJM publishes a zone-by-zone allocation for 26 upgrades; on every other
+            project this is genuinely unpublished, not unmeasured. */
+        p.cost_zone
+          ? row("who bears the cost", `${escHtml(p.cost_zone)} ${p.cost_zone_pct}%` +
+                (p.cost_n_zones > 1 ? ` of ${p.cost_n_zones} zones` : "")) +
+            (p.cost_zones ? row("largest shares", escHtml(p.cost_zones)) : "")
+          : ""}
       ${row("owner / utility", p.owner, "this feed publishes no owner")}
       ${row("what the work is", p.descr, "this feed publishes no description")}
       ${row("driver", p.driver, "this feed publishes no driver")}
@@ -1954,6 +2068,9 @@ function addCountyLayers(fips, fc) {
     paint: { "line-color": "#333", "line-width": 0.6 } }, "grid-lines");
   map.on("click", `${src}-fill`, (e) => {
     if (state.measure.on) return;
+    /* ⭐ G134 is handled centrally by the map.on wrapper at the top of this file - the parcel
+       yields automatically to anything more specific under the same four pixels. Nothing is
+       needed here, and adding a second guard would be the two-copies defect. */
     /* highlight whichever parcel the panel is about, however it was reached */
     const key = e.features[0].properties.parcel_key;
     const full = (state.loaded.get(fips) || []).find((f) => f.properties

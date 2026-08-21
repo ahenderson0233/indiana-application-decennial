@@ -113,6 +113,16 @@ AUDITS = [
     # while the ledger called it DONE, on its first run.
     ("handoff consistency", "scripts/audit_handoff_consistency.py",
      r"(\d+) consistency failure\(s\)"),
+    # ⛔ G150, operator 2026-08-21: *"we really need to ensure that we are displaying all of the
+    # data that we hold, instead of truncating or misrepresenting our actual holdings… this issue
+    # has been partially addressed in the past and I have seen no visible changes."*
+    # ⭐ THE REASON NOTHING CHANGED IS THAT in_si_signal_coverage ALREADY HELD THE NUMBERS AND
+    # NOTHING EVER FAILED ON THEM. A figure in a table that no check reads is a note. This audit
+    # is the check: a signal whose corpus is large and whose placement is near-zero must carry a
+    # written reason, or the checkpoint goes red. ⚠ Selectivity is fine and expected - the
+    # operator filters many signals deliberately (C&I only, 3+ violations). SILENCE is the defect.
+    ("signal display", "scripts/audit_signal_display.py",
+     r"(\d+) unexplained signal loss\(es\)"),
 ]
 
 print("=" * 90)
@@ -204,6 +214,10 @@ for label, script, pat in AUDITS:
         n = int(m.group(1))
         check(label, n == 0,
               f"{n} place(s) where the ledger, the handoff and the prompt disagree")
+    elif label == "signal display":
+        n = int(m.group(1))
+        check(label, n == 0,
+              f"{n} SI signal(s) placing far below what we hold with NO recorded reason")
     else:
         # ⛔ AN AUDIT REGISTERED BUT NOT DISPATCHED IS AN AUDIT THAT IS NOT RUNNING, and this
         # loop had no way to say so. Both audits added on 2026-08-20d - `spelling` and

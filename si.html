@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner signals — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=3555f540"></head>
+<link rel="stylesheet" href="style.css?v=695d947c"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
 <nav id="nav"></nav>
@@ -367,7 +367,7 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=ce6884a7"></script>
+<script src="common.js?v=af56f606"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -600,10 +600,11 @@
   document.getElementById("t-adm").insertAdjacentHTML("beforeend", so.admission.map(a =>
     `<tr><td>${signalsPlain(a.signal)}</td><td><b>${fmt(a.admitted)}</b></td><td>${fmt(a.source_rows)}</td>
      <td class="hint">${a.rule}</td></tr>`).join(""));
-  document.getElementById("t-d11").insertAdjacentHTML("beforeend", so.d11.slice(0, 400).map(r =>
+    /* G138: was a silent first-400. */
+  renderCappedTable("t-d11", so.d11, 400, (r) =>
     `<tr><td>${String(r.entity_name || "").slice(0, 42)}</td><td>${r.status_family}
      <span class="hint">${String(r.raw_status || "").replace(/\s+/g, " ").slice(0, 34)}</span></td>
-     <td>${r.observed_date || "—"}</td><td>${r.city || "—"}</td></tr>`).join(""));
+     <td>${r.observed_date || "—"}</td><td>${r.city || "—"}</td></tr>`, "records");
   document.getElementById("t-d27").insertAdjacentHTML("beforeend", so.d27.map(r =>
     `<tr><td>${String(r.debtor_name || "").slice(0, 40)}</td><td>${r.lapse_date || "—"}</td><td>${r.city || "—"}</td></tr>`).join(""));
   document.getElementById("t-d25").insertAdjacentHTML("beforeend", so.d25.map(r =>

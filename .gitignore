@@ -43,3 +43,11 @@ scrapers/tariff_books/
 # ON DISK - never deleted - but not committed: they are re-downloadable in ~80s from the URL
 # recorded in the in_roads_all registry row, exactly like scrapers/tariff_books/ above.
 data/tiger_roads/
+
+# G130 / G150, 2026-08-21: bulk source documents cached by two loaders. Same rule as
+# scrapers/**/*.pdf and data/tiger_roads above - the CACHE is not a deliverable, the table built
+# from it is. Both are re-fetchable by URL from their registry rows.
+# ⚠ ARCHIVED ON DISK, NEVER DELETED - the standing rule about data/ still holds; this only keeps
+# 59 MB of state PDFs and a TIGER zip out of the repository.
+data/warn_pdfs/
+data/tiger_place/

@@ -8,14 +8,21 @@ THREE FEATURE KINDS, so the map can draw planned work as planned work:
   kind="ring"      a polygon showing where the asset COULD be. Radius comes from `uncertainty_mi`,
                    which is keyed on HOW WELL WE KNOW THE LOCATION and never on project status.
                    Drawn first so it sits under everything.
-  kind="corridor"  a LineString between two resolved endpoints. 81 upgrades are a line rebuild
-                   between two named substations, and drawing those as a dot at the midpoint
-                   would put the work up to 13 miles from where it actually is.
-                   ⚠ 81, not 133 - the build's summary briefly claimed 133 because it counted
-                   `end_a_lat IS NOT NULL` while a line needs BOTH ends. The export could only
-                   draw 81, and a build contradicting its own export is the two-instruments
-                   defect in miniature.
+  kind="corridor"  a LineString between two resolved endpoints - a line rebuild between two named
+                   substations, where drawing a dot at the midpoint would put the work miles from
+                   where it actually is.
+                   ⚠ THE COUNT IS PRINTED, NEVER TYPED HERE. An earlier version of this docstring
+                   named a figure ("81") that the build's own summary then contradicted with 133,
+                   because the build counted `end_a_lat IS NOT NULL` while a line needs BOTH ends.
+                   A number hand-typed into a comment is a number that will disagree with the code
+                   beside it.
   kind="point"     the representative point.
+
+⭐ 2026-08-21 - THE PAYLOAD NOW CARRIES WHAT G130 ITEMS 1-3 ADDED: `mw` (the MW a MISO DPP-2025
+interconnection would enable), `cost_zone` / `cost_zones` (which PJM zone bears the cost, on the
+26 upgrades PJM publishes an allocation for), and `refused` (why a placement was withheld). ⛔ A
+refused row is NOT in this file at all - it has no coordinate - but the reason is on the table so
+the coverage figure reconciles.
 
 ⛔ THE RINGS ARE GENERATED HERE, NOT IN THE BROWSER. A MapLibre `circle` radius is in PIXELS, so a
 5-mile uncertainty would shrink as the reader zooms in - the ring would tell a different story at
@@ -65,7 +72,10 @@ def ring(lat, lon, miles, n=RING_VERTICES):
 rows = list(client.query(f"""
   SELECT source, project_id, title, description, driver, project_type, location_text, owner,
          status_raw, status_class, in_service_date, actual_in_service_date,
-         ROUND(cost_usd_m, 2) AS cost_usd_m, county_name, anchor_name,
+         ROUND(cost_usd_m, 2) AS cost_usd_m,
+         ROUND(mw_enabled) AS mw_enabled,
+         alloc_top_zone, alloc_top_pct, alloc_n_zones, alloc_top5,
+         county_name, anchor_name,
          loc_method, loc_basis, ROUND(uncertainty_mi, 1) AS uncertainty_mi,
          ROUND(lat, 6) AS lat, ROUND(lon, 6) AS lon,
          ROUND(end_a_lat, 6) AS a_lat, ROUND(end_a_lon, 6) AS a_lon,
@@ -86,6 +96,12 @@ for r in rows:
         "isd": r.in_service_date, "aisd": r.actual_in_service_date,
         "cost_m": r.cost_usd_m, "county": r.county_name, "anchor": r.anchor_name,
         "loc_method": r.loc_method, "loc_basis": r.loc_basis, "unc_mi": r.uncertainty_mi,
+        # ⭐ G130 items 1-2. `mw` only exists on the MISO DPP-2025 rows and `cost_zone` only on
+        # the 26 PJM upgrades that publish an allocation - both stay absent elsewhere rather than
+        # rendering as a zero, because unpublished is NULL and never 0.
+        "mw": r.mw_enabled,
+        "cost_zone": r.alloc_top_zone, "cost_zone_pct": r.alloc_top_pct,
+        "cost_n_zones": r.alloc_n_zones, "cost_zones": r.alloc_top5,
     }
     p = {k: v for k, v in p.items() if v is not None}
 
@@ -121,4 +137,26 @@ for r in client.query(f"""
   SELECT status_class, COUNT(*) n, COUNTIF(lat IS NOT NULL) placed
   FROM `{DS}.in_planned_upgrades` GROUP BY 1 ORDER BY 2 DESC"""):
     print(f"    {r.status_class:14} {r.placed:>5,} placed of {r.n:>5,}")
+
+# ⭐ THE SECOND DENOMINATOR, and it is the one a siter actually wants. Operator ruling
+# 2026-08-21: already-built work is carried and defaults OFF, so a coverage figure that mixes it
+# in understates how well we can place the things that have not happened yet.
+f = list(client.query(f"""
+  SELECT COUNTIF(status_class IN ('proposed','approved','filed_plan')) fut,
+         COUNTIF(lat IS NOT NULL AND status_class IN ('proposed','approved','filed_plan')) fp,
+         COUNTIF(status_class = 'in_service') built,
+         COUNTIF(lat IS NOT NULL AND status_class = 'in_service') builtp
+  FROM `{DS}.in_planned_upgrades`"""))[0]
+print(f"\n  ⭐ STILL TO COME: {f.fp:,} of {f.fut:,} placed ({100 * f.fp / f.fut:.1f}%) — "
+      f"the figure the grid page must lead with")
+print(f"  ⚠ ALREADY BUILT: {f.builtp:,} of {f.built:,} placed — carried, and OFF by default")
+
+# ⛔ THE BORDER, RE-ASSERTED ON THE PAYLOAD ITSELF. The build asserts it on the table; this
+# asserts it on the file that actually ships, because those are two different artefacts and G43
+# exists because a payload once disagreed with its table.
+out_of_box = [ft for ft in feats if ft["geometry"]["type"] == "Point"
+              and not (37.7 <= ft["geometry"]["coordinates"][1] <= 41.8
+                       and -88.2 <= ft["geometry"]["coordinates"][0] <= -84.7)]
+assert not out_of_box, f"{len(out_of_box)} exported point(s) outside the Indiana box"
+print(f"  ⭐ 0 of {len(rows):,} exported points fall outside the Indiana box")
 print("PLANNED UPGRADES EXPORT COMPLETE")

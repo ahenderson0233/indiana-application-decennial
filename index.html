@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Indiana Siting Intelligence</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=3555f540">
+<link rel="stylesheet" href="style.css?v=695d947c">
 </head>
 <body>
 <header id="topbar">
@@ -151,13 +151,18 @@
              G130, operator 2026-08-20f: "place these upgrades or new developments on the map for
              where future capacity may exist" and "these should NOT display the same as the
              current grid assets".
-             ⛔ SUPERSEDES the old L-gridplan box, which drew 119 utility grid plans as SOLID
+             ⛔ SUPERSEDES the old L-gridplan box, which drew the utility grid plans as SOLID
              CIRCLES - the same primitive as real substations - and showed nothing from PJM RTEP
-             or MISO MTEP at all. This group covers all three sources, 700 placed items, drawn
-             violet / hollow / dashed so planned work never reads as built work.
+             or MISO MTEP at all. This group covers FOUR sources, drawn violet / hollow / dashed
+             so planned work never reads as built work.
+             ⚠ THE COUNT IN THE HINT BELOW IS THE ONE FIGURE HERE THAT CAN GO STALE. It said
+             "700 placed of 1,878" and G130's second pass moved it to 971 of 2,672 without
+             anything failing. The generated, always-live version is the coverage card on the
+             grid page; this hint is a label, and the grid page is the source of truth.
              ========================================================================== -->
         <label><input type="checkbox" id="L-planned"> <b>Planned grid investments</b>
-          <span class="hint">(700 placed of 1,878 &mdash; PJM RTEP, MISO MTEP, utility plans)</span></label>
+          <span class="hint">(971 placed of 2,672 &mdash; PJM RTEP, MISO MTEP, MISO DPP-2025,
+          utility plans)</span></label>
         <div style="margin:2px 0 6px 18px">
           <label class="chk"><input type="checkbox" id="P-proposed" checked> Proposed
             <span class="hint">(filed, not approved)</span></label>
@@ -441,7 +446,7 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
-<script src="common.js?v=ce6884a7"></script>
-<script src="app.js?v=0dd4e348"></script>
+<script src="common.js?v=af56f606"></script>
+<script src="app.js?v=9647bebb"></script>
 </body>
 </html>

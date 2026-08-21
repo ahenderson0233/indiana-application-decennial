@@ -938,6 +938,26 @@ function applyDensePolicy(root) {
        would have come back on any future edit that lengthened a caption. Structural, not
        length-based: inside a card carrying a stat, the caption always stays. */
     if (el.closest(".card") && el.closest(".card").querySelector(".bigstat")) continue;
+    /* ⛔ A HINT THAT IS THE WHOLE CONTENT OF A TABLE CELL IS A VALUE IN A COLUMN, NOT COMMENTARY,
+       AND THIS IS THE SECOND TIME LENGTH HAS BEEN THE WRONG TEST FOR A LABEL. The first was the
+       `.bigstat` caption above. Found again 2026-08-21 on the grid page: the planned-upgrade
+       method table has a "what it means" column rendered as `.hint`, and the policy hid THREE of
+       its seven rows - corridor_one_end, corridor_midpoint and municipality_centroid - purely
+       because those three sentences ran past 60 characters and happened to contain no disclosure
+       keyword. The other four stayed. A legend column that explains four ring sizes and silently
+       omits three is worse than no legend: the reader cannot tell that anything is missing.
+       ⚠ DELIBERATELY NARROW. This is not "never touch a table" - a `.hint` sitting BESIDE other
+       text in a cell is still an annotation and is still cut. It exempts only the case where the
+       hint IS the cell, which is the case where hiding it empties a column. */
+    /* ⚠ THE CELL IS USUALLY THE `.hint` ITSELF, NOT A WRAPPER INSIDE ONE. The first version of
+       this guard tested `el.parentElement`, which for `<td class="hint">…</td>` is the <tr> - so
+       it matched nothing and the three cells stayed hidden through a full re-stamp and reload.
+       ⛔ It looked like a caching problem and it was not; the guard was simply aimed one level
+       too high. Both shapes are handled now. */
+    if (el.tagName === "TD" || el.tagName === "TH") continue;
+    const cell = el.parentElement;
+    if (cell && (cell.tagName === "TD" || cell.tagName === "TH")
+        && (cell.textContent || "").trim() === t) continue;
     el.hidden = true;
     el.classList.add("dense-hidden");
     n++;
@@ -1075,3 +1095,89 @@ function renderPageHead(figureHtml) {
   }
 }
 document.addEventListener("DOMContentLoaded", () => renderPageHead());
+
+/* ================================================================================================
+   G138 - A CAPPED TABLE MUST SAY SO, AND MUST OFFER THE REST.
+
+   Operator, 2026-08-21: *"we are limited by a ceiling number of observations that we can show,
+   which limits the user's ability to see the full picture, and the user should be able to see ALL
+   buses (again, and other) within the tables that we provide. This frequently occurs throughout
+   our tables and needs to be addressed."*
+
+   ⛔ THE DEFECT IS THE SILENCE, NOT THE CEILING. Measured 2026-08-21, five tables truncated with a
+   bare `.slice()` and said nothing:
+       grid.html      PJM buses          first 120 of 546
+       grid.html      MISO POIs          first 120 of 300
+       grid.html      queue projects     first 120
+       screener.html  ranked sites       first 500
+       si.html        D11 rows           first 400
+   A reader who scrolls to the bottom of 120 buses and finds no more rows concludes there are 120
+   buses. That is the project's own standing rule - *no silent caps; log what was dropped* - being
+   broken on the surfaces the reader actually uses, which is the only place it matters.
+
+   ⭐ THE RULE: a cap is a rendering budget, never a claim about the data. So every capped table
+   states both numbers and carries a control that removes the cap. The cap still exists, because
+   painting 4,000 rows on first load is a slow page for a reader who wanted the top ten - but it
+   is now the reader's choice, and they can see what they are choosing.
+   ================================================================================================ */
+const CAP_SHOW_ALL = new Set();
+const CAP_REDRAW = new Map();
+
+/* register how to repaint a table when its cap is lifted */
+function capController(key, redraw) { CAP_REDRAW.set(key, redraw); }
+
+/* the rows to paint now, plus what was withheld */
+function capRows(key, rows, initial) {
+  const all = CAP_SHOW_ALL.has(key);
+  const shown = all ? rows : rows.slice(0, initial);
+  return { shown, total: rows.length, hidden: rows.length - shown.length, all };
+}
+
+/* the disclosure line. ⚠ Returns "" when nothing is withheld - a note saying "showing 12 of 12"
+   is noise, and noise is how a real disclosure stops being read. */
+function capNote(key, c, noun) {
+  if (!c.hidden) {
+    return c.all && c.total
+      ? `<div class="hint capnote">Showing all <b>${fmt(c.total)}</b> ${noun || "rows"}.</div>`
+      : "";
+  }
+  return `<div class="hint capnote">⚠ Showing the first <b>${fmt(c.shown.length)}</b> of
+    <b>${fmt(c.total)}</b> ${noun || "rows"} — <b>${fmt(c.hidden)}</b> are held and not drawn.
+    <button type="button" class="capbtn" data-capkey="${escHtml(key)}">Show all
+    ${fmt(c.total)}</button></div>`;
+}
+
+/* ⚠ ONE DELEGATED LISTENER, not one per table. These tables are re-rendered on every filter
+   change, so a listener bound to the button would be lost on the next repaint - which is exactly
+   how a control ends up drawn and inert (G105). */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-capkey]");
+  if (!b) return;
+  const key = b.getAttribute("data-capkey");
+  CAP_SHOW_ALL.add(key);
+  const f = CAP_REDRAW.get(key);
+  if (f) f();
+});
+
+/* ⭐ THE WHOLE PATTERN IN ONE CALL, so a capped table cannot be added without its disclosure.
+   Repaints in place: keeps the header row, replaces the body, and puts the note OUTSIDE the
+   horizontal scroll box - a disclosure the reader has to scroll sideways to find is not one. */
+function renderCappedTable(tableId, rows, initial, rowHtml, noun) {
+  const draw = () => {
+    const t = document.getElementById(tableId);
+    if (!t) return;
+    const c = capRows(tableId, rows, initial);
+    while (t.rows.length > 1) t.deleteRow(1);
+    t.insertAdjacentHTML("beforeend", c.shown.map(rowHtml).join(""));
+    let n = document.getElementById("cap-" + tableId);
+    if (!n) {
+      n = document.createElement("div");
+      n.id = "cap-" + tableId;
+      const host = t.closest(".scroll") || t;
+      host.parentNode.insertBefore(n, host.nextSibling);
+    }
+    n.innerHTML = capNote(tableId, c, noun);
+  };
+  capController(tableId, draw);
+  draw();
+}

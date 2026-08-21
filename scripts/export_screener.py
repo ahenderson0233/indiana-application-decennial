@@ -141,6 +141,15 @@ for r in client.query(f"""
          -- rebuild" reads as precision, and if that project is placed only to a town centroid its
          -- own ring is 5 miles. The page must show both or it is overstating what we know.
          pu_name, pu_src, pu_status, pu_isd, pu_cost_m, pu_mi, pu_unc_mi, pu_loc_method,
+
+         -- ⭐ G132: Marion owner identity and assessed value. ⚠ ONE COUNTY OF 92 - these are
+         -- absent on ~98.7% of rows, and that absence is the publisher's, not ours. They must
+         -- render as "not published for this county", never as a zero or a blank.
+         owner_name, owner_mail_city, owner_mail_state, owner_out_of_state,
+         assessed_total, assessed_per_acre, assessor_class_label,
+
+         -- ⭐ G133: DECLARED-intent signals, distinct from the inferred-distress set above.
+         intent_signals, intent_last_date, intent_who, intent_mw_given_up,
          has_signal, signals, signal_types, signal_events,
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
          events_3y, events_5y, events_10y, keying,

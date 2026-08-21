@@ -241,12 +241,42 @@ payload = {
       SELECT source, COUNT(*) AS projects,
              COUNTIF(lat IS NOT NULL) AS placed,
              COUNTIF(status_class IN ('proposed','approved','filed_plan')) AS still_to_come,
+             -- ⭐ THE SECOND DENOMINATOR (operator ruling 2026-08-21). Coverage over EVERYTHING
+             -- mixes in 1,248 already-built projects and understates how well we can place the
+             -- work that has not happened yet, which is the only work a siter is choosing between.
+             COUNTIF(lat IS NOT NULL AND status_class IN ('proposed','approved','filed_plan'))
+               AS placed_still_to_come,
              ROUND(SUM(cost_usd_m)) AS cost_usd_m
       FROM `{DS}.in_planned_upgrades` GROUP BY 1 ORDER BY 2 DESC"""),
     "planned_by_method": rows(f"""
       SELECT loc_method, ANY_VALUE(loc_basis) AS basis, COUNT(*) AS projects,
              ROUND(AVG(uncertainty_mi), 1) AS ring_mi
       FROM `{DS}.in_planned_upgrades` GROUP BY 1 ORDER BY 3 DESC"""),
+    # ⭐ G130 item 1-2: what the planned work will COST, and who bears it.
+    # ⛔ The MISO figure is INDIANA ONLY. The published DPP-2025 table spans 14 states and totals
+    # $29,522M / 56,043 MW; three of this project's own documents quoted that as the Indiana
+    # answer. Indiana is 21 projects. Operator ruling 2026-08-21: Indiana only, and the
+    # MISO-wide total is not carried anywhere on any surface.
+    "planned_cost": rows(f"""
+      SELECT 'MISO DPP-2025 interconnection (Indiana)' AS what,
+             COUNT(*) AS projects, ROUND(SUM(cost_usd_m)) AS cost_usd_m,
+             ROUND(SUM(mw_enabled)) AS mw,
+             ROUND(1000 * SUM(cost_usd_m) / NULLIF(SUM(mw_enabled), 0)) AS k_per_mw
+      FROM `{DS}.in_planned_upgrades` WHERE source = 'MISO DPP-2025'"""),
+    # ⚠ 26 UPGRADES, NOT 375 ROWS. in_pjm_rtep_cost_allocations holds 375 rows because it is a
+    # per-ZONE breakdown - 21 to 24 zones per upgrade. Reporting the row count as coverage would
+    # overstate it fourteenfold.
+    "planned_alloc": rows(f"""
+      SELECT COUNTIF(alloc_n_zones IS NOT NULL) AS upgrades_with_allocation,
+             COUNTIF(source = 'PJM RTEP') AS pjm_upgrades,
+             SUM(alloc_n_zones) AS zone_shares
+      FROM `{DS}.in_planned_upgrades`"""),
+    # ⛔ REFUSALS ARE PUBLISHED, NOT HIDDEN. A guard that silently drops a row is
+    # indistinguishable to a reader from data we never held.
+    "planned_refused": rows(f"""
+      SELECT placement_refused AS reason, COUNT(*) AS projects
+      FROM `{DS}.in_planned_upgrades`
+      WHERE placement_refused IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"""),
     "mtep": mtep,
     "costs": costs,
     "utilities": util,

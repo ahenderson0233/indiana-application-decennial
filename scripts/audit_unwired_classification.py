@@ -81,6 +81,18 @@ CLASSIFIED = {
         "in_pjm_qs_withdrawal_rungcheck", "in_bus_headroom_miso_ladder", "in_miso_poi_ladder",
         "in_pjm_bus_locations_v2",
     ]),
+    # ⭐ G150, 2026-08-21. in_si_warn_placed is the parcel-keyed result of reading the WARN filing
+    # PDFs; it is the JOIN that lifts D19_warn from 2 parcels to 51, and it reaches the reader
+    # through the SI signal set rather than as a layer of its own. Its inputs
+    # (in_si_warn_addresses) are already classified as a raw feed below.
+    # ⚠ It becomes wired the moment the SI pipeline consumes it - which is the remaining half of
+    # G150 and is deliberately NOT claimed here.
+    "pending_pipeline_join": ("built and correct, and not yet consumed by the pipeline it was "
+                              "built for. ⛔ Recorded as pending rather than as wired, because a "
+                              "table that exists is not a table that reaches a reader - and this "
+                              "project has closed four rows on exactly that confusion", [
+        "in_si_warn_placed",
+    ]),
     "raw_feed": ("a per-year or per-source input that a shipped table is built from. The built "
                  "table is what renders; the feed is kept so the build can be re-run and "
                  "audited", [

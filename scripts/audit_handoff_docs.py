@@ -123,23 +123,76 @@ r = one(f"""SELECT COUNT(*) n, COUNT(DISTINCT yr) years,
 check("structure fires after extending the years", r.n == 45607 and has(r.n),
       f"live {r.n:,} across {r.years} years, {r.si:,} SI-grade")
 
+# ⛔ THIS CHECK USED TO PASS A FOURTEEN-STATE FIGURE AS AN INDIANA ONE, and that is the most
+# instructive failure in this file. It measured
+#     SUM(total_dpp_2025_phase_1_network_upgrade_cost) FROM in_miso_dpp2025_ph1_project_costs
+# with no state filter, got $29,522M across 202 projects, found that number written in the
+# handoff and the prompt, and reported PASS. Every step was correct. The number was correct.
+# It was the wrong GEOGRAPHY, on a tool whose first standing rule is "Indiana only, clipped at
+# the border" - and because the audit re-measured the figure without re-measuring its SCOPE, it
+# certified the error three documents deep and kept certifying it.
+#
+# ⭐ THE LESSON GENERALISES: an audit that checks "is this number still true of the query I
+# wrote" cannot catch "the query I wrote is not the question the document is answering". So this
+# now asserts the Indiana slice AND asserts that the MISO-wide total does NOT appear anywhere,
+# because dropping it was an operator ruling (2026-08-21) and a ruling nothing enforces decays.
 r = one(f"""SELECT COUNT(*) projects,
-                   ROUND(SUM(total_dpp_2025_phase_1_network_upgrade_cost)/1e6) musd
-            FROM `{DS}.in_miso_dpp2025_ph1_project_costs`""")
-check("MISO upgrade cost total", has(int(r.musd)) and has(r.projects),
-      f"live ${int(r.musd):,}M across {r.projects} projects")
+                   ROUND(SUM(c.total_dpp_2025_phase_1_network_upgrade_cost)/1e6) musd,
+                   ROUND(SUM(c.nris_mw)) mw
+            FROM `{DS}.in_miso_dpp2025_ph1_project_costs` c
+            JOIN (SELECT DISTINCT projectnumber FROM `{DS}.in_queue_miso_extras`) q
+              ON q.projectnumber = c.project""")
+check("MISO upgrade cost, INDIANA ONLY", has(int(r.musd)) and has(r.projects),
+      f"live ${int(r.musd):,}M across {r.projects} Indiana projects, {int(r.mw):,} MW")
+
+wide = one(f"""SELECT ROUND(SUM(total_dpp_2025_phase_1_network_upgrade_cost)/1e6) musd
+               FROM `{DS}.in_miso_dpp2025_ph1_project_costs`""")
+_wide_txt = f"{int(wide.musd):,}"
+# ⚠ THE FIGURE MAY APPEAR - IT MAY NOT APPEAR UNLABELLED. The first version of this check banned
+# the number outright, which is too blunt: the documents SHOULD record what the error was, and the
+# G130 ledger row and this prompt both explain it at length. Banning the string would have forced
+# the correction to be deleted in order to pass, which is how a project loses the memory of its own
+# mistakes. So every occurrence must sit within 240 characters of something that marks it as NOT
+# Indiana's - the same shape as the "only as superseded" sweep further down.
+# ⚠ CASE-INSENSITIVE, and the first version was not - it listed "fourteen-state" and the document
+# says "**FOURTEEN-STATE**", so a correctly-labelled mention failed. A marker list that depends on
+# capitalisation is a spelling test wearing a semantics test's clothes.
+_MARKERS = ("14-state", "fourteen-state", "fourteen states", "14 states",
+            "not indiana", "miso-wide", "miso wide", "whole miso", "not carried",
+            "kept as the record")
+_bare = []
+for _d, _txt in text.items():
+    for _form in (f"{int(wide.musd):,}", str(int(wide.musd))):
+        _i = _txt.find(_form)
+        while _i != -1:
+            _seg = _txt[max(0, _i - 240):_i + 240]
+            _lo = _seg.lower()
+            if not any(_m in _lo for _m in _MARKERS):
+                _bare.append(f"{_d} @ {_i}")
+            _i = _txt.find(_form, _i + 1)
+check("the 14-state DPP total is never quoted as an Indiana figure",
+      not _bare,
+      f"MISO-wide is ${_wide_txt}M; every mention must be marked as not-Indiana. "
+      f"{'all mentions are labelled - correct' if not _bare else 'UNLABELLED at: ' + str(_bare)}")
 
 # ---- G115: the registry contract ----
-nocmd = one(f"""
-  SELECT COUNT(DISTINCT t.table_id) n FROM `{DS}.__TABLES__` t
+# ⚠ NOT asserted at zero. A rung that registers while the harvest is running lands here for the
+#   minutes before the next backfill, so a hard zero would fail for a correct reason.
+# ⛔ AND IT WAS ASSERTED AT `<= 4`, WHICH IS THE PINNED-LITERAL TRAP THIS FILE ALREADY CARRIES A
+#   WARNING ABOUT. The ladder advanced to wd_1500 on 2026-08-21 and the count became 5, so a
+#   correct harvest failed the audit. The tolerance is now STRUCTURAL: a QueueScope rung may be
+#   uncommanded while the harvest is mid-flight; anything that is NOT a rung may not.
+nocmd_rows = [r.table_id for r in c.query(f"""
+  SELECT t.table_id FROM `{DS}.__TABLES__` t
   LEFT JOIN (SELECT DISTINCT table_name FROM `{DS}._registry`
              WHERE STRPOS(UPPER(IFNULL(method,'')||' '||IFNULL(notes,'')),
                           'RE-SCRAPE COMMAND') > 0) g ON g.table_name = t.table_id
-  WHERE g.table_name IS NULL AND NOT STARTS_WITH(t.table_id, '_')""").n
-# ⚠ NOT asserted at zero. A rung that registers while the harvest is running lands here for the
-#   minutes before the next backfill, so a hard zero would fail for a correct reason.
-check("registry rows with no re-scrape command", nocmd <= 4,
-      f"live {nocmd} (the running ladder registers rungs faster than the backfill runs)")
+  WHERE g.table_name IS NULL AND NOT STARTS_WITH(t.table_id, '_')""")]
+rungs = [x for x in nocmd_rows if x.startswith("in_pjm_qs_c23_")]
+others = [x for x in nocmd_rows if not x.startswith("in_pjm_qs_c23_")]
+check("registry rows with no re-scrape command", not others,
+      f"live {len(nocmd_rows)} ({len(rungs)} are live ladder rungs, which is expected while the "
+      f"harvest runs; {len(others)} are not: {others or 'none'})")
 
 unreg = [r.table_id for r in c.query(f"""
   SELECT t.table_id FROM `{DS}.__TABLES__` t

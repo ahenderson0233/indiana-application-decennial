@@ -233,6 +233,28 @@ SELECT
   pu.pu_name, pu.pu_src, pu.pu_status, pu.pu_isd, pu.pu_cost_m, pu.pu_mi, pu.pu_unc_mi,
   pu.pu_loc_method,
 
+  -- ⭐ G132, operator 2026-08-21: *"Since we don't have the owner name for the parcel joins, we
+  -- need to use some other metric (e.g., assessed value…). As for assessed value, are we able to
+  -- determine this based on the data that we currently hold, or is this gated behind a paid
+  -- source?"* ⛔ BOTH, and three documents only said the second half. Statewide it IS gated - the
+  -- DLGF purchase - but Marion County publishes owner name, owner MAILING address and assessed
+  -- value, and we already held all of it in in_marion_parcel_crosswalk.
+  -- ⚠ ONE COUNTY OF 92, ~1.3% of candidates. These columns are NULL everywhere else and that is
+  -- a fact about the publisher, not a gap in the join - so they render as absent, never as zero.
+  mv.owner_name, mv.owner_mail_city, mv.owner_mail_state, mv.owner_out_of_state,
+  mv.assessed_total, mv.assessed_land, mv.assessed_improvement, mv.assessed_per_acre,
+  mv.assessor_class_label,
+
+  -- ⭐ G133, operator 2026-08-21: federal surplus and the withdrawn queue as SI SIGNALS rather
+  -- than only as map layers. ⛔ A SEPARATE FAMILY, NOT MERGED INTO has_signal. Every existing
+  -- SI code INFERS willingness from distress; these two REVEAL it - a federal owner recording an
+  -- asset as excess, or an owner who already consented to host energy infrastructure. Merging
+  -- them would move the 23,766 flagged count the checkpoint asserts and would put an inference
+  -- and a declaration under one number.
+  -- ⭐ Measured: 174 parcels, and 167 of them carry NO distress signal - leads the existing set
+  -- could not see at all.
+  it.intent_signals, it.intent_last_date, it.intent_who, it.intent_mw_given_up,
+
   -- ⛔ G125 SECOND FINDING, AND IT CONTRADICTS THE ROW AS WRITTEN. G125 says "the parcel payload
   -- ships lat/lon on every row" and the popup merely fails to print it. Measured 2026-08-20d:
   -- `lat` is populated on 2,284,133 of 3,553,194 in_sites rows, so only 40.3% of CANDIDATES carry
@@ -298,6 +320,20 @@ LEFT JOIN (
    AND ST_DWITHIN(c.parcel_geog, ST_GEOGPOINT(p.lon, p.lat), 40000)
   GROUP BY 1, 2
 ) pu USING (parcel_source, parcel_key)
+-- ⭐ G132: Marion owner identity and assessed value. One row per parcel_key by construction
+-- (asserted in its own build), so this cannot fan out the candidate table.
+LEFT JOIN `{DS}.in_marion_owner_value`  mv USING (parcel_source, parcel_key)
+-- ⭐ G133: declared-intent signals, COLLAPSED TO ONE ROW PER PARCEL here. in_si_intent_signals is
+-- one row per parcel PER SIGNAL, so joining it raw would duplicate any parcel carrying both -
+-- exactly the fan-out the D85 assertion below exists to catch.
+LEFT JOIN (
+  SELECT parcel_source, parcel_key,
+         STRING_AGG(signal, ',' ORDER BY signal)              AS intent_signals,
+         MAX(last_event_date)                                 AS intent_last_date,
+         STRING_AGG(DISTINCT who, '; ' LIMIT 2)               AS intent_who,
+         MAX(mw_given_up)                                     AS intent_mw_given_up
+  FROM `{DS}.in_si_intent_signals` GROUP BY 1, 2
+) it USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2`   f  USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)

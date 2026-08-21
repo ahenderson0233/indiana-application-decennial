@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=3555f540">
+<link rel="stylesheet" href="style.css?v=695d947c">
 </head>
 <body>
 <header id="topbar">
@@ -167,6 +167,19 @@
           <b>uncertainty</b>, because a site 2 mi from a project we can only place to a town
           centroid is not 2 mi from anything we can point at. ⛔ Already-built and cancelled work
           is excluded.</div>
+        <!-- G132, operator 2026-08-21: "Since we don't have the owner name for the parcel joins,
+             we need to use some other metric (e.g., assessed value…)". A DISPLAY toggle like the
+             one above it, so it carries no GATE/PREF badge - it changes what a row tells you,
+             never which rows you get. -->
+        <label><input type="checkbox" id="s-showowner"> Show <b>owner and assessed value</b>
+          <span class="hint">(Marion County only &mdash; 6,965 of 7,097 of its candidates)</span></label>
+        <div class="hint">⛔ <b>Statewide owner name and assessed value are not something we
+          hold</b> &mdash; they are behind the DLGF Gateway purchase, which is also what blocks the
+          zoning and appraised-value filters. ⭐ <b>Marion County publishes all of it</b> and we
+          already had it: owner name, the owner's <b>mailing</b> address (an out-of-state mailing
+          address is an absentee signal in its own right) and the assessor's total, land and
+          improvement value. Every other county reads <i>not published for this county</i> rather
+          than blank.</div>
         <label><input type="checkbox" id="s-lineon"> Only sites with a line <b>running across the parcel</b>
           <span class="hint">(41,986 of them &mdash; no greenfield line to build)</span></label>
         <div class="hint">A line is the one asset that can run THROUGH a parcel rather than near it,
@@ -339,7 +352,7 @@
   </main>
 </div>
 
-<script src="common.js?v=ce6884a7"></script>
+<script src="common.js?v=af56f606"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -832,6 +845,71 @@ function siteCoords(s) {
            short: `${la.toFixed(5)}, ${lo.toFixed(5)}`,
            derived: !hasPub || s.coord_basis === "parcel_interior_point" };
 }
+/* ⭐ G133: a DECLARED intention to part with the land, which is a different claim from distress.
+   Operator, 2026-08-21: *"Incorporate federal surplus properties and withdrawn interconnection
+   queues directly into the SI signals throughout the application."*
+   ⛔ IT RENDERS BESIDE THE DISTRESS SIGNALS AND IS LABELLED APART FROM THEM. Every D-code in the
+   owner-signal column INFERS willingness from trouble; these two REVEAL it — a federal owner that
+   has recorded an asset as excess, or an owner who already signed an interconnection agreement on
+   this land. Measured: 174 parcels, and 167 carry NO distress signal at all, so folding them into
+   the same badge would have hidden the more interesting half. */
+const INTENT_PLAIN = {
+  I1_declared_surplus: "owner has declared it surplus",
+  I2_withdrawn_interconnection: "consented to host energy, project withdrawn",
+};
+function intentCell(s) {
+  if (!s.intent_signals) return "";
+  const names = String(s.intent_signals).split(",")
+    .map((k) => INTENT_PLAIN[k] || k).join(" · ");
+  const mw = s.intent_mw_given_up
+    ? ` · up to <b>${fmt(Math.round(s.intent_mw_given_up))} MW</b> given up` : "";
+  /* ⚠ the date is often absent - a federal asset can be marked excess with no date recorded -
+     and that renders as unknown rather than as today. */
+  const when = s.intent_last_date ? ` · ${String(s.intent_last_date).slice(0, 10)}`
+                                  : " · date not published";
+  return `<div class="sub2"><span class="bdg bdg-st" title="A stated intention, not an inference
+    from distress">DECLARED</span> ${escHtml(names)}${mw}${when}</div>`;
+}
+/* ⭐ G132: who owns it, and what the assessor says it is worth.
+   Operator, 2026-08-21: *"Since we don't have the owner name for the parcel joins, we need to use
+   some other metric (e.g., assessed value…). As for assessed value, are we able to determine this
+   based on the data that we currently hold, or is this gated behind a paid source?"*
+   ⛔ THE ANSWER IS BOTH. Statewide it is gated - the DLGF Gateway purchase, which also blocks G70,
+   G71, G104 and G90(b). But Marion County publishes owner NAME, owner MAILING address and assessed
+   value, and `in_marion_parcel_crosswalk` has held all three all along: 346,515 parcels, owner name
+   on 100%, mailing address on 99.9%, assessed value above zero on 339,832.
+   ⚠ AND THE ABSENCE ELSEWHERE IS THE PUBLISHER'S, NOT A FAILED JOIN, so it says which. A blank
+   cell here would read as "this parcel has no owner". */
+function ownerValueCell(s) {
+  if (!s.owner_name && s.assessed_total == null) {
+    return '<span class="cannot">not published for this county</span>'
+         + '<div class="sub2">only Marion publishes owner and value to us</div>';
+  }
+  const bits = [];
+  if (s.owner_name) bits.push(`<div>${escHtml(String(s.owner_name).slice(0, 34))}</div>`);
+  /* ⭐ the out-of-state owner IS the signal, not a formatting detail - an owner who does not live
+     on the parcel is the absentee case D9 infers, here stated by the assessor. */
+  if (s.owner_out_of_state) {
+    bits.push(`<div class="sub2"><b>owner out of state</b>${
+      s.owner_mail_state ? ` (${escHtml(s.owner_mail_state)})` : ""}</div>`);
+  } else if (s.owner_mail_city) {
+    bits.push(`<div class="sub2">mails to ${escHtml(String(s.owner_mail_city).slice(0, 22))}</div>`);
+  }
+  if (s.assessed_total != null) {
+    /* ⚠ PER ACRE IS THE COMPARABLE FIGURE. A $400k total says nothing about a 600-acre field
+       against a half-acre lot; per-acre is what makes two rows comparable, which is the whole
+       reason this column earns its place.
+       ⭐ AND A ZERO HERE IS A STATED ZERO, NOT A GAP. City parks, flood-control land and other
+       tax-exempt public parcels are genuinely assessed at $0, and this is one of the few places
+       the project's "unpublished is NULL, never 0" rule points the other way: the 0 is the fact,
+       so it is labelled rather than hidden or shown bare. */
+    bits.push(s.assessed_total > 0
+      ? `<div class="sub2">assessed <b>$${fmt(Math.round(s.assessed_total))}</b>${
+          s.assessed_per_acre ? ` · $${fmt(Math.round(s.assessed_per_acre))}/acre` : ""}</div>`
+      : `<div class="sub2">assessed <b>$0</b> — exempt or not valued</div>`);
+  }
+  return bits.join("");
+}
 /* ⭐ G130: the nearest FUTURE planned upgrade for one site.
    ⛔ THE DISTANCE NEVER SHIPS ALONE. "2.3 mi" reads as a surveyed fact; if that project is placed
    only to a town centroid its own ring is 5 miles, and the honest statement is "somewhere within
@@ -1189,7 +1267,10 @@ function render() {
   const val = (s) => k === "mw" ? capacityMW(s) : k === "acres" ? acresOf(s).acres
     : k === "grid" ? (gridOf(s)?.mw ?? -1) : k === "gridmi" ? (gridOf(s)?.mi ?? 9e9)
     : k === "county" ? s.county_name : k === "sig" ? (s.signal_events || 0)
-    : k === "planned" ? (s.pu_mi != null ? Number(s.pu_mi) : 9e9) : 0;
+    : k === "planned" ? (s.pu_mi != null ? Number(s.pu_mi) : 9e9)
+    /* ⚠ absent value sorts LAST in both directions rather than as zero - a parcel whose
+       county publishes nothing is not a cheap parcel. */
+    : k === "ownerval" ? (s.assessed_per_acre != null ? Number(s.assessed_per_acre) : -1) : 0;
   VIEW.sort((a, b) => { const x = val(a), y = val(b);
     return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir; });
 
@@ -1214,9 +1295,15 @@ function render() {
   /* ⭐ G130: the planned-upgrade column is OPTIONAL and the count is DERIVED, so adding it here
      cannot desynchronise the detail row's colspan - see SCREENER_NCOL above. */
   const showPlanned = $("s-showplanned") ? $("s-showplanned").checked : false;
+  /* ⭐ G132, operator 2026-08-21: an alternative to the owner name we do not hold statewide.
+     Marion County publishes owner identity, owner MAILING address and assessed value, and we
+     already held all three. ⚠ It is ONE county of 92 - about 1.3% of candidates - so the column
+     is optional and every other row says so rather than showing a blank. */
+  const showOwner = $("s-showowner") ? $("s-showowner").checked : false;
   const head = [["county", "County"], ["acres", "Acres"], ["mw", "Fits (MW)"],
     ["grid", dirLabel], ["gridmi", "Distance"], ["sig", "Owner signal"], ["loc", "Location"]];
   if (showPlanned) head.splice(5, 0, ["planned", "Planned upgrade"]);
+  if (showOwner) head.splice(showPlanned ? 6 : 5, 0, ["ownerval", "Owner &amp; value"]);
   SCREENER_NCOL = head.length + 1;   // + the expander
   const NCOL = SCREENER_NCOL;
   const badge = (st) => st.label === "standing"
@@ -1225,7 +1312,12 @@ function render() {
       ? `<span class="bdg bdg-un" title="${st.why}">date unknown</span> `
     : st.label === "stale"
       ? `<span class="bdg bdg-ol" title="${st.why}">older than your cutoff</span> ` : "";
-  const rows = VIEW.slice(0, 500).map((s, i) => {
+  /* ⛔ G138: THIS WAS `VIEW.slice(0, 500)` WITH NOTHING SAID. A reader who scrolled to row 500 of
+     a 4,000-row result and found no more concluded there were 500. The cap survives - painting
+     4,000 expandable rows on every keystroke is a slow page - but it is now disclosed and the
+     reader can lift it. See capRows/capNote in common.js. */
+  const cap = capRows("screener-rows", VIEW, 500);
+  const rows = cap.shown.map((s, i) => {
     const g = gridOf(s), a = acresOf(s), sst = signalState(s);
     /* ⭐ G129: a row admitted only by the 10% tolerance is MARKED. Mixing a near miss into the
        exact matches without saying so would swap one silent lie for another - the reader has to
@@ -1245,9 +1337,11 @@ function render() {
         : '<span class="cannot">not measured here</span>'}</td>
       <td class="num">${g && g.mi != null ? g.mi.toFixed(1) + " mi" : "&mdash;"}</td>
       ${showPlanned ? `<td>${plannedCell(s)}</td>` : ""}
+      ${showOwner ? `<td>${ownerValueCell(s)}</td>` : ""}
       <td>${s.has_signal ? `${signalsPlain(s.signals)}<div class="sub2">${badge(sst)}${
         plural(s.signal_events || 0, "record")}${s.last_event ? ` · latest ${s.last_event}`
-        : " · date unknown"}</div>` : '<span class="hint">none</span>'}</td>
+        : " · date unknown"}</div>` : (s.intent_signals ? "" : '<span class="hint">none</span>')}${
+        intentCell(s)}</td>
       <td>${siteLocationCell(s)}</td>
     </tr>${siteDetail(s)}`;
   }).join("");
@@ -1297,8 +1391,13 @@ function render() {
       <table class="rtable">${mineRows}</table></div>` : ""}
     <div class="card">
       <h2>Matching sites</h2>
-      ${VIEW.length > 500 ? `<p class="hint">Showing the first 500 of ${fmt(VIEW.length)} matches,
-        sorted by the column you picked. Download the CSV for all of them.</p>` : ""}
+      ${/* ⭐ G138. ⚠ THIS ONE WAS ALREADY DISCLOSED, unlike the four capped tables on grid.html and
+            si.html - it said "showing the first 500 of N, download the CSV for all of them". So the
+            defect here was narrower and still real: the reader was told the truth and then sent to
+            a spreadsheet to act on it. Operator, 2026-08-21: *"the user should be able to see ALL
+            buses (again, and other) within the tables that we provide."* The note now carries a
+            control that lifts the cap in place, and the CSV stays as the other route. */
+        capNote("screener-rows", cap, "matching sites")}
       ${NEAR.length ? `<p class="hint"><span class="nm-tag">NEAR MISS</span> <b>${fmt(NEAR.length)}</b>
         of these clear every <span class="fmode fmode-gate">GATE</span> and miss one
         <span class="fmode fmode-pref">PREF</span> by 10% or less (G129). They are marked in the
@@ -1529,6 +1628,10 @@ function toXLSX() {
 
   renderCoverage();
   if ($("s-showplanned")) $("s-showplanned").addEventListener("change", render);
+  if ($("s-showowner")) $("s-showowner").addEventListener("change", render);
+  /* ⭐ G138: the Show-all button lives inside HTML that render() replaces, so it cannot own
+     its own listener - common.js delegates the click and calls back through here. */
+  capController("screener-rows", render);
   paintFilterModes(); render();
   if (scrRestored) {
     const el = document.createElement("div");

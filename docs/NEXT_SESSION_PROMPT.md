@@ -50,10 +50,17 @@ python scripts/audit_handoff_docs.py
 python scripts/audit_handoff_consistency.py
 ```
 
-**Expect 3 checkpoint failures and expect them to be correct:** the **wiring census** (⭐ the END
-STATE, not a gap — every unreached object carries a measured reason and the worklist is 0; the
-durable check is `0 unclassified`), the **honesty audit's 1 known failure**, and **unregistered
-ladder rungs** the running harvest created since the last registration pass.
+**Expect 4 checkpoint failures and expect all four to be correct:** the **wiring census** (⭐ the
+END STATE, not a gap — every unreached object carries a measured reason and the worklist is 0; the
+durable check is `0 unclassified`), the **honesty audit's 1 known failure**, **unregistered ladder
+rungs** the running harvest created since the last registration pass, and ⭐ **`signal display`, a
+NEW audit that is red on purpose** — 6 SI signals carry no `corpus_rows`, so the loss between what
+we hold and what we place cannot be computed for them. That is G150's remaining work and the
+checkpoint is supposed to keep shouting about it until it is done.
+
+⛔ **DO NOT SILENCE THE SIXTH.** `in_si_signal_coverage` already held these numbers for weeks and
+nothing ever failed on them, which is exactly why the operator reported the problem twice and saw
+no change. A figure in a table that no check reads is a note, not a control.
 
 ⭐ **The checkpoint runs ELEVEN audits.** The newest are `spelling`, `gate/preference
 consistency` and `handoff consistency` — the last one checks that the ledger, this prompt and the
@@ -76,47 +83,74 @@ now* — §3 of the current handoff lists the figures they get wrong.
 
 ---
 
-## ⛔ START HERE — FINISH G130. THE GRID UPGRADES ARE NOT DONE.
+## ⛔ START HERE — THE SI SIGNALS ARE NOT SHOWING WHAT WE HOLD (G150)
 
-**Operator, 2026-08-21:** *"if you didn't FULLY complete the grid upgrades, finishing that should be
-our top priority in the next session, and should be at the top of the backlog."*
+**Operator, 2026-08-21:** *"Many of our SI signals still aren't representative of what we actually
+hold… we should really extensively audit whether or not we are displaying all of the sites that we
+have in BQ… this issue has been partially addressed in the past and I have seen no visible
+changes."* Then, after the WARN work: *"we have the wrong grain on MANY of the SI signals, and we
+should target those next."*
 
-⛔ **G130 was marked ✅ DONE and that was an over-claim**, caught by probing the artefact during the
-handoff audit. It is the **fourth** row this project has closed while still carrying live work
-(after G53, G90, G96). It is now 🟡 PARTIAL and it is the first job.
+⭐ **G130 IS CLOSED** — planned upgrades shipped, verified in a browser, and the four documentation
+errors it exposed are corrected. Do not reopen it.
 
-⭐ **What already works — do not rebuild it:** `in_planned_upgrades` unifies PJM RTEP, MISO MTEP and
-the IURC utility grid plans into **1,878 projects, 700 placed (37.3%)**, each with an uncertainty
-ring keyed on how well the LOCATION is known; 81 A-to-B rebuilds draw as corridors; the map layer is
-violet / hollow / dashed so planned work never reads as existing steel; the grid page has a
-generated coverage card; the screener carries the nearest future upgrade for **513,409 of 531,325
-sites**. Verified live in a browser.
+### What was done on G150, and what it proves about the rest
 
-**What is left, in the order to do it:**
+⭐ **WARN went from 2 placed parcels to 51.** `in_si_warn_normalised` holds **1,220** Indiana
+notices and **carries no address column at all** — so the signal was never *placeable*, not
+"filtered down". The address is in the filing PDF. `extract_warn_addresses.py` reads them,
+`build_warn_placement.py` joins them to parcels.
 
-| # | do this | why |
-|---|---|---|
-| 1 | fold in **`in_pjm_rtep_cost_allocations`** (375 rows) | joins cleanly on `upgrade_id` — the cheapest win, and it is cost attribution we already hold |
-| 2 | fold in **`in_miso_dpp2025_ph1_project_costs`** (202 rows) | **$29,522M across 56,043 MW, ~$527k per MW** — the best answer we hold to *what will interconnection cost*, and it reaches no surface. Needs a project→POI key |
-| 3 | fold in **`in_rto_expansion`'s 774 MISO rows** | ⚠ a DENOMINATOR and COST gap, not new placements — those rows carry no endpoint. Including them honestly moves coverage from 700/1,878 to about **700/2,652**, and that is the truthful number |
-| 4 | ⭐ **clip TIGER PLACE for Indiana** | `municipality_centroid` currently resolves against the 406 towns that happen to host a substation. A real place gazetteer makes every incorporated place matchable **and** gives a polygon to size the ring from instead of a flat 5 miles. `scripts/load_tiger_all_roads.py` is the template — 92 counties, 0 blocked, 82 seconds |
-| 5 | the **518 unresolved RTEP location strings** | `TWIN BRANCH`, `EAST ELKHART`, `MAGLEY`, `BLUFF POINT` are real Indiana stations the gazetteer lacks under those exact strings; plus spelling variants (`RANDOLF`/`RANDOLPH`) and a comma form (`SOUTH BEND, TWIN BRANCH`) the splitter does not handle. ⛔ Refuse below a confidence threshold |
-| 6 | **`county_centroid` fires 0 times** | wired and unfed — (4) or a county field from the filings feeds it |
-| 7 | **499 of 618 utility grid plans unplaced** | 297 are rows the workpaper parser cannot read (that half is **G15**); 199 name a station the gazetteer does not hold (**G62**'s ceiling) |
+⛔ **AND THE METHOD IS THE POINT, because the operator had to correct me four times to get it:**
+1. *"the addresses are seen in the actual filings"* — there is a source we were not reading.
+2. *"the two addresses in the header are NOT the site location"* — the DWD address and the local
+   **chief elected official** are in nearly every letter, and the second is in the RIGHT TOWN.
+3. *"each WARN notice is published differently… Some may NOT even contain the address of the site"*
+   — Block, Inc. files "Remote, Indiana 46032" and has no premises at all.
+4. ⭐ *"you should probably manually explore a large sample of these PDFs before you write a
+   one-size-fits-all code"* — **this is the instruction that mattered.** Reading 34 filings killed
+   the first design: multi-site notices are common (Franciscan lists four hospitals, Head Start
+   seven centres), rural addresses have no street suffix (`1501 County Road East 200 North`), and
+   the facility phrase varies per FILER, not per county.
 
-⚠ **Four of my own defects were found by measurement while building this**, which is the reason to
-distrust the first number it produces: a **unit error** (PJM publishes `cost_estimate` already in
-$M; dividing by 1e6 made a fully populated column read "not published"), a **date error** (PJM ships
-`M/D/YYYY`, MISO ships ISO, in one column), a corridor midpoint averaged from unmatched name
-fragments, and a build whose summary contradicted its own export.
+⚠ **Then measuring my own misses one at a time found MY normaliser was the bottleneck** — I had
+folded three street suffixes and no directionals, so `Bluffton Road` never met `BLUFFTON RD`.
+Fixing that took placement 21 → 37 → **51**.
+
+### ⭐ DO THE SAME THING FOR THE OTHER SIGNALS — THAT IS THE JOB
+
+`python scripts/audit_signal_display.py` is new, is in the checkpoint, and **fails on 6 signals**:
+
+| what it says | why it matters |
+|---|---|
+| **6 signals carry NO `corpus_rows` at all** — D4_tax_delinquency, D5_unsafe_building, D5_vacant_board_order, D5_abandoned_building, D21_demolition_order, D22_environmental_violation | the loss between held and placed **cannot even be computed** for them. Fix the coverage build first, then measure |
+| `D19_warn` still reads 2 | `in_si_signal_coverage` has not been rebuilt since the placement landed — rebuild it and it should read 51 |
+| `D12_code_violation` 747,211 → 23,145 | ⭐ **CORRECT AND DELIBERATE.** Operator: *"we filtered down for C&I only, and require 3+ violations."* ⚠ But the artefact only confirms HALF: `excluded_residential` (16,295) and `excluded_low_severity` (4,741) are enforced; the **3+ minimum is NOT** — the admitted set runs `min_events = 1`. Resolve which is true |
+
+⛔ **SELECTIVITY IS NOT THE DEFECT — SILENCE IS.** Operator: *"We filter down many of the SI
+signals, and this should be known and understood throughout."* A signal that admits 2,109 of
+747,211 is working as designed the moment somebody can say why. The audit only fails on rows where
+nobody wrote the reason down.
+
+⚠ **`in_si_warn_placed` is built and NOT yet consumed by the SI pipeline** — it is classified
+`pending_pipeline_join`, deliberately, because a table that exists is not a table that reaches a
+reader. Wiring it is the first concrete task.
+
+⭐ **THE OPERATOR HAS APPROVED A READ-ONLY RESCRAPE REHEARSAL** (G140): *"Yes, it is fine to read
+only first."* ⛔ Do not execute writes — 3 loaders are `append_only` and 2 read their own output,
+so a naive re-run double-counts. Rehearse, report per loader, then ask.
 
 ---
 
-## THE BACKLOG — 100 DONE · 17 PARTIAL · 8 OPEN
+## THE BACKLOG — 101 DONE · 16 PARTIAL · 29 OPEN
+
+⚠ **OPEN JUMPED 8 → 29 AND THAT IS NOT A REGRESSION.** The operator opened **21 new rows** on
+2026-08-21 in four batches — G131–G151. Nothing reopened; the surface of the work grew.
 
 **Eight rows closed last session** — G53, G122, G123, G124, G125, G127, G128, G129 — every one
 re-verified against the artefact on 2026-08-21. Two advanced with their question answered: G126 (the
-bus gazetteer ceiling) and G130 (above). ⭐ **OPEN halved, 16 → 8.**
+bus gazetteer ceiling). ⭐ **G130 then CLOSED on 2026-08-21** — planned upgrades shipped and verified.
+⭐ **G132, G133, G134 and G138 also closed on 2026-08-21**, and G150 advanced (WARN placement 2 → 51).
 
 ### AFTER G130, in priority order
 
