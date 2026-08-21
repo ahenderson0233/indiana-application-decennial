@@ -25,7 +25,8 @@ Then read, in this order — and no further than this, because it is enough:
 | 1 | `docs/BACKLOG.md` | the ledger. The block at the top is **generated**; everything below is the plan, the operator rulings, and the rules earned by getting things wrong |
 | 2 | `docs/TABLE_INVENTORY.md` | **generated.** All ~269 objects and, per object, whether it carries OWNER data, a real DATE, a STATUS vocabulary, coordinates or a parcel key |
 | 2b | **`docs/FEATURE_INVENTORY.md`** | ⭐ **EVERY feature, what it does, how it works, and which BigQuery table it comes from.** The fastest way to get oriented |
-| 3 | ⭐ **`docs/HANDOFF_2026-08-20d.md`** | ⭐ **THE CURRENT ONE.** The operator's G122-G129 priority batch: roadways excluded, the prose cut, the rescrape ledger, an address everywhere, 87 more buses, gate-vs-preference. ⚠ Its §2b lists NINE parcel figures that every earlier document gets wrong |
+| 3 | ⭐ **`docs/HANDOFF_2026-08-21.md`** | ⭐ **THE CURRENT ONE.** §1 is the unfinished grid-upgrade work (G130, the next session's first job); §3 lists every parcel figure that moved; §4 the instrument failures |
+| 3z | `docs/HANDOFF_2026-08-20d.md` | **HISTORY.** The G122-G129 priority batch, written before G130 existed. ⚠ It used to carry the current-handoff label as well; two documents claiming that at once is the two-copies defect this project keeps hitting. Superseded 2026-08-21. |
 | 3a | ⭐ **`docs/COMPARABLE_TOOLS.md`** | ⭐ **the plan for what this product should LOOK like**, and §3 names the ONE question each page answers |
 | 3b | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** - which loaders re-run, how often, safely, and what each clip drops |
 | 3c | `docs/HANDOFF_2026-08-20b.md` | the batch-the-backlog session. ⚠ **HISTORY for figures**, still right about traps |

@@ -141,10 +141,19 @@ verdict("G8", "plain language everywhere (no codenames in the UI)",
 
 # ---------------------------------------------------------------- G53: withdrawn queue as a signal
 wq = any("withdrawn" in p.lower() and ("filter" in p.lower() or "s-" in p) for p in (SCR,))
+# ⛔ THIS PROBE WAS HARDCODED TO "OPEN" AND MEASURED NOTHING. It printed a mention count next to a
+# verdict it had already decided, so when the withdrawn controls actually shipped on 2026-08-20d
+# it went on reporting OPEN - a verdict that cannot change is not a probe, it is a memory, and
+# this file already carries that exact warning about the hardcoded acceptance PASS. The whole
+# point of audit_backlog_truth.py is to read the ARTEFACT rather than the ledger.
+_g53_ctl = [c for c in ("s-wdonly", "s-wdsince", "s-wdmw") if f'id="{c}"' in SCR]
+_g53_fld = [f for f in ("wd_requests", "wd_last_date", "wd_max_mw") if f in SCR]
 verdict("G53", "withdrawn interconnection request as a seller signal",
-        "OPEN",
-        f"no withdrawn-queue filter or field on the screener (mentions: "
-        f"{SCR.lower().count('withdrawn')}). Needs an address from late-stage filings first.")
+        "DONE" if len(_g53_ctl) == 3 and _g53_fld else
+        ("PARTIAL" if _g53_ctl or _g53_fld else "OPEN"),
+        f"screener carries {len(_g53_ctl)}/3 withdrawn controls ({', '.join(_g53_ctl) or 'none'}) "
+        f"and {len(_g53_fld)}/3 payload fields ({', '.join(_g53_fld) or 'none'}); "
+        f"'withdrawn' appears {SCR.lower().count('withdrawn')}x in screener.html")
 
 # ---------------------------------------------------------------- BigQuery probes
 print("\n  -- warehouse probes --")
