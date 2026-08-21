@@ -160,7 +160,7 @@ which `source_block` produced the parcels — do not read the block names.
 
 ---
 
-## THE BACKLOG — 101 DONE · 16 PARTIAL · 29 OPEN
+## THE BACKLOG — 102 DONE · 16 PARTIAL · 28 OPEN
 
 ⚠ **OPEN JUMPED 8 → 29 AND THAT IS NOT A REGRESSION.** The operator opened **21 new rows** on
 2026-08-21 in four batches — G131–G151. Nothing reopened; the surface of the work grew.

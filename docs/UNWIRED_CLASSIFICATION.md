@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**303 of 348 registered objects reach a surface.** The other 45 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**304 of 349 registered objects reach a surface.** The other 45 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## document_surface — 1
 

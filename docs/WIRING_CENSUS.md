@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 303 of 348 registered objects reach a surface
+## 304 of 349 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -372,6 +372,7 @@ headline can be audited rather than taken on trust:
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_si_warn_addresses` | direct | `scripts/extract_warn_addresses.py` |
 | `in_si_warn_normalised` | direct | `si.html`, `scripts/export_wired_layers.py` |
+| `in_si_warn_page` | direct | `scripts/extract_warn_addresses.py` |
 | `in_si_warn_placed` | direct | `scripts/audit_signal_display.py` |
 | `in_site_gates` | direct | `app.js`, `scripts/acceptance_run.py` |
 | `in_sites` | direct | `app.js`, `screener.html` |

@@ -300,11 +300,33 @@ def main():
     a = ap.parse_args()
 
     client = bigquery.Client(project="energy-platfrom")
+    # ⭐ THE PAGE IS THE SOURCE OF TRUTH FOR FILING LINKS, NOT THE NORMALISED TABLE.
+    # `in_si_warn_page` is a direct re-scrape of the DWD listing (refresh_warn_page.py) and carries
+    # every link the publisher offers; `in_si_warn_normalised` carries the classification work
+    # (vacates_site, notice_class) that the extractor orders by. Joining them uses each for what it
+    # is authoritative about, instead of trusting one loader's copy of the other's data.
+    # ⚠ THE JOIN IS ON NORMALISED TEXT. Comparing the page's raw company name against the database
+    # copy produced eight false mismatches on entities alone (`&amp;`, the curly apostrophe), so
+    # both sides are folded here the same way refresh_warn_page.py folds them.
     rows = list(client.query(f"""
-      SELECT company, city, event_date, notice_class, vacates_site, affected_workers,
-             notice_pdf_urls
-      FROM `{DS}.in_si_warn_normalised`
-      WHERE notice_pdf_urls IS NOT NULL AND notice_pdf_urls != ''
+      WITH pg AS (
+        SELECT REGEXP_REPLACE(LOWER(TRIM(company)), r'\\s+', ' ') co,
+               REGEXP_REPLACE(LOWER(TRIM(IFNULL(city, ''))), r'\\s+', ' ') ci,
+               ANY_VALUE(notice_pdf_url) notice_pdf_urls
+        FROM `{DS}.in_si_warn_page`
+        WHERE notice_pdf_url IS NOT NULL GROUP BY 1, 2),
+      nm AS (
+        SELECT REGEXP_REPLACE(LOWER(TRIM(company)), r'\\s+', ' ') co,
+               REGEXP_REPLACE(LOWER(TRIM(IFNULL(city, ''))), r'\\s+', ' ') ci,
+               ANY_VALUE(company) company, ANY_VALUE(city) city,
+               MAX(event_date) event_date, ANY_VALUE(notice_class) notice_class,
+               LOGICAL_OR(IFNULL(vacates_site, FALSE)) vacates_site,
+               MAX(affected_workers) affected_workers
+        FROM `{DS}.in_si_warn_normalised` GROUP BY 1, 2)
+      SELECT IFNULL(nm.company, pg.co) company, nm.city, nm.event_date, nm.notice_class,
+             IFNULL(nm.vacates_site, FALSE) vacates_site, nm.affected_workers,
+             pg.notice_pdf_urls
+      FROM pg LEFT JOIN nm ON nm.co = pg.co AND nm.ci = pg.ci
       ORDER BY vacates_site DESC, event_date DESC"""))
     if a.limit:
         rows = rows[: a.limit]
