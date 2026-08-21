@@ -213,6 +213,29 @@ const landPlainTitle = (occ_group, structure_count) =>
     : `No building found in the national structures layer, whose newest Indiana record is `
       + `${STRUCTURES_VINTAGE}. Anything built since then is not in it, so this means `
       + `"no building as of early 2020", not "no building".`;
+/* ⭐ G133: the DECLARED-intent codes, in plain language.
+   ⛔ SHARED IN common.js, NOT COPIED INTO EACH PAGE. The screener had its own private INTENT_PLAIN
+   map before the map console needed one; a second copy is how the two surfaces end up describing
+   the same code differently, which is the drift defect this project keeps paying for.
+   ⚠ These read as a STATEMENT, not an inference - "owner has declared it surplus", never "may be
+   willing to sell" - because that distinction is the entire reason the family exists. */
+const INTENT_PLAIN = {
+  I1_declared_surplus: ["owner has declared it surplus",
+    "A federal owner recorded this asset as excess, surplus or unutilized - a stated intention to "
+    + "dispose, not an inference from distress."],
+  I2_withdrawn_interconnection: ["consented to host energy, project withdrawn",
+    "An interconnection request on this parcel was withdrawn. The owner already agreed to host "
+    + "energy infrastructure and the studied grid position is now unused."],
+};
+function intentPlain(csv) {
+  if (!csv) return "";
+  return String(csv).split(",").map((s) => {
+    const k = s.trim(), e = INTENT_PLAIN[k];
+    if (e) return `<span title="${e[1]}">${e[0]}</span>`;
+    return k.replace(/^[A-Z]\d{1,2}[_ ]+(?=\S)/, "").replace(/_/g, " ") || k;
+  }).join(" · ");
+}
+
 /* "D4_tax_delinquency,D2_foreclosure" -> "Unpaid property taxes · Foreclosure filed" */
 function signalsPlain(csv) {
   if (!csv) return "";

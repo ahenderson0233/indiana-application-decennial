@@ -309,7 +309,43 @@ h_indy_wide AS (
          'publisher table (A5 widening)' blk, TRUE AS severe
   FROM `{DS}.in_si_indy_code_widened`
 ),
+-- ================================================================================================
+-- ⭐ G150: WARN, PLACED FROM THE FILING PDFs — and it belongs HERE, in the spine, not on one page.
+--
+-- Operator, 2026-08-21: *"all of the changes you made have to flow throughout the application, not
+-- just in one section."* ⛔ THAT CORRECTION LANDED ON THIS EXACT MISTAKE. The WARN placement was
+-- built (in_si_warn_placed, 51 parcels) and then classified `pending_pipeline_join` - honest
+-- labelling, and materially nothing changed for a reader, because the map payload, the screener,
+-- si.html and the county rollups all read the two tables THIS script writes. A signal that does
+-- not enter here reaches nobody.
+--
+-- WHY D19_warn READ 2 PARCELS: it was only ever arriving through `a_corpus`, the generic
+-- in_si_signals bridge, which keys on address and owner name - and in_si_warn_normalised carries
+-- NEITHER. 1,220 notices held, no address column at all, so the signal was never PLACEABLE rather
+-- than filtered down. extract_warn_addresses.py reads the address out of the filing itself.
+--
+-- ⚠ SEVERE = vacates_site. A LAYOFF KEEPS THE SITE OPERATING; A CLOSURE VACATES IT, and only the
+-- second is land a developer can buy. That distinction is the whole signal (G90) and it is applied
+-- here rather than admitting every notice - a company shedding 30 staff is not selling the plant.
+-- ⚠ AND ONLY THE UNAMBIGUOUS MATCHES. `address_shared_by_several_parcels` means a building we
+-- cannot resolve to a lot; it is carried in in_si_warn_placed and NOT admitted as a parcel signal.
+-- ================================================================================================
+w_warn AS (
+  SELECT parcel_key pk, 'D19_warn' signal,
+         SAFE.PARSE_DATE('%Y-%m-%d', CAST(event_date AS STRING)) obs,
+         'publisher event date (WARN notice)' basis,
+         'facility_address_from_filing_pdf' keying,
+         'notice PDF -> facility street+city -> DLGF property address (suffix and directional '
+         'normalised on both sides)' bridge,
+         CONCAT('warn:', IFNULL(notice_class, '?')) source_id,
+         'publisher filing PDF (G150)' blk,
+         -- ⭐ the closure/layoff split IS the severity test
+         IFNULL(vacates_site, FALSE) AS severe
+  FROM `{DS}.in_si_warn_placed`
+  WHERE parcel_key IS NOT NULL AND match_grain = 'exact_address'
+),
 allsig AS (
+  SELECT * FROM w_warn UNION ALL
   SELECT * FROM h_indy_wide UNION ALL
   SELECT * FROM h_sri UNION ALL SELECT * FROM h_ibtr UNION ALL
   SELECT * FROM a_corpus UNION ALL SELECT * FROM b_bridged
@@ -375,7 +411,7 @@ SELECT
   STRING_AGG(DISTINCT IF(si_admitted, date_basis, NULL))     AS si_date_basis,
   TIMESTAMP('{BUILT}')                             AS built_at
 FROM `{DS}.in_si_parcel_signals_v2`
-GROUP BY 1,2)
+GROUP BY 1,2),
 -- CAN THE PARCEL HOST THE USE CASE AT ALL? A distinct question from "did an event occur", and the
 -- one the D5 fix did not answer. Measured after the Lane D placements landed: 17,318 of 23,140
 -- flagged parcels are UNDER ONE ACRE, and the median flagged vacant lot is 0.13 acres. A tax sale
@@ -384,11 +420,69 @@ GROUP BY 1,2)
 -- The flag stays a FACT about the parcel; capability is carried alongside it so the screener and
 -- the headline can gate on physical possibility without deleting the evidence. At the operator's
 -- stated 10 MW/acre BESS, 5 MW needs ~0.5 acres — the smallest use case in scope.
-SELECT a.*,
+-- ================================================================================================
+-- ⭐ G133: THE DECLARED-INTENT FAMILY, CARRIED HERE SO IT REACHES EVERY SURFACE.
+-- Operator, 2026-08-21: *"all of the changes you made have to flow throughout the application."*
+-- ⛔ The first version of G133 joined in_si_intent_signals straight into
+-- build_screener_candidates.py, which put it on ONE page and left the map console, si.html and the
+-- county rollups blind to it. Everything downstream reads THIS table, so this is where it belongs.
+--
+-- ⚠ SEPARATE COLUMNS, NOT MERGED INTO has_si_signal, AND THAT IS DELIBERATE. Every D-code above
+-- INFERS willingness from distress; these two REVEAL it - a federal owner recording an asset as
+-- excess, or an owner who already signed an interconnection agreement here. Folding them in would
+-- move the 23,766 flagged count the checkpoint asserts against the shipped payload, and would put
+-- an inference and a declaration under one number.
+-- ⭐ Measured: 174 parcels, 167 of which carry NO distress signal at all.
+-- ================================================================================================
+intent AS (
+  SELECT parcel_source, parcel_key,
+         TRUE                                              AS has_intent_signal,
+         COUNT(*)                                          AS intent_signal_types,
+         STRING_AGG(signal, ',' ORDER BY signal)           AS intent_signals,
+         MAX(last_event_date)                              AS intent_last_date,
+         STRING_AGG(DISTINCT who, '; ' LIMIT 2)            AS intent_who,
+         MAX(mw_given_up)                                  AS intent_mw_given_up
+  FROM `{DS}.in_si_intent_signals` GROUP BY 1, 2
+),
+-- ⛔ THE BASE IS A UNION, NOT `agg`, AND THIS WAS ALMOST A SILENT LOSS OF THE BEST ROWS.
+-- `agg` only contains parcels carrying a DISTRESS signal. 167 of the 174 declared-intent parcels
+-- carry no distress signal at all - they are the whole point of G133, the leads the existing SI
+-- set could not see - and a LEFT JOIN from `agg` would have dropped every one of them before they
+-- reached a single surface. Every consumer LEFT JOINs this table from in_sites and coalesces a
+-- missing row to FALSE, so the loss would have rendered as "no signal here" rather than erroring.
+base AS (
+  SELECT parcel_source, parcel_key FROM agg
+  UNION DISTINCT
+  SELECT parcel_source, parcel_key FROM intent
+)
+SELECT
+  b.parcel_source, b.parcel_key,
+  a.occ_group,
+  -- ⚠ an intent-only parcel has no distress aggregate, and these must read as a measured ZERO
+  -- rather than NULL: we did look, and there is no distress signal here.
+  IFNULL(a.has_si_signal, FALSE)            AS has_si_signal,
+  IFNULL(a.si_signal_types, 0)              AS si_signal_types,
+  IFNULL(a.si_signal_events, 0)             AS si_signal_events,
+  a.si_signals, a.si_first_event_date, a.si_last_event_date,
+  a.si_last_event_date_incl_future,
+  IFNULL(a.si_events_3y, 0)                 AS si_events_3y,
+  IFNULL(a.si_events_5y, 0)                 AS si_events_5y,
+  IFNULL(a.si_events_10y, 0)                AS si_events_10y,
+  IFNULL(a.si_events_dated, 0)              AS si_events_dated,
+  IFNULL(a.si_excluded_residential, 0)      AS si_excluded_residential,
+  IFNULL(a.si_excluded_low_severity, 0)     AS si_excluded_low_severity,
+  a.si_keying, a.si_date_basis,
+  TIMESTAMP('{BUILT}')                      AS built_at,
   s.parcel_acres,
   IFNULL(s.parcel_acres, 0) >= 0.5  AS fits_min_bess_5mw,
-  IFNULL(s.mw_datacenter_4_per_acre, 0) >= 25 AS fits_dc_25mw
-FROM agg a LEFT JOIN `{DS}.in_sites` s USING (parcel_source, parcel_key)
+  IFNULL(s.mw_datacenter_4_per_acre, 0) >= 25 AS fits_dc_25mw,
+  IFNULL(i.has_intent_signal, FALSE) AS has_intent_signal,
+  IFNULL(i.intent_signal_types, 0)   AS intent_signal_types,
+  i.intent_signals, i.intent_last_date, i.intent_who, i.intent_mw_given_up
+FROM base b
+LEFT JOIN agg a USING (parcel_source, parcel_key)
+LEFT JOIN `{DS}.in_sites` s USING (parcel_source, parcel_key)
+LEFT JOIN intent i USING (parcel_source, parcel_key)
 """
 run(FLAGS, "in_si_sites_flags_v2")
 
@@ -399,11 +493,64 @@ run(FLAGS, "in_si_sites_flags_v2")
 print("building in_si_signal_coverage …", flush=True)
 COVER = f"""
 CREATE OR REPLACE TABLE `{DS}.in_si_signal_coverage` AS
-WITH corpus AS (
+-- ================================================================================================
+-- ⛔ THE CORPUS COUNT USED TO COME FROM `in_si_signals` ALONE, AND SIX SIGNALS HAD NONE.
+-- Operator, 2026-08-21: *"we really need to ensure that we are displaying all of the data that we
+-- hold."* `audit_signal_display.py` could not answer that for D4_tax_delinquency,
+-- D5_unsafe_building, D5_vacant_board_order, D5_abandoned_building, D21_demolition_order or
+-- D22_environmental_violation, because every one of them arrives from a PUBLISHER TABLE rather
+-- than from the generic corpus - so corpus_rows was NULL and the loss between held and placed was
+-- not merely large, it was UNCOMPUTABLE.
+-- ⚠ AN UNMEASURABLE SIGNAL IS WORSE THAN A BADLY-PERFORMING ONE. A 3% placement rate with a
+-- reason is a decision; a blank is an absence of one, and it is indistinguishable from a broken
+-- join. Each publisher block now contributes its own row count under the same signal name.
+-- ⭐ SUMMED, NOT REPLACED: D21 and D5_abandoned_building each arrive from TWO publishers
+-- (Evansville and South Bend / Indianapolis), and taking one would understate what we hold.
+-- ================================================================================================
+WITH pub_corpus AS (
+  SELECT 'D5_abandoned_building' signal, COUNT(*) n
+    FROM `{DS}.in_si_southbend_vacant_abandoned`
+  UNION ALL SELECT 'D5_abandoned_building', COUNT(*) FROM `{DS}.in_si_indy_abandoned_vacant`
+  -- ⛔ SOUTH BEND CONTINUOUS ENFORCEMENT IS D21, NOT D5_vacant_board_order, AND THE DATA CAUGHT
+  -- ME. The first version of this map attributed it to D5_vacant_board_order, which made
+  -- D21_demolition_order read `corpus 4,190, reached 5,207` - MORE PARCELS PLACED THAN ROWS HELD,
+  -- which is impossible and is therefore a statement about the instrument, not the grid. Reading
+  -- the block instead of assuming from its name: c_sb_cont emits 'D21_demolition_order'.
+  -- ⚠ D5_vacant_board_order is not missing - it arrives through in_si_indy_code_placed, which
+  -- carries several signals and is counted per-signal below.
+  UNION ALL SELECT 'D21_demolition_order', COUNT(*)
+    FROM `{DS}.in_si_southbend_continuous_enforcement`
+  UNION ALL SELECT 'D21_demolition_order', COUNT(*)
+    FROM `{DS}.in_si_evansville_demolition_permits`
+  UNION ALL SELECT 'D22_environmental_violation', COUNT(*) FROM `{DS}.in_si_d22_parcel_join`
+  -- ⚠ FOUR PUBLISHER TABLES CARRY THEIR OWN `signal` COLUMN and each holds SEVERAL signals, so
+  -- they are counted PER SIGNAL. Attributing a table total to each signal it contains would
+  -- overstate every one of them.
+  -- ⛔ in_si_indy_code_widened WAS MISSING FROM THIS LIST and that is what kept D21_demolition_order
+  -- reading `held 4,431, reached 5,207` - more parcels placed than rows held, which is impossible
+  -- and is therefore a claim about the instrument. It contributes D21, D12, D5_unsafe,
+  -- D5_vacant_board_order, D22 and D16. Found by asking the artefact which source_block produced
+  -- the parcels, rather than by reading the block names again.
+  UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_indy_code_placed`  GROUP BY signal
+  UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_indy_code_widened` GROUP BY signal
+  UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_sri_placed`        GROUP BY signal
+  UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_ibtr_placed`       GROUP BY signal
+),
+pub AS (SELECT signal, SUM(n) rows_held FROM pub_corpus GROUP BY 1),
+gen AS (
   SELECT signal, COUNT(*) corpus_rows, COUNTIF(observed_date IS NOT NULL) corpus_dated,
          MIN(observed_date) corpus_first, MAX(observed_date) corpus_last,
          STRING_AGG(DISTINCT keying ORDER BY keying) corpus_keying
   FROM `{DS}.in_si_signals` GROUP BY 1),
+corpus AS (
+  SELECT COALESCE(g.signal, p.signal) signal,
+         -- ⚠ the generic corpus and the publisher table are DIFFERENT rows about the same signal,
+         -- so they add. Neither is a subset of the other.
+         IFNULL(g.corpus_rows, 0) + IFNULL(p.rows_held, 0) AS corpus_rows,
+         g.corpus_dated, g.corpus_first, g.corpus_last,
+         CONCAT(IFNULL(g.corpus_keying, ''),
+                IF(p.rows_held IS NULL, '', ' + publisher table')) AS corpus_keying
+  FROM gen g FULL OUTER JOIN pub p ON p.signal = g.signal),
 reached AS (
   SELECT signal,
          COUNT(*) parcels_reached, COUNTIF(si_admitted) parcels_admitted,
@@ -494,7 +641,24 @@ reg = [
   "per-signal coverage: corpus rows, keying, publisher date range, parcels reached and admitted, "
   "and what each ruling excluded. source_block keeps the corpus and new publisher tables apart."),
 ]
+# ⛔ THE RE-SCRAPE COMMAND WAS MISSING FROM ALL THREE OF THESE ROWS, and the three tables it
+# describes are the SPINE - the ones every surface in the application reads. G16's contract is that
+# a registry row must be enough to RE-RUN the work, and these said what the tables were and not how
+# to rebuild them. It went unnoticed because `audit_handoff_docs.py` tolerated a fixed number of
+# uncommanded rows (`<= 4`); making that tolerance STRUCTURAL on 2026-08-21 - rungs may be
+# uncommanded, nothing else may - surfaced these three immediately.
+# ⚠ CADENCE matters here too: this is not a clip, it is a derivation over ~15 publisher tables, so
+# it must be re-run whenever any of them reloads.
+RESCRAPE = ("RE-SCRAPE COMMAND: python scripts/build_si_signal_v2.py "
+            "⚠ IDEMPOTENT: replace_safe - all three tables are CREATE OR REPLACE from their "
+            "sources. ⛔ RUN scripts/build_d22_wiring.py FIRST if in_si_d22_parcel_join is stale. "
+            "⛔ AND RE-EXPORT AFTERWARDS: scripts/export_sites_exact.py, "
+            "scripts/build_screener_candidates.py, scripts/export_screener.py, "
+            "scripts/export_si_v2_surfaces.py - every surface reads these three tables, so a "
+            "rebuild that stops here changes the warehouse and nothing a reader sees. "
+            "CADENCE: on any publisher reload.")
 for name, n, src, method in reg:
+    method = f"{method} {RESCRAPE}"
     client.query(f"DELETE FROM `{DS}._registry` WHERE table_name='{name}'").result()
     client.query(
         f"INSERT INTO `{DS}._registry` (table_name, source, method, n_rows, built_at) "

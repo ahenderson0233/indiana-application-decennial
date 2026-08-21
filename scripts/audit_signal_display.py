@@ -167,6 +167,89 @@ if stale:
     fails.append(f"the reason ledger names {len(stale)} signal(s) that no longer exist: "
                  f"{', '.join(sorted(stale))}")
 
+# ================================================================================================
+# ⛔ PART B: DOES THE SIGNAL ACTUALLY REACH THE READER, ON EVERY SURFACE THAT SHOWS SIGNALS?
+#
+# Operator, 2026-08-21: *"it doesn't look like anything materially changed for the WARN notices on
+# the front-end… all of the changes you made have to flow throughout the application, not just in
+# one section."* Both halves of that were right, and PART A above could not see either:
+#   · WARN was PLACED (in_si_warn_placed, 51 parcels) and then left out of the spine, so the
+#     warehouse improved and no reader saw anything.
+#   · The declared-intent family was joined straight into build_screener_candidates.py, so it
+#     reached the SCREENER and the map console and si.html stayed blind to it.
+# A coverage number can be perfect while the payload carries nothing. This part checks the
+# SHIPPED FILES, because those are what a reader actually loads.
+# ================================================================================================
+import gzip
+import json
+
+print("\n" + "=" * 96)
+print("B. DOES IT REACH THE READER? — checked against the SHIPPED payloads, not the warehouse")
+print("=" * 96)
+
+def _peek(path):
+    """Field names present anywhere in a shipped payload, with a count per field.
+
+    ⛔ EVERY ROW, NOT A SAMPLE, AND THIS AUDIT GOT IT WRONG ON ITS FIRST RUN. The screener export
+    OMITS a key entirely when its value is falsy, to keep the payload small - so `intent_signals`
+    is present on 38 of 51,048 rows and absent from row 0. Reading the first 400 rows reported
+    "the screener carries no intent signal" while the payload carried it perfectly well, and it
+    reported the same for `has_si_signal`, which is on 23,790 rows.
+    ⚠ A sparse field is invisible to a sample by construction. That is the instrument lying about
+    the artefact, which is the exact failure mode this whole audit exists to catch - so it had to
+    be caught here first.
+    """
+    full = os.path.join(REPO, path)
+    if not os.path.exists(full):
+        return None
+    with gzip.open(full, "rt", encoding="utf-8") as fh:
+        d = json.load(fh)
+    rows = d.get("features") or d.get("sites") or d.get("rows") or []
+    counts = {}
+    if isinstance(rows, list):
+        for r in rows:
+            for k in (r.get("properties") or r):
+                counts[k] = counts.get(k, 0) + 1
+    return counts
+
+
+# one county file stands for the map console's parcel payload
+_county = None
+_sites_dir = os.path.join(REPO, "data", "sites")
+if os.path.isdir(_sites_dir):
+    _f = sorted(x for x in os.listdir(_sites_dir) if x.endswith(".gz"))
+    if _f:
+        _county = f"data/sites/{_f[0]}"
+
+SURFACES = [("map console (a county parcel file)", _county),
+            ("site screener", "data/screener.json.gz")]
+
+# Every field family that must reach a reader once it exists in the warehouse.
+# ⚠ ALIASES ARE LISTED PER FAMILY, NOT PER SURFACE, because the exports rename as they ship:
+# the county files carry `has_si_signal` and the screener renames it to `has_signal`. A field list
+# that knows only the warehouse name reports a false absence on half the surfaces.
+FAMILIES = {
+    "distress": ["has_si_signal", "has_signal"],
+    "declared intent (G133)": ["has_intent_signal", "intent_signals"],
+}
+for label, path in SURFACES:
+    if not path:
+        print(f"  ⚠ {label}: payload not found on disk - skipped")
+        continue
+    counts = _peek(path)
+    if counts is None:
+        print(f"  ⚠ {label}: {path} not on disk - skipped")
+        continue
+    for fam, fields in FAMILIES.items():
+        got = {f: counts[f] for f in fields if f in counts}
+        ok = bool(got)
+        detail = ", ".join(f"{k} on {v:,} rows" for k, v in got.items()) if got \
+            else "NONE OF " + str(fields)
+        print(f"  [{'PASS' if ok else 'FAIL'}] {label:34} carries {fam}: {detail}")
+        if not ok:
+            fails.append(f"{label} does not carry {fam} - the warehouse has it and the reader "
+                         f"cannot see it. A signal that reaches one surface has not shipped.")
+
 print()
 if fails:
     for f in fails:

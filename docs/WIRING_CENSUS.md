@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 302 of 347 registered objects reach a surface
+## 303 of 348 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -51,6 +51,7 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_pjm_qs_c23_wd_10` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_1000` | 219691 | `—` |
 | `in_pjm_qs_c23_wd_15` | 462654 | `—` |
+| `in_pjm_qs_c23_wd_1500` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_200` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_25` | 462654 | `—` |
 | `in_pjm_qs_c23_wd_300` | 462654 | `—` |
@@ -59,7 +60,6 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_puc_state_access_ledger` | 1 | `—` |
 | `in_rescrape_ledger` | 337 | `—` |
 | `in_sec_cik_registrant_state` | 8 | `—` |
-| `in_si_warn_placed` | 40 | `scripts/build_warn_placement.py` |
 | `in_state_irp_catalog` | 1 | `—` |
 | `in_ustp_ch7_tfr` | 33 | `—` |
 
@@ -190,7 +190,7 @@ headline can be audited rather than taken on trust:
 | `in_lbnl_interconnection_costs` | direct | `scripts/export_grid_siting.py` |
 | `in_line_bus_endpoints` | derivative | `feeds `in_parcel_line_headroom` via `scripts/build_parcel_line_headroom.py`` |
 | `in_marion_address_crosswalk` | derivative | `feeds `in_si_indy_code_widened` via `scripts/build_indy_code_widen.py`` |
-| `in_marion_owner_value` | derivative | `feeds `in_screener_candidates` via `scripts/build_screener_candidates.py`` |
+| `in_marion_owner_value` | direct | `scripts/audit_signal_display.py` |
 | `in_marion_parcel_crosswalk` | direct | `screener.html`, `si.html` |
 | `in_miso_dpp2025_counties` | **none** | — |
 | `in_miso_dpp2025_footprint` | **none** | — |
@@ -271,6 +271,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_qs_c23_wd_10` | **none** | — |
 | `in_pjm_qs_c23_wd_1000` | **none** | — |
 | `in_pjm_qs_c23_wd_15` | **none** | — |
+| `in_pjm_qs_c23_wd_1500` | **none** | — |
 | `in_pjm_qs_c23_wd_200` | **none** | — |
 | `in_pjm_qs_c23_wd_25` | **none** | — |
 | `in_pjm_qs_c23_wd_300` | **none** | — |
@@ -371,7 +372,7 @@ headline can be audited rather than taken on trust:
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_si_warn_addresses` | direct | `scripts/extract_warn_addresses.py` |
 | `in_si_warn_normalised` | direct | `si.html`, `scripts/export_wired_layers.py` |
-| `in_si_warn_placed` | **none** | — |
+| `in_si_warn_placed` | direct | `scripts/audit_signal_display.py` |
 | `in_site_gates` | direct | `app.js`, `scripts/acceptance_run.py` |
 | `in_sites` | direct | `app.js`, `screener.html` |
 | `in_sites_county` | direct | `scripts/build_p36_wiring.py`, `scripts/build_site_gates.py` |

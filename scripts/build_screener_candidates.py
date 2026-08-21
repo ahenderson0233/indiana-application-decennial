@@ -253,7 +253,12 @@ SELECT
   -- and a declaration under one number.
   -- ⭐ Measured: 174 parcels, and 167 of them carry NO distress signal - leads the existing set
   -- could not see at all.
-  it.intent_signals, it.intent_last_date, it.intent_who, it.intent_mw_given_up,
+  -- ⚠ READ FROM THE FLAG TABLE, NOT FROM in_si_intent_signals DIRECTLY. The first version of G133
+  -- joined the intent table here, which put the signal on the SCREENER ONLY - the map console,
+  -- si.html and the county rollups all read in_si_sites_flags_v2 and saw nothing. Operator,
+  -- 2026-08-21: *"all of the changes you made have to flow throughout the application, not just in
+  -- one section."* Two join paths to one fact is also the two-copies defect; there is now one.
+  f.has_intent_signal, f.intent_signals, f.intent_last_date, f.intent_who, f.intent_mw_given_up,
 
   -- ⛔ G125 SECOND FINDING, AND IT CONTRADICTS THE ROW AS WRITTEN. G125 says "the parcel payload
   -- ships lat/lon on every row" and the popup merely fails to print it. Measured 2026-08-20d:
@@ -323,17 +328,6 @@ LEFT JOIN (
 -- ⭐ G132: Marion owner identity and assessed value. One row per parcel_key by construction
 -- (asserted in its own build), so this cannot fan out the candidate table.
 LEFT JOIN `{DS}.in_marion_owner_value`  mv USING (parcel_source, parcel_key)
--- ⭐ G133: declared-intent signals, COLLAPSED TO ONE ROW PER PARCEL here. in_si_intent_signals is
--- one row per parcel PER SIGNAL, so joining it raw would duplicate any parcel carrying both -
--- exactly the fan-out the D85 assertion below exists to catch.
-LEFT JOIN (
-  SELECT parcel_source, parcel_key,
-         STRING_AGG(signal, ',' ORDER BY signal)              AS intent_signals,
-         MAX(last_event_date)                                 AS intent_last_date,
-         STRING_AGG(DISTINCT who, '; ' LIMIT 2)               AS intent_who,
-         MAX(mw_given_up)                                     AS intent_mw_given_up
-  FROM `{DS}.in_si_intent_signals` GROUP BY 1, 2
-) it USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2`   f  USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)

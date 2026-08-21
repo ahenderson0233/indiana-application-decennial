@@ -67,6 +67,14 @@ SELECT sc.county_fips, s.* EXCEPT(parcel_geog, {", ".join(V1_SI)}),
        IFNULL(f.si_events_5y, 0)      AS si_events_5y,
        IFNULL(f.si_events_10y, 0)     AS si_events_10y,
        f.si_keying, f.si_date_basis,
+       -- ⭐ G133: THE DECLARED-INTENT FAMILY REACHES THE MAP CONSOLE TOO.
+       -- Operator, 2026-08-21: *"all of the changes you made have to flow throughout the
+       -- application, not just in one section."* This export was the section that got missed: the
+       -- family was on the screener and the map console could not see that a parcel's owner had
+       -- FORMALLY DECLARED it surplus. ⛔ It is a SEPARATE flag from has_si_signal, never merged -
+       -- a D-code infers willingness from distress, these two state it.
+       IFNULL(f.has_intent_signal, FALSE) AS has_intent_signal,
+       f.intent_signals, f.intent_last_date, f.intent_who, f.intent_mw_given_up,
        IFNULL(f.si_excluded_residential, 0)  AS si_excl_resid,
        IFNULL(f.si_excluded_low_severity, 0) AS si_excl_lowsev,
        -- G29: EXACT parcel-to-asset distance, measured polygon-to-geometry in BigQuery.
@@ -160,6 +168,10 @@ def rc(x):
 SI_DETAIL = ("si_signal_types", "si_signal_events", "si_signals", "si_first_event_date",
              "si_last_event_date", "si_events_3y", "si_events_5y", "si_events_10y",
              "si_keying", "si_date_basis", "si_excl_resid", "si_excl_lowsev")
+# ⭐ G133 detail, dropped on features that carry no intent signal for the same size reason as
+# SI_DETAIL above. ⚠ 174 parcels statewide carry one, so emitting these on 1.2M features would be
+# 1.2M keys to say "no" 1,199,826 times.
+INTENT_DETAIL = ("intent_signals", "intent_last_date", "intent_who", "intent_mw_given_up")
 
 # G29 exact-distance keys. in_asset_distance_parcel covers the 532,868 SCREENER CANDIDATES, not all
 # ~1.2M rendered parcels, so most features have no exact value. An absent key is the honest encoding
@@ -179,12 +191,19 @@ def flush(fips, buf):
 
 it = client.query(q).result(page_size=20000)
 cur, buf, total = None, [], 0
+n_intent = 0
 for r in it:
     d = dict(r); fips = d.pop("county_fips"); gj = d.pop("gj")
     if gj is None: no_geom += 1; continue
     if d.get("has_si_signal"): n_si += 1
     else:
         for k in SI_DETAIL: d.pop(k, None)
+    # ⭐ G133: same treatment for the declared-intent family, counted separately because it is a
+    # separate claim. ⚠ has_intent_signal itself is KEPT on every feature (it is a boolean the
+    # renderer tests); only the detail is dropped where there is none.
+    if d.get("has_intent_signal"): n_intent += 1
+    else:
+        for k in INTENT_DETAIL: d.pop(k, None)
     if d.get("x_line_mi") is not None:
         n_exact += 1
         if d.get("x_line_on"): n_online += 1
@@ -205,6 +224,8 @@ print(f"\nRE-EXPORT COMPLETE: {len(counts)} counties written, {total:,} features
       f"{no_geom} skipped for null geometry; {with_exact} files on disk", flush=True)
 print(f"carrying an ADMITTED seller-intent signal (v2, non-residential, severity-gated): "
       f"{n_si:,} features", flush=True)
+print(f"carrying a DECLARED-INTENT signal (G133, federal surplus or withdrawn interconnection): "
+      f"{n_intent:,} features", flush=True)
 print(f"carrying EXACT G29 grid distances: {n_exact:,} features, of which "
       f"{n_online:,} have a transmission line PHYSICALLY ON the parcel (0.0 mi) — the case the "
       f"map's first-vertex method reported as ~0.55 mi", flush=True)

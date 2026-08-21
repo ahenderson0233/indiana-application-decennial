@@ -60,8 +60,15 @@ print("=" * 92)
 print("A. FIGURES QUOTED IN THE DOCUMENTS, RE-MEASURED")
 print("=" * 92)
 
-r = one(f"SELECT COUNTIF(has_si_signal) n FROM `{DS}.in_si_sites_flags_v2`")
-check("flagged parcels", r.n == 23795 and has(r.n), f"live {r.n:,}")
+# ⚠ THE LITERAL 23795 WAS PINNED HERE AND G150 CORRECTLY MOVED IT. Placing WARN from the filing
+# PDFs added real parcels to the flag, so the audit failed for the same reason the `ribbon == 184`
+# assertion did: it turned a MEASUREMENT into a CONSTANT. This is the third time in this file.
+# The durable check is that the documents state whatever is live, not that it equals a past value.
+r = one(f"""SELECT COUNTIF(has_si_signal) n, COUNTIF(has_intent_signal) intent
+            FROM `{DS}.in_si_sites_flags_v2`""")
+check("flagged parcels", has(r.n), f"live {r.n:,}")
+# ⭐ G133: the declared-intent family is a SEPARATE count on purpose and must be stated separately.
+check("declared-intent parcels", has(r.intent), f"live {r.intent:,}")
 
 r = one(f"""SELECT COUNTIF(deliverable_wd_mw IS NOT NULL AND deliverable_wd_mw < c.mw_dc) grid,
                    COUNTIF(deliverable_wd_mw IS NOT NULL AND deliverable_wd_mw >= c.mw_dc) land

@@ -50,22 +50,15 @@ python scripts/audit_handoff_docs.py
 python scripts/audit_handoff_consistency.py
 ```
 
-**Expect 4 checkpoint failures and expect all four to be correct:** the **wiring census** (⭐ the
+**Expect 3 checkpoint failures and expect all three to be correct:** the **wiring census** (⭐ the
 END STATE, not a gap — every unreached object carries a measured reason and the worklist is 0; the
-durable check is `0 unclassified`), the **honesty audit's 1 known failure**, **unregistered ladder
-rungs** the running harvest created since the last registration pass, and ⭐ **`signal display`, a
-NEW audit that is red on purpose** — 6 SI signals carry no `corpus_rows`, so the loss between what
-we hold and what we place cannot be computed for them. That is G150's remaining work and the
-checkpoint is supposed to keep shouting about it until it is done.
+durable check is `0 unclassified`), the **honesty audit's 1 known failure**, and **unregistered
+ladder rungs** the running harvest created since the last registration pass.
 
-⛔ **DO NOT SILENCE THE SIXTH.** `in_si_signal_coverage` already held these numbers for weeks and
-nothing ever failed on them, which is exactly why the operator reported the problem twice and saw
-no change. A figure in a table that no check reads is a note, not a control.
-
-⭐ **The checkpoint runs ELEVEN audits.** The newest are `spelling`, `gate/preference
-consistency` and `handoff consistency` — the last one checks that the ledger, this prompt and the
-handoff tell the same story about the same G-row, and it caught G29 being listed as PARTIAL in two
-documents while the ledger called it DONE. All three must PASS. ⛔ Anything else failing is real.
+⭐ **`signal display` was a fourth expected failure and it now PASSES.** All 25 SI signals either
+place what they hold or carry a written reason. ⛔ Do not let it go quiet again: it exists because
+`in_si_signal_coverage` held these numbers for weeks while nothing failed on them, which is why the
+operator reported the problem twice and saw no change.
 
 ### 4. Read, in this order
 
@@ -117,28 +110,53 @@ notices and **carries no address column at all** — so the signal was never *pl
 folded three street suffixes and no directionals, so `Bluffton Road` never met `BLUFFTON RD`.
 Fixing that took placement 21 → 37 → **51**.
 
-### ⭐ DO THE SAME THING FOR THE OTHER SIGNALS — THAT IS THE JOB
+### ⭐ WHAT THE SI PASS ACTUALLY FIXED, 2026-08-21
 
-`python scripts/audit_signal_display.py` is new, is in the checkpoint, and **fails on 6 signals**:
+⛔ **AND THE FIRST ATTEMPT AT IT WAS THE LESSON.** WARN was placed into `in_si_warn_placed` and
+then classified `pending_pipeline_join` — accurate labelling, and **materially nothing changed for
+a reader**. The declared-intent family had the same shape: joined straight into
+`build_screener_candidates.py`, so it reached the screener and the map console and si.html stayed
+blind to it. Operator: *"all of the changes you made have to flow throughout the application, not
+just in one section."*
 
-| what it says | why it matters |
-|---|---|
-| **6 signals carry NO `corpus_rows` at all** — D4_tax_delinquency, D5_unsafe_building, D5_vacant_board_order, D5_abandoned_building, D21_demolition_order, D22_environmental_violation | the loss between held and placed **cannot even be computed** for them. Fix the coverage build first, then measure |
-| `D19_warn` still reads 2 | `in_si_signal_coverage` has not been rebuilt since the placement landed — rebuild it and it should read 51 |
-| `D12_code_violation` 747,211 → 23,145 | ⭐ **CORRECT AND DELIBERATE.** Operator: *"we filtered down for C&I only, and require 3+ violations."* ⚠ But the artefact only confirms HALF: `excluded_residential` (16,295) and `excluded_low_severity` (4,741) are enforced; the **3+ minimum is NOT** — the admitted set runs `min_events = 1`. Resolve which is true |
+⭐ **THE FIX IS ARCHITECTURAL AND IT IS THE THING TO REMEMBER.** `build_si_signal_v2.py` is the
+SPINE: it writes `in_si_parcel_signals_v2`, `in_si_sites_flags_v2` and `in_si_signal_coverage`, and
+the map payload, the screener, si.html and the county rollups all read those three. **A signal that
+does not enter the spine reaches nobody.** WARN is now a source block in it; the intent family is
+carried as separate columns on the flag table.
 
-⛔ **SELECTIVITY IS NOT THE DEFECT — SILENCE IS.** Operator: *"We filter down many of the SI
-signals, and this should be known and understood throughout."* A signal that admits 2,109 of
-747,211 is working as designed the moment somebody can say why. The audit only fails on rows where
-nobody wrote the reason down.
+| what moved | from | to |
+|---|---|---|
+| `D19_warn` parcels reached | **2** | **43** (32 admitted) |
+| declared-intent parcels on the MAP payload | 0 | **163** |
+| signals with an unmeasurable loss | **6** | **0** |
+| flagged parcels (warehouse / payload) | 23,795 / 23,766 | **23,819 / 23,790** |
 
-⚠ **`in_si_warn_placed` is built and NOT yet consumed by the SI pipeline** — it is classified
-`pending_pipeline_join`, deliberately, because a table that exists is not a table that reaches a
-reader. Wiring it is the first concrete task.
+⚠ **`base` IS A UNION, NOT `agg`, in the flag build — do not "simplify" it.** 167 of the 174
+declared-intent parcels carry no distress signal at all, so a LEFT JOIN from the distress aggregate
+drops every one of them, and because every consumer coalesces a missing row to FALSE it renders as
+"no signal here" rather than erroring.
 
-⭐ **THE OPERATOR HAS APPROVED A READ-ONLY RESCRAPE REHEARSAL** (G140): *"Yes, it is fine to read
-only first."* ⛔ Do not execute writes — 3 loaders are `append_only` and 2 read their own output,
-so a naive re-run double-counts. Rehearse, report per loader, then ask.
+⚠ **Two impossible numbers caught the corpus map being wrong**, both times `reached > held` on
+`D21_demolition_order`. South Bend continuous enforcement emits D21, not D5_vacant_board_order; and
+`in_si_indy_code_widened` emits six signals and was missing from the map entirely. Ask the artefact
+which `source_block` produced the parcels — do not read the block names.
+
+### WHAT IS LEFT ON THE SI SIGNALS
+
+1. **`D22_facility_inactive` still has no corpus count** — it is derived from the IDEM status
+   vocabulary rather than from a table, and it carries a recorded reason. Give it a real
+   denominator if one exists.
+2. ⭐ **G151 — 1,048 of 1,220 WARN notices carry no filing URL in our clip.** 172 have one, and
+   those yielded 88 facility addresses and 51 placed parcels. Whether the publisher offers a PDF
+   for the other 1,048 decides if this is a re-scrape (**G140**) or a dead end.
+3. **34 of the 88 recovered WARN addresses still find no parcel.** The suffix/directional
+   normaliser fixed most of them; what remains is medical-campus and business-park addressing the
+   DLGF corpus does not carry.
+4. **G145 — the wrong grain**: "date unknown" printed while a date IS known, and only first/last
+   shown instead of every event.
+5. **The read-only rescrape rehearsal (G140)** — operator approved read-only: *"Yes, it is fine to
+   read only first."* ⛔ 3 loaders are append_only and 2 read their own output.
 
 ---
 

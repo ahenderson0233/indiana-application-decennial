@@ -352,7 +352,7 @@
   </main>
 </div>
 
-<script src="common.js?v=af56f606"></script>
+<script src="common.js?v=c031ed22"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -853,22 +853,24 @@ function siteCoords(s) {
    has recorded an asset as excess, or an owner who already signed an interconnection agreement on
    this land. Measured: 174 parcels, and 167 carry NO distress signal at all, so folding them into
    the same badge would have hidden the more interesting half. */
-const INTENT_PLAIN = {
-  I1_declared_surplus: "owner has declared it surplus",
-  I2_withdrawn_interconnection: "consented to host energy, project withdrawn",
-};
+/* ⚠ THE CODE→PLAIN MAP LIVES IN common.js, NOT HERE. This page had its own private INTENT_PLAIN
+   until the map console needed the same one; two copies of one vocabulary is how the screener and
+   the dossier end up calling a signal different things, and `audit_js_duplicates.py` would have
+   flagged the second declaration anyway. `intentPlain()` is shared. */
 function intentCell(s) {
   if (!s.intent_signals) return "";
-  const names = String(s.intent_signals).split(",")
-    .map((k) => INTENT_PLAIN[k] || k).join(" · ");
+  const names = intentPlain(s.intent_signals);
   const mw = s.intent_mw_given_up
     ? ` · up to <b>${fmt(Math.round(s.intent_mw_given_up))} MW</b> given up` : "";
   /* ⚠ the date is often absent - a federal asset can be marked excess with no date recorded -
      and that renders as unknown rather than as today. */
   const when = s.intent_last_date ? ` · ${String(s.intent_last_date).slice(0, 10)}`
                                   : " · date not published";
-  return `<div class="sub2"><span class="bdg bdg-st" title="A stated intention, not an inference
-    from distress">DECLARED</span> ${escHtml(names)}${mw}${when}</div>`;
+  /* ⚠ `names` IS NOT ESCAPED, DELIBERATELY. intentPlain() returns markup - a <span> carrying the
+     tooltip - built from a CLOSED vocabulary in common.js and never from warehouse text. Escaping
+     it printed the tag on screen. Everything else interpolated here is a number or a date. */
+  return `<div class="sub2"><span class="bdg bdg-st" title="A stated intention, not an inference`
+    + ` from distress">DECLARED</span> ${names}${mw}${when}</div>`;
 }
 /* ⭐ G132: who owns it, and what the assessor says it is worth.
    Operator, 2026-08-21: *"Since we don't have the owner name for the parcel joins, we need to use

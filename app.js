@@ -3450,7 +3450,23 @@ function renderPowerPlan(p, fips) {
       <td class="sc">${Math.round(s.score)}</td><td class="hint">${s.basis}</td></tr>`;
   }).join("");
 
-  const siDetail = p.has_si_signal === true ? `
+  /* ⭐ G133: THE DECLARED-INTENT FAMILY, ON THE MAP AS WELL AS THE SCREENER.
+     Operator, 2026-08-21: *"all of the changes you made have to flow throughout the application,
+     not just in one section."* This block existed only in the screener until then, so a reader on
+     the map console could not see that a parcel's owner had FORMALLY DECLARED it surplus.
+     ⛔ It renders SEPARATELY from the distress signals above and is labelled DECLARED, because the
+     two are different claims: every D-code infers willingness from trouble, these state it. */
+  const intentDetail = p.has_intent_signal === true ? `
+      ${row("⭐ DECLARED intent", intentPlain(p.intent_signals),
+             "an intent signal is recorded but its type is not named")}
+      ${row("who", p.intent_who)}
+      ${row("when", p.intent_last_date,
+             "the source records no date for this declaration")}
+      ${row("capacity given up here", p.intent_mw_given_up != null
+             ? `${fmt(Math.round(p.intent_mw_given_up))} MW` : null,
+             "not an interconnection withdrawal, so no capacity figure applies")}` : "";
+
+  const siDetail = (p.has_si_signal === true ? `
       ${row("Owner-motivation signals", signalsPlain(p.si_signals),
              "signal recorded but its type is not named")}
       ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null,
@@ -3459,7 +3475,7 @@ function renderPowerPlan(p, fips) {
       ${row("how it reached this parcel", p.si_keying)}
       ${row("where the date came from", p.si_date_basis)}`
     : `<tr><td>seller-intent signal</td><td>none admitted on this parcel</td>
-       <td class="hint">measured, not missing</td></tr>`;
+       <td class="hint">measured, not missing</td></tr>`) + intentDetail;
 
   /* ⛔ THIS LIST CITED TWO TABLES THE DOSSIER NEVER READS (in_substations,
      in_transmission_union) AND OMITTED FOUR IT DOES - the bus capacities behind the headline
