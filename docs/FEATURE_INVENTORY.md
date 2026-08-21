@@ -143,6 +143,12 @@ vs matching vs shipped vs qualifying-statewide, the live filter list and a colum
 and owner signal.
 **How it works.** Filters compose across class, MW, signal, date and grid; sortable columns;
 first 500 rendered with the cap **stated on the page**.
+⭐ **G144:** `s-minsigtypes` gates on the minimum number of DIFFERENT signals — signal **types**,
+not events, because four code violations on one parcel is one signal.
+⛔ **G146, removed 2026-08-21:** the distance-to-nearest-military-installation gate is gone —
+control, both predicates, chip, detail row, badge and both payload columns, in one change. It never
+changed a siting decision, so it failed the governing principle's veto. `in_land_gate_parcel` still
+computes it; the payload no longer ships it.
 **Data.** `screener.json.gz` from `indiana_app.in_screener_candidates` (532,868 rows).
 
 ### 2.2 ⭐ Per-site depth (expandable row) — NEW (G39)
@@ -220,6 +226,22 @@ billing leg refuses to show a rate**. Eligibility has a ceiling as well as a flo
 ---
 
 # 5. OWNER SIGNALS — `si.html`
+
+⭐ **27 SI signals as of 2026-08-21** (was 25). Two are new and could not have existed before
+G152 widened the clips: **D28_cmbs_loan_distress** (the lender is under pressure on this building —
+special-serviced, in workout, delinquent, past maturity, or DSCR below 1.0) and
+**D29_anchor_tenant_exit** (the building is emptying — occupancy at or below 60%, or the largest
+tenant's lease expiring within 24 months). Both come from `in_si_up_cmbs`, a **full-width 153-column
+Indiana clip** of `energy.edgar_abs_ee_cmbs`; the 13-column reduction we used to read could produce
+only one signal from it by construction. A third, **I3_land_bank** (691 parcels), joined the
+declared-intent family from two registers we already held.
+
+⭐ **Every signal now carries its dates and its source to the screen** (G145/G153).
+`si_signal_dates` is an array on `in_si_sites_flags_v2` holding, per signal, every date we hold plus
+`date_basis`, `source_ids` and `keying`; `siSignalLines()` and `siSourceLink()` in `common.js`
+render it — **one copy**, called by the screener, the map evidence panel and the dossier.
+⛔ `si_next_event_date` exists because `si_last_event_date` is the last **past** event, so a
+scheduled tax auction read as *"date unknown"* on **8,591 of 23,841** flagged parcels.
 
 25 cards covering which owners might sell and how strongly we believe it: per-signal coverage,
 owner-grain signals that cannot reach a parcel (D11/D27/D19), IDEM enforcement, D22 environmental

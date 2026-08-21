@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 304 of 349 registered objects reach a surface
+## 310 of 367 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -34,16 +34,18 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_miso_poi_ladder` | 230286 | `—` |
 | `in_nfirs_basicincident_2023` | 46748 | `—` |
 | `in_nfirs_basicincident_2024` | 49811 | `—` |
-| `in_nfirs_fireincident_2022` | 1221 | `—` |
+| `in_nfirs_fireincident_2022` | 10548 | `—` |
+| `in_nfirs_fireincident_2023` | 13006 | `—` |
 | `in_nfirs_incidentaddress_2022` | 40091 | `—` |
 | `in_nfirs_incidentaddress_2023` | 46717 | `—` |
 | `in_nfirs_incidentaddress_2024` | 49895 | `—` |
 | `in_nhd_waterbody` | 186667 | `—` |
 | `in_nrc_reactors` | 0 | `—` |
-| `in_pjm_bus_locations_v2` | 1529 | `—` |
+| `in_pjm_bus_locations_v2` | 1475 | `—` |
 | `in_pjm_qs_c23_inj_10` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_1000` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_15` | 655404 | `—` |
+| `in_pjm_qs_c23_inj_1500` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_200` | 655404 | `—` |
 | `in_pjm_qs_c23_inj_25` | 647984 | `—` |
 | `in_pjm_qs_c23_inj_300` | 655404 | `—` |
@@ -60,8 +62,18 @@ The instrument separates two roles, because the first version of this measuremen
 | `in_puc_state_access_ledger` | 1 | `—` |
 | `in_rescrape_ledger` | 337 | `—` |
 | `in_sec_cik_registrant_state` | 8 | `—` |
+| `in_si_up_bankruptcy` | 89 | `—` |
+| `in_si_up_brownfield` | 1483 | `—` |
+| `in_si_up_ibtr_appeals` | 10071 | `—` |
+| `in_si_up_indy_code` | 910483 | `—` |
+| `in_si_up_indy_rezoning` | 13414 | `—` |
+| `in_si_up_indy_taxsale` | 62368 | `—` |
+| `in_si_up_iocs_court` | 1543 | `—` |
+| `in_si_up_seized_auction` | 2 | `—` |
+| `in_si_up_sri_taxsale` | 81975 | `—` |
+| `in_si_up_vacancy_derived` | 967366 | `—` |
+| `in_si_up_warn_multistate` | 1220 | `—` |
 | `in_state_irp_catalog` | 1 | `—` |
-| `in_ustp_ch7_tfr` | 33 | `—` |
 
 Three routes count as reaching a surface, and each is reported separately so the
 headline can be audited rather than taken on trust:
@@ -210,6 +222,7 @@ headline can be audited rather than taken on trust:
 | `in_nfirs_fireincident_2020` | direct | `si.html` |
 | `in_nfirs_fireincident_2021` | direct | `si.html` |
 | `in_nfirs_fireincident_2022` | **none** | — |
+| `in_nfirs_fireincident_2023` | **none** | — |
 | `in_nfirs_fireincident_2024` | direct | `si.html` |
 | `in_nfirs_incidentaddress_2020` | direct | `si.html` |
 | `in_nfirs_incidentaddress_2021` | direct | `si.html` |
@@ -263,6 +276,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_qs_c23_inj_10` | **none** | — |
 | `in_pjm_qs_c23_inj_1000` | **none** | — |
 | `in_pjm_qs_c23_inj_15` | **none** | — |
+| `in_pjm_qs_c23_inj_1500` | **none** | — |
 | `in_pjm_qs_c23_inj_200` | **none** | — |
 | `in_pjm_qs_c23_inj_25` | **none** | — |
 | `in_pjm_qs_c23_inj_300` | **none** | — |
@@ -307,7 +321,7 @@ headline can be audited rather than taken on trust:
 | `in_rtep_bus_join` | direct | `grid.html`, `scripts/export_engine_outputs.py` |
 | `in_rtep_bus_summary` | direct | `grid.html`, `scripts/acceptance_run.py` |
 | `in_rto_expansion` | direct | `grid.html`, `scripts/export_full_wiring.py` |
-| `in_sba_foia_loans` | direct | `si.html`, `scripts/export_context_layers.py` |
+| `in_sba_foia_loans` | direct | `si.html`, `scripts/checkpoint.py` |
 | `in_screener_candidates` | direct | `scripts/build_land_gates.py`, `scripts/export_screener.py` |
 | `in_sec_cik_registrant_state` | **none** | — |
 | `in_seismic` | direct | `app.js` |
@@ -315,6 +329,7 @@ headline can be audited rather than taken on trust:
 | `in_si_address_parcel` | direct | `scripts/build_si_funnel.py` |
 | `in_si_address_parcel_bridge` | direct | `app.js`, `scripts/export_screener.py` |
 | `in_si_candidates` | direct | `app.js`, `si.html` |
+| `in_si_cmbs_placed` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_d11_admitted` | direct | `si.html`, `scripts/checkpoint.py` |
 | `in_si_d11_entity_dissolution` | direct | `scripts/export_wired_batch2.py` |
 | `in_si_d22_county_rollup` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
@@ -350,7 +365,7 @@ headline can be audited rather than taken on trust:
 | `in_si_marion_route_check` | direct | `si.html`, `scrapers/lane_f/load_verifications.py` |
 | `in_si_owner_signals` | direct | `si.html`, `scripts/export_si_v2_surfaces.py` |
 | `in_si_owner_signals_county` | direct | `scripts/export_si_v2_surfaces.py` |
-| `in_si_parcel_signals_v2` | direct | `scripts/audit_honesty.py`, `scripts/build_si_funnel.py` |
+| `in_si_parcel_signals_v2` | direct | `common.js`, `scripts/audit_honesty.py` |
 | `in_si_plottability` | direct | `scripts/export_spine.py` |
 | `in_si_queue_withdrawn` | direct | `app.js`, `si.html` |
 | `in_si_refresh_brownfield_epa_in` | direct | `scripts/export_si_sources.py` |
@@ -361,7 +376,7 @@ headline can be audited rather than taken on trust:
 | `in_si_refresh_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
 | `in_si_signal_coverage` | direct | `si.html`, `scripts/acceptance_run.py` |
 | `in_si_signals` | direct | `si.html`, `scripts/audit_backlog_truth.py` |
-| `in_si_signals_parcel_dated` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
+| `in_si_signals_parcel_dated` | direct | `common.js` |
 | `in_si_sites_flags_v2` | direct | `app.js`, `si.html` |
 | `in_si_southbend_chronic_problem` | direct | `scripts/export_si_sources.py` |
 | `in_si_southbend_code_enforcement` | direct | `scripts/export_si_sources.py` |
@@ -370,7 +385,22 @@ headline can be audited rather than taken on trust:
 | `in_si_southbend_vacant_abandoned` | direct | `scripts/export_si_sources.py` |
 | `in_si_sri_placed` | direct | `scripts/audit_honesty.py`, `scripts/checkpoint.py` |
 | `in_si_state_warn_notices` | direct | `si.html`, `scripts/export_si_sources.py` |
+| `in_si_up_bankruptcy` | **none** | — |
+| `in_si_up_brownfield` | **none** | — |
+| `in_si_up_cmbs` | derivative | `feeds `in_si_cmbs_placed` via `scripts/build_si_cmbs_signals.py`` |
+| `in_si_up_ibtr_appeals` | **none** | — |
+| `in_si_up_indy_code` | **none** | — |
+| `in_si_up_indy_landbank` | derivative | `feeds `in_si_intent_signals` via `scripts/build_si_intent_signals.py`` |
+| `in_si_up_indy_rezoning` | **none** | — |
+| `in_si_up_indy_taxsale` | **none** | — |
+| `in_si_up_iocs_court` | **none** | — |
+| `in_si_up_seized_auction` | **none** | — |
+| `in_si_up_sri_taxsale` | **none** | — |
+| `in_si_up_vacancy_derived` | **none** | — |
+| `in_si_up_warn_multistate` | **none** | — |
 | `in_si_warn_addresses` | direct | `scripts/extract_warn_addresses.py` |
+| `in_si_warn_geocode_raw` | derivative | `feeds `in_si_warn_geocoded` via `scripts/geocode_warn_addresses.py`` |
+| `in_si_warn_geocoded` | derivative | `feeds `in_si_parcel_signals_v2` via `scripts/build_si_signal_v2.py`` |
 | `in_si_warn_normalised` | direct | `si.html`, `scripts/export_wired_layers.py` |
 | `in_si_warn_page` | direct | `scripts/extract_warn_addresses.py` |
 | `in_si_warn_placed` | direct | `scripts/audit_signal_display.py` |
@@ -392,7 +422,7 @@ headline can be audited rather than taken on trust:
 | `in_txexp_miso_mtep_appendix_a_status` | direct | `scripts/export_grid_siting.py` |
 | `in_urdb_rates` | direct | `app.js`, `market.html` |
 | `in_usa_structures_county` | derivative | `feeds `in_county_context_extras` via `scripts/build_county_context_extras.py`` |
-| `in_ustp_ch7_tfr` | **none** | — |
+| `in_ustp_ch7_tfr` | direct | `scripts/checkpoint.py` |
 | `in_utility_tariff_riders` | direct | `app.js`, `market.html` |
 | `in_water` | derivative | `feeds `in_county_fibre` via `scripts/build_county_gates.py`` |
 | `in_water_aqueduct` | direct | `community.html`, `scripts/export_wired_batch2.py` |

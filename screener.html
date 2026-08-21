@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Screener — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=695d947c">
+<link rel="stylesheet" href="style.css?v=51a4e473">
 </head>
 <body>
 <header id="topbar">
@@ -215,6 +215,19 @@
           non-residential property, and only trouble serious enough that it would plausibly move
           someone to sell. A parking ticket does not qualify.</p>
         <label><input type="checkbox" id="s-si"> Only sites with at least one such signal</label>
+        <!-- ⭐ G144, operator 2026-08-21: *"there should be a user input for minimum number of SI
+             signals shown (e.g., if I input 4, the only sites that should show should have at
+             least four signals)."*
+             ⛔ IT COUNTS SIGNAL TYPES, NOT EVENTS, and that distinction is the whole row. Four code
+             violations on one parcel is ONE signal; counting events would let a single chronically
+             cited address masquerade as four independent reasons to sell. The events control two
+             blocks down is the other question and stays separate. -->
+        <label class="blk">At least
+          <span class="inline"><input type="number" id="s-minsigtypes" value="0" min="0" max="10"
+            step="1"></span> DIFFERENT signals on the parcel</label>
+        <p class="hint">Counts <b>distinct signal types</b>, not records. Several code violations on
+          one property is still <b>one</b> signal &mdash; two unrelated signals is a much stronger
+          case than two instances of the same one. Leave at 0 for no minimum.</p>
 
         <div class="subhead">How recent does it have to be?</div>
         <label class="blk">Ignore one-off events older than
@@ -300,14 +313,15 @@
              which is a different question from whether the ground itself is buildable. Free
              numeric entry per G68 - a review radius is a judgement call, not a preset. -->
         <div class="subhead">Who else holds a say over the land</div>
-        <label><input type="checkbox" id="s-nomil"> Exclude land within
-          <input type="number" id="s-milmi" value="3" min="0" step="0.5"> miles of a military
-          installation</label>
-        <p class="hint">A large load or a tall structure near an active installation can draw a
-          <b>DoD Siting Clearinghouse</b> review. It runs on the Department&rsquo;s clock, not the
-          county&rsquo;s &mdash; it rarely refuses outright, it adds months. Three miles is a
-          starting radius, not a rule; type your own. <b>1,695</b> of the sites listed here sit
-          within three miles of one (13,193 across all 532,870 candidates).</p>
+        <!-- ⛔ G146, operator 2026-08-21: *"We simply do NOT need to include distance from the
+             nearest military site in our analysis, since this really won't ever change our siting
+             decisions."* The distance-to-installation gate and its payload fields are REMOVED —
+             control, both filter predicates, the chip, the detail row and the export column, in
+             one change, because a control left behind with its data deleted is a dead filter and
+             a field left behind with its control deleted is dead weight.
+             ⚠ NOT removed: special-use airspace and tribal trust land. Those two sit in the same
+             group and were never in scope — one governs what may be built tall, the other names a
+             different sovereign as the counterparty. Both can change a decision. -->
         <label><input type="checkbox" id="s-nosua"> Exclude land under special-use airspace</label>
         <p class="hint">Governs what may be built <b>tall</b> &mdash; cooling towers, stacks, met
           masts and construction cranes, not the slab. <b>2,940</b> of the sites listed here sit
@@ -352,7 +366,7 @@
   </main>
 </div>
 
-<script src="common.js?v=c031ed22"></script>
+<script src="common.js?v=df2cea38"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script>
 "use strict";
@@ -409,10 +423,24 @@ function signalState(s) {
   if (hasStateSignal(s.signals))
     return { qualifies: true, label: "standing", why: "a standing condition, which does not expire" };
   const since = Number($("s-since").value);
+  /* ⛔ G145 — THE FOURTH STATE, AND IT WAS BEING RENDERED AS "date unknown".
+     `last_event` is the last event ON OR BEFORE TODAY. A parcel whose only date is in the FUTURE
+     — a tax auction scheduled for next month, an anchor lease expiring in 2028 — arrives here
+     with last_event NULL and fell straight into the undated branch below.
+     Measured: 8,591 of 23,841 flagged parcels, 36% of the set. Parcel 471401230011000005 goes to
+     auction on 2026-09-28 and this page said we did not know when.
+     ⭐ A scheduled event is not merely dated, it is the MOST current thing on the row, so it
+     always qualifies and it is deliberately checked BEFORE the cutoff and recency tests — both
+     of those count past events only, and would have excluded it for having none. */
+  if (!s.last_event && s.next_event) {
+    return { qualifies: true, label: "upcoming",
+             why: `a scheduled event on ${s.next_event} — it has not happened yet, so it is the `
+                + `most current fact on this row` };
+  }
   if (!s.last_event) {
     const keep = $("s-keepundated").checked;
     return { qualifies: keep, label: "undated",
-             why: "we hold the record but not the date - shown as unknown, never as recent" };
+             why: "the publisher does not date this record - shown as such, never as recent" };
   }
   const yr = Number(String(s.last_event).slice(0, 4));
   if (since && yr < since)
@@ -546,8 +574,6 @@ const FILTER_MODE = {
   "s-lineon":   ["gate", "Either a line crosses the parcel or it does not."],
   "s-si":       ["gate", "You asked for sites with an owner-motivation signal. Categorical."],
   "s-binding":  ["gate", "A named binding facility. Text match, not a quantity."],
-  "s-nomil":    ["gate", "Military proximity, as you set it. ⚠ A DoD Siting Clearinghouse review "
-                       + "adds months rather than refusing - this is the strictest reading."],
   "s-nosua":    ["gate", "Special-use airspace. A parcel is under it or it is not."],
   "s-notribal": ["gate", "Tribal trust land. A different sovereign, not a worse site."],
 
@@ -564,6 +590,9 @@ const FILTER_MODE = {
   "s-buskv":    ["pref", "Bus voltage."],
   "s-structmax":["pref", "Structure count."],
   "s-minevents":["pref", "How many owner-motivation events."],
+  /* ⚠ GATE, not a preference: a site below the threshold is REMOVED, not down-ranked.
+     G129 requires the badge to match the enforcement, and audit_g129_gates.py checks it. */
+  "s-minsigtypes":["gate", "The minimum number of DIFFERENT owner-motivation signals on the parcel. Counts signal types, not records."],
   "s-wdsince":  ["pref", "How recently the request was withdrawn. A year is a quantity."],
   "s-wdmw":     ["pref", "How big the cancelled request was. A near miss is still evidence."],
   /* ⛔ s-siyears is NOT listed. It is a PARAMETER of the s-si gate, read inside signalState(),
@@ -645,10 +674,10 @@ function passesGates(s) {
   if ($("s-needbus").checked && !gridOf(s)) return false;
   if ($("s-lineon").checked && !s.line_on_parcel) return false;
   if ($("s-si").checked && signalState(s).qualifies !== true) return false;
+  if (N("s-minsigtypes") && !(Number(s.signal_types || 0) >= N("s-minsigtypes"))) return false;
   if ($("s-noflood").checked && s.sfha_flood) return false;
   if ($("s-nowet").checked && s.wetland_on_parcel) return false;
   if ($("s-noprot").checked && s.protected_land) return false;
-  if ($("s-nomil").checked && s.mil_mi != null && s.mil_mi <= N("s-milmi")) return false;
   if ($("s-nosua").checked && s.sua_name) return false;
   if ($("s-notribal").checked && s.tribal_name) return false;
   if ($("s-bonus").checked && !s.bonus_kinds) return false;
@@ -691,10 +720,6 @@ function passes(s) {
   if ($("s-noflood").checked && s.sfha_flood) return false;
   if ($("s-nowet").checked && s.wetland_on_parcel) return false;
   if ($("s-noprot").checked && s.protected_land) return false;
-  // G72 gates. mil_mi is NULL past 25 miles, and NULL means "measured, nothing in range" -- so a
-  // missing value PASSES the exclusion rather than failing it. Treating absent as 0 here would
-  // reject every parcel in the state, which is the inverse of the unpublished-is-not-zero rule.
-  if ($("s-nomil").checked && s.mil_mi != null && s.mil_mi <= N("s-milmi")) return false;
   if ($("s-nosua").checked && s.sua_name) return false;
   if ($("s-notribal").checked && s.tribal_name) return false;
   if ($("s-bonus").checked && !s.bonus_kinds) return false;
@@ -712,6 +737,8 @@ function passes(s) {
   const sigOn = [...document.querySelectorAll("input.s-sig:checked")].map((e) => e.value);
   if (sigOn.length && !sigOn.some((c) => String(s.signals || "").includes(c))) return false;
   if (N("s-minevents") && !(Number(s[$("s-evwindow").value] || 0) >= N("s-minevents"))) return false;
+  // ⭐ G144. signal_types is already on the payload; absent means zero admitted signals.
+  if (N("s-minsigtypes") && !(Number(s.signal_types || 0) >= N("s-minsigtypes"))) return false;
   if ($("s-keying").value && String(s.keying || "") !== $("s-keying").value) return false;
   if ($("s-bonuskind").value && !String(s.bonus_kinds || "").includes($("s-bonuskind").value)) return false;
   if ($("s-plottable").checked && (s.lat == null || s.lon == null)) return false;
@@ -765,6 +792,7 @@ function activeChips() {
   if ($("s-structmax").value !== "") c.push(`at most ${$("s-structmax").value} structures`);
   if (N("s-buskv")) c.push(`bus ${N("s-buskv")}+ kV`);
   if (N("s-minevents")) c.push(`${N("s-minevents")}+ events`);
+  if (N("s-minsigtypes")) c.push(`${N("s-minsigtypes")}+ different signals`);
   if ($("s-plottable").checked) c.push("mappable only");
 
   if ($("s-si").checked && Number($("s-since").value))
@@ -775,7 +803,6 @@ function activeChips() {
   if ($("s-nowet").checked) c.push("no wetland");
   if ($("s-noprot").checked) c.push("no protected land");
   if ($("s-bonus").checked) c.push("tax-credit eligible");
-  if ($("s-nomil").checked) c.push(`>${N("s-milmi")} mi from a military installation`);
   if ($("s-nosua").checked) c.push("not under special-use airspace");
   if ($("s-notribal").checked) c.push("not tribal trust land");
   $("s-active").innerHTML = `<div class="chipbar"><b>Filters in effect</b>${
@@ -1214,8 +1241,18 @@ function siteDetail(s) {
           ${detailRow("Events (3 / 5 / 10 yr)", s.signal_events != null
             ? `${s.events_3y ?? 0} / ${s.events_5y ?? 0} / ${s.events_10y ?? 0}` : null, null,
             "Recent and repeated beats old and isolated.")}
-          ${detailRow("First / last event", [s.first_event, s.last_event].filter(Boolean).join(" → ") || null,
-            "undated — the publisher records no date", "An undated record is kept and disclosed, never dropped.")}
+          ${detailRow("Next scheduled event", siNextDate(s) || null,
+            "nothing scheduled that the publisher has dated",
+            "An event that has NOT happened yet — a tax auction, a lease expiry. It is the most "
+            + "actionable date on the row and it used to be rendered as 'date unknown'.")}
+          ${/* ⭐ G145 + G153, one block. Every date we hold for EVERY signal, each with a link to
+                the publisher so the reader can verify it themselves. Operator, relaying a user:
+                "a link to the source or document within the filings … so that the user can
+                double-check the validity themselves." ⚠ The old row here showed one parcel-wide
+                "first → last" pair, which could not say which signal a date belonged to. */
+            detailRow("Every event, by signal", siSignalLines(s) || null,
+            "no dated events on this parcel",
+            "One line per signal: every date we hold for it, and the publisher it came from.")}
           ${detailRow("How it reached this parcel", s.keying, null,
             "Whether it was matched by parcel key or by location. Spatial matches are weaker.")}
           ${detailRow("Flood zone", s.sfha_flood === undefined ? null : (s.sfha_flood ? "YES — mapped hazard" : "clear (measured)"),
@@ -1226,10 +1263,6 @@ function siteDetail(s) {
             null, "Overlap usually ends the conversation.")}
           ${detailRow("Federal tax-credit zone", s.bonus_kinds, "none — this parcel is in no bonus zone",
             "An energy-community or low-income bonus can be worth 10 percentage points of ITC.")}
-          ${detailRow("Nearest military installation", s.mil_mi != null
-              ? `${s.mil_mi} mi — ${s.mil_name}` : null,
-            "none within 25 miles (measured)",
-            "Inside a few miles, a large load can draw a DoD Siting Clearinghouse review. It runs on the Department's clock, not the county's — it rarely refuses, it adds months.")}
           ${detailRow("Special-use airspace", s.sua_name, "none overhead (measured)",
             "Governs what may be built TALL — cooling towers, stacks, met masts and cranes, not the slab.")}
           ${detailRow("Tribal trust land", s.tribal_name, "no (measured)",
@@ -1310,8 +1343,12 @@ function render() {
   const NCOL = SCREENER_NCOL;
   const badge = (st) => st.label === "standing"
       ? `<span class="bdg bdg-st" title="${st.why}">standing condition</span> `
+    /* ⭐ G145: the scheduled state, badged as what it is. It reads as the STRONGEST label on the
+       page rather than the weakest, which is the correction — this used to say "date unknown". */
+    : st.label === "upcoming"
+      ? `<span class="bdg bdg-up" title="${st.why}">scheduled &mdash; upcoming</span> `
     : st.label === "undated"
-      ? `<span class="bdg bdg-un" title="${st.why}">date unknown</span> `
+      ? `<span class="bdg bdg-un" title="${st.why}">publisher records no date</span> `
     : st.label === "stale"
       ? `<span class="bdg bdg-ol" title="${st.why}">older than your cutoff</span> ` : "";
   /* ⛔ G138: THIS WAS `VIEW.slice(0, 500)` WITH NOTHING SAID. A reader who scrolled to row 500 of
@@ -1341,8 +1378,14 @@ function render() {
       ${showPlanned ? `<td>${plannedCell(s)}</td>` : ""}
       ${showOwner ? `<td>${ownerValueCell(s)}</td>` : ""}
       <td>${s.has_signal ? `${signalsPlain(s.signals)}<div class="sub2">${badge(sst)}${
-        plural(s.signal_events || 0, "record")}${s.last_event ? ` · latest ${s.last_event}`
-        : " · date unknown"}</div>` : (s.intent_signals ? "" : '<span class="hint">none</span>')}${
+        plural(s.signal_events || 0, "record")}${
+        /* ⛔ G145: the ternary here used to be `last_event ? "latest X" : "date unknown"`, so a
+           parcel with a scheduled auction printed the false half. Three outcomes now, and the
+           third names the publisher rather than blaming our records. */
+        s.last_event ? ` · latest ${s.last_event}`
+        : siNextDate(s) ? ` · <b>scheduled ${siNextDate(s)}</b>`
+        : " · the publisher does not date this record"}</div>`
+        : (s.intent_signals ? "" : '<span class="hint">none</span>')}${
         intentCell(s)}</td>
       <td>${siteLocationCell(s)}</td>
     </tr>${siteDetail(s)}`;
@@ -1528,7 +1571,7 @@ function toXLSX() {
     ["", "A bus can be wide open one way and full the other. Never merge them."],
     ["mw_dc / mw_bess", "land supports up to this, at your MW-per-acre assumption. GROSS land, not a fit."],
     ["*_mi", "miles, measured to the parcel FOOTPRINT, not to a centroid."],
-    ["mil_mi / sua_name / tribal_name", "who else holds a say over the land - military review, airspace, sovereignty."],
+    ["sua_name / tribal_name", "who else holds a say over the land - airspace, sovereignty. (G146: distance to the nearest military installation was removed - it never changed a siting decision.)"],
     ["signals / owner_signal_plain_english", "public reasons an owner might transact. Absence means a cold approach, not a bad site."],
     [],
     ["A BLANK CELL MEANS NOT MEASURED. It never means zero."],

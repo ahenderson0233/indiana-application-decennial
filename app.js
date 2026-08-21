@@ -889,7 +889,11 @@ function jsMatches(p) {
        evaluates to NULL, not TRUE. That is "unpublished is NULL, never 0" wearing a new costume, and
        it lands hardest on our biggest signal: 90% of tax-delinquency records carry no date at all.
        So undated records are KEPT BY DEFAULT and the user chooses (G9 ruling, 2026-08-17). */
-    if (cut && !p.si_last_event_date) {
+    /* ⛔ G145. A parcel whose only date is in the FUTURE arrives here with si_last_event_date
+       NULL and used to be counted as UNDATED - so a tax auction five weeks away was filed under
+       "we never got a date" and could be hidden by the undated toggle. A scheduled event is the
+       most current thing on the parcel; it passes the cutoff unconditionally. */
+    if (cut && !p.si_last_event_date && !p.si_next_event_date) {
       if (!$("f-keepundated").checked) return false;
       state.undatedSI++;
     }
@@ -2747,7 +2751,8 @@ function scoreP1(p) {
     basis: `${n} signal event${n === 1 ? "" : "s"} across ${types} signal type${types === 1 ? "" : "s"}` +
       (why ? ` · ${why}` : "") +
       (p.si_last_event_date ? ` · latest ${p.si_last_event_date}`
-                            : " · no event date held, so recency is not scored (not penalised)") };
+       : p.si_next_event_date ? ` · scheduled ${p.si_next_event_date}`
+       : " · the publisher records no date, so recency is not scored (not penalised)") };
 }
 function scoreP2(p) {
   if (p._dsub_mi == null && p._dline_mi == null) return null;   // distances not computed for this parcel
@@ -3469,8 +3474,14 @@ function renderPowerPlan(p, fips) {
   const siDetail = (p.has_si_signal === true ? `
       ${row("Owner-motivation signals", signalsPlain(p.si_signals),
              "signal recorded but its type is not named")}
-      ${row("first / last event", [p.si_first_event_date, p.si_last_event_date].filter(Boolean).join(" → ") || null,
-             "undated — the source publishes no date for this record")}
+      ${row("next scheduled event", p.si_next_event_date || null,
+             "nothing scheduled that the publisher has dated")}
+      ${/* ⭐ G145 + G153. One line per signal: every date we hold, plus a link to the publisher so
+            the reader can check it. Replaces a single parcel-wide "first → last" pair that could
+            not say which signal a date belonged to, and that printed "undated" on 8,591 parcels
+            whose date is simply in the future. */
+        row("every event, by signal", siSignalLines(p) || null,
+            "no dated events on this parcel")}
       ${row("events in 3 / 5 / 10 yrs", p.si_events_3y != null ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
       ${row("how it reached this parcel", p.si_keying)}
       ${row("where the date came from", p.si_date_basis)}`
@@ -3662,7 +3673,9 @@ function renderPowerPlan(p, fips) {
            <i>“our model is stale”</i>, not <i>“this bus is full”</i>.`,
     p.has_si_signal === true
       ? `The owner shows a public reason to sell: <b>${signalsPlain(p.si_signals) || "signal on record"}</b>${
-          p.si_last_event_date ? ` (latest ${p.si_last_event_date})` : " — date not recorded"}.`
+          p.si_last_event_date ? ` (latest ${p.si_last_event_date})`
+        : p.si_next_event_date ? ` (<b>scheduled ${p.si_next_event_date}</b>)`
+        : " — the publisher records no date"}.`
       : `<b>No owner-motivation signal.</b> This is a cold approach — the land is capable, but
          nothing suggests the owner is looking to transact.`,
     /* G11: this takeaway printed the stale 4-value posture, so it said "County posture is quiet"
@@ -4117,7 +4130,8 @@ function openParcelEvidence(p, fips) {
       ${row("carries SI signal", p.has_si_signal === true ? "yes" : (p.has_si_signal === false ? "no" : null))}
       ${row("signal types / events", p.si_signal_types != null ? `${p.si_signal_types} / ${p.si_signal_events}` : null)}
       ${row("signals", p.si_signals)}
-      ${row("first event", p.si_first_event_date)}${row("last event", p.si_last_event_date)}
+      ${row("first event", p.si_first_event_date)}${row("last past event", p.si_last_event_date)}
+      ${row("next scheduled event", p.si_next_event_date)}
       ${row("events in last 3 / 5 / 10 yrs", p.si_events_3y != null
           ? `${p.si_events_3y} / ${p.si_events_5y} / ${p.si_events_10y}` : null)}
       ${row("how it reached this parcel", p.si_keying)}

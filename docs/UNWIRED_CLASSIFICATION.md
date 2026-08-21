@@ -2,7 +2,7 @@
 
 > ⛔ **DO NOT HAND-EDIT.** Edit the ledger in the script, then re-run it.
 
-**304 of 349 registered objects reach a surface.** The other 45 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
+**310 of 367 registered objects reach a surface.** The other 57 are listed below, each with a reason. An object with no reason FAILS `audit_unwired_classification.py`, which is what keeps this list closed.
 
 ## document_surface — 1
 
@@ -20,7 +20,7 @@ the surface is a generated DOCUMENT rather than a page - docs/RESCRAPE_LEDGER.md
 - `in_miso_poi`
 - `in_nrc_reactors`
 
-## harvest_rung — 19
+## harvest_rung — 20
 
 a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads the 5,000 MW rung; the others exist so the ladder can be resumed, audited and re-pointed. Rendering a rung would publish a request size nobody asked about.
 
@@ -30,6 +30,7 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_qs_c23_inj_10`
 - `in_pjm_qs_c23_inj_1000`
 - `in_pjm_qs_c23_inj_15`
+- `in_pjm_qs_c23_inj_1500`
 - `in_pjm_qs_c23_inj_200`
 - `in_pjm_qs_c23_inj_25`
 - `in_pjm_qs_c23_inj_300`
@@ -44,7 +45,23 @@ a QueueScope ladder rung or harvest working table. in_bus_capacity_tier0 reads t
 - `in_pjm_qs_c23_wd_500`
 - `in_pjm_qs_withdrawal_rungcheck`
 
-## raw_feed — 11
+## upstream_full_width — 11
+
+a FULL-WIDTH Indiana clip of an upstream source behind an SI signal, held under the operator's 2026-08-21 ruling that every source is captured at full width. The SIGNAL renders; the clip is the evidence the signal was derived from, and for several of them the measured NEGATIVE is the deliverable. Guarded by scripts/audit_si_upstream_width.py.
+
+- `in_si_up_bankruptcy`
+- `in_si_up_brownfield`
+- `in_si_up_ibtr_appeals`
+- `in_si_up_indy_code`
+- `in_si_up_indy_rezoning`
+- `in_si_up_indy_taxsale`
+- `in_si_up_iocs_court`
+- `in_si_up_seized_auction`
+- `in_si_up_sri_taxsale`
+- `in_si_up_vacancy_derived`
+- `in_si_up_warn_multistate`
+
+## raw_feed — 12
 
 a per-year or per-source input that a shipped table is built from. The built table is what renders; the feed is kept so the build can be re-run and audited.
 
@@ -55,6 +72,7 @@ a per-year or per-source input that a shipped table is built from. The built tab
 - `in_nfirs_basicincident_2023`
 - `in_nfirs_basicincident_2024`
 - `in_nfirs_fireincident_2022`
+- `in_nfirs_fireincident_2023`
 - `in_nfirs_incidentaddress_2022`
 - `in_nfirs_incidentaddress_2023`
 - `in_nfirs_incidentaddress_2024`
@@ -77,9 +95,3 @@ a one-row record of what was searched and what is held - provenance, not content
 replaced by, or a second derivation of, a table that IS wired - kept only so the change stays auditable.
 
 - `in_fsis_establishments_inactive`
-
-## no_indiana_content — 1
-
-⛔ AN `in_` PREFIX IS NOT A CLIP. Measured row by row, these hold no Indiana data at all, so there is nothing to surface and the name is the defect. This is the same failure G72 found in in_tribal_land (14 rows, none in Indiana): an unwired table is an UNAUDITED table, and it took wiring one to discover the other.
-
-- `in_ustp_ch7_tfr`

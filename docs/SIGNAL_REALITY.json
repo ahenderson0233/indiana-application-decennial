@@ -1,5 +1,5 @@
 {
- "audited_at": "2026-08-16T19:08:37.477147+00:00",
+ "audited_at": "2026-08-21T21:48:10.104719+00:00",
  "signals": [
   {
    "signal": "A1_market_listing",
@@ -87,8 +87,8 @@
   },
   {
    "signal": "D4_tax_delinquency",
-   "class": "HELD_NOT_SPLIT",
-   "admitted_parcels": 0,
+   "class": "ADMITTED",
+   "admitted_parcels": 9459,
    "measured_rows_held": 17617,
    "why": "17,617 rows inside in_si_refresh_sri_taxsale_in (saleStatusDescription DELINQUENT 15,860 + Sale Active 1,757), 76 counties, 92% parcel-keyed, 16,325 auctions still upcoming. Admitted today under D1_tax_sale. A SPLIT, like the D5 split."
   },
@@ -121,16 +121,23 @@
    "why": "Same single blocker as D18: no owner mailing address anywhere in the estate. One DLGF pull unblocks D9, D18, D11, D27 and IDEM together."
   },
   {
-   "signal": "D1_tax_sale",
+   "signal": "D2_foreclosure",
    "class": "ADMITTED",
-   "admitted_parcels": 11954,
+   "admitted_parcels": 3571,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
   {
-   "signal": "D2_foreclosure",
+   "signal": "D1_tax_sale",
    "class": "ADMITTED",
-   "admitted_parcels": 3571,
+   "admitted_parcels": 3322,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D12_code_violation",
+   "class": "ADMITTED",
+   "admitted_parcels": 2109,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
@@ -152,13 +159,6 @@
    "signal": "D5_unsafe_building",
    "class": "ADMITTED",
    "admitted_parcels": 1320,
-   "measured_rows_held": null,
-   "why": "reaching parcels today"
-  },
-  {
-   "signal": "D22_environmental_violation",
-   "class": "ADMITTED",
-   "admitted_parcels": 931,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
@@ -186,7 +186,14 @@
   {
    "signal": "D21_demolition_order",
    "class": "ADMITTED",
-   "admitted_parcels": 377,
+   "admitted_parcels": 596,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D22_environmental_violation",
+   "class": "ADMITTED",
+   "admitted_parcels": 564,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
@@ -194,13 +201,6 @@
    "signal": "D7_brownfield",
    "class": "ADMITTED",
    "admitted_parcels": 311,
-   "measured_rows_held": null,
-   "why": "reaching parcels today"
-  },
-  {
-   "signal": "D12_code_violation",
-   "class": "ADMITTED",
-   "admitted_parcels": 228,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
@@ -219,6 +219,27 @@
    "why": "reaching parcels today"
   },
   {
+   "signal": "D19_warn",
+   "class": "ADMITTED",
+   "admitted_parcels": 43,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D29_anchor_tenant_exit",
+   "class": "ADMITTED",
+   "admitted_parcels": 20,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
+   "signal": "D28_cmbs_loan_distress",
+   "class": "ADMITTED",
+   "admitted_parcels": 13,
+   "measured_rows_held": null,
+   "why": "reaching parcels today"
+  },
+  {
    "signal": "D24_plant_delisting",
    "class": "ADMITTED",
    "admitted_parcels": 6,
@@ -233,7 +254,7 @@
    "why": "reaching parcels today"
   },
   {
-   "signal": "D19_warn",
+   "signal": "D16_catastrophic_damage",
    "class": "ADMITTED",
    "admitted_parcels": 2,
    "measured_rows_held": null,

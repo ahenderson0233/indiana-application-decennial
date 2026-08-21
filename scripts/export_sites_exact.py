@@ -63,6 +63,15 @@ SELECT sc.county_fips, s.* EXCEPT(parcel_geog, {", ".join(V1_SI)}),
        IFNULL(f.si_signal_types, 0)   AS si_signal_types,
        IFNULL(f.si_signal_events, 0)  AS si_signal_events,
        f.si_signals, f.si_first_event_date, f.si_last_event_date,
+       -- G145: the SCHEDULED date, and every event date per signal. Without the first, 8,591 of
+       -- 23,841 flagged parcels render "date unknown" over a date we hold.
+       f.si_next_event_date,
+       IFNULL(f.si_events_future, 0)  AS si_events_future,
+       ARRAY(SELECT AS STRUCT signal AS s, CAST(first_date AS STRING) AS f,
+                    CAST(last_past_date AS STRING) AS l, CAST(next_date AS STRING) AS n,
+                    n_events AS e, n_dated AS d, basis AS b,
+                    source_ids AS src, keying AS k
+             FROM UNNEST(f.si_signal_dates)) AS si_signal_dates,
        IFNULL(f.si_events_3y, 0)      AS si_events_3y,
        IFNULL(f.si_events_5y, 0)      AS si_events_5y,
        IFNULL(f.si_events_10y, 0)     AS si_events_10y,
@@ -132,8 +141,21 @@ LEFT JOIN `{DS}.in_parcel_location` loc USING (parcel_source, parcel_key)
 -- and the two surfaces would disagree about what a site is - which is worse than either answer
 -- alone. Measured on the first run after the exclusion landed: the county files shipped 23,795
 -- flagged parcels while the warehouse held 23,766, and the checkpoint asserts those agree.
+-- ⛔ `f.has_intent_signal` WAS MISSING FROM THIS PREDICATE AND IT WAS DROPPING 408 OF 865 PARCELS.
+-- Measured 2026-08-21: the warehouse held 865 declared-intent parcels, every one of them present
+-- in in_sites_county, and the map payload carried 457. The five OR-terms above are all about
+-- DISTRESS or size, so an intent-only parcel reached the map ONLY if it happened to be C/I, big
+-- enough, or vacant.
+-- ⭐ THIS IS G133'S OWN LESSON REPEATING ONE LEVEL DOWN. That row exists because the declared-
+-- intent family is *"the leads the existing SI set could not see"* - 800 of the 865 carry no
+-- distress signal at all - and a render predicate that only knows how to ask about distress will
+-- silently drop exactly those. The family was added to the flag table and to the SELECT, and the
+-- WHERE was never revisited.
+-- ⚠ It does NOT move the flagged-parcel count the checkpoint asserts against the payload: that
+-- count is has_si_signal, and these parcels are intent-only by definition.
 WHERE (s.occ_group='ci' OR s.mw_datacenter_4_per_acre>=25
-   OR s.has_vacancy_signal OR s.has_si_signal OR IFNULL(f.has_si_signal, FALSE))
+   OR s.has_vacancy_signal OR s.has_si_signal OR IFNULL(f.has_si_signal, FALSE)
+   OR IFNULL(f.has_intent_signal, FALSE))
   AND NOT EXISTS (SELECT 1 FROM `{DS}.in_parcel_row_class` rc
                   WHERE rc.parcel_source = s.parcel_source
                     AND rc.parcel_key = s.parcel_key AND rc.row_excluded)
@@ -166,7 +188,8 @@ def rc(x):
 # unflagged features would add megabytes to the payload and say nothing — an absent key here
 # reads as "no admitted signal", which is the truth, not as "cannot assess".
 SI_DETAIL = ("si_signal_types", "si_signal_events", "si_signals", "si_first_event_date",
-             "si_last_event_date", "si_events_3y", "si_events_5y", "si_events_10y",
+             "si_last_event_date", "si_next_event_date", "si_events_future", "si_signal_dates",
+             "si_events_3y", "si_events_5y", "si_events_10y",
              "si_keying", "si_date_basis", "si_excl_resid", "si_excl_lowsev")
 # ⭐ G133 detail, dropped on features that carry no intent signal for the same size reason as
 # SI_DETAIL above. ⚠ 174 parcels statewide carry one, so emitting these on 1.2M features would be
@@ -195,7 +218,17 @@ n_intent = 0
 for r in it:
     d = dict(r); fips = d.pop("county_fips"); gj = d.pop("gj")
     if gj is None: no_geom += 1; continue
-    if d.get("has_si_signal"): n_si += 1
+    if d.get("has_si_signal"):
+        n_si += 1
+        # ⚠ G145: an ARRAY of STRUCT arrives as a list of dicts full of Nones, and an EMPTY list
+        # is neither None nor False, so the usual "drop the null" rules do not touch it. Both are
+        # stripped here or the per-signal date block ships as mostly nulls on 23,841 features.
+        sd = d.get("si_signal_dates")
+        if sd:
+            d["si_signal_dates"] = [{k2: v2 for k2, v2 in e.items() if v2 is not None}
+                                    for e in sd]
+        else:
+            d.pop("si_signal_dates", None)
     else:
         for k in SI_DETAIL: d.pop(k, None)
     # ⭐ G133: same treatment for the declared-intent family, counted separately because it is a

@@ -59,7 +59,12 @@ for r in client.query(f"""
 rows = []
 for r in client.query(f"""
   WITH ranked AS (
-    SELECT c.*, g.mil_mi, g.mil_name, g.sua_name, g.tribal_name,
+    -- ⛔ G146: mil_mi / mil_name are NO LONGER SELECTED. Operator 2026-08-21 — distance to
+    -- the nearest military installation never changes a siting decision, so it fails the
+    -- governing principle's veto. The gate, the chip and the detail row went with it.
+    -- ⚠ in_land_gate_parcel still COMPUTES them; this stops shipping them. The table is
+    --   the record, the payload is the product, and they are allowed to differ.
+    SELECT c.*, g.sua_name, g.tribal_name,
            ROUND(h.deliverable_wd_mw)  AS deliv_wd_mw,
            ROUND(h.deliverable_inj_mw) AS deliv_inj_mw,
            h.deliverable_basis         AS deliv_basis,
@@ -152,6 +157,23 @@ for r in client.query(f"""
          intent_signals, intent_last_date, intent_who, intent_mw_given_up,
          has_signal, signals, signal_types, signal_events,
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
+         -- ⛔ G145: the SCHEDULED date. Without this the page prints "date unknown" on a parcel
+         -- going to auction in five weeks, which is the most actionable fact we hold.
+         CAST(next_event AS STRING) AS next_event, events_future,
+         -- ⭐ G145 second half: one entry PER SIGNAL, so a row can say which signal each date
+         -- belongs to instead of collapsing them into one parcel-wide date.
+         -- ⚠ Short field names on purpose - this ships on 23,841 rows.
+         ARRAY(SELECT AS STRUCT
+                 signal                        AS s,
+                 CAST(first_date AS STRING)    AS f,
+                 CAST(last_past_date AS STRING) AS l,
+                 CAST(next_date AS STRING)     AS n,
+                 n_events                      AS e,
+                 n_dated                       AS d,
+                 basis                         AS b,
+                 source_ids                    AS src,
+                 keying                        AS k
+               FROM UNNEST(signal_dates)) AS signal_dates,
          events_3y, events_5y, events_10y, keying,
          sfha_flood, wetland_on_parcel, protected_land, bonus_kinds,
          inj_bus, inj_kv, inj_mw, inj_binding, inj_mi,
@@ -167,8 +189,8 @@ for r in client.query(f"""
          -- parcel rather than near it: 41,986 do. line_on_parcel is a stronger fact than a
          -- small line_mi and must not be flattened into it.
          line_mi, line_on_parcel, line_kv, line_volt_class,
-         -- G72 gates: who ELSE holds a say over this land. mil_mi is NULL past 25 miles.
-         mil_mi, mil_name, sua_name, tribal_name,
+         -- G72 gates: who ELSE holds a say over this land. (G146 removed the military one.)
+         sua_name, tribal_name,
          -- G116/G118 deliverable capacity. ⛔ `deliverable_basis` MUST ship with the figures:
          -- a NULL under 'both_ends' would be a measured absence, a NULL under 'cannot_assess'
          -- means we could not follow the line to its buses. Opposite claims, same empty cell.
@@ -207,6 +229,15 @@ for r in client.query(f"""
   WHERE has_signal OR rk <= {TOP_PER_COUNTY}
   ORDER BY county_fips, mw_dc DESC"""):
     d = dict(r)
+    # ⚠ G145: an ARRAY of STRUCT arrives as a list of dicts holding None values. Strip those
+    # per-entry too, or the per-signal date block roughly triples the payload with nulls.
+    # ⛔ AND AN EMPTY LIST IS NOT None AND NOT False, so it survives the filter below unless it is
+    # dropped here — 23,841 rows each carrying `"signal_dates": []` is pure weight.
+    if d.get("signal_dates"):
+        d["signal_dates"] = [{k2: v2 for k2, v2 in e.items() if v2 is not None}
+                             for e in d["signal_dates"]]
+    else:
+        d["signal_dates"] = None
     # drop nulls so the gzipped payload stays lean; the client treats absent as "not measured"
     rows.append({k: v for k, v in d.items() if v is not None and v is not False})
 

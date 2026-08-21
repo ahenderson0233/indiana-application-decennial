@@ -260,6 +260,17 @@ table.rtable tr:hover td { background: #fbfcfd; }
 .bdg-st { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
 .bdg-un { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 .bdg-ol { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+/* ⭐ G145. A SCHEDULED event - a tax auction, a lease expiring - has not happened yet, and it is
+   the most actionable date on the row. It reads BLUE and forward-looking rather than grey, because
+   until this session it was rendered with .bdg-un and the words "date unknown". */
+.bdg-up { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+/* ⭐ G145 + G153: every event date for every signal, each with a link to the publisher. One block,
+   rendered by siSignalLines() in common.js, used by the screener, the map dossier and si.html. */
+.sigdates { margin-top: 3px; }
+.sigdate { padding: 2px 0; border-top: 1px dotted #e2e8f0; line-height: 1.45; }
+.sigdate:first-child { border-top: 0; }
+.sigdate a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; }
 .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px;
   vertical-align: -1px; margin-right: 1px; }
 abbr[title] { text-decoration: underline dotted #94a3b8; cursor: help; text-underline-offset: 2px; }

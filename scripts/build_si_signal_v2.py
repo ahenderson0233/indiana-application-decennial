@@ -344,7 +344,90 @@ w_warn AS (
   FROM `{DS}.in_si_warn_placed`
   WHERE parcel_key IS NOT NULL AND match_grain = 'exact_address'
 ),
+-- ================================================================================================
+-- ⭐ G152: THE TWO SIGNALS THE 13-COLUMN REDUCTION COULD NOT PRODUCE.
+-- `energy.si_signals` flattens every source to (signal, date, flag, key, ...). Under that shape
+-- edgar_abs_ee_cmbs could only ever yield ONE signal - D20_loan_maturity - because one date and
+-- one flag is all that survives. The parent carries 153 columns of a SERVICER'S MONTHLY REPORT on
+-- 1,173 Indiana commercial buildings: whether the loan is in workout, whether the borrower is
+-- paying, whether income covers debt service, how full the building is, and when the largest
+-- tenant's lease ends. See scripts/build_si_cmbs_signals.py for the three format traps.
+--
+-- ⚠ SEVERE = TRUE FOR BOTH, and that is a decision, not an oversight. Unlike a code violation
+-- (where 40% of the corpus is High Weeds & Grass and severity has to be earned), every row that
+-- reaches in_si_cmbs_placed has already passed a distress test at build time - a servicer workout,
+-- a 30-day delinquency, DSCR below 1.0, published occupancy at or below 60%, or an anchor lease
+-- inside 24 months. The gate is the classifier, not a second filter here.
+-- ⚠ AND ONLY THE UNAMBIGUOUS MATCHES, exactly as w_warn does.
+-- ================================================================================================
+h_cmbs_distress AS (
+  SELECT parcel_key pk, 'D28_cmbs_loan_distress' signal,
+         -- the servicer transfer is the dated EVENT; the reporting period is when we observed it
+         COALESCE(special_servicer_date, period_end) obs,
+         IF(special_servicer_date IS NOT NULL,
+            'publisher event date (special-servicer transfer)',
+            'publisher reporting period end - the servicer reports monthly, so this is when the '
+            'condition was last CONFIRMED, not when it began') basis,
+         'cmbs_property_address' keying,
+         'CMBS propertyaddress+propertycity -> DLGF property address (suffix and directional '
+         'normalised on both sides)' bridge,
+         'edgar_abs_ee_cmbs' source_id,
+         'publisher table, full-width clip (G152)' blk,
+         TRUE AS severe
+  FROM `{DS}.in_si_cmbs_placed`
+  WHERE parcel_key IS NOT NULL AND match_grain = 'exact_address' AND is_loan_distress
+),
+h_cmbs_tenant AS (
+  SELECT parcel_key pk, 'D29_anchor_tenant_exit' signal,
+         -- ⭐ USUALLY A FUTURE DATE. A lease that expires in 2028 is the event, and it has not
+         -- happened yet. Only renderable because G145 taught the spine to carry a scheduled
+         -- future date instead of collapsing it to "date unknown".
+         COALESCE(anchor_lease_end, period_end) obs,
+         IF(anchor_lease_end IS NOT NULL,
+            'publisher SCHEDULED date (largest tenant lease expiry)',
+            'publisher reporting period end (occupancy as last reported)') basis,
+         'cmbs_property_address' keying,
+         'CMBS propertyaddress+propertycity -> DLGF property address (suffix and directional '
+         'normalised on both sides)' bridge,
+         'edgar_abs_ee_cmbs' source_id,
+         'publisher table, full-width clip (G152)' blk,
+         TRUE AS severe
+  FROM `{DS}.in_si_cmbs_placed`
+  WHERE parcel_key IS NOT NULL AND match_grain = 'exact_address' AND is_tenant_exit
+),
+-- ================================================================================================
+-- ⭐ G154: THE WARN ADDRESSES THAT NO STRING MATCH COULD PLACE, PLACED BY GEOMETRY.
+-- 88 facility addresses were recovered from the filings and 51 matched a parcel on street+city.
+-- The other 37 did not, and the cause was never spelling: the DLGF address is the assessor's
+-- address for a LOT, and a medical campus or a distribution park has none per building.
+-- Geocoded and spatially joined, 26 of 34 now place onto 21 parcels.
+-- ⚠ TWO GRADES, AND THEY ARE NOT THE SAME CLAIM. 12 points fall INSIDE a parcel. The other 14 are
+--   street-interpolated - the Census service returns a position on the road centreline, which
+--   sits in the road's own right-of-way parcel - and were snapped to the nearest parcel within
+--   150 m. Both are admitted, both carry their grade, and `bridge` says which.
+-- ⛔ Severity is still vacates_site. Placing a notice better does not make a layoff a closure.
+-- ================================================================================================
+w_warn_geo AS (
+  SELECT g.parcel_key pk, 'D19_warn' signal,
+         SAFE.PARSE_DATE('%Y-%m-%d', CAST(a.event_date AS STRING)) obs,
+         'publisher event date (WARN notice)' basis,
+         'facility_address_from_filing_pdf_geocoded' keying,
+         CONCAT('notice PDF -> facility address -> US Census geocode -> ',
+                IF(g.snap_m = 0.0, 'parcel CONTAINS the point',
+                   CONCAT('nearest parcel within 150 m (', CAST(g.snap_m AS STRING),
+                          ' m) - the geocode landed on the road centreline'))) bridge,
+         CONCAT('warn:', IFNULL(a.notice_class, '?')) source_id,
+         'publisher filing PDF, geocoded (G154)' blk,
+         IFNULL(a.vacates_site, FALSE) AS severe
+  FROM `{DS}.in_si_warn_geocoded` g
+  JOIN `{DS}.in_si_warn_addresses` a
+    ON a.company = g.company AND a.facility_street = g.facility_street
+  WHERE g.parcel_key IS NOT NULL AND STARTS_WITH(g.placement, 'placed')
+),
 allsig AS (
+  SELECT * FROM w_warn_geo UNION ALL
+  SELECT * FROM h_cmbs_distress UNION ALL
+  SELECT * FROM h_cmbs_tenant UNION ALL
   SELECT * FROM w_warn UNION ALL
   SELECT * FROM h_indy_wide UNION ALL
   SELECT * FROM h_sri UNION ALL SELECT * FROM h_ibtr UNION ALL
@@ -368,6 +451,13 @@ SELECT
   MIN(a.obs)                                        AS first_event_date,
   MAX(a.obs)                                        AS last_event_date,
   MAX(IF(a.obs <= CURRENT_DATE(), a.obs, NULL))     AS last_past_event_date,
+  -- ⛔ G145. `last_past_event_date` above is NULL for a signal whose only date is in the FUTURE,
+  -- and the rollup on the flag table read only that column, so 8,573 of 23,819 flagged parcels
+  -- printed "date unknown" over a date we hold. The dominant case is a SCHEDULED TAX AUCTION:
+  -- parcel 471401230011000005 goes to auction on 2026-09-28 and the screener said we did not know
+  -- when. ⭐ MIN, not MAX - for something that has not happened yet the SOONEST date is the one a
+  -- siter acts on; the latest is the one they would miss the deadline by.
+  MIN(IF(a.obs > CURRENT_DATE(), a.obs, NULL))      AS next_future_event_date,
   COUNTIF(a.obs BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 YEAR) AND CURRENT_DATE())  AS n_events_3y,
   COUNTIF(a.obs BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 5 YEAR) AND CURRENT_DATE())  AS n_events_5y,
   COUNTIF(a.obs BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 10 YEAR) AND CURRENT_DATE()) AS n_events_10y,
@@ -400,6 +490,34 @@ SELECT
   MIN(IF(si_admitted, first_event_date, NULL))     AS si_first_event_date,
   MAX(IF(si_admitted, last_past_event_date, NULL)) AS si_last_event_date,
   MAX(IF(si_admitted, last_event_date, NULL))      AS si_last_event_date_incl_future,
+  -- ⛔ G145, THE FIX. The soonest SCHEDULED event across this parcel's admitted signals, and the
+  -- count of them. A reader who sees "date unknown" on a parcel going to auction in five weeks
+  -- has been told the opposite of the truth, and it was 36% of every flagged parcel.
+  MIN(IF(si_admitted, next_future_event_date, NULL)) AS si_next_event_date,
+  SUM(IF(si_admitted, n_events_future, 0))           AS si_events_future,
+  -- ⭐ G145 second half: EVERY event date, per signal, not a parcel-wide rollup. The operator
+  -- asked to "show the date of every signal event, not just the first/last signal event", and a
+  -- single parcel-level date can never say WHICH signal it belongs to. `date_basis` rides along
+  -- so the renderer can say "the publisher does not date this record" instead of blaming us.
+  -- ⭐ AND G153 RIDES ALONG. Operator, relaying a real user: *"provide documentation of the SI
+  -- signals … a link to the source or document within the filings so that the user can
+  -- double-check the validity themselves."* `source_ids` and `keying_methods` are already on this
+  -- table and reach no surface. Carrying them in the SAME struct as the dates means the renderer
+  -- makes ONE pass and a signal can never show a date without being able to show where it came
+  -- from — two separate payload fields would eventually disagree about which signals exist.
+  ARRAY_AGG(
+    IF(si_admitted,
+       STRUCT(signal AS signal,
+              first_event_date      AS first_date,
+              last_past_event_date  AS last_past_date,
+              next_future_event_date AS next_date,
+              n_events              AS n_events,
+              n_events_dated        AS n_dated,
+              date_basis            AS basis,
+              source_ids            AS source_ids,
+              keying_methods        AS keying),
+       NULL)
+    IGNORE NULLS ORDER BY signal)                  AS si_signal_dates,
   SUM(IF(si_admitted, n_events_3y, 0))             AS si_events_3y,
   SUM(IF(si_admitted, n_events_5y, 0))             AS si_events_5y,
   SUM(IF(si_admitted, n_events_10y, 0))            AS si_events_10y,
@@ -465,6 +583,13 @@ SELECT
   IFNULL(a.si_signal_events, 0)             AS si_signal_events,
   a.si_signals, a.si_first_event_date, a.si_last_event_date,
   a.si_last_event_date_incl_future,
+  -- ⛔ G145. Carried to every surface, because a scheduled auction is the most actionable fact we
+  -- hold and the reader was being told the date was unknown.
+  a.si_next_event_date,
+  IFNULL(a.si_events_future, 0)             AS si_events_future,
+  -- ⚠ an intent-only parcel has no distress signals, so an EMPTY array, never NULL - a consumer
+  -- that iterates it must not have to null-check first.
+  IFNULL(a.si_signal_dates, [])             AS si_signal_dates,
   IFNULL(a.si_events_3y, 0)                 AS si_events_3y,
   IFNULL(a.si_events_5y, 0)                 AS si_events_5y,
   IFNULL(a.si_events_10y, 0)                AS si_events_10y,
@@ -522,7 +647,18 @@ WITH pub_corpus AS (
     FROM `{DS}.in_si_southbend_continuous_enforcement`
   UNION ALL SELECT 'D21_demolition_order', COUNT(*)
     FROM `{DS}.in_si_evansville_demolition_permits`
-  UNION ALL SELECT 'D22_environmental_violation', COUNT(*) FROM `{DS}.in_si_d22_parcel_join`
+  -- ⛔ THE LAST SIGNAL WITH NO DENOMINATOR, AND ITS NEIGHBOUR HAD THE WRONG ONE.
+  -- `in_si_d22_parcel_join` carries TWO signals under two different boolean flags, and this line
+  -- used to read `COUNT(*)` — attributing the WHOLE table to D22_environmental_violation while
+  -- D22_facility_inactive had no row here at all and reported "no corpus count recorded".
+  -- ⚠ Each signal's denominator is the flag its own source block filters on, read out of
+  -- g_d22_violation (WHERE is_distress) and g_d22_inactive (WHERE is_inactive_facility) rather
+  -- than inferred from the table name. Attributing one table total to both signals is how
+  -- `reached > held` gets manufactured.
+  UNION ALL SELECT 'D22_environmental_violation', COUNTIF(is_distress)
+    FROM `{DS}.in_si_d22_parcel_join`
+  UNION ALL SELECT 'D22_facility_inactive', COUNTIF(is_inactive_facility)
+    FROM `{DS}.in_si_d22_parcel_join`
   -- ⚠ FOUR PUBLISHER TABLES CARRY THEIR OWN `signal` COLUMN and each holds SEVERAL signals, so
   -- they are counted PER SIGNAL. Attributing a table total to each signal it contains would
   -- overstate every one of them.
@@ -531,6 +667,14 @@ WITH pub_corpus AS (
   -- and is therefore a claim about the instrument. It contributes D21, D12, D5_unsafe,
   -- D5_vacant_board_order, D22 and D16. Found by asking the artefact which source_block produced
   -- the parcels, rather than by reading the block names again.
+  -- ⭐ G152. The denominator is the UNIVERSE of Indiana CMBS properties carrying the condition,
+  -- including the ones we could not place - in_si_cmbs_placed is deliberately a LEFT JOIN so this
+  -- number is bigger than the number reached. ⛔ Counting only the placed rows would make the
+  -- coverage report 100% for both signals and hide the 131 conditions that find no parcel.
+  UNION ALL SELECT 'D28_cmbs_loan_distress', COUNTIF(is_loan_distress)
+    FROM `{DS}.in_si_cmbs_placed`
+  UNION ALL SELECT 'D29_anchor_tenant_exit', COUNTIF(is_tenant_exit)
+    FROM `{DS}.in_si_cmbs_placed`
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_indy_code_placed`  GROUP BY signal
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_indy_code_widened` GROUP BY signal
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_sri_placed`        GROUP BY signal

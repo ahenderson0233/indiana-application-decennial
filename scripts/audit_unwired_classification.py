@@ -98,6 +98,30 @@ CLASSIFIED = {
                       "reaches a parcel, and the page copy is kept so the scrape is auditable", [
         "in_si_warn_page",
     ]),
+    # ⭐ G152, 2026-08-21. Operator: *"Even if a source scrapes everything but one column, we still
+    # want to rescrape it for everything because that one field may contain something materially
+    # important … it is crucial that we have full visibility over each dataset."* These are the
+    # full-width Indiana clips of the 19 upstream sources behind the SI signals, taken because that
+    # ruling makes width unconditional - NOT because each one has a page waiting for it.
+    # ⚠ Two of them already feed shipped signals and are therefore NOT in this list:
+    #   in_si_up_cmbs -> D28_cmbs_loan_distress and D29_anchor_tenant_exit
+    #   in_si_up_indy_landbank -> I3_land_bank
+    # ⭐ AND FOR SEVERAL OF THE REST, THE NEGATIVE **IS** THE PRODUCT. in_si_up_warn_multistate
+    # exists so that "every address column is NULL on all 1,220 Indiana rows" is an auditable fact
+    # rather than a remembered one, and in_si_up_vacancy_derived so that "parcel_owner and
+    # assessed_value are 100% NULL for Indiana" stops anyone re-checking it hopefully. A measured
+    # negative that nobody can re-derive is a rumour.
+    "upstream_full_width": ("a FULL-WIDTH Indiana clip of an upstream source behind an SI signal, "
+                            "held under the operator's 2026-08-21 ruling that every source is "
+                            "captured at full width. The SIGNAL renders; the clip is the evidence "
+                            "the signal was derived from, and for several of them the measured "
+                            "NEGATIVE is the deliverable. Guarded by "
+                            "scripts/audit_si_upstream_width.py", [
+        "in_si_up_bankruptcy", "in_si_up_brownfield", "in_si_up_ibtr_appeals",
+        "in_si_up_indy_code", "in_si_up_indy_rezoning", "in_si_up_indy_taxsale",
+        "in_si_up_iocs_court", "in_si_up_seized_auction", "in_si_up_sri_taxsale",
+        "in_si_up_vacancy_derived", "in_si_up_warn_multistate",
+    ]),
     "raw_feed": ("a per-year or per-source input that a shipped table is built from. The built "
                  "table is what renders; the feed is kept so the build can be re-run and "
                  "audited", [

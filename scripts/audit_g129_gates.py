@@ -83,7 +83,7 @@ if missing:
     for m in missing:
         print(f"       {m}")
 
-leaked = sorted(in_gates - gates_declared - {"s-milmi", "s-evwindow"})
+leaked = sorted(in_gates - gates_declared - {"s-evwindow"})   # G146 removed s-milmi
 if leaked:
     fail.append(f"{len(leaked)} control(s) enforced in passesGates() but not declared a gate: "
                 f"{', '.join(leaked)}")
@@ -102,7 +102,7 @@ if unimplemented:
 
 no_badge = sorted(in_passes - set(modes) - {
     "s-use", "s-dir", "s-density", "s-since", "s-sirecent", "s-keepundated", "s-si",
-    "s-ci", "s-ag", "s-vac", "s-oth", "s-lineon", "s-nomil", "s-milmi", "s-nosua",
+    "s-ci", "s-ag", "s-vac", "s-oth", "s-lineon", "s-nosua",   # G146 dropped s-nomil/s-milmi
     "s-notribal", "s-binding", "s-evwindow", "s-nearmiss"})
 if no_badge:
     print(f"\n  note: {len(no_badge)} control(s) in passes() carry no mode badge "

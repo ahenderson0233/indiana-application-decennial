@@ -155,6 +155,13 @@ const SIGNAL_PLAIN = {
   D21_demolition_order: ["Demolition ordered", "the building is slated to come down", "event"],
   D22_environmental_violation: ["Environmental violation", "a state or federal environmental enforcement action", "event"],
   D22_facility_inactive: ["Permitted facility went inactive", "an environmental permit here is no longer active, suggesting operations stopped", "state"],
+  /* ⭐ G152, 2026-08-21. Both from the full-width CMBS clip; neither could exist while we read the
+     13-column reduction, because a source flattened to a date and a flag yields one signal by
+     construction. ⛔ G8: a codename must never reach the UI, and a NEW signal with no entry here
+     falls through to a stripped codename that looks almost right - which is worse than obviously
+     wrong. Add the label in the same change as the signal. */
+  D28_cmbs_loan_distress: ["Mortgage in trouble", "the loan on this building is delinquent, in a servicer workout, has been transferred to special servicing, is past maturity, or its income no longer covers its debt service. A special-serviced loan is the strongest single predictor that a commercial property will trade", "event"],
+  D29_anchor_tenant_exit: ["Building emptying out", "physical occupancy is at or below 60%, or the largest tenant's lease expires within two years. An owner facing an empty building needs a plan, which is when a re-use conversation is welcome", "event"],
   D24_plant_delisting: ["Plant delisted", "the site came off a register of operating plants", "state"],
   D26_assessment_appeal: ["Owner appealed their tax assessment", "the owner is disputing the property's assessed value", "event"],
   A2_gov_surplus: ["Government surplus property", "a public body has declared the property surplus to its needs", "state"],
@@ -226,6 +233,12 @@ const INTENT_PLAIN = {
   I2_withdrawn_interconnection: ["consented to host energy, project withdrawn",
     "An interconnection request on this parcel was withdrawn. The owner already agreed to host "
     + "energy infrastructure and the studied grid position is now unused."],
+  /* ⭐ G133's third leg, wired 2026-08-21 from two registers we already held - the backlog had
+     recorded land banks as an acquisition we hold nothing for. */
+  I3_land_bank: ["held by a public land bank, for sale",
+    "A public land bank holds title to this parcel and exists to convey it. There is no owner to "
+    + "persuade and no distress to infer - the seller is a public body whose purpose is disposal, "
+    + "and the conveyance process is published."],
 };
 function intentPlain(csv) {
   if (!csv) return "";
@@ -234,6 +247,134 @@ function intentPlain(csv) {
     if (e) return `<span title="${e[1]}">${e[0]}</span>`;
     return k.replace(/^[A-Z]\d{1,2}[_ ]+(?=\S)/, "").replace(/_/g, " ") || k;
   }).join(" · ");
+}
+
+/* ================================================================================================
+   G145 + G153 — ONE renderer for "when did this signal happen, and where can I check it?"
+   ------------------------------------------------------------------------------------------------
+   ⛔ G145, THE DEFECT THIS REPLACES. The pages read a single parcel-wide `last_event`, which the
+   warehouse computed as the last event ON OR BEFORE TODAY. A parcel whose only date is in the
+   FUTURE — a tax auction scheduled for next month, a lease expiring in 2028 — came through as
+   NULL, so the row printed "date unknown" about the single most actionable fact we hold.
+   Measured before the fix: 8,591 of 23,841 flagged parcels, 36% of the set.
+
+   ⭐ G153, RELAYED FROM A REAL USER: *"provide documentation of the SI signals … a link to the
+   source or document within the filings so that the user can double-check the validity
+   themselves."* Every field needed was already in the warehouse and reached no surface.
+
+   ⛔ ONE COPY, ON PURPOSE. The screener, the map dossier and si.html all call this. The private
+   INTENT_PLAIN map that had to be deleted from screener.html is the warning: a second copy of a
+   vocabulary drifts, and the loser is invisible.
+   ================================================================================================ */
+
+/* source_id -> [human label, a URL the reader can open]. ⚠ Where a source is a BULK file rather
+   than a per-record page, this links the DATASET and the label says so. A link that promises a
+   filing and delivers a homepage is worse than no link at all. */
+/* ⛔ THESE KEYS ARE MEASURED, NOT GUESSED. The first version of this map was written from memory
+   and used `sri`, `indy`, `southbend`, `evansville`, `nfirs` — none of which is a real stem, so
+   every one of them fell through and printed a raw table name at the reader. Read out of
+   in_si_parcel_signals_v2 with a GROUP BY on the stem, admitted rows only:
+     sri_taxsale 12,852 · in_si_signals_parcel_dated 4,684 · indy_code 4,217 ·
+     indy_code_enforcement 1,978 · ibtr 1,965 · appeals_in_ibtr_determinations 1,696 ·
+     evansville_taxsale 1,157 · evansville_foreclosures 872 · indy_abandoned_vacant 623 ·
+     echo 541 · southbend_code_enforcement 516 · evansville_demolition 272 · 2026 214 ·
+     southbend_continuous_enforcement 109 · warn 50 · edgar_abs_ee_cmbs 33 ·
+     southbend_vacant_abandoned 22
+   ⚠ Re-measure before adding a signal. A key that matches nothing fails silently and looks fine. */
+const SI_SOURCE_LINKS = {
+  warn: ["Indiana DWD WARN notice", "https://www.in.gov/dwd/warn-notices/current-warn-notices/"],
+  echo: ["EPA ECHO enforcement record", "https://echo.epa.gov/facilities/facility-search"],
+  ibtr: ["Indiana Board of Tax Review determination",
+         "https://www.in.gov/ibtr/appeals-and-determinations/"],
+  appeals_in_ibtr_determinations: ["Indiana Board of Tax Review determination",
+                                   "https://www.in.gov/ibtr/appeals-and-determinations/"],
+  sri_taxsale: ["SRI Incorporated tax-sale listing", "https://www.sriservices.com/"],
+  edgar_abs_ee_cmbs: ["SEC EDGAR ABS-EE servicer report (dataset)",
+                      "https://www.sec.gov/edgar/search/?forms=ABS-EE"],
+  indy_code: ["City of Indianapolis code enforcement", "https://data.indy.gov/"],
+  indy_code_enforcement: ["City of Indianapolis code enforcement", "https://data.indy.gov/"],
+  indy_abandoned_vacant: ["City of Indianapolis abandoned & vacant register",
+                          "https://data.indy.gov/"],
+  southbend_code_enforcement: ["City of South Bend code enforcement",
+                               "https://data.southbendin.gov/"],
+  southbend_continuous_enforcement: ["City of South Bend continuous enforcement",
+                                     "https://data.southbendin.gov/"],
+  southbend_vacant_abandoned: ["City of South Bend vacant & abandoned register",
+                               "https://data.southbendin.gov/"],
+  evansville_taxsale: ["Evansville / Vanderburgh County tax sale",
+                       "https://www.evansvillegis.com/"],
+  evansville_foreclosures: ["Evansville / Vanderburgh County foreclosures",
+                            "https://www.evansvillegis.com/"],
+  evansville_demolition: ["Evansville Building Commission demolition permit",
+                          "https://www.evansvillegis.com/"],
+  /* ⚠ NOT A PUBLISHER. This is our own dated-signal bridge over the generic corpus, and the real
+     publisher differs per record. Saying so is the honest answer — labelling it with somebody's
+     homepage would be the "promises a filing, delivers a homepage" failure. The Data & sources
+     page carries the full provenance register for every table behind it. */
+  in_si_signals_parcel_dated: ["our dated-signal bridge — publisher varies by record; see Data & "
+                               + "sources", "data.html"],
+};
+
+/* A source_id is written like `warn:closure`, `echo:penalised`, `ibtr:2` or a bare table name, so
+   the stem before the colon is the key. ⚠ An unknown stem returns the raw id rather than nothing:
+   a reader who can see WHICH source it was can still go and look, and a blank cell teaches them
+   we do not know. */
+function siSourceLink(sourceIds) {
+  if (!sourceIds) return "";
+  const seen = new Set();
+  return String(sourceIds).split(",").map((raw) => {
+    const id = raw.trim();
+    if (!id) return "";
+    const stem = id.split(":")[0];
+    const e = SI_SOURCE_LINKS[stem];
+    if (!e) return `<span class="hint" title="source id as recorded">${escHtml(id)}</span>`;
+    if (seen.has(stem)) return "";
+    seen.add(stem);
+    return `<a href="${e[1]}" target="_blank" rel="noopener noreferrer" `
+         + `title="open the publisher of this signal in a new tab">${escHtml(e[0])}</a>`;
+  }).filter(Boolean).join(" · ");
+}
+
+/* The parcel-level verdict, used for the badge. Four states, not three, because a SCHEDULED event
+   is neither past nor unknown — and it is the one a reader most wants. */
+function siDateState(row) {
+  if (row.last_event || row.si_last_event_date) return "past";
+  if (row.next_event || row.si_next_event_date) return "upcoming";
+  if (row.first_event || row.si_first_event_date) return "past";
+  return "undated";
+}
+
+/* The soonest scheduled date on the parcel, as a string, or "". */
+function siNextDate(row) {
+  return row.next_event || row.si_next_event_date || "";
+}
+
+/* ⭐ One line PER SIGNAL: what it is, every date we hold for it, and where to check it.
+   Operator: *"we should show the date of every signal event, not just the first/last signal
+   event."* A parcel-wide date can never say WHICH signal it belongs to. */
+function siSignalLines(row) {
+  const arr = row.signal_dates || row.si_signal_dates;
+  if (!Array.isArray(arr) || !arr.length) return "";
+  return `<div class="sigdates">` + arr.map((e) => {
+    const name = signalsPlain(e.s) || escHtml(e.s || "");
+    const bits = [];
+    if (e.f && e.l && e.f !== e.l) bits.push(`${escHtml(e.f)} to ${escHtml(e.l)}`);
+    else if (e.l) bits.push(`${escHtml(e.l)}`);
+    else if (e.f) bits.push(`${escHtml(e.f)}`);
+    // ⭐ the scheduled one, called what it is
+    if (e.n) bits.push(`<b>scheduled ${escHtml(e.n)}</b>`);
+    // ⚠ THREE-STATE (G51). "the publisher does not date this record" blames the publisher's
+    // silence, which is the truth; "date unknown" blames us and implies we lost it.
+    if (!bits.length) {
+      bits.push(`<span class="cannot" title="${escHtml(e.b || "no date basis recorded")}">`
+              + `the publisher does not date this record</span>`);
+    } else if (e.e && e.d != null && e.d < e.e) {
+      bits.push(`<span class="hint">${e.d} of ${e.e} records dated</span>`);
+    }
+    const src = siSourceLink(e.src);
+    return `<div class="sigdate">${name} — ${bits.join(" · ")}`
+         + (src ? ` <span class="hint">source: ${src}</span>` : "") + `</div>`;
+  }).join("") + `</div>`;
 }
 
 /* "D4_tax_delinquency,D2_foreclosure" -> "Unpaid property taxes · Foreclosure filed" */

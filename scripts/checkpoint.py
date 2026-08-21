@@ -123,6 +123,24 @@ AUDITS = [
     # operator filters many signals deliberately (C&I only, 3+ violations). SILENCE is the defect.
     ("signal display", "scripts/audit_signal_display.py",
      r"(\d+) unexplained signal loss\(es\)"),
+
+    # ⭐ G152. Operator, 2026-08-21: *"Even if a source scrapes everything but one column, we still
+    # want to rescrape it for everything because that one field may contain something materially
+    # important."* This asserts every upstream SI source is clipped Indiana-wide at FULL WIDTH.
+    # ⛔ IT CATCHES A SHAPE COLUMN COUNTING CANNOT SEE. in_sba_foia_loans and in_ustp_ch7_tfr were
+    # both already full width and both wrong - keyed on cdc_state (the lender's office) and on
+    # ch7_state_tax_paid (a DOLLAR column). 5,135 of 39,889 rows and 33 of 76,010 respectively.
+    ("si upstream width", "scripts/audit_si_upstream_width.py",
+     r"(\d+) FAILURE\(S\)|(⭐ Every upstream source is clipped)"),
+
+    # ⛔ SIGNAL_REALITY.json IS ON THE REQUIRED READING LIST, IS LABELLED "generated", AND WENT
+    # FIVE DAYS WITHOUT REGENERATING. Measured 2026-08-21: it still said D19_warn admitted 2
+    # parcels - the exact figure the operator complained about twice - and D4_tax_delinquency 0
+    # against a live 9,459. Its generator existed and was in NO checkpoint, so nothing re-ran it
+    # and nothing failed when it drifted. A generated document that no check reads is a document
+    # that is quietly hand-written by whoever last ran the script.
+    ("signal reality", "scripts/audit_signal_reality.py",
+     r"written: docs/SIGNAL_REALITY\.json"),
 ]
 
 print("=" * 90)
@@ -218,6 +236,16 @@ for label, script, pat in AUDITS:
         n = int(m.group(1))
         check(label, n == 0,
               f"{n} SI signal(s) placing far below what we hold with NO recorded reason")
+    elif label == "si upstream width":
+        # group(1) is the failure count; group(2) is the all-clear sentence. Exactly one matches.
+        n = int(m.group(1)) if m.group(1) else 0
+        check(label, n == 0,
+              f"{n} upstream SI source(s) not clipped Indiana-wide at full width"
+              if n else "every upstream SI source is clipped Indiana-wide at FULL WIDTH")
+    elif label == "signal reality":
+        # ⚠ This one is a GENERATOR as well as an audit. It cannot "fail" on content - its job is
+        # to re-measure and rewrite docs/SIGNAL_REALITY.json. What is being checked is that it RAN.
+        check(label, True, "docs/SIGNAL_REALITY.json regenerated from the live warehouse")
     else:
         # ⛔ AN AUDIT REGISTERED BUT NOT DISPATCHED IS AN AUDIT THAT IS NOT RUNNING, and this
         # loop had no way to say so. Both audits added on 2026-08-20d - `spelling` and

@@ -174,6 +174,12 @@ SELECT
   IFNULL(f.has_si_signal, FALSE) AS has_signal,
   f.si_signals AS signals, f.si_signal_types AS signal_types, f.si_signal_events AS signal_events,
   f.si_first_event_date AS first_event, f.si_last_event_date AS last_event,
+  -- ⛔ G145. `last_event` is the last PAST event and is NULL for a parcel whose only date is in
+  -- the future - a scheduled tax auction, a lease expiring. 8,591 of 23,841 flagged parcels are in
+  -- that state and every one of them printed "date unknown" over a date we hold.
+  f.si_next_event_date AS next_event, f.si_events_future AS events_future,
+  -- ⭐ every event date, per signal, so the row can say WHICH signal each date belongs to
+  f.si_signal_dates AS signal_dates,
   f.si_events_3y AS events_3y, f.si_events_5y AS events_5y, f.si_events_10y AS events_10y,
   f.si_keying AS keying, f.si_date_basis AS date_basis,
 

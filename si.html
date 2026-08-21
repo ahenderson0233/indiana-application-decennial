@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner signals — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=695d947c"></head>
+<link rel="stylesheet" href="style.css?v=51a4e473"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
 <nav id="nav"></nav>
@@ -367,7 +367,7 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=c031ed22"></script>
+<script src="common.js?v=df2cea38"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -561,8 +561,13 @@
        <td class="hint"><code>${d.spatial_key}</code></td></tr>`).join(""));
 
   document.getElementById("t-cov").insertAdjacentHTML("beforeend", V2.coverage.map(c => {
-    const rng = (c.first_event || c.last_event) ? `${c.first_event || "?"} → ${c.last_event || "?"}`
-      : (c.parcels_admitted ? "no dates held" : "—");
+    /* ⛔ G145. "no dates held" was printed whenever `last_event` was NULL — and last_event is the
+       last event ON OR BEFORE TODAY, so a signal whose events are all SCHEDULED read as undated.
+       D29_anchor_tenant_exit is entirely future-dated (leases expiring), so this cell would have
+       said we hold no dates for a signal that is nothing but dates. */
+    const rng = (c.first_event || c.last_event)
+      ? `${c.first_event || "?"} → ${c.last_event || "the latest is still to come"}`
+      : (c.parcels_admitted ? "the publisher dates none of these records" : "—");
     return `<tr><td>${signalsPlain(c.signal)}</td><td class="hint">${fmt(c.corpus_rows) || "—"}</td>
       <td>${fmt(c.parcels_reached)}</td><td><b>${fmt(c.parcels_admitted)}</b></td>
       <td>${fmt(c.parcels_ci)}</td><td class="hint">${rng}</td>
