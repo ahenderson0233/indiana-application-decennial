@@ -47,6 +47,7 @@ python scripts/checkpoint.py
 python scripts/audit_backlog_state.py
 python scripts/audit_backlog_truth.py
 python scripts/audit_handoff_docs.py
+python scripts/audit_handoff_consistency.py
 ```
 
 **Expect 3 checkpoint failures and expect them to be correct:** the **wiring census** (⭐ the END
@@ -54,8 +55,10 @@ STATE, not a gap — every unreached object carries a measured reason and the wo
 durable check is `0 unclassified`), the **honesty audit's 1 known failure**, and **unregistered
 ladder rungs** the running harvest created since the last registration pass.
 
-⭐ **The checkpoint runs TEN audits.** `spelling` and `gate/preference consistency` are the newest
-and must PASS. ⛔ Anything else failing is real.
+⭐ **The checkpoint runs ELEVEN audits.** The newest are `spelling`, `gate/preference
+consistency` and `handoff consistency` — the last one checks that the ledger, this prompt and the
+handoff tell the same story about the same G-row, and it caught G29 being listed as PARTIAL in two
+documents while the ledger called it DONE. All three must PASS. ⛔ Anything else failing is real.
 
 ### 4. Read, in this order
 
@@ -137,8 +140,14 @@ no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them**.
   easements, genuinely long narrow industrial land — and they are REPORTED, not excluded.
   ⛔ Widening the shape threshold until they disappear is how a heuristic eats its own corpus.
 
-**④ EVERYTHING ELSE PARTIAL is honest about its remainder** — G6, G15, G21, G26, G27, G29, G40,
-G45, G46, G51, G55, G62, G90, G106, G113, G114. The backlog table says what each still needs.
+**④ EVERYTHING ELSE PARTIAL is honest about its remainder** — G6, G15, G21, G26, G27, G40, G45,
+G46, G51, G55, G62, G90, G106, G113, G114, plus G126 and G130 above. **Seventeen rows**, and
+that is the whole PARTIAL set. The backlog table says what each still needs.
+
+⚠ **One row to look at even though the ledger calls it DONE:** `audit_backlog_truth.py` probes
+**G29** and reports that transmission, substation and water distances ship exact `ST_DISTANCE`
+while the **BUS distance is still computed client-side on the map console**. The ledger says
+DONE, the artefact says half. Decide which is right before relying on a bus distance from the map.
 
 ---
 

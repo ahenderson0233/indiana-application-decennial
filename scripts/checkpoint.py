@@ -105,6 +105,14 @@ AUDITS = [
     # other and a floodway parcel comes back wearing a NEAR MISS badge.
     ("gate/preference consistency", "scripts/audit_g129_gates.py",
      r"(\d+) G129 consistency failure\(s\)"),
+    # ⛔ audit_handoff_docs.py re-measures every FIGURE and checks it appears SOMEWHERE in the
+    # document set. That is necessary and not sufficient: a prompt once passed it while its header
+    # said "16 OPEN" and its body said "OPEN reads 15" - both numbers were correct, and the
+    # document contradicted ITSELF. This one asks whether the ledger, the handoff and the prompt
+    # tell the same story about the same G-row. It caught G29 listed as PARTIAL in two documents
+    # while the ledger called it DONE, on its first run.
+    ("handoff consistency", "scripts/audit_handoff_consistency.py",
+     r"(\d+) consistency failure\(s\)"),
 ]
 
 print("=" * 90)
@@ -192,6 +200,10 @@ for label, script, pat in AUDITS:
         n = int(m.group(1))
         check(label, n == 0,
               f"{n} filter(s) where the GATE/PREF badge and the enforcement disagree")
+    elif label == "handoff consistency":
+        n = int(m.group(1))
+        check(label, n == 0,
+              f"{n} place(s) where the ledger, the handoff and the prompt disagree")
     else:
         # ⛔ AN AUDIT REGISTERED BUT NOT DISPATCHED IS AN AUDIT THAT IS NOT RUNNING, and this
         # loop had no way to say so. Both audits added on 2026-08-20d - `spelling` and
