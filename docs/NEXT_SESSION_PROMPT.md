@@ -124,11 +124,11 @@ goes — a per-block edit, and moving them wholesale broke six pages on the firs
 
 ---
 
-## THE BACKLOG — 100 DONE · 16 PARTIAL · 8 OPEN
+## THE BACKLOG — 101 DONE · 16 PARTIAL · 8 OPEN
 
-**Eight rows closed** across 2026-08-20d/e (G53, G122, G123, G124, G125, G127, G128, G129) and one
-more answered and advanced (G126). ⭐ **OPEN halved, 16 → 8, and the operator's entire priority
-batch G122–G129 is now closed.**
+**Nine rows closed** across 2026-08-20d/e/f (G53, G122, G123, G124, G125, G127, G128, G129, G130)
+and one more answered and advanced (G126). ⭐ **OPEN halved, 16 → 8; the priority batch G122–G129
+is closed, and G130 — planned upgrades on the map — was asked and delivered the same day.**
 
 ### ① THE DLGF GATEWAY PURCHASE — still the highest-value action left, and it is yours
 

@@ -1,18 +1,18 @@
 {
- "run_at": "2026-08-20T21:21:26.869148+00:00",
+ "run_at": "2026-08-21T03:16:48.439144+00:00",
  "spec": "2_TECHNICAL_BUILD_SPEC.md \u00a713",
  "criteria": [
   {
    "criterion": 1,
    "name": "public-data-only: excluded sources never render or export",
    "state": "PASS",
-   "detail": "scanned 131 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
+   "detail": "scanned 132 payloads + pages for excluded TABLE IDENTIFIERS (not for the vendor's name in prose, which G50 requires) \u00b7 0 leaks"
   },
   {
    "criterion": 1,
    "name": "matrix: every registered object reaches a surface",
    "state": "FAIL",
-   "detail": "MEASURED this run: 297 of 339 registered objects reach a surface \u00b7 42 unwired: ['in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_commission_posture', 'in_data_centers', 'in_data_centers_cloudscene', 'in_data_centers_datacentermap']"
+   "detail": "MEASURED this run: 298 of 340 registered objects reach a surface \u00b7 42 unwired: ['in_balancing_authority_areas', 'in_bus_headroom_miso_ladder', 'in_commission_posture', 'in_data_centers', 'in_data_centers_cloudscene', 'in_data_centers_datacentermap']"
   },
   {
    "criterion": 2,

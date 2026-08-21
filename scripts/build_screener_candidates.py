@@ -222,6 +222,17 @@ SELECT
   -- what would have caught that.
   wdq.wd_requests, wdq.wd_last_date, wdq.wd_max_mw,
 
+  -- ⭐ G130, operator 2026-08-20f: a screener control for whether site locations are seen "with
+  -- or without the planned system upgrades". That only means anything if each site knows what
+  -- planned work is near it, so the nearest FUTURE upgrade rides along with every candidate.
+  -- ⛔ FUTURE ONLY. in_service work is already built and is not future capacity; cancelled work
+  -- is the opposite of a promise. Both are excluded from this join.
+  -- ⚠ THE DISTANCE IS MEANINGLESS WITHOUT THE UNCERTAINTY and both ship together. "2.3 mi from a
+  -- planned rebuild" reads as precision; if that project is placed only to a town centroid its
+  -- ring is 5 miles, and the honest reading is "somewhere around here".
+  pu.pu_name, pu.pu_src, pu.pu_status, pu.pu_isd, pu.pu_cost_m, pu.pu_mi, pu.pu_unc_mi,
+  pu.pu_loc_method,
+
   -- ⛔ G125 SECOND FINDING, AND IT CONTRADICTS THE ROW AS WRITTEN. G125 says "the parcel payload
   -- ships lat/lon on every row" and the popup merely fails to print it. Measured 2026-08-20d:
   -- `lat` is populated on 2,284,133 of 3,553,194 in_sites rows, so only 40.3% of CANDIDATES carry
@@ -270,6 +281,23 @@ LEFT JOIN (
   WHERE parcel_key IS NOT NULL
   GROUP BY 1, 2
 ) wdq USING (parcel_source, parcel_key)
+LEFT JOIN (
+  -- nearest FUTURE planned upgrade per candidate, within 25 miles
+  SELECT c.parcel_source, c.parcel_key,
+         ARRAY_AGG(STRUCT(p.title AS pu_name, p.source AS pu_src, p.status_class AS pu_status,
+                          p.in_service_date AS pu_isd, ROUND(p.cost_usd_m, 1) AS pu_cost_m,
+                          ROUND(ST_DISTANCE(c.parcel_geog,
+                                ST_GEOGPOINT(p.lon, p.lat)) / 1609.344, 2) AS pu_mi,
+                          p.uncertainty_mi AS pu_unc_mi, p.loc_method AS pu_loc_method)
+                   ORDER BY ST_DISTANCE(c.parcel_geog, ST_GEOGPOINT(p.lon, p.lat))
+                   LIMIT 1)[OFFSET(0)].*
+  FROM cand c
+  JOIN `{DS}.in_planned_upgrades` p
+    ON p.lat IS NOT NULL
+   AND p.status_class IN ('proposed', 'approved', 'filed_plan')
+   AND ST_DWITHIN(c.parcel_geog, ST_GEOGPOINT(p.lon, p.lat), 40000)
+  GROUP BY 1, 2
+) pu USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_sites_county`        sc USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_si_sites_flags_v2`   f  USING (parcel_source, parcel_key)
 LEFT JOIN `{DS}.in_site_gates`          g  USING (parcel_source, parcel_key)

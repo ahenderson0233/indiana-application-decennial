@@ -155,6 +155,18 @@
           of a substation <span class="inline">of at least <input type="number" id="s-subkv" value="0" min="0"> kV</span></label>
         <label class="blk">Within <span class="inline"><input type="number" id="s-linemi" value="0" min="0" step="0.1"> miles</span>
           of a transmission line <span class="inline">of at least <input type="number" id="s-linekv" value="0" min="0"> kV</span></label>
+        <!-- G130, operator 2026-08-20f: "there should also be a checkbox in the site screener
+             that allows the user to determine if their site locations should be seen with or
+             without the planned system upgrades." A DISPLAY toggle, not a filter - it changes
+             what each row tells you, never which rows you get, so it carries no GATE/PREF badge. -->
+        <label><input type="checkbox" id="s-showplanned" checked> Show the nearest
+          <b>planned system upgrade</b> for each site
+          <span class="hint">(513,409 of 531,325 sites have future work within 25 mi)</span></label>
+        <div class="hint">⚠ Planned work is <b>not existing capacity</b> and is not in any
+          published headroom figure. The distance ships with the project's own
+          <b>uncertainty</b>, because a site 2 mi from a project we can only place to a town
+          centroid is not 2 mi from anything we can point at. ⛔ Already-built and cancelled work
+          is excluded.</div>
         <label><input type="checkbox" id="s-lineon"> Only sites with a line <b>running across the parcel</b>
           <span class="hint">(41,986 of them &mdash; no greenfield line to build)</span></label>
         <div class="hint">A line is the one asset that can run THROUGH a parcel rather than near it,
@@ -820,6 +832,26 @@ function siteCoords(s) {
            short: `${la.toFixed(5)}, ${lo.toFixed(5)}`,
            derived: !hasPub || s.coord_basis === "parcel_interior_point" };
 }
+/* ⭐ G130: the nearest FUTURE planned upgrade for one site.
+   ⛔ THE DISTANCE NEVER SHIPS ALONE. "2.3 mi" reads as a surveyed fact; if that project is placed
+   only to a town centroid its own ring is 5 miles, and the honest statement is "somewhere within
+   about 5 miles of there". So the project's uncertainty is printed beside its distance, and where
+   the position was JOINED to a real substation there is no ring to print and none is invented. */
+function plannedCell(s) {
+  if (!s.pu_name) return '<span class="cannot">none within 25 mi</span>';
+  const mi = s.pu_mi != null ? `${Number(s.pu_mi).toFixed(1)} mi` : "";
+  const unc = s.pu_unc_mi != null
+    ? ` <span class="hint" title="how well that project's own location is known">±${s.pu_unc_mi} mi</span>`
+    : ` <span class="hint" title="joined to a substation we hold - a known position, not an estimate">exact</span>`;
+  /* ⛔ MM/DD/YYYY IS NOT ISO, AND BOTH FORMATS ARE IN THIS ONE COLUMN. PJM ships "2/19/2030" and
+     "5/28/2027"; MISO ships "2028-12-31 00:00:00". slice(0,4) printed "2/19" as the YEAR - a
+     date-format trap this project has on its list and I walked straight into. Pull the 4-digit
+     year wherever it sits instead of assuming a position. */
+  const when = s.pu_isd ? (String(s.pu_isd).match(/(?:19|20)[0-9]{2}/) || [null])[0] : null;
+  return `<div>${escHtml(String(s.pu_name).slice(0, 40))}</div>` +
+    `<div class="sub2">${mi}${unc}${when ? ` · ${when}` : ""}` +
+    `${s.pu_status ? ` · ${s.pu_status.replace(/_/g, " ")}` : ""}</div>`;
+}
 function siteLocationCell(s) {
   const c = siteCoords(s);
   const addr = s.prop_address || null;
@@ -1156,7 +1188,8 @@ function render() {
   const k = SORT.key, dir = SORT.dir;
   const val = (s) => k === "mw" ? capacityMW(s) : k === "acres" ? acresOf(s).acres
     : k === "grid" ? (gridOf(s)?.mw ?? -1) : k === "gridmi" ? (gridOf(s)?.mi ?? 9e9)
-    : k === "county" ? s.county_name : k === "sig" ? (s.signal_events || 0) : 0;
+    : k === "county" ? s.county_name : k === "sig" ? (s.signal_events || 0)
+    : k === "planned" ? (s.pu_mi != null ? Number(s.pu_mi) : 9e9) : 0;
   VIEW.sort((a, b) => { const x = val(a), y = val(b);
     return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir; });
 
@@ -1178,8 +1211,12 @@ function render() {
      hardcode `colspan="7"`. Adding a column to this list while that stayed 7 would have silently
      narrowed every expanded row by one cell -- the kind of break that renders wrong instead of
      erroring. See SCREENER_NCOL. */
+  /* ⭐ G130: the planned-upgrade column is OPTIONAL and the count is DERIVED, so adding it here
+     cannot desynchronise the detail row's colspan - see SCREENER_NCOL above. */
+  const showPlanned = $("s-showplanned") ? $("s-showplanned").checked : false;
   const head = [["county", "County"], ["acres", "Acres"], ["mw", "Fits (MW)"],
     ["grid", dirLabel], ["gridmi", "Distance"], ["sig", "Owner signal"], ["loc", "Location"]];
+  if (showPlanned) head.splice(5, 0, ["planned", "Planned upgrade"]);
   SCREENER_NCOL = head.length + 1;   // + the expander
   const NCOL = SCREENER_NCOL;
   const badge = (st) => st.label === "standing"
@@ -1207,6 +1244,7 @@ function render() {
       <td class="num">${g ? `<b>${fmt(g.mw)}</b><div class="sub2">${busLabel(g)}</div>`
         : '<span class="cannot">not measured here</span>'}</td>
       <td class="num">${g && g.mi != null ? g.mi.toFixed(1) + " mi" : "&mdash;"}</td>
+      ${showPlanned ? `<td>${plannedCell(s)}</td>` : ""}
       <td>${s.has_signal ? `${signalsPlain(s.signals)}<div class="sub2">${badge(sst)}${
         plural(s.signal_events || 0, "record")}${s.last_event ? ` · latest ${s.last_event}`
         : " · date unknown"}</div>` : '<span class="hint">none</span>'}</td>
@@ -1490,6 +1528,7 @@ function toXLSX() {
   if (scrRestored) $("s-use-note").innerHTML = USE_NOTE[$("s-use").value] || USE_NOTE.dc;
 
   renderCoverage();
+  if ($("s-showplanned")) $("s-showplanned").addEventListener("change", render);
   paintFilterModes(); render();
   if (scrRestored) {
     const el = document.createElement("div");

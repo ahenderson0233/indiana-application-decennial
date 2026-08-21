@@ -96,6 +96,16 @@
         <th>average loading before your request</th><th>lowest MW available</th></tr></table></div>
     <div class="prov" id="p-bind"></div></div>
 
+  <!-- G130, operator 2026-08-20f: "what is our current coverage of system upgrades?" - answered
+       on the page rather than in a chat reply, and generated so it cannot go stale. -->
+  <div class="card"><h2>⭐ Planned upgrades &mdash; how much of it we can actually place</h2>
+    <div class="sowhat" id="pu-answer">measuring…</div>
+    <table id="t-pu"><tr><th>source</th><th>projects</th><th>placed</th><th>still to come</th>
+      <th>cost on record</th></tr></table>
+    <h3 style="font-size:12px;margin:10px 0 2px">How well each placement is known</h3>
+    <table id="t-pum"><tr><th>method</th><th>projects</th><th>ring</th><th>what it means</th></tr></table>
+    <div class="prov" id="p-pu"></div></div>
+
   <div class="card"><h2>⭐ Where the planned work actually is &mdash; and how precisely we know</h2>
     <div class="sowhat" id="gp-answer">measuring…</div>
     <table id="t-gp"><tr><th>utility</th><th>projects we can place only to its territory</th>
@@ -295,6 +305,46 @@
   const gp = WG.grid_plan_regions || [];
   const gpn = (WG.grid_plan_note || [])[0] || {};
   const gpNoRegion = gp.filter((r) => !r.region_known).reduce((a, r) => a + r.projects, 0);
+  /* ⭐ G130, operator 2026-08-20f: "what is our current coverage of system upgrades?"
+     Answered on the page and GENERATED, so it cannot go stale the way a figure in a chat reply
+     or a handoff does. */
+  {
+    /* ⚠ GS, not G. `G` is app.js's name for this payload on the map console; grid.html
+       binds it as `GS`. Using the wrong one threw ReferenceError at parse-time-of-use and
+       killed the REST of the script - pu-answer, gp-answer and bind-answer all stayed on
+       "measuring…". One undefined identifier takes the whole page with it. */
+    const pbs = GS.planned_by_source || [], pbm = GS.planned_by_method || [];
+    const tot = pbs.reduce((a, r) => a + (r.projects || 0), 0);
+    const pl = pbs.reduce((a, r) => a + (r.placed || 0), 0);
+    const fut = pbs.reduce((a, r) => a + (r.still_to_come || 0), 0);
+    const cost = pbs.reduce((a, r) => a + (r.cost_usd_m || 0), 0);
+    document.getElementById("pu-answer").innerHTML = tot
+      ? `<b>${fmt(pl)} of ${fmt(tot)} planned upgrades carry a position</b> — PJM RTEP, MISO MTEP
+         and the IURC utility grid plans, unified. <b>${fmt(fut)}</b> of them are still to come
+         rather than already built, and that is the set that means future capacity.
+         ⛔ <b>The other ${fmt(tot - pl)} name no location we can resolve</b> and are held and
+         reported, never drawn — an upgrade in the wrong place is a coordinate someone might plan
+         around. ⚠ Each placed item carries an uncertainty ring sized by <b>how well the location
+         is known</b>, never by how far along the project is: a fully approved project can still
+         be named only by its town.`
+      : `<span class="cannot">planned-upgrade rollup not present in this payload</span>`;
+    document.getElementById("t-pu").insertAdjacentHTML("beforeend", pbs.map((r) =>
+      `<tr><td>${r.source}</td><td class="num">${fmt(r.projects)}</td>
+       <td class="num">${fmt(r.placed)} <span class="hint">(${r.projects
+         ? Math.round(100 * r.placed / r.projects) : 0}%)</span></td>
+       <td class="num">${fmt(r.still_to_come)}</td>
+       <td class="num">${r.cost_usd_m ? "$" + fmt(Math.round(r.cost_usd_m)) + "M"
+         : '<span class="cannot">not published</span>'}</td></tr>`).join(""));
+    document.getElementById("t-pum").insertAdjacentHTML("beforeend", pbm.map((r) =>
+      `<tr><td>${r.loc_method}</td><td class="num">${fmt(r.projects)}</td>
+       <td class="num">${r.ring_mi != null ? "±" + r.ring_mi + " mi"
+         : '<span class="cannot">not drawn</span>'}</td>
+       <td class="hint">${escHtml(r.basis || "")}</td></tr>`).join(""));
+    document.getElementById("p-pu").textContent =
+      "indiana_app.in_planned_upgrades · " + fmt(tot) + " projects · built by "
+      + "scripts/build_planned_upgrades.py";
+  }
+
   document.getElementById("gp-answer").innerHTML = gpn.exact
     ? `<b>${fmt(gpn.exact)} of ${fmt(gpn.exact + gpn.region_only)} planned items name a station we
        can place on a map.</b> The rest name only a utility, so their uncertainty region is that

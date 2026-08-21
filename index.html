@@ -147,10 +147,33 @@
         <!-- G21, operator 2026-08-19: a layer does not have to say the words "so what", but it
              must outline why the dataset matters to an energy developer. Section 3 carried 14
              layers and one line, and that line was about voltage colour. -->
-        <!-- G15/G87, 2026-08-20: the only layer on this console about capacity that does not
-             exist yet. Tier 1 only — see the so-what. -->
-        <label><input type="checkbox" id="L-gridplan"> Planned utility work
-          <span class="hint">(119 placed of 618 &mdash; sized by voltage)</span></label>
+        <!-- ==========================================================================
+             G130, operator 2026-08-20f: "place these upgrades or new developments on the map for
+             where future capacity may exist" and "these should NOT display the same as the
+             current grid assets".
+             ⛔ SUPERSEDES the old L-gridplan box, which drew 119 utility grid plans as SOLID
+             CIRCLES - the same primitive as real substations - and showed nothing from PJM RTEP
+             or MISO MTEP at all. This group covers all three sources, 700 placed items, drawn
+             violet / hollow / dashed so planned work never reads as built work.
+             ========================================================================== -->
+        <label><input type="checkbox" id="L-planned"> <b>Planned grid investments</b>
+          <span class="hint">(700 placed of 1,878 &mdash; PJM RTEP, MISO MTEP, utility plans)</span></label>
+        <div style="margin:2px 0 6px 18px">
+          <label class="chk"><input type="checkbox" id="P-proposed" checked> Proposed
+            <span class="hint">(filed, not approved)</span></label>
+          <label class="chk"><input type="checkbox" id="P-approved" checked> Approved / in execution</label>
+          <label class="chk"><input type="checkbox" id="P-filed_plan" checked> In a utility's filed plan</label>
+          <label class="chk"><input type="checkbox" id="P-in_service"> Already in service
+            <span class="hint">(built &mdash; not future capacity)</span></label>
+          <label class="chk"><input type="checkbox" id="P-cancelled"> Cancelled / withdrawn</label>
+          <label class="chk"><input type="checkbox" id="P-rings" checked> Show location-uncertainty rings</label>
+        </div>
+        <div class="sowhat">&#9888; <b>These are not existing assets</b> and are not reflected in
+          any published hosting-capacity figure. Most projects are named only by a station or a
+          town, so the ring shows where the asset <b>could</b> be &mdash; <b>ring size reflects how
+          well the location is known, not how far along the project is.</b> A dashed line is a
+          corridor rebuild between two named substations. &#9940; 1,178 of 1,878 planned items
+          name no location we can resolve; they are held and reported, never drawn.</div>
         <label><input type="checkbox" id="L-pjm-queue"> PJM queue points <span class="hint">(315 &mdash; projects competing for the same study slots)</span></label>
         <label><input type="checkbox" id="L-pjm-bus"> PJM candidate buses <span class="hint">(42 &mdash; estimated positions, not published)</span></label>
         <div class="sowhat">&#9888; <b>Candidate buses are ESTIMATED positions</b> &mdash;
@@ -419,6 +442,6 @@
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/xlsx-lite.js"></script>
 <script src="common.js?v=ce6884a7"></script>
-<script src="app.js?v=18b4d4aa"></script>
+<script src="app.js?v=0dd4e348"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 {
- "audited_at": "2026-08-20T21:21:02.368965+00:00",
+ "audited_at": "2026-08-21T03:16:26.013248+00:00",
  "checks_run": 13,
  "failures": 1,
  "findings": [
   {
    "check": "no unregistered table in indiana_app",
-   "detail": "2 tables exist without a _registry row (each blocks another session's checkpoint)"
+   "detail": "3 tables exist without a _registry row (each blocks another session's checkpoint)"
   }
  ]
 }

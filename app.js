@@ -1141,10 +1141,10 @@ const WIRED_LAYERS = {
   "L-surplus": ["wired-surplus"],
   "L-withdrawn": ["wired-withdrawn"],
   "L-campus": ["wired-college", "wired-foodplant"],
-  "L-gridplan": ["wired-gridplan"],
 };
 const ALL_LAYER_BOXES = [...Object.keys(LAYER_MAP), ...Object.keys(CONTEXT_LAYERS),
                          ...Object.keys(ENVGATE_LAYERS), ...Object.keys(WIRED_LAYERS),
+                         "L-planned",
                          "L-parcels", "L-screener"];
 state.ctxLoaded = false; state.ctxLoading = null;
 async function ensureContextLayers() {
@@ -1220,15 +1220,14 @@ async function ensureWiredLayers() {
     map.addLayer({ id: "wired-foodplant", type: "circle", source: "wired2",
       filter: ["==", ["get", "layer"], "foodplant"], layout: hid,
       paint: { "circle-radius": 4, "circle-color": "#b45309", "circle-opacity": 0.8 } });
-    // G15/G87 tier 1. Sized by voltage, because a 345 kV rebuild and a 12 kV recloser are not
-    // the same news. ⚠ Only the 119 with a resolved station are drawn — the other 499 are placed
-    // to a utility TERRITORY and belong on the grid page, not as invented points here.
-    map.addLayer({ id: "wired-gridplan", type: "circle", source: "wired",
-      filter: ["==", ["get", "layer"], "gridplan"], layout: hid,
-      paint: { "circle-radius": ["interpolate", ["linear"],
-                                 ["coalesce", ["get", "voltage_kv"], 12], 12, 4, 138, 7, 345, 11],
-               "circle-color": "#0ea5e9", "circle-opacity": 0.7,
-               "circle-stroke-color": "#075985", "circle-stroke-width": 1.2 } });
+    // ⛔ `wired-gridplan` WAS HERE AND IS RETIRED - G130, 2026-08-20f. It drew the 119 located
+    // utility grid plans as SOLID FILLED CIRCLES, the same primitive this console uses for real
+    // substations, so planned work read as built work. It also showed nothing from PJM RTEP or
+    // MISO MTEP. The `L-planned` group supersedes it: all three sources, 700 placed items,
+    // violet / hollow / dashed, with an uncertainty ring per item.
+    // ⚠ The checkbox, the WIRED_LAYERS entry and this addLayer were removed in ONE change.
+    // Removing the control while a layer registry still named it is exactly how the L-frpp
+    // edit threw during boot and rendered the whole page blank.
     // ⛔ EVERY layer gets BOTH a hover and a click. G105's precedent is layers that were drawn
     //    and unclickable for weeks; adding six more without handlers would repeat it exactly.
     for (const ids of Object.values(WIRED_LAYERS)) for (const id of ids) {
@@ -1613,6 +1612,12 @@ function syncLayers() {
   for (const [box, ids] of Object.entries(WIRED_LAYERS))
     for (const id of ids) if (map.getLayer(id) && $(box))
       map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
+  // G130: planned investments use the SAME one visibility mechanism. Their status boxes and the
+  // ring toggle are a FILTER on top of it, not a second way of hiding things - two mechanisms for
+  // one behaviour is the drift defect this comment block already warns about.
+  for (const [box, ids] of Object.entries(PLANNED_LAYERS))
+    for (const id of ids) if (map.getLayer(id) && $(box))
+      map.setLayoutProperty(id, "visibility", $(box).checked ? "visible" : "none");
   const showP = $("L-parcels").checked;
   for (const fips of state.loaded.keys())
     for (const suf of ["fill", "line"])
@@ -1625,6 +1630,153 @@ for (const id of [...Object.keys(LAYER_MAP), "L-parcels"]) $(id).addEventListene
 // the context and screener boxes are wired elsewhere, but the KEY must still update for them
 for (const id of [...Object.keys(CONTEXT_LAYERS), ...Object.keys(ENVGATE_LAYERS), "L-screener"])
   if ($(id)) $(id).addEventListener("change", () => setTimeout(renderLayerLegend, 0));
+
+/* ==============================================================================================
+   G130 - PLANNED GRID INVESTMENTS. Where future capacity may appear.
+
+   Operator, 2026-08-20f: *"I would like to place these upgrades or new developments on the map for
+   where future capacity may exist… these upgrades or new developments should NOT display the same
+   as the current grid assets."*
+
+   ⛔ SO THEY DO NOT. Existing steel on this console is a SOLID FILLED circle or a SOLID line.
+   Planned work is VIOLET, HOLLOW and DASHED, and it sits under an uncertainty ring:
+       ring      a translucent violet polygon showing where the asset COULD be
+       corridor  a DASHED line, for the 81 upgrades that are a rebuild between two named
+                 substations - drawing those as a dot at the midpoint would put the work up to
+                 13 miles from where it is
+       point     a hollow violet marker, never a filled one
+
+   ⭐ THE RING IS SIZED BY HOW WELL WE KNOW THE LOCATION, NEVER BY PROJECT STATUS. That is the
+   design decision taken from the operator's Illinois tool, and it is the right one: a project can
+   be fully approved and still be named only by its town. verified_asset_match 0.5 mi ·
+   substation_match 1.5 mi · corridor midpoint half the span · one end 3 mi · town centroid 5 mi.
+
+   ⚠ 700 of 1,878 planned items carry a position. The other 1,178 are held and REPORTED, never
+   drawn - an upgrade in the wrong place is worse than one with no place, because it is a
+   coordinate someone might plan around.
+   ⛔ `in_service` work is ALREADY BUILT and is off by default: it is not future capacity.
+   ============================================================================================== */
+const PLANNED_LAYERS = { "L-planned": ["planned-ring", "planned-corridor", "planned-point"] };
+const PLANNED_VIOLET = "#7c3aed";
+
+function plannedStatusFilter() {
+  const on = ["proposed", "approved", "filed_plan", "in_service", "cancelled"]
+    .filter((s) => { const b = $("P-" + s); return b && b.checked; });
+  /* ⚠ literal-false rather than an empty "in" list: MapLibre treats ["in", x, ["literal", []]]
+     as matching nothing, which is what we want, but being explicit keeps the intent readable. */
+  return on.length ? ["in", ["get", "status"], ["literal", on]] : false;
+}
+
+function syncPlannedFilters() {
+  if (!map.getLayer("planned-point")) return;
+  const st = plannedStatusFilter();
+  const withKind = (kind) => st === false ? false : ["all", ["==", ["get", "kind"], kind], st];
+  map.setFilter("planned-point", withKind("point"));
+  map.setFilter("planned-corridor", withKind("corridor"));
+  const ringsOn = $("P-rings") ? $("P-rings").checked : true;
+  map.setFilter("planned-ring", ringsOn ? withKind("ring") : false);
+}
+
+state.plannedLoaded = false; state.plannedLoading = null;
+async function ensurePlannedLayers() {
+  if (state.plannedLoaded) return true;
+  if (state.plannedLoading) return state.plannedLoading;
+  state.plannedLoading = (async () => {
+    const fc = await fetchGz("data/planned.geojson.gz");
+    map.addSource("planned", { type: "geojson", data: fc });
+    const hid = { visibility: "none" };
+
+    /* the ring goes in FIRST so it sits under the point it belongs to */
+    map.addLayer({ id: "planned-ring", type: "fill", source: "planned",
+      filter: ["==", ["get", "kind"], "ring"], layout: hid,
+      paint: { "fill-color": PLANNED_VIOLET, "fill-opacity": 0.07,
+               "fill-outline-color": PLANNED_VIOLET } });
+    map.addLayer({ id: "planned-corridor", type: "line", source: "planned",
+      filter: ["==", ["get", "kind"], "corridor"], layout: hid,
+      paint: { "line-color": PLANNED_VIOLET, "line-width": 2.2, "line-opacity": 0.85,
+               /* ⛔ DASHED. Every existing transmission line on this console is solid; a solid
+                  violet line would read as a line that is already there. */
+               "line-dasharray": [2, 1.6] } });
+    map.addLayer({ id: "planned-point", type: "circle", source: "planned",
+      filter: ["==", ["get", "kind"], "point"], layout: hid,
+      paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 6, 3.5, 12, 7],
+               /* ⛔ HOLLOW. The fill is almost transparent and the ring is the weight, so a
+                  planned asset never reads as a built one at a glance. */
+               "circle-color": "#ffffff", "circle-opacity": 0.55,
+               "circle-stroke-color": PLANNED_VIOLET, "circle-stroke-width": 2.2 } });
+
+    /* ⚠ ITERATE THE REGISTRY, not one hardcoded key. audit_map_clicks.py recognises a group
+       bound via Object.values(...) - that shape was added after CONTEXT_LAYERS and ENVGATE_LAYERS
+       were both reported as "drawn and unclickable" for a session while being bound the whole
+       time. Indexing PLANNED_LAYERS["L-planned"] binds correctly but is invisible to the audit,
+       and a true finding the instrument cannot see is worth no more than a false one. */
+    for (const ids of Object.values(PLANNED_LAYERS)) for (const id of ids) {
+      map.on("mousemove", id, (e) => showTip(e, plannedTip(e.features[0].properties)));
+      map.on("mouseleave", id, hideTip);
+      map.on("click", id, (e) => { if (!state.measure.on) plannedEvidence(e.features[0].properties); });
+    }
+    syncPlannedFilters();
+    state.plannedLoaded = true;
+    return true;
+  })();
+  return state.plannedLoading;
+}
+
+const PLANNED_STATUS_PLAIN = {
+  proposed: "PROPOSED — filed, not yet approved",
+  approved: "APPROVED / in execution",
+  in_service: "ALREADY IN SERVICE — not future capacity",
+  filed_plan: "in a utility's filed capital plan",
+  cancelled: "CANCELLED or withdrawn",
+  unclassified: "status not published in a form we can classify",
+};
+
+function plannedTip(p) {
+  const bits = [`<b>${p.title || p.pid}</b>`, p.src];
+  if (p.status) bits.push(PLANNED_STATUS_PLAIN[p.status] || p.status);
+  if (p.cost_m) bits.push(`$${fmt(Math.round(p.cost_m))}M`);
+  if (p.isd) bits.push(`in service ${String(p.isd).slice(0, 10)}`);
+  if (p.unc_mi) bits.push(`±${p.unc_mi} mi`);
+  return bits.join(" · ");
+}
+
+function plannedEvidence(p) {
+  show(`Planned: ${p.title || p.pid}`, `
+    <h3>Where future capacity may appear</h3><table>
+      ${row("source", p.src)}
+      ${row("project", p.pid)}
+      ${row("status", p.status ? (PLANNED_STATUS_PLAIN[p.status] || p.status) : null,
+            "the filing publishes no status we can classify")}
+      ${row("status as filed", p.status_raw)}
+      ${row("expected in service", p.isd ? String(p.isd).slice(0, 10) : null,
+            "no in-service date published")}
+      ${/* ⚠ THREE-STATE, PROPERLY. The default "not measured here" would be a lie on a 2028
+            project: there is no ACTUAL in-service date because the work has not happened, and
+            saying we did not measure it implies a gap in us rather than a fact about the
+            project. The row only appears once the work is in service. */
+        p.status === "in_service"
+          ? row("actually in service on", p.aisd ? String(p.aisd).slice(0, 10) : null,
+                "recorded in service, but the date is not published")
+          : ""}
+      ${row("cost", p.cost_m != null ? `$${fmt(Math.round(p.cost_m))}M` : null,
+            "no cost published for this project")}
+      ${row("owner / utility", p.owner, "this feed publishes no owner")}
+      ${row("what the work is", p.descr, "this feed publishes no description")}
+      ${row("driver", p.driver, "this feed publishes no driver")}
+      ${row("county", p.county, "no county resolved for this project")}
+    </table>
+    <h3>How well we know WHERE it is</h3><table>
+      ${row("location as filed", p.loc_text)}
+      ${row("anchor", p.anchor)}
+      ${row("method", p.loc_method)}
+      ${row("uncertainty", p.unc_mi != null ? `±${p.unc_mi} miles` : null)}
+    </table>
+    <div class="sowhat">⚠ <b>${escHtml(p.loc_basis || "location basis not recorded")}.</b>
+      The ring on the map is that distance, and it is sized by how well the LOCATION is known —
+      not by how far along the project is. ⛔ This is planned or filed work, not an existing
+      asset, and it is not reflected in any published hosting-capacity figure.</div>
+    <div class="prov">${prov("in_planned_upgrades")}</div>`);
+}
 
 /* G72/G80: load-on-first-toggle for the six new controls. ⚠ If the fetch fails the box is
    UNTICKED again — a ticked box over an absent layer is the failure mode the logistics layers
@@ -1640,6 +1792,28 @@ for (const box of Object.keys(WIRED_LAYERS)) {
     }
     syncLayers();
   });
+}
+
+/* G130: the planned-investment box loads on first tick, exactly like the wired boxes, and
+   UNTICKS itself if the fetch fails - a ticked box over an absent layer is the failure this
+   console already had once. The status boxes and the ring toggle only re-filter, so they never
+   need to load anything. */
+{
+  const el = $("L-planned");
+  if (el) el.addEventListener("change", async (e) => {
+    if (e.target.checked) {
+      try { await ensurePlannedLayers(); } catch (err) {
+        reportBootFailure(err); e.target.checked = false; return;
+      }
+    }
+    syncLayers();
+    syncPlannedFilters();
+  });
+  for (const id of ["P-proposed", "P-approved", "P-filed_plan", "P-in_service",
+                    "P-cancelled", "P-rings"]) {
+    const b = $(id);
+    if (b) b.addEventListener("change", syncPlannedFilters);
+  }
 }
 
 /* ---------- G110b: TICKING A GATE FILTER REVEALS THE GATE --------------------------------------

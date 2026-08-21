@@ -11,7 +11,7 @@ The instrument separates two roles, because the first version of this measuremen
 | **builder** | the file that `CREATE`s the object. Being built is not being shown |
 | **consumer** | a file that READS it on a path ending at the user — an export writing into `data/`, or a page/JS naming it |
 
-## 297 of 339 registered objects reach a surface
+## 298 of 340 registered objects reach a surface
 
 ### Not reaching a surface
 
@@ -278,6 +278,7 @@ headline can be audited rather than taken on trust:
 | `in_pjm_rtep_cost_allocations` | direct | `grid.html`, `scripts/export_phase2_close.py` |
 | `in_pjm_rtep_upgrade_details` | direct | `grid.html`, `scripts/export_phase2_close.py` |
 | `in_pjm_rtep_upgrades` | derivative | `feeds `in_pjm_bus_locations_candidate` via `scrapers/lane_a/build_bus_locations_candidate.py`` |
+| `in_planned_upgrades` | direct | `app.js`, `grid.html` |
 | `in_power_plants` | direct | `scripts/export_facilities.py` |
 | `in_puc_state_access_ledger` | **none** | — |
 | `in_qcew_county_labor` | derivative | `feeds `in_county_context_extras` via `scripts/build_county_context_extras.py`` |

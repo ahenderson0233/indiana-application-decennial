@@ -134,6 +134,13 @@ for r in client.query(f"""
          -- ⚠ wd_max_mw is the SIZE half of that row: a cancelled 5 MW solar project does not
          -- imply land for a 300 MW campus, and without it the signal flatters small sites.
          wd_requests, wd_last_date, wd_max_mw,
+
+         -- ⭐ G130: the nearest FUTURE planned upgrade, so the screener can answer "is anything
+         -- coming near this site". ⛔ in_service work is excluded upstream - it is already built.
+         -- ⚠ pu_unc_mi ships WITH pu_mi and neither is meaningful alone: "2.3 mi from a planned
+         -- rebuild" reads as precision, and if that project is placed only to a town centroid its
+         -- own ring is 5 miles. The page must show both or it is overstating what we know.
+         pu_name, pu_src, pu_status, pu_isd, pu_cost_m, pu_mi, pu_unc_mi, pu_loc_method,
          has_signal, signals, signal_types, signal_events,
          CAST(first_event AS STRING) AS first_event, CAST(last_event AS STRING) AS last_event,
          events_3y, events_5y, events_10y, keying,

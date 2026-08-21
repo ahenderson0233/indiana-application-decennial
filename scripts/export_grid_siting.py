@@ -66,6 +66,13 @@ def r1(x):
     return None if x is None else round(float(x), 1)
 
 
+def rows(sql):
+    """Every row of a query as plain dicts. ⚠ Added for G130 rather than writing a second query
+    idiom inline - this file already builds `mtep` and `buses` with hand-rolled loops, and a third
+    shape would be the two-copies drift this project keeps paying for."""
+    return [dict(x) for x in client.query(sql)]
+
+
 buses = []
 
 # ---------------------------------------------------------------- MISO: INJECTION
@@ -228,6 +235,18 @@ payload = {
         "not two measurements of one quantity - do not average or compare them across sources."
     ),
     "buses": buses,
+    # ⭐ G130, operator 2026-08-20f: "what is our current coverage of system upgrades?" - the
+    # answer belongs on the page, generated, so it cannot go stale in a chat reply or a document.
+    "planned_by_source": rows(f"""
+      SELECT source, COUNT(*) AS projects,
+             COUNTIF(lat IS NOT NULL) AS placed,
+             COUNTIF(status_class IN ('proposed','approved','filed_plan')) AS still_to_come,
+             ROUND(SUM(cost_usd_m)) AS cost_usd_m
+      FROM `{DS}.in_planned_upgrades` GROUP BY 1 ORDER BY 2 DESC"""),
+    "planned_by_method": rows(f"""
+      SELECT loc_method, ANY_VALUE(loc_basis) AS basis, COUNT(*) AS projects,
+             ROUND(AVG(uncertainty_mi), 1) AS ring_mi
+      FROM `{DS}.in_planned_upgrades` GROUP BY 1 ORDER BY 3 DESC"""),
     "mtep": mtep,
     "costs": costs,
     "utilities": util,
@@ -242,6 +261,8 @@ payload = {
         "buses_miso": "indiana_app.in_bus_headroom_miso (location_status='indiana')",
         "buses_pjm": "indiana_app.vw_pjm_bus_withdrawal_located",
         "mtep": "indiana_app.in_txexp_miso_mtep_appendix_a_status (state_1/state_2 = IN)",
+        "planned": "indiana_app.in_planned_upgrades (PJM RTEP + MISO MTEP + IURC grid plans, "
+                   "placed by a tiered method with an uncertainty radius)",
         "costs": "indiana_app.in_lbnl_interconnection_costs",
         "utilities": "indiana_app.in_territories",
     },
