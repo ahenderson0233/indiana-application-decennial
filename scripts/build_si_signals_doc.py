@@ -38,6 +38,73 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "docs", "SI_SIGNALS.md")
 client = bigquery.Client(project="energy-platfrom")
 
+# ⚠ HAND-WRITTEN AND LABELLED AS SUCH — a CHANGE LOG cannot be generated, because the warehouse
+# knows its current state and not its history or the reasoning behind it. Operator, 2026-08-22:
+# *"so we can track exactly what was completed, how it was completed, and why we completed each
+# task for the SI signals that we worked with."*
+CHANGE_LOG = [
+ ("**all 27**", "every event date, per signal, plus a link to the publisher",
+  "G145 added `si_next_event_date` and a per-signal `si_signal_dates` array carrying `date_basis`, "
+  "`source_ids` and `keying`; G153 renders it through one resolver in `common.js`",
+  "8,573 parcels printed *\"date unknown\"* over a date we held — the rollup read the last event "
+  "ON OR BEFORE TODAY, so a scheduled tax auction vanished. And no signal said where it came from",
+  "— closed"),
+ ("`D19_warn`", "43 → **57** parcels reached",
+  "G154 geocoded the 34 addresses string-matching could not place (US Census, permission checked), "
+  "then `ST_INTERSECTS` against the parcel polygon, then required the parcel's OWN street address "
+  "to corroborate the snap",
+  "the DLGF address is the assessor's address for a LOT; a medical campus has none per building, "
+  "so more regex could never have worked",
+  "8 of 34 refused with a written reason. ⛔ The real ceiling is that most Indiana WARN notices "
+  "carry no filing PDF, and the address exists only inside the PDF"),
+ ("`D22_facility_inactive`", "its **first denominator**, 5,584",
+  "counted the INACTIVE marker in `in_si_d22_parcel_join`, the same flag its own source block "
+  "filters on",
+  "it was the last signal reporting *\"no corpus count recorded\"* — a signal with no denominator "
+  "cannot be audited for loss",
+  "— closed"),
+ ("`D22_environmental_violation`", "denominator corrected **34,116 → 3,340**",
+  "counted `is_distress` rather than `COUNT(*)` on a table that carries TWO signals",
+  "attributing a whole table to one of the two signals it holds overstates the denominator and is "
+  "how `reached > held` gets manufactured",
+  "— closed"),
+ ("`D28_cmbs_loan_distress`", "**NEW** — 95 held, 27 reached, 13 admitted",
+  "full-width clip of `edgar_abs_ee_cmbs` (153 columns), then delinquency / servicer workout / "
+  "special servicing / DSCR<1.0 / past maturity folded into ONE condition",
+  "under the 13-column reduction this source could produce exactly ONE signal by construction. "
+  "A special-serviced loan is the strongest predictor a commercial property will trade",
+  "⛔ **G160** — the parent is only ~70% loaded upstream"),
+ ("`D29_anchor_tenant_exit`", "**NEW** — 146 held, 24 reached, 20 admitted",
+  "same clip: published occupancy ≤60% (a FRACTION, where 0 means unpublished) or the largest "
+  "tenant's lease expiring within 24 months",
+  "a half-empty building with an anchor rolling off is an owner who needs a plan — and its event "
+  "date is in the FUTURE, which only became renderable once G145 landed",
+  "⛔ **G160**, same parent"),
+ ("`I3_land_bank`", "**NEW** — **691 parcels**",
+  "Evansville joined on `StatePIN` (1,528 of 1,660); Indianapolis placed by normalised street "
+  "address unique within Marion, because its `parcelnumber` is a 7-digit LOCAL id that appears "
+  "nowhere in the state corpus",
+  "G133 had recorded land banks as *an acquisition we hold nothing for*. We held two — the G25 "
+  "check had grepped for the words *land bank*, and they are filed as `landbank` and `surplus`",
+  "— closed"),
+ ("`D14_sba_chargeoff`", "clip repaired **5,135 → 39,948** rows",
+  "re-keyed from `cdc_state` to `projectstate` / `borrstate`",
+  "`cdc_state` is the **lender's** office, not the property's state — a 7.8× under-clip on a "
+  "signal that reaches parcels today",
+  "⛔ **NOT WIRED.** D14 is fed by the `si_signals` corpus, so the repair reaches no reader. G156"),
+ ("`D16_structure_fire`", "fire-incident clips repaired, **+33,039** Indiana rows",
+  "2022 held 1,221 of 10,548 and 2024 held 1,255 of 11,961 — two loads that STOPPED; 2023 was "
+  "absent entirely",
+  "`basicincident` and `incidentaddress` were complete for all five years, so nothing downstream "
+  "ever failed and the gap was silent",
+  "⛔ **NOT WIRED.** Same shape as D14. G156"),
+ ("`D6_bankruptcy`", "`in_ustp_ch7_tfr` repaired **33 → 76,010**; `in_si_up_bankruptcy` clipped",
+  "re-keyed from `ch7_state_tax_paid` — a **DOLLAR column** — to `state`",
+  "`docs/UNWIRED_CLASSIFICATION.md` had classified the table *no_indiana_content*, recording the "
+  "symptom as the cause. Indiana was never absent; the clip was keyed on money",
+  "⛔ **NOT WIRED, and D6 reaches 0 parcels.** Aggregate grain is the deeper problem. G156"),
+]
+
 # ⚠ HAND-WRITTEN, AND LABELLED AS SUCH: what each widened clip is FOR. Everything else is queried.
 WHY = {s[3]: s[4] for s in SOURCES}
 WHY.update({t: w for t, _, _, w in REPAIRS})
@@ -166,6 +233,26 @@ for target, rows, cols in clips:
 w("")
 w(f"**{len(clips)} clips · {sum(r for _, r, _ in clips):,} Indiana rows held at full width.** "
   f"Guarded by `scripts/audit_si_upstream_width.py`, which is a checkpoint check.")
+w("")
+w("---")
+w("")
+w("## 4b. ⚠ WHAT WE DID TO EACH SIGNAL, HOW, AND WHY — HAND-WRITTEN, 2026-08-21/22")
+w("")
+w("⛔ **This section is a CHANGE LOG and cannot be generated** — the warehouse knows its current "
+  "state, not its history or the reasoning. Everything above is measured; this is written.")
+w("")
+w("| signal | what we did | how | why | what is still outstanding |")
+w("|---|---|---|---|---|")
+for row in CHANGE_LOG:
+    w("| " + " | ".join(row) + " |")
+w("")
+w("⛔ **THE THREE ROWS MARKED *not wired* ARE THE UNCOMFORTABLE PART.** We repaired those clips "
+  "and the repairs are real — `in_sba_foia_loans` went from 5,135 rows to 39,948, the NFIRS "
+  "fire-incident years recovered 33,039 rows, `in_ustp_ch7_tfr` went from 33 rows (none of them "
+  "Indiana) to 76,010. **None of it reached a signal**, because D14, D16 and D6 are fed by the "
+  "13-column `si_signals` corpus and not by these clips. ⚠ That is the standing rule biting: *the "
+  "warehouse improves and no reader sees it.* It is **G156**, and these three are the sharpest "
+  "instances of it because the better data is already sitting in `indiana_app`.")
 w("")
 w("---")
 w("")
