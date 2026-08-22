@@ -133,6 +133,27 @@ AUDITS = [
     ("si upstream width", "scripts/audit_si_upstream_width.py",
      r"(\d+) FAILURE\(S\)|(⭐ Every upstream source is clipped)"),
 
+    # ⛔ 2026-08-22b. The standing rule says *"After ANY build touching the spine: re-export sites,
+    # the screener AND si surfaces."* I followed it and still shipped 23,821 signal-carrying
+    # parcels against a live 24,654 — because `export_screener.py` reads `in_screener_candidates`,
+    # which is a BUILD, not an export. Re-exporting without rebuilding ships the previous
+    # generation with a fresh timestamp on top. ⚠ And it is INVISIBLE to every existing check:
+    # the payload still matches the table, the table still matches the spine generation it was
+    # built from, so nothing is inconsistent — it is only OLD. On its first run this also caught
+    # `in_si_funnel` 26 HOURS stale, which nobody had noticed either.
+    ("spine freshness", "scripts/audit_spine_freshness.py",
+     r"(\d+) FAILURE\(S\)|(⭐ Everything downstream of the spine was built after it)"),
+
+    # ⭐ G167, 2026-08-22b. Two completeness questions had instruments (our clip vs its parent, our
+    # clip vs the publisher) and a third did not: **what is IN the columns we hold and do not
+    # read.** G152 widened 18 clips and nobody put the per-column question to any of them.
+    # ⚠ REPORTS, DOES NOT FAIL — a candidate column is a worklist entry, not a defect, and each one
+    # still needs a D-code, an admission rule and a written "so what" before it ships. It is in the
+    # checkpoint because an audit nobody runs is a comment, and because the candidate list goes
+    # stale the moment a builder starts reading one of the columns.
+    ("si column value", "scripts/audit_si_column_value.py",
+     r"(\d+) candidate column\(s\) across (\d+) clip\(s\)"),
+
     # ⛔ SIGNAL_REALITY.json IS ON THE REQUIRED READING LIST, IS LABELLED "generated", AND WENT
     # FIVE DAYS WITHOUT REGENERATING. Measured 2026-08-21: it still said D19_warn admitted 2
     # parcels - the exact figure the operator complained about twice - and D4_tax_delinquency 0
@@ -273,6 +294,17 @@ for label, script, pat in AUDITS:
         check(label, n == 0,
               f"{n} upstream SI source(s) not clipped Indiana-wide at full width"
               if n else "every upstream SI source is clipped Indiana-wide at FULL WIDTH")
+    elif label == "si column value":
+        # ⚠ report-only, deliberately: `check(..., True, ...)` puts the number on the board every
+        # run without failing on it. A held column that feeds nothing is a worklist item.
+        check(label, True,
+              f"{m.group(1)} unread column(s) carrying a date/status/amount across "
+              f"{m.group(2)} full-width clips")
+    elif label == "spine freshness":
+        n = int(m.group(1)) if m.group(1) else 0
+        check(label, n == 0,
+              f"{n} table(s) downstream of the SI spine are older than it - re-run their builders"
+              if n else "everything downstream of the SI spine was built after it")
     elif label == "si column capture":
         gaps = int(m.group(2))
         check(label, gaps == 0,

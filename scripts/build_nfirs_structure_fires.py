@@ -8,12 +8,13 @@ Measured before deciding:
      vehicle fires (131), cooking fires (113). Admitting all 38k as "fires" would inflate D16
      roughly fivefold. Filtered to NFIRS INC_TYPE 111-123, the building/structure range.
 
-  2. in_nfirs_fireincident_2024 IS NOT INDIANA-CLIPPED. Only 848 of its 1,255 rows are STATE='IN';
-     407 (32%) belong to 43 other states — IL 74, OH 49, KY 29, MI 25, FL 22, CA 22, TX 12 …
-     An `in_*` table in the Indiana dataset carrying a third out-of-state rows breaks the
-     standing "Indiana only, clipped at the border" rule and would silently corrupt any count
-     built on it. Every query here filters STATE='IN' explicitly rather than trusting the name.
-     (2020 and 2021 are clean: 100% IN.)
+  2. ✅ FIXED BY G152, 2026-08-21 — this paragraph is kept as the REASON the STATE='IN' filters
+     below are still here. It used to read: *"in_nfirs_fireincident_2024 IS NOT INDIANA-CLIPPED.
+     Only 848 of its 1,255 rows are STATE='IN'; 407 (32%) belong to 43 other states."* G152
+     re-clipped every year Indiana-only at full width, so the out-of-state rows are gone.
+     ⚠ THE EXPLICIT `STATE = 'IN'` FILTERS STAY ANYWAY. They cost nothing, and an `in_*` name is
+     not a measurement — that is exactly what let a third of this table be out-of-state while
+     nothing noticed.
 
   3. The addresses are GOOD, better than expected: of 8,119 structure fires in 2021, 8,102 carry
      a street name (99.8%), 7,387 a street number (91.0%) and all 8,119 a ZIP. That is enough to
@@ -45,14 +46,42 @@ client = bigquery.Client(project="energy-platfrom")
 #    ⚠ It also fixes a latent join defect: `fire` already unioned 2024 while `inc` did not, so
 #    every 2024 NOT_RES flag joined to nothing and was silently discarded.
 #
-# ⚠ fireincident COVERAGE IS UNEVEN AND MUST NOT BE READ AS AN ANSWER. 2020 and 2021 hold ~9,700
-#   rows each; 2022 holds 1,221 and 2024 holds 1,255, and 2023 IS NOT HELD AT ALL. So NOT_RES is
-#   available for some years and not others. `non_residential` is therefore NULL on most of the
-#   new rows and MUST render as "not stated", never as "residential" - the same three-state rule
-#   that stopped 95 false tariff violations. `property_class`, derived from PROP_USE on the
-#   basicincident table, is complete for every year and is the column a surface should use.
+# ⛔ 2026-08-22b: THE LINE BELOW USED TO BE A PINNED LIST AND G152 INVALIDATED IT SILENTLY.
+#    It read `FIRE_YEARS = ["2020","2021","2022","2024"]  # 2023 fireincident is not held`, and by
+#    2026-08-21 that comment was false: G152 clipped `in_nfirs_fireincident_2023` (13,006 rows) and
+#    repaired 2022 (1,221 -> 10,548) and 2024 (1,255 -> 11,961), recovering 33,039 Indiana rows.
+#    Re-running this builder afterwards produced a BYTE-IDENTICAL 45,607 rows and 1,583 SI-grade,
+#    because the pinned list still excluded 2023 and nothing compared the list to the warehouse.
+#    ⚠ That is the project's pinned-literal defect for the FOURTH time: *a hardcoded list turns a
+#    measurement into a constant, and a constant cannot notice that the data changed.*
+#    ⭐ FIRE_YEARS is now MEASURED from __TABLES__ every run, so a year that arrives is picked up
+#    and a year that vanishes is reported rather than silently skipped.
+#
+# ⚠ fireincident COVERAGE WAS UNEVEN AND IS NOW COMPLETE, BUT DO NOT ASSUME EITHER - the run prints
+#   what it found. `non_residential` comes from NOT_RES on this table, so any year absent here
+#   renders as "not stated", never as "residential" - the three-state rule that stopped 95 false
+#   tariff violations. `property_class`, derived from PROP_USE on the basicincident table, is
+#   complete for every year and is the column a surface should prefer.
 YEARS = ["2020", "2021", "2022", "2023", "2024"]
-FIRE_YEARS = ["2020", "2021", "2022", "2024"]          # 2023 fireincident is not held
+
+
+def _fire_years_held():
+    """Which in_nfirs_fireincident_YYYY clips actually hold rows, asked of the warehouse."""
+    rows = list(client.query(f"""
+      SELECT table_id, row_count FROM `{DS}.__TABLES__`
+      WHERE table_id LIKE 'in_nfirs_fireincident_%' AND row_count > 0"""))
+    held = sorted(r.table_id.replace("in_nfirs_fireincident_", "") for r in rows)
+    got = [y for y in YEARS if y in held]
+    missing = [y for y in YEARS if y not in held]
+    print(f"  fireincident years held: {', '.join(got) or 'NONE'}"
+          + (f"   ⚠ ABSENT: {', '.join(missing)}" if missing else "   (all five)"))
+    if not got:
+        raise SystemExit("⛔ no in_nfirs_fireincident_* clip holds any rows - NOT_RES would be "
+                         "NULL on every row. Run scripts/build_si_upstream_wide.py first.")
+    return got
+
+
+FIRE_YEARS = _fire_years_held()
 
 _inc = "\n  UNION ALL\n  ".join(
     f"""SELECT '{y}' AS yr, INCIDENT_KEY, STATE, FDID, INC_DATE, INC_TYPE,
@@ -151,14 +180,28 @@ client.query(f"""INSERT `{DS}._registry`
     bigquery.ScalarQueryParameter("s", "STRING",
       "indiana_app.in_nfirs_basicincident_2020/2021 x in_nfirs_incidentaddress_* x in_nfirs_fireincident_*"),
     bigquery.ScalarQueryParameter("m", "STRING",
-      "INC_TYPE 111-123 (building/structure fires) only, STATE='IN' enforced on every input"),
+      "INC_TYPE 111-123 (building/structure fires) only, STATE='IN' enforced on every input. "
+      "basicincident supplies the incident LIST and the loss columns; incidentaddress supplies the "
+      "street; fireincident supplies NOT_RES and BLDG_INVOL and its year list is MEASURED from "
+      "__TABLES__ every run, never pinned. "
+      # ⛔ THIS ROW HAD NO RE-SCRAPE COMMAND AND audit_handoff_docs.py said so, 2026-08-22b - the
+      # only non-ladder object in the estate missing one. G16's test is whether a stranger could
+      # re-run the work from the registry row alone, and for a table feeding a live signal they
+      # could not.
+      "RE-SCRAPE COMMAND: python scripts/build_nfirs_structure_fires.py . "
+      "IDEMPOTENCY: replace_safe - CREATE OR REPLACE from indiana_app clips only, so a re-run "
+      "cannot double-count. CADENCE: whenever any in_nfirs_* clip is rebuilt."),
     bigquery.ScalarQueryParameter("n", "INT64", n),
     bigquery.ScalarQueryParameter("g", "FLOAT64", round(gb, 4)),
     bigquery.ScalarQueryParameter("o", "STRING",
-      "D16 candidate at ADDRESS grain - not yet keyed to parcels, and not claimed to be. Two "
-      "defects fixed on the way in: (1) only ~21% of NFIRS incidents are structure fires, so "
-      "admitting the raw tables would have inflated D16 about fivefold; (2) "
-      "in_nfirs_fireincident_2024 is NOT Indiana-clipped - 407 of 1,255 rows (32%) are from 43 "
-      "other states - so STATE='IN' is enforced explicitly rather than trusting the in_* name. "
+      "⭐ 2026-08-22b: NO LONGER address-grain only. build_si_addr_placement.py keys the "
+      "non-residential, >=$10k subset to parcels and D16_structure_fire now admits 1,783. "
+      "Two defects fixed on the way in: (1) only ~21% of NFIRS incidents are structure fires, so "
+      "admitting the raw tables would have inflated D16 about fivefold; (2) the fireincident clips "
+      "used to carry out-of-state rows - G152 re-clipped every year Indiana-only, and STATE='IN' "
+      "is STILL enforced explicitly because an in_* name is not a measurement. "
+      "⛔ AND A PINNED YEAR LIST USED TO SWALLOW THE REPAIR: FIRE_YEARS excluded 2023 after G152 "
+      "had clipped it, so a re-run produced a byte-identical 45,607 rows. It is measured now; "
+      "2023 NOT_RES coverage went 0 -> 4,357. "
       "Keying quality is carried per row: ~91% have number+street.")])).result()
 print(f"in_nfirs_structure_fires: {n:,} rows, registered")

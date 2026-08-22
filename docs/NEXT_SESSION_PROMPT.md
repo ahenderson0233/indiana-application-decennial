@@ -70,7 +70,7 @@ python scripts/audit_handoff_consistency.py
 | # | file | why |
 |---|---|---|
 | 1 | `docs/SESSION_START.md` | standing rules and the governing principle |
-| 2 | ⭐ **`docs/HANDOFF_2026-08-22.md`** | **THE CURRENT ONE.** §1 the two operator rulings; §3 five findings worth carrying; §4 my own instrument failures; §6 what is left |
+| 2 | ⭐ **`docs/HANDOFF_2026-08-22b.md`** | **THE CURRENT ONE.** §1 what the previous handoff got WRONG; §3 five findings; §4 my instrument failures; §6 the SI signals — two clips left, not sixteen |
 | 3 | ⭐ **`docs/BACKLOG.md`** | the top section names every unfinished row and why |
 | 4 | ⭐ `docs/COMPARABLE_TOOLS.md` | §3 names the ONE question each page answers |
 | 5 | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** — which loaders re-run, safely, and what each clip drops |
@@ -106,7 +106,7 @@ bus upgrade tier, so cost may only be answerable as a $/MW benchmark.
 
 | # | row | why this order |
 |---|---|---|
-| ① | ⭐ **G156** — 16 of the 18 full-width clips are still unexploited | **the largest open row, and it has three CHEAP wins at the front.** ⛔ `D14_sba_chargeoff`, `D16_structure_fire` and `D6_bankruptcy` are fed only by the 13-column corpus, so this session's repairs — SBA **5,135 → 39,948**, NFIRS fire **+33,039 rows**, USTP **33 → 76,010** — reach no reader. The data is already clipped and registered; what is missing is a source block in `build_si_signal_v2.py`. ⭐ Then the richest new one: `in_si_up_ibtr_appeals` carries `stateParcelNumber`, `locationAddress` AND `petitionerName` on **10,071 parcels** — an OWNER NAME, the thing five other rows are blocked on. ⛔ Read `docs/SI_SIGNALS.md` §4b first |
+| ① | **G156** — ⭐ **SUBSTANTIALLY CLOSED 2026-08-22b; TWO CLIPS LEFT, NOT SIXTEEN** | ⛔ **The "16 unexploited clips" figure came from a BROKEN INSTRUMENT** — the *feeds a signal?* column scanned three scripts' TEXT, so every clip reaching the spine through a placement table scored *not yet*. It is declared lineage now, verified against the warehouse. **Live: 8 clips feed a signal, 3 feed one through an `in_si_refresh_*` SIBLING (the clip adds only provenance — `_source_url`, `pulled_at`, `geoid`), 5 are recorded refusals, 2 are genuinely left:** `in_si_up_indy_taxsale` (62,368 Marion parcels with the DOLLAR delinquency D1/D4 carry as a flag) and `in_si_up_brownfield` (1,483 sites with EPA's own `ssdist`/`ssvoltage`/`raildist`). ⛔ Do NOT act on the old *"IBTR first, an owner name on 10,071 parcels"* line — D26 already admits 1,937 parcels from the sibling. Read `docs/SI_SIGNALS.md` §4b |
 | ② | **G155** — Indiana distribution-level substations | the operator says we hold them; I could not find them. Every Indiana source is transmission-level and the AEP hosting-capacity tables are **Ohio/Michigan only**. Search by content |
 | ③ | ⛔ **G159** — floating buses are excluded from the calculation and INCLUDED in the display | **57,359 parcels** are told their nearest bus is one our own model cannot attach to a substation or a line. Not false — *unqualified*. Labelling it costs nothing and does not wait on G155 |
 | ④ | **G157** — 93 bus names are shared by more than one bus | small and live: `wd_limiting_end` stores a NAME, so the screener's "Limited at" can be ambiguous. Carry `bus_id` beside it |
@@ -119,7 +119,9 @@ bus upgrade tier, so cost may only be answerable as a $/MW benchmark.
 
 ### ⭐ The SI signals and the grid batch are BOTH done — do not re-open them
 
-**Closed 2026-08-21/22:** G131, G136, G137, G141, G142, G143, G144, G145, G146, G148, G149, G150, G152, G153, G154. The spine carries **27 signals**, `audit_signal_display.py` reports **0 unexplained losses**, and `audit_si_upstream_width.py` proves **18 clips at full width, 2,221,637 Indiana rows**. ⛔ If you think a source is narrow, run the audit — do not re-derive the answer.
+**Closed 2026-08-21/22:** G131, G136, G137, G141, G142, G143, G144, G145, G146, G148, G149, G150, G152, G153, G154 — **and 2026-08-22b: G163, G165.**
+
+⭐ **THE SI SIGNALS MOVED AGAIN ON 2026-08-22b.** `D14_sba_chargeoff` **762 → 1,139** admitted parcels ($247.2M of charge-offs) · `D16_structure_fire` **1,680 → 1,783** · `D8_exit_intent` **0 → 434** (it had never placed a parcel) · `D3_seized_auction` **0 → 2**. **23 of 27 signals now admit at least one parcel, and every one of the other four carries a machine-readable `zero_reason`** — `unplaced`, the only value meaning unfinished work, is EMPTY. The spine carries **27 signals**, `audit_signal_display.py` reports **0 unexplained losses**, and `audit_si_upstream_width.py` proves **18 clips at full width, 2,221,637 Indiana rows**. ⛔ If you think a source is narrow, run the audit — do not re-derive the answer.
 
 ---
 

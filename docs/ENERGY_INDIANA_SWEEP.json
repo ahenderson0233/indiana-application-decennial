@@ -1,0 +1,2712 @@
+{
+ "probed": 697,
+ "with_indiana": 338,
+ "unclipped": 224,
+ "unprobeable": [],
+ "hits": [
+  {
+   "table": "cems_hourly",
+   "state_col": "state",
+   "indiana_rows": 36034944,
+   "total_rows": 1009316568,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_parcel_key_index",
+   "state_col": "state",
+   "indiana_rows": 13931736,
+   "total_rows": 678542895,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_grid",
+   "state_col": "state",
+   "indiana_rows": 4090786,
+   "total_rows": 179048266,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_audit_si_keys_long",
+   "state_col": "state",
+   "indiana_rows": 3783558,
+   "total_rows": 221817712,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_all",
+   "state_col": "state",
+   "indiana_rows": 3637663,
+   "total_rows": 132206336,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_all__snapshot_20260731",
+   "state_col": "state",
+   "indiana_rows": 3637663,
+   "total_rows": 132206336,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_all_v2",
+   "state_col": "state",
+   "indiana_rows": 3637663,
+   "total_rows": 170442382,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_parcel_all_plus",
+   "state_col": "state",
+   "indiana_rows": 3637663,
+   "total_rows": 161932249,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_geo",
+   "state_col": "state",
+   "indiana_rows": 3637317,
+   "total_rows": 157427563,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_attrs__snapshot_20260731",
+   "state_col": "state",
+   "indiana_rows": 3553381,
+   "total_rows": 107325274,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_attrs",
+   "state_col": "state",
+   "indiana_rows": 3553381,
+   "total_rows": 107325274,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_parcel_structures",
+   "state_col": "state",
+   "indiana_rows": 3553194,
+   "total_rows": 129844449,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_structures__predelete_20260813_132013",
+   "state_col": "state",
+   "indiana_rows": 3553194,
+   "total_rows": 129847435,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_structures__predelete_20260812_212648",
+   "state_col": "state",
+   "indiana_rows": 3553194,
+   "total_rows": 125149242,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_parcel_sites",
+   "state_col": "state",
+   "indiana_rows": 3553194,
+   "total_rows": 129844449,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_parcel_geo_supplement",
+   "state_col": "state",
+   "indiana_rows": 3553193,
+   "total_rows": 118832291,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_structures__predelete_20260806_221314",
+   "state_col": "state",
+   "indiana_rows": 3553193,
+   "total_rows": 119207671,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_siting_parcels",
+   "state_col": "state",
+   "indiana_rows": 3553193,
+   "total_rows": 120660571,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_siting_parcels",
+   "state_col": "state",
+   "indiana_rows": 3553193,
+   "total_rows": 115913704,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_parcel_outdoor_exact",
+   "state_col": "state",
+   "indiana_rows": 3552799,
+   "total_rows": 117425468,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_structure_footprints",
+   "state_col": "state_name",
+   "indiana_rows": 3377472,
+   "total_rows": 135370228,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "si_d5_struct_pts",
+   "state_col": "state",
+   "indiana_rows": 3377472,
+   "total_rows": 135338769,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_county_resolved",
+   "state_col": "state",
+   "indiana_rows": 2284133,
+   "total_rows": 78530642,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_d5_addr_pts",
+   "state_col": "state",
+   "indiana_rows": 2149657,
+   "total_rows": 52082602,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_wire_stage",
+   "state_col": "state",
+   "indiana_rows": 2019529,
+   "total_rows": 127831569,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_struct_addr_keys",
+   "state_col": "state",
+   "indiana_rows": 1934939,
+   "total_rows": 50464897,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_pre_si15_20260815",
+   "state_col": "state",
+   "indiana_rows": 1818158,
+   "total_rows": 96633328,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_si_signals_aged",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_signals_conditioned",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_signals_disposed",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_signals_located",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_signals_dated",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_signals_keyed",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_parcel_enriched",
+   "state_col": "state",
+   "indiana_rows": 1818157,
+   "total_rows": 97240585,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_wire_new",
+   "state_col": "state",
+   "indiana_rows": 1810228,
+   "total_rows": 94114700,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_ci_sites",
+   "state_col": "state",
+   "indiana_rows": 1430942,
+   "total_rows": 51050267,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_vw_seller_intent_scored_candidate",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_scored_v3",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_plottable",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_scored_v3_variants",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_seller_intent_scored",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_scored_parcel_enriched",
+   "state_col": "state",
+   "indiana_rows": 1205307,
+   "total_rows": 80461961,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_sites",
+   "state_col": "state",
+   "indiana_rows": 1205306,
+   "total_rows": 80461541,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_scores",
+   "state_col": "state",
+   "indiana_rows": 1202984,
+   "total_rows": 71882227,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_scored_entity_signals_v3",
+   "state_col": "state",
+   "indiana_rows": 1202283,
+   "total_rows": 72394435,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_d5_vacancy_derived",
+   "state_col": "state",
+   "indiana_rows": 967366,
+   "total_rows": 22295965,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_signals_pre_recon_20260803",
+   "state_col": "state",
+   "indiana_rows": 956242,
+   "total_rows": 69594214,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_pre_fix_20260803",
+   "state_col": "state",
+   "indiana_rows": 956242,
+   "total_rows": 70557817,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_scored_entity_signals",
+   "state_col": "state",
+   "indiana_rows": 954092,
+   "total_rows": 63176004,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_scored_v2",
+   "state_col": "state",
+   "indiana_rows": 951913,
+   "total_rows": 31931655,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_d12_indy_marion_code_enforcement",
+   "state_col": "state",
+   "indiana_rows": 910483,
+   "total_rows": 910483,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "agis_indy_code_enforcement",
+   "state_col": "state",
+   "indiana_rows": 906326,
+   "total_rows": 910483,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_condition_disposition",
+   "state_col": "state",
+   "indiana_rows": 156013,
+   "total_rows": 1650733,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_si_addr_universe",
+   "state_col": "state",
+   "indiana_rows": 95967,
+   "total_rows": 5549111,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_address_location",
+   "state_col": "state",
+   "indiana_rows": 95967,
+   "total_rows": 5549105,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_d1_sri_taxsale_listings",
+   "state_col": "state",
+   "indiana_rows": 81975,
+   "total_rows": 217226,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "ustp_ch7_tfr",
+   "state_col": "state",
+   "indiana_rows": 76010,
+   "total_rows": 1194652,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "agis_indy_taxsale",
+   "state_col": "state",
+   "indiana_rows": 62368,
+   "total_rows": 62368,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_si_address_location",
+   "state_col": "state",
+   "indiana_rows": 51821,
+   "total_rows": 2389813,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "nfirs_basicincident_2024",
+   "state_col": "STATE",
+   "indiana_rows": 49811,
+   "total_rows": 2410457,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_incidentaddress_2024",
+   "state_col": "STATE",
+   "indiana_rows": 49811,
+   "total_rows": 2410457,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_basicincident_2023",
+   "state_col": "STATE",
+   "indiana_rows": 46748,
+   "total_rows": 2451836,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_incidentaddress_2023",
+   "state_col": "STATE",
+   "indiana_rows": 46748,
+   "total_rows": 2451836,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_incidentaddress_2022",
+   "state_col": "STATE",
+   "indiana_rows": 40044,
+   "total_rows": 2370774,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_basicincident_2022",
+   "state_col": "STATE",
+   "indiana_rows": 40044,
+   "total_rows": 2370774,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "sba_foia_loans",
+   "state_col": "borrstate",
+   "indiana_rows": 39877,
+   "total_rows": 2190504,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_incidentaddress_2021",
+   "state_col": "STATE",
+   "indiana_rows": 38492,
+   "total_rows": 2109645,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_basicincident_2021",
+   "state_col": "STATE",
+   "indiana_rows": 38492,
+   "total_rows": 2109645,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_incidentaddress_2020",
+   "state_col": "STATE",
+   "indiana_rows": 38287,
+   "total_rows": 2181870,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_basicincident_2020",
+   "state_col": "STATE",
+   "indiana_rows": 38287,
+   "total_rows": 2181870,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_nfirs_structure_fire",
+   "state_col": "state",
+   "indiana_rows": 32108,
+   "total_rows": 1525613,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "spc_severe_events",
+   "state_col": "st",
+   "indiana_rows": 24716,
+   "total_rows": 1014963,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "orennia_benchmark_cost",
+   "state_col": "state",
+   "indiana_rows": 23761,
+   "total_rows": 648766,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "orennia_benchmark_capacity",
+   "state_col": "state",
+   "indiana_rows": 19886,
+   "total_rows": 779582,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_surrogate_geom",
+   "state_col": "state",
+   "indiana_rows": 16494,
+   "total_rows": 563197,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_hashkey_spatial",
+   "state_col": "state",
+   "indiana_rows": 16261,
+   "total_rows": 238209,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "faa_obstacles",
+   "state_col": "state",
+   "indiana_rows": 15638,
+   "total_rows": 652596,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ga_lowndes",
+   "state_col": "state",
+   "indiana_rows": 13480,
+   "total_rows": 66316,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_d8_exit_intent",
+   "state_col": "state",
+   "indiana_rows": 13414,
+   "total_rows": 2840865,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "nfirs_fireincident_2023",
+   "state_col": "STATE",
+   "indiana_rows": 13006,
+   "total_rows": 644317,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "eia860_generators",
+   "state_col": "state",
+   "indiana_rows": 12479,
+   "total_rows": 666179,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "storm_events",
+   "state_col": "state",
+   "indiana_rows": 12460,
+   "total_rows": 688406,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_fireincident_2024",
+   "state_col": "STATE",
+   "indiana_rows": 11961,
+   "total_rows": 586714,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "operating_generators",
+   "state_col": "stateName",
+   "indiana_rows": 11795,
+   "total_rows": 755532,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "eia861_service_territory",
+   "state_col": "state",
+   "indiana_rows": 10928,
+   "total_rows": 280398,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_fireincident_2022",
+   "state_col": "STATE",
+   "indiana_rows": 10548,
+   "total_rows": 642258,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_fireincident_2021",
+   "state_col": "STATE",
+   "indiana_rows": 9798,
+   "total_rows": 558385,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nfirs_fireincident_2020",
+   "state_col": "STATE",
+   "indiana_rows": 9652,
+   "total_rows": 542192,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "openstates_energy_bill_vote_people",
+   "state_col": "state",
+   "indiana_rows": 9197,
+   "total_rows": 233210,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "socrata_ny_corp_filing_addresses",
+   "state_col": "state",
+   "indiana_rows": 8483,
+   "total_rows": 18115040,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_pre_wire_20260803",
+   "state_col": "state",
+   "indiana_rows": 7921,
+   "total_rows": 1902028,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_pre_wire2_20260803",
+   "state_col": "state",
+   "indiana_rows": 7921,
+   "total_rows": 50545763,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_rooftop_geocode",
+   "state_col": "state",
+   "indiana_rows": 5880,
+   "total_rows": 3960225,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_building_in_parcel",
+   "state_col": "state",
+   "indiana_rows": 5222,
+   "total_rows": 23354741,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_nyc_acris_pp_parties",
+   "state_col": "state",
+   "indiana_rows": 4147,
+   "total_rows": 11020142,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "eia_plants",
+   "state_col": "state",
+   "indiana_rows": 4120,
+   "total_rows": 251851,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_grid_substations",
+   "state_col": "state",
+   "indiana_rows": 3858,
+   "total_rows": 122527,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "socrata_chicago_licenses",
+   "state_col": "state",
+   "indiana_rows": 3645,
+   "total_rows": 1201485,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_chicago_biz_licenses",
+   "state_col": "state",
+   "indiana_rows": 3644,
+   "total_rows": 1200971,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "ghgrp_facilities",
+   "state_col": "state",
+   "indiana_rows": 3391,
+   "total_rows": 136005,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "_vw_seller_intent_buildings_candidate",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9363898,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_buildings__pre_swap_20260802",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9364006,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_buildings_v2",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9363898,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_buildings__snapshot_20260731",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9364006,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_buildings",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9363898,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_scored",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9363898,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_scored__snapshot_20260731",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9364006,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_si_scored__pre_swap_20260802",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9364006,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_seller_intent_buildings",
+   "state_col": "state",
+   "indiana_rows": 3288,
+   "total_rows": 9363898,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "ghgrp_emitter_facilities",
+   "state_col": "state",
+   "indiana_rows": 2882,
+   "total_rows": 107329,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_coverage_matrix",
+   "state_col": "state_code",
+   "indiana_rows": 2668,
+   "total_rows": 93757,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_register",
+   "state_col": "state_code",
+   "indiana_rows": 2668,
+   "total_rows": 93757,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "orennia_benchmark_buses",
+   "state_col": "state",
+   "indiana_rows": 2486,
+   "total_rows": 93419,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_or_ucc_secured",
+   "state_col": "state",
+   "indiana_rows": 2428,
+   "total_rows": 220610,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "weather_stations",
+   "state_col": "state",
+   "indiana_rows": 2108,
+   "total_rows": 132501,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nat_substations_hifld",
+   "state_col": "state",
+   "indiana_rows": 2077,
+   "total_rows": 75328,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "substations",
+   "state_col": "STATE",
+   "indiana_rows": 2077,
+   "total_rows": 75328,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_grid_substations",
+   "state_col": "state",
+   "indiana_rows": 2077,
+   "total_rows": 75308,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_town_dc_master",
+   "state_col": "state",
+   "indiana_rows": 1988,
+   "total_rows": 68754,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_town_coverage",
+   "state_col": "state",
+   "indiana_rows": 1988,
+   "total_rows": 68754,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_town_dc_posture",
+   "state_col": "state",
+   "indiana_rows": 1988,
+   "total_rows": 68754,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "candidate_sites_schools",
+   "state_col": "STATE",
+   "indiana_rows": 1928,
+   "total_rows": 102178,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "gov_surplus_nces",
+   "state_col": "statename",
+   "indiana_rows": 1928,
+   "total_rows": 102178,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "acs_tract_vacancy",
+   "state_col": "state",
+   "indiana_rows": 1696,
+   "total_rows": 85382,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "census_tracts",
+   "state_col": "STATE_NAME",
+   "indiana_rows": 1693,
+   "total_rows": 85060,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "epa_brownfields",
+   "state_col": "state_code",
+   "indiana_rows": 1613,
+   "total_rows": 44134,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "gov_surplus_frpp",
+   "state_col": "state_code",
+   "indiana_rows": 1594,
+   "total_rows": 307919,
+   "vocabulary": "18",
+   "clipped": true
+  },
+  {
+   "table": "si_d17_in_iocs_court_year",
+   "state_col": "state",
+   "indiana_rows": 1543,
+   "total_rows": 1543,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "socrata_or_entities",
+   "state_col": "state",
+   "indiana_rows": 1526,
+   "total_rows": 1565971,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "brownfield_epa_repowering",
+   "state_col": "state",
+   "indiana_rows": 1483,
+   "total_rows": 190976,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "fema_disaster_declarations",
+   "state_col": "state",
+   "indiana_rows": 1442,
+   "total_rows": 60624,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "brownfields",
+   "state_col": "state_code",
+   "indiana_rows": 1347,
+   "total_rows": 37026,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_d19_new_20260803",
+   "state_col": "state",
+   "indiana_rows": 1039,
+   "total_rows": 52507,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "si_signals_d19_pre_widen_20260803",
+   "state_col": "state",
+   "indiana_rows": 1037,
+   "total_rows": 27573,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "interconnection_queue",
+   "state_col": "state",
+   "indiana_rows": 948,
+   "total_rows": 38201,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "lbnl_interconnection_queue",
+   "state_col": "state",
+   "indiana_rows": 948,
+   "total_rows": 38201,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_grid_queue",
+   "state_col": "state",
+   "indiana_rows": 948,
+   "total_rows": 38201,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "txexp_pjm_rtep_upgrades",
+   "state_col": "state",
+   "indiana_rows": 929,
+   "total_rows": 15440,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "iso_interconnection_queue",
+   "state_col": "state",
+   "indiana_rows": 888,
+   "total_rows": 25111,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_iso_queue_clean",
+   "state_col": "state",
+   "indiana_rows": 888,
+   "total_rows": 23760,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "eia923_fuel_receipts_costs",
+   "state_col": "state",
+   "indiana_rows": 880,
+   "total_rows": 28074,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_d25_stb_abandonment_state",
+   "state_col": "state",
+   "indiana_rows": 874,
+   "total_rows": 15815,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "socrata_co_ucc_debtors",
+   "state_col": "state",
+   "indiana_rows": 851,
+   "total_rows": 2005102,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "openstates_energy_bill_actions",
+   "state_col": "state",
+   "indiana_rows": 811,
+   "total_rows": 44774,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_wire_zip_county",
+   "state_col": "state",
+   "indiana_rows": 807,
+   "total_rows": 33750,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "low_income_bonus_tracts",
+   "state_col": "StateName",
+   "indiana_rows": 662,
+   "total_rows": 35423,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "eia861_demand_response",
+   "state_col": "state",
+   "indiana_rows": 660,
+   "total_rows": 19328,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_si_hashkey_resolved",
+   "state_col": "state",
+   "indiana_rows": 599,
+   "total_rows": 1512686,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "candidate_sites_private_schools",
+   "state_col": "STATE",
+   "indiana_rows": 590,
+   "total_rows": 22510,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_tn_sevier_county",
+   "state_col": "state",
+   "indiana_rows": 580,
+   "total_rows": 88395,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_pa",
+   "state_col": "state",
+   "indiana_rows": 491,
+   "total_rows": 8711170,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_claiborne_county_multi",
+   "state_col": "state",
+   "indiana_rows": 474,
+   "total_rows": 123939,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "queue_miso",
+   "state_col": "state",
+   "indiana_rows": 456,
+   "total_rows": 3794,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_tn_cumberland_county",
+   "state_col": "state",
+   "indiana_rows": 422,
+   "total_rows": 65395,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "water_cwns_2022",
+   "state_col": "state",
+   "indiana_rows": 404,
+   "total_rows": 1118786,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "socrata_ny_tax_warrants",
+   "state_col": "state",
+   "indiana_rows": 370,
+   "total_rows": 563729,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "incentive_qct",
+   "state_col": "state",
+   "indiana_rows": 337,
+   "total_rows": 15727,
+   "vocabulary": "18",
+   "clipped": true
+  },
+  {
+   "table": "openstates_energy_bill_sponsorships",
+   "state_col": "state",
+   "indiana_rows": 300,
+   "total_rows": 19769,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_al",
+   "state_col": "state",
+   "indiana_rows": 297,
+   "total_rows": 479544,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_beaufort_county",
+   "state_col": "state",
+   "indiana_rows": 227,
+   "total_rows": 104904,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_berkeley_county",
+   "state_col": "state",
+   "indiana_rows": 226,
+   "total_rows": 109448,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_phmsa_gas_distribution",
+   "state_col": "state",
+   "indiana_rows": 222,
+   "total_rows": 10340,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc",
+   "state_col": "state",
+   "indiana_rows": 220,
+   "total_rows": 270772,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_chatham",
+   "state_col": "mailing_state",
+   "indiana_rows": 219,
+   "total_rows": 125326,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_webster",
+   "state_col": "state",
+   "indiana_rows": 212,
+   "total_rows": 13255,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "power_plants",
+   "state_col": "State",
+   "indiana_rows": 208,
+   "total_rows": 13446,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "coal_closure_communities",
+   "state_col": "state_name",
+   "indiana_rows": 184,
+   "total_rows": 4325,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "vw_data_centers_all",
+   "state_col": "state",
+   "indiana_rows": 176,
+   "total_rows": 20730,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_data_centers_master",
+   "state_col": "state",
+   "indiana_rows": 165,
+   "total_rows": 16885,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ct",
+   "state_col": "mailing_state",
+   "indiana_rows": 162,
+   "total_rows": 1290196,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "data_centers_datacentermap",
+   "state_col": "state",
+   "indiana_rows": 157,
+   "total_rows": 5661,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "incentive_opportunity_zones",
+   "state_col": "state",
+   "indiana_rows": 156,
+   "total_rows": 8765,
+   "vocabulary": "18",
+   "clipped": false
+  },
+  {
+   "table": "candidate_sites_colleges",
+   "state_col": "STATE",
+   "indiana_rows": 151,
+   "total_rows": 6605,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "openstates_energy_bill_versions",
+   "state_col": "state",
+   "indiana_rows": 140,
+   "total_rows": 9949,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "openstates_energy_bill_sources",
+   "state_col": "state",
+   "indiana_rows": 132,
+   "total_rows": 6261,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ok_oklahoma",
+   "state_col": "state",
+   "indiana_rows": 131,
+   "total_rows": 336992,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_sf_business_locations",
+   "state_col": "state",
+   "indiana_rows": 130,
+   "total_rows": 364420,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "openstates_energy_bill_votes",
+   "state_col": "state",
+   "indiana_rows": 126,
+   "total_rows": 5820,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_or",
+   "state_col": "state",
+   "indiana_rows": 125,
+   "total_rows": 1088187,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_greenville",
+   "state_col": "state",
+   "indiana_rows": 122,
+   "total_rows": 322194,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_kc_business_license",
+   "state_col": "state",
+   "indiana_rows": 118,
+   "total_rows": 26646,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "lbnl_interconnection_costs",
+   "state_col": "state",
+   "indiana_rows": 116,
+   "total_rows": 5486,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ok_tulsa",
+   "state_col": "state",
+   "indiana_rows": 115,
+   "total_rows": 297762,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "electric_retail_service_territories",
+   "state_col": "STATE",
+   "indiana_rows": 114,
+   "total_rows": 2931,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "mat_grid_territories",
+   "state_col": "state",
+   "indiana_rows": 114,
+   "total_rows": 2931,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_grid_territories_map",
+   "state_col": "state",
+   "indiana_rows": 114,
+   "total_rows": 2931,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_grid_territories",
+   "state_col": "state",
+   "indiana_rows": 114,
+   "total_rows": 2931,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "workforce_ipeds_directory",
+   "state_col": "state_abbr",
+   "indiana_rows": 112,
+   "total_rows": 6256,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_news_all",
+   "state_col": "state",
+   "indiana_rows": 109,
+   "total_rows": 11533,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_pendleton",
+   "state_col": "state",
+   "indiana_rows": 105,
+   "total_rows": 9020,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_blount_county",
+   "state_col": "state",
+   "indiana_rows": 98,
+   "total_rows": 67312,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "googlenews_dc_state",
+   "state_col": "state",
+   "indiana_rows": 97,
+   "total_rows": 3598,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_spartanburg",
+   "state_col": "state",
+   "indiana_rows": 95,
+   "total_rows": 341978,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "county_boundaries",
+   "state_col": "STATE_NAME",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "fema_nri_counties",
+   "state_col": "state",
+   "indiana_rows": 92,
+   "total_rows": 3232,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "parcel_county_register",
+   "state_col": "state_code",
+   "indiana_rows": 92,
+   "total_rows": 3233,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcel_county_coverage",
+   "state_col": "state_code",
+   "indiana_rows": 92,
+   "total_rows": 3233,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "qcew_county_labor",
+   "state_col": "state",
+   "indiana_rows": 92,
+   "total_rows": 3224,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_county_coverage",
+   "state_col": "state_abbr",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "solar_potential",
+   "state_col": "STATE_NAME",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "vw_dc_county_siting_score",
+   "state_col": "state_abbr",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_county_siting_score",
+   "state_col": "state",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_county_dc_posture",
+   "state_col": "state_abbr",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_county_dc_master",
+   "state_col": "state_abbr",
+   "indiana_rows": 92,
+   "total_rows": 3235,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "water_use",
+   "state_col": "state",
+   "indiana_rows": 92,
+   "total_rows": 3223,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "fsis_establishments",
+   "state_col": "state",
+   "indiana_rows": 90,
+   "total_rows": 7225,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_tn_jefferson_county",
+   "state_col": "state",
+   "indiana_rows": 88,
+   "total_rows": 35343,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "seismic_design",
+   "state_col": "state",
+   "indiana_rows": 88,
+   "total_rows": 3163,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_grid_queue_counties",
+   "state_col": "state",
+   "indiana_rows": 87,
+   "total_rows": 2625,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_sc_greenwood_county",
+   "state_col": "state",
+   "indiana_rows": 83,
+   "total_rows": 235399,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_expansion_candidates",
+   "state_col": "state_abbr",
+   "indiana_rows": 83,
+   "total_rows": 3035,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_saluda_county",
+   "state_col": "state",
+   "indiana_rows": 79,
+   "total_rows": 182966,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_cocke_county",
+   "state_col": "state",
+   "indiana_rows": 76,
+   "total_rows": 25311,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_campbell_county",
+   "state_col": "owner_state",
+   "indiana_rows": 72,
+   "total_rows": 36017,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_campbell",
+   "state_col": "owner_state",
+   "indiana_rows": 71,
+   "total_rows": 36015,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_richmond",
+   "state_col": "owner_state",
+   "indiana_rows": 69,
+   "total_rows": 84575,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "openstates_energy_bill_abstracts",
+   "state_col": "state",
+   "indiana_rows": 66,
+   "total_rows": 2399,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "openstates_energy_bills_v2",
+   "state_col": "state",
+   "indiana_rows": 66,
+   "total_rows": 4394,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_degree_days",
+   "state_col": "state",
+   "indiana_rows": 64,
+   "total_rows": 2527,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "state_bulk_gwinnett_delinquent",
+   "state_col": "state",
+   "indiana_rows": 58,
+   "total_rows": 37297,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "state_bulk_ar_cosl_excess",
+   "state_col": "state",
+   "indiana_rows": 57,
+   "total_rows": 5081,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_orangeburg_county",
+   "state_col": "state",
+   "indiana_rows": 56,
+   "total_rows": 61942,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ca_sanluisobispo",
+   "state_col": "state",
+   "indiana_rows": 53,
+   "total_rows": 130611,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_anderson_county",
+   "state_col": "state",
+   "indiana_rows": 53,
+   "total_rows": 38213,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "eia861_sales_ult_cust",
+   "state_col": "state",
+   "indiana_rows": 51,
+   "total_rows": 2815,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "format_census",
+   "state_col": "state_code",
+   "indiana_rows": 51,
+   "total_rows": 90522,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "dc_opposition_tracker",
+   "state_col": "state",
+   "indiana_rows": 50,
+   "total_rows": 1342,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "eia861_sales",
+   "state_col": "state",
+   "indiana_rows": 50,
+   "total_rows": 2823,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ok_creek_county",
+   "state_col": "state",
+   "indiana_rows": 50,
+   "total_rows": 45862,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_coweta",
+   "state_col": "state",
+   "indiana_rows": 48,
+   "total_rows": 64060,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_henry_county",
+   "state_col": "state",
+   "indiana_rows": 46,
+   "total_rows": 9449,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_humphreys_county",
+   "state_col": "state",
+   "indiana_rows": 46,
+   "total_rows": 13719,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_nola_biz_licenses",
+   "state_col": "state",
+   "indiana_rows": 46,
+   "total_rows": 37365,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_sc_richland_county",
+   "state_col": "state",
+   "indiana_rows": 45,
+   "total_rows": 64131,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_marion_county",
+   "state_col": "state",
+   "indiana_rows": 44,
+   "total_rows": 22347,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_maury_county",
+   "state_col": "state",
+   "indiana_rows": 42,
+   "total_rows": 53040,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_mo_jefferson",
+   "state_col": "owner_state",
+   "indiana_rows": 41,
+   "total_rows": 106464,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_johnson_county",
+   "state_col": "state",
+   "indiana_rows": 39,
+   "total_rows": 78891,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_bibb_county",
+   "state_col": "state",
+   "indiana_rows": 38,
+   "total_rows": 68731,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "eia861_reliability",
+   "state_col": "state",
+   "indiana_rows": 36,
+   "total_rows": 968,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "nonattainment_areas",
+   "state_col": "state_name",
+   "indiana_rows": 35,
+   "total_rows": 792,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "parcels_tn_coffee_county",
+   "state_col": "state",
+   "indiana_rows": 34,
+   "total_rows": 32198,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_al_stclair",
+   "state_col": "state",
+   "indiana_rows": 33,
+   "total_rows": 61242,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_hardeman_county_multi",
+   "state_col": "state",
+   "indiana_rows": 32,
+   "total_rows": 21756,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ky_franklin_county",
+   "state_col": "state",
+   "indiana_rows": 30,
+   "total_rows": 22628,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_il_rockisland",
+   "state_col": "owner_state",
+   "indiana_rows": 28,
+   "total_rows": 65958,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_tx_tabc_licenses",
+   "state_col": "state",
+   "indiana_rows": 28,
+   "total_rows": 78042,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_al_hale_county",
+   "state_col": "state",
+   "indiana_rows": 27,
+   "total_rows": 16346,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_al_hale_commercial",
+   "state_col": "state",
+   "indiana_rows": 27,
+   "total_rows": 16346,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ks_riley_county",
+   "state_col": "state",
+   "indiana_rows": 27,
+   "total_rows": 25314,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "econ_gjf_megadeals",
+   "state_col": "state",
+   "indiana_rows": 26,
+   "total_rows": 535,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "gas_compressor_stations",
+   "state_col": "state",
+   "indiana_rows": 24,
+   "total_rows": 1768,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "ga_probate_estates",
+   "state_col": "state",
+   "indiana_rows": 23,
+   "total_rows": 239146,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_al_lawrence_commercial",
+   "state_col": "state",
+   "indiana_rows": 23,
+   "total_rows": 26037,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_al_lauderdale_commercial",
+   "state_col": "state",
+   "indiana_rows": 23,
+   "total_rows": 26037,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_lawrence_county",
+   "state_col": "state",
+   "indiana_rows": 23,
+   "total_rows": 26039,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_giles_county",
+   "state_col": "state",
+   "indiana_rows": 23,
+   "total_rows": 26037,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_brownfield_power_sites",
+   "state_col": "stateName",
+   "indiana_rows": 23,
+   "total_rows": 853,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "gas_storage",
+   "state_col": "state",
+   "indiana_rows": 22,
+   "total_rows": 486,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "gas_storage_facilities",
+   "state_col": "STATE",
+   "indiana_rows": 22,
+   "total_rows": 486,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "openstates_energy_bills",
+   "state_col": "state",
+   "indiana_rows": 21,
+   "total_rows": 2890,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ga_clarke_county",
+   "state_col": "state",
+   "indiana_rows": 20,
+   "total_rows": 41989,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_clarke",
+   "state_col": "state",
+   "indiana_rows": 20,
+   "total_rows": 41989,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_mcminn_county",
+   "state_col": "state",
+   "indiana_rows": 20,
+   "total_rows": 31430,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "data_centers_peeringdb",
+   "state_col": "state",
+   "indiana_rows": 19,
+   "total_rows": 1380,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "land_faa_sua",
+   "state_col": "state",
+   "indiana_rows": 19,
+   "total_rows": 1542,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "peeringdb_facilities",
+   "state_col": "state",
+   "indiana_rows": 18,
+   "total_rows": 1355,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_id_bannock_county",
+   "state_col": "state",
+   "indiana_rows": 17,
+   "total_rows": 45834,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ok_wagoner_county",
+   "state_col": "state",
+   "indiana_rows": 16,
+   "total_rows": 52685,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "ut_tax_liens_v2",
+   "state_col": "debtor_state",
+   "indiana_rows": 16,
+   "total_rows": 26345,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "carto_philly_tax_delinquency",
+   "state_col": "mailing_state",
+   "indiana_rows": 15,
+   "total_rows": 54401,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ks",
+   "state_col": "state",
+   "indiana_rows": 14,
+   "total_rows": 41779,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "fsis_establishments_inactive",
+   "state_col": "state",
+   "indiana_rows": 13,
+   "total_rows": 932,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ga_thomas",
+   "state_col": "state",
+   "indiana_rows": 13,
+   "total_rows": 24753,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_power_in_place",
+   "state_col": "stateName",
+   "indiana_rows": 13,
+   "total_rows": 387,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "bingnews_dc_state",
+   "state_col": "state",
+   "indiana_rows": 12,
+   "total_rows": 469,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ok_pottawatomie_county",
+   "state_col": "state",
+   "indiana_rows": 12,
+   "total_rows": 24756,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_or_josephine_county",
+   "state_col": "state",
+   "indiana_rows": 11,
+   "total_rows": 41990,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "ckan_mke_tax_delinquent_re",
+   "state_col": "state",
+   "indiana_rows": 10,
+   "total_rows": 19639,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_baldwin",
+   "state_col": "state",
+   "indiana_rows": 10,
+   "total_rows": 21876,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_effingham",
+   "state_col": "state",
+   "indiana_rows": 10,
+   "total_rows": 34089,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_bryan",
+   "state_col": "state",
+   "indiana_rows": 9,
+   "total_rows": 17984,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_bryan_county",
+   "state_col": "state",
+   "indiana_rows": 9,
+   "total_rows": 22965,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_jackson",
+   "state_col": "state",
+   "indiana_rows": 9,
+   "total_rows": 44769,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_tn_dyer_county",
+   "state_col": "state",
+   "indiana_rows": 9,
+   "total_rows": 8043,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "energy_communities_msa",
+   "state_col": "state_name",
+   "indiana_rows": 8,
+   "total_rows": 901,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "parcels_mo_perry",
+   "state_col": "mailing_state",
+   "indiana_rows": 7,
+   "total_rows": 14198,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_dooly_county",
+   "state_col": "state",
+   "indiana_rows": 6,
+   "total_rows": 7344,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_dc_largeload_tariff_terms",
+   "state_col": "state",
+   "indiana_rows": 6,
+   "total_rows": 138,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "agis_baltimore_code",
+   "state_col": "state",
+   "indiana_rows": 5,
+   "total_rows": 30987,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "dc_eei_tariffs",
+   "state_col": "state",
+   "indiana_rows": 5,
+   "total_rows": 105,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "parcels_ok_beckham_county",
+   "state_col": "state",
+   "indiana_rows": 5,
+   "total_rows": 16445,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_cook_county",
+   "state_col": "state",
+   "indiana_rows": 5,
+   "total_rows": 10432,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_county_nonattainment",
+   "state_col": "state",
+   "indiana_rows": 5,
+   "total_rows": 293,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "agis_campus_planning_zoning_z",
+   "state_col": "state",
+   "indiana_rows": 4,
+   "total_rows": 4889,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_or_clatsop_county",
+   "state_col": "state",
+   "indiana_rows": 4,
+   "total_rows": 35452,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_grand_junction_vacant_ci",
+   "state_col": "owner_state",
+   "indiana_rows": 4,
+   "total_rows": 4611,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_nyc_dob_permits",
+   "state_col": "state",
+   "indiana_rows": 4,
+   "total_rows": 3989483,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "agis_mecklenburg_permits",
+   "state_col": "owner_state",
+   "indiana_rows": 3,
+   "total_rows": 1526,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_brooks_county",
+   "state_col": "state",
+   "indiana_rows": 3,
+   "total_rows": 10037,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_ga_brantley_county",
+   "state_col": "state",
+   "indiana_rows": 3,
+   "total_rows": 13301,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "openstates_bulk_session_coverage",
+   "state_col": "state",
+   "indiana_rows": 3,
+   "total_rows": 139,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "utility_tariff_riders",
+   "state_col": "state",
+   "indiana_rows": 3,
+   "total_rows": 40,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "gov_auction_gsa",
+   "state_col": "state_name",
+   "indiana_rows": 2,
+   "total_rows": 68,
+   "vocabulary": "Indiana",
+   "clipped": true
+  },
+  {
+   "table": "si_d3_seized_auction_state",
+   "state_col": "state",
+   "indiana_rows": 2,
+   "total_rows": 750,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_dc_dimensions_all",
+   "state_col": "state",
+   "indiana_rows": 2,
+   "total_rows": 604,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "socrata_pa_entities",
+   "state_col": "state",
+   "indiana_rows": 2,
+   "total_rows": 4026643,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "balancing_authority_areas",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 71,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "airports",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 86,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "be_ustest_zone",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 76,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "_parcel_vacant_progress",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 53,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_parcel_struct_progress",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 555,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_geocode_progress",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 56,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_parcel_outdoor_exact_progress",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 60,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_bip_progress",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 62,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_d5_geomtrust",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 432,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "_d5_state_bbox",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 55,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "dc_bans",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 213,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "commission_posture",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 50,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "dc_docket_tracker",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 39,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "groundwater_sites",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 50,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "mat_parcel_key_validated",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 214,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "parcels_mo_christian_county",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 8432,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "puc_state_access_ledger",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 51,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "si_d17_ny_oca_landlord_tenant_cases",
+   "state_col": "property_state",
+   "indiana_rows": 1,
+   "total_rows": 903594,
+   "vocabulary": "Indiana",
+   "clipped": false
+  },
+  {
+   "table": "socrata_alb_vacant_registry",
+   "state_col": "owner_state",
+   "indiana_rows": 1,
+   "total_rows": 1814,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "state_irp_catalog",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 18,
+   "vocabulary": "IN",
+   "clipped": true
+  },
+  {
+   "table": "vw_state_energy_context",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 55,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_si_map_rollup",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 1159,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_dc_tariff_coverage",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 40,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_dc_regulatory_risk",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 39,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_dc_state_scorecard",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 39,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_dc_regulatory_activity",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 3099,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_state_regulatory_landscape",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 53,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_time_to_power",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 53,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_state_queue_capacity",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 52,
+   "vocabulary": "IN",
+   "clipped": false
+  },
+  {
+   "table": "vw_state_water_dc_context",
+   "state_col": "state",
+   "indiana_rows": 1,
+   "total_rows": 50,
+   "vocabulary": "IN",
+   "clipped": false
+  }
+ ]
+}

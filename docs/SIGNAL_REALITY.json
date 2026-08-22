@@ -1,5 +1,5 @@
 {
- "audited_at": "2026-08-22T17:34:20.123631+00:00",
+ "audited_at": "2026-08-22T20:56:20.311796+00:00",
  "signals": [
   {
    "signal": "A1_market_listing",
@@ -80,8 +80,8 @@
   },
   {
    "signal": "D3_seized_auction",
-   "class": "HELD_WRONG_GRAIN",
-   "admitted_parcels": 0,
+   "class": "ADMITTED",
+   "admitted_parcels": 2,
    "measured_rows_held": null,
    "why": "2 rows held, aggregate grain."
   },
@@ -108,8 +108,8 @@
   },
   {
    "signal": "D8_exit_intent",
-   "class": "HELD_WRONG_GRAIN",
-   "admitted_parcels": 0,
+   "class": "ADMITTED",
+   "admitted_parcels": 434,
    "measured_rows_held": null,
    "why": "142 rows, aggregate grain, newest event 2008."
   },
@@ -151,7 +151,7 @@
   {
    "signal": "D16_structure_fire",
    "class": "ADMITTED",
-   "admitted_parcels": 1680,
+   "admitted_parcels": 1783,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },
@@ -165,7 +165,7 @@
   {
    "signal": "D14_sba_chargeoff",
    "class": "ADMITTED",
-   "admitted_parcels": 762,
+   "admitted_parcels": 1139,
    "measured_rows_held": null,
    "why": "reaching parcels today"
   },

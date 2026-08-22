@@ -70,6 +70,8 @@ import datetime
 from google.cloud import bigquery
 
 DS = "energy-platfrom.indiana_app"
+# ⚠ BUILDS may read energy; EXPORTS may not. This is a build.
+EN = "energy-platfrom.energy"
 D85 = "080500000047000018"
 client = bigquery.Client(project="energy-platfrom")
 BUILT = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -424,7 +426,122 @@ w_warn_geo AS (
     ON a.company = g.company AND a.facility_street = g.facility_street
   WHERE g.parcel_key IS NOT NULL AND STARTS_WITH(g.placement, 'placed')
 ),
+-- ================================================================================================
+-- ⭐ G156(a), 2026-08-22b: D14 AND D16 FROM THEIR OWN PUBLISHER TABLES, NOT FROM THE REDUCTION.
+--
+-- ⛔ BOTH SIGNALS WERE FED ONLY BY `si_signals`, the 13-column corpus. G152 repaired the clips
+-- underneath them and NEITHER REPAIR REACHED A READER, because the spine never read the clips.
+-- That is the standing rule biting: *the warehouse improves and no reader sees it.*
+--
+-- ⚠ AND THE MEASUREMENT CORRECTED THE RECORD ON THE WAY IN. `docs/SI_SIGNALS.md` presents D16 as
+-- the big win ("+33,039 rows") and D14 as a 7.8x under-clip ("5,135 -> 39,948"). Both overstate
+-- the SIGNAL gain by two orders of magnitude, and the ranking is backwards:
+--   · Only 3,850 of the 39,948 SBA loans are `CHGOFF`; the other 36,098 are PIF/EXEMPT/CANCLD -
+--     paid in full or never drawn, the OPPOSITE of distress. D14 already held 3,774 through the
+--     corpus, so the ROW gain is at most 76. ⭐ But the clip carries `borrstreet` and
+--     `grosschargeoffamount`, which the corpus does not - a direct address and a DOLLAR SIZE.
+--   · The NFIRS incident LIST comes from `basicincident` and was never short; re-running the
+--     structure-fire builder after the repair produced a byte-identical 45,607 rows.
+-- ⭐ MEASURED OUTCOME: D14 is the larger win. A row count is not a signal count.
+--
+-- ⚠ SEVERE = TRUE for both, and it is earned at BUILD time rather than asserted here:
+-- in_si_addr_placed admits only non-residential fires at >=$10k loss (the operator's ruling that
+-- "structural distress needs to actually result in intent") and only charged-off SBA loans.
+-- ⚠ AND ONLY THE UNAMBIGUOUS MATCHES, exactly as w_warn and h_cmbs do - an address shared by
+-- several parcels is a building we cannot resolve to a lot, and it is carried but not admitted.
+-- ================================================================================================
+i_sba_chargeoff AS (
+  SELECT parcel_key pk, 'D14_sba_chargeoff' signal, event_date obs,
+         'publisher event date (SBA charge-off date)' basis,
+         'borrower_address' keying,
+         CONCAT('SBA borrstreet+borrcity -> DLGF property address (', match_method,
+                '). ⚠ borrstreet is the BORROWER address: projectstate and borrstate both read '
+                'IN on 39,818 of 39,948 rows, so the STATE is corroborated and the STREET is not') bridge,
+         source_id, 'publisher table, full-width clip (G156)' blk, TRUE AS severe
+  FROM `{DS}.in_si_addr_placed`
+  WHERE signal = 'D14_sba_chargeoff' AND parcel_key IS NOT NULL AND match_grain = 'exact_address'
+),
+i_fire AS (
+  SELECT parcel_key pk, 'D16_structure_fire' signal, event_date obs,
+         'publisher event date (NFIRS incident date)' basis,
+         'nfirs_incident_address' keying,
+         CONCAT('NFIRS incident street+city -> DLGF property address (', match_method,
+                '); non-residential by PROP_USE, loss >= $10k') bridge,
+         source_id, 'publisher table, full-width clip (G156)' blk, TRUE AS severe
+  FROM `{DS}.in_si_addr_placed`
+  WHERE signal = 'D16_structure_fire' AND parcel_key IS NOT NULL AND match_grain = 'exact_address'
+),
+-- ================================================================================================
+-- ⭐ G163(a), 2026-08-22b: D8_exit_intent WENT FROM 142 HELD / 0 REACHED TO A PLACED SIGNAL.
+--
+-- ⛔ It was never filtered down to zero - it was never PLACEABLE. Its 142 corpus rows carry no
+-- address, no parcel key and no coordinate, the same shape D19_warn had before G150.
+-- ⭐ Its real parent is `in_si_up_indy_rezoning`: 13,414 Indianapolis rezoning cases, of which
+-- 9,727 carry a street address and **9,614 carry a PETITIONER NAME** - an owner name, on a family
+-- of signals that five backlog rows are blocked on for exactly that.
+--
+-- ⚠ AND THE DOCUMENTED REASON FOR SKIPPING IT WAS WRONG. SI_SIGNALS.md §5 says the dates run
+-- 1990-2008. That is true of the 142-row REDUCTION; the clip's own decision_date runs to
+-- 2026-06-17, with 1,039 cases in the 2020s. The note was inherited rather than re-measured.
+--
+-- ⚠ SEVERE = RECENCY, AND IT IS A JUDGEMENT. A rezoning petition decided in 1994 says nothing
+-- about today's owner, so only the last 10 years are admitted; older cases stay in the denominator
+-- with severe = FALSE rather than being dropped, so the coverage ledger can still see them.
+-- ⛔ OPEN QUESTION FOR THE OPERATOR, DELIBERATELY NOT DECIDED HERE (G163): a filed petition is a
+-- STATED intent, which is the declared-intent (I-code) family, not the inferred-distress family
+-- D8 currently sits in. Re-homing it changes what every surface says, so it is flagged, not done.
+-- ================================================================================================
+i_rezoning AS (
+  SELECT parcel_key pk, 'D8_exit_intent' signal, event_date obs,
+         date_basis basis,
+         'indy_rezoning_address' keying,
+         CONCAT('Indy rezoning stnum+stdir+stname -> DLGF property address, Marion only (',
+                match_method, '). ⛔ NOT placed spatially: the column named geometry_geojson is '
+                'ESRI JSON in State Plane FEET and parses to NULL on all 13,414 rows') bridge,
+         CONCAT('indy_rezoning:', IFNULL(dispos, '?')) source_id,
+         'publisher table, full-width clip (G163)' blk,
+         is_recent AS severe
+  FROM `{DS}.in_si_rezoning_placed`
+  WHERE parcel_key IS NOT NULL AND match_grain = 'exact_parcel' AND event_date IS NOT NULL
+),
+-- ================================================================================================
+-- ⭐ G163(b), 2026-08-22b: D3_seized_auction — TWO ROWS, AND THE VOLUME TEST WAS THE WRONG TEST.
+--
+-- ⛔ I CLASSIFIED THIS `too_few` AND THE OPERATOR ASKED WHY. The classifier said `corpus_rows <= 10
+-- -> too_few`, which is a test on VOLUME applied to a signal whose value is not volume. Reading
+-- the two rows settles it:
+--   · Both are **GSA federal real-estate auctions** (realestatesales.gov), property type Land/Lots.
+--   · Both carry a **published latitude and longitude**, a full address, a postal code, an auction
+--     DATE and a **sale price** ($140,000 Hobart 2026-06-05; $1,642,030 Edinburgh 2025-03-10).
+--   · So they were never unplaceable — the 13-column reduction dropped the coordinates and left
+--     `keying = 'address'` with no parcel key. The full-width clip kept them.
+-- ⭐ AND A GOVERNMENT AGENCY AUCTIONING LAND IS THE STRONGEST SELLER-INTENT EVIDENCE THERE IS:
+-- the owner is not distressed, hesitant or inferred — they are *selling*, on a published date, at
+-- a published price. Two of those outrank a great deal of inferred distress.
+-- ⚠ Placed inline rather than in its own builder because two rows do not justify a script; the
+-- join is the same ST_CONTAINS idiom h_sri uses, with D85 excluded.
+-- ================================================================================================
+i_seized AS (
+  SELECT p.state_parcel_id pk, 'D3_seized_auction' signal,
+         DATE(SAFE_CAST(a.auction_date AS TIMESTAMP)) obs,
+         'publisher SCHEDULED date (GSA auction date)' basis,
+         'publisher_point' keying,
+         'ST_CONTAINS(parcel_geog, GSA published lat/lon) [D85 excluded]' bridge,
+         CONCAT('gsa_auction:', IFNULL(a.listing_kind, '?')) source_id,
+         'publisher table, full-width clip (G163)' blk, TRUE AS severe
+  FROM `{DS}.in_si_up_seized_auction` a
+  JOIN `{EN}.parcels_in` p
+    ON ST_CONTAINS(p.geom, ST_GEOGPOINT(SAFE_CAST(a.longitude AS FLOAT64),
+                                        SAFE_CAST(a.latitude  AS FLOAT64)))
+  WHERE p.state_parcel_id IS NOT NULL AND p.state_parcel_id != '080500000047000018'
+    AND a.is_test_record IS NOT TRUE       -- the publisher flags its own test rows; honour it
+    AND SAFE_CAST(a.latitude AS FLOAT64) IS NOT NULL
+),
 allsig AS (
+  SELECT * FROM i_seized UNION ALL
+  SELECT * FROM i_rezoning UNION ALL
+  SELECT * FROM i_sba_chargeoff UNION ALL
+  SELECT * FROM i_fire UNION ALL
   SELECT * FROM w_warn_geo UNION ALL
   SELECT * FROM h_cmbs_distress UNION ALL
   SELECT * FROM h_cmbs_tenant UNION ALL
@@ -679,6 +796,17 @@ WITH pub_corpus AS (
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_indy_code_widened` GROUP BY signal
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_sri_placed`        GROUP BY signal
   UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_ibtr_placed`       GROUP BY signal
+  -- ⭐ G156(a). Same LEFT-JOIN discipline as the CMBS rows above: in_si_addr_placed is the
+  -- UNIVERSE of admissible D14/D16 events including the ones that found no parcel, so this
+  -- denominator is deliberately larger than the number reached. ⛔ COUNT(*) per signal, not
+  -- COUNT(*) over the table - it carries TWO signals, and attributing the whole table to one of
+  -- them is exactly how D22's denominator came to read 34,116 instead of 3,340.
+  UNION ALL SELECT signal, COUNT(*) FROM `{DS}.in_si_addr_placed`       GROUP BY signal
+  -- ⭐ G163(a). Every ADDRESSED rezoning case is the denominator, including the 5,319 that match
+  -- no parcel and the pre-2016 ones that are carried but not severe. ⛔ The 3,687 cases with no
+  -- street at all are NOT counted: they were never admissible, and inflating a denominator with
+  -- rows that could never place understates coverage exactly as badly as the reverse.
+  UNION ALL SELECT 'D8_exit_intent', COUNT(*) FROM `{DS}.in_si_rezoning_placed`
 ),
 pub AS (SELECT signal, SUM(n) rows_held FROM pub_corpus GROUP BY 1),
 gen AS (
@@ -715,6 +843,50 @@ SELECT COALESCE(r.signal, c.signal) AS signal,
   IFNULL(r.parcels_ci,0) parcels_ci, IFNULL(r.excl_residential,0) excl_residential,
   IFNULL(r.excl_low_severity,0) excl_low_severity,
   r.events, r.events_3y, r.events_5y, r.first_event, r.last_event, r.keying, r.blocks,
+  -- ================================================================================================
+  -- ⭐ G163, 2026-08-22b: WHY A SIGNAL ADMITS NOTHING, MACHINE-READABLE.
+  -- Six signals admitted zero parcels and the spine said nothing about why, so a reader could not
+  -- tell *"we looked and there is none"* from *"we cannot place this"* — which is G51's three-state
+  -- rule applied to the signal list itself. ⚠ The zeros are NOT the same kind of zero:
+  --   · `refused_by_rule` — D5_vacancy. 945,896 of its 947,592 rows DO carry a parcel key; the
+  --     spine excludes it in a_corpus on the operator's ruling that footprint absence is not
+  --     seller intent. Nothing is broken and nothing is missing.
+  --   · `wrong_grain`    — D25 (state-level), D17 (county-year counts), D6 (trustee financial
+  --     totals by office and month). ⛔ No source block can place an aggregate on a parcel, and
+  --     three documents listed D6 as a "cheap win… what is missing is a source block".
+  --   · `unplaced`       — carries a per-record key but nothing bridged it yet. This is the ONLY
+  --     value that means unfinished work.
+  -- ⛔ THERE USED TO BE A `too_few` BRANCH (`corpus_rows <= 10`) AND IT WAS A BAD TEST — REMOVED
+  -- 2026-08-22b after the operator asked what it was blocking. It caught exactly one signal,
+  -- D3_seized_auction, whose two rows turned out to be GSA federal land auctions carrying a
+  -- published lat/lon, an auction date and a sale price. **A volume threshold cannot judge a
+  -- signal whose value is not volume** — an agency auctioning land is the least ambiguous seller
+  -- there is, and both rows now place. Rarity was the reason to admit it, not to refuse it.
+  -- ⛔ DERIVED FROM `corpus_keying`, NOT FROM A HARDCODED SIGNAL LIST. A pinned list of signal
+  -- names is the defect that made build_nfirs_structure_fires.py skip 2023 for a whole session.
+  -- ================================================================================================
+  CASE
+    WHEN IFNULL(r.parcels_admitted, 0) > 0            THEN 'admitting'
+    WHEN c.signal = 'D5_vacancy'                      THEN 'refused_by_rule'
+    -- ⭐ G163(c). `wrong_grain` was accurate and incomplete: it said a signal cannot be a PARCEL
+    -- signal without saying whether the reader ever sees it. D17 and D25 are now published at the
+    -- grain their publisher actually uses, in `in_si_county_context` — 92 counties of eviction and
+    -- foreclosure filings, 22 counties of STB abandonment dockets. So they reach the application;
+    -- they just do not reach a parcel. ⚠ Derived by LOOKING FOR THE ROW, not by naming the two
+    -- signals — if the county table stops carrying one, this reverts to `wrong_grain` by itself.
+    WHEN EXISTS (SELECT 1 FROM `{DS}.in_si_county_context` cc
+                 WHERE cc.signal = c.signal)          THEN 'county_context'
+    -- ⛔ D17 WAS county_context FOR ONE BUILD AND WAS WITHDRAWN, 2026-08-22b. The Indiana courts
+    -- publish case-type counts with NO commercial/residential split, so ~278,645 mostly-residential
+    -- filings were riding under a signal named `D17_commercial_eviction`. Operator's standing rule
+    -- is that only non-residential reaches the application, and no filter available to us can make
+    -- this source satisfy it. ⚠ A recency window would have made the number smaller and no more
+    -- commercial — the defect is the LABEL, not the volume.
+    WHEN c.signal = 'D17_commercial_eviction'         THEN 'refused_residential'
+    WHEN c.corpus_keying LIKE '%aggregate%'
+     AND c.corpus_keying NOT LIKE '%parcel%'          THEN 'wrong_grain'
+    ELSE 'unplaced'
+  END AS zero_reason,
   TIMESTAMP('{BUILT}') AS built_at
 FROM reached r FULL OUTER JOIN corpus c ON c.signal = r.signal
 ORDER BY parcels_admitted DESC, corpus_rows DESC

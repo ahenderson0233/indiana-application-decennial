@@ -4804,6 +4804,42 @@ async function openCountyEvidence(p) {
       ${row("fits ≥25 MW @ 4/acre", p.ge25mw)}${row("carries SI signal", p.si_sites)}
       ${row("MW potential (sum)", p.mw_potential_at_4)}</table>
     <div class="prov">${prov("in_county_rollup")}</div>
+
+    <!-- G163(c), 2026-08-22b. D25_rail_abandonment's PUBLISHER grain is a county, not a parcel.
+         It admitted zero parcels for weeks and rendered as a bare zero on the signal list with
+         nothing saying why; it is published here instead, at the grain it actually has.
+         WHY A SEPARATE BLOCK: this is CONTEXT, not a finding. Merging it into "carries SI signal"
+         above would invent precision we do not have — the defect that put 705 false distressed
+         buildings on the map.
+         ⛔ TWO EVICTION ROWS WERE HERE FOR ONE BUILD AND WERE REMOVED. D17_commercial_eviction
+         shipped ~278,645 filings that the Indiana courts do NOT split into commercial and
+         residential, under a signal name that claims commercial. Operator's rule: only
+         non-residential reaches the application. The table, the payload key and these rows came
+         out together — G146 is the worked example of why data and control leave in one change. -->
+    <h3>County-level market context <span class="muted">— context, not a parcel finding</span></h3>
+    <table>
+      ${row("rail abandonment dockets (last 10 yrs)", p.rail_abandonment_dockets,
+            "none filed", "The STB docket set is complete for Indiana and each title names its "
+            + "county, so a county with no docket in the window genuinely has none — this blank "
+            + "is a finding, not a gap. Rail corridors are non-residential by nature.")}
+      ${row("latest abandonment filing", p.rail_abandonment_latest,
+            "none filed", "A line being abandoned cuts both ways: it frees a corridor a siter "
+            + "could use, and it removes rail as a delivery option for heavy equipment.")}
+      <!-- ⭐ G170: WHICH SIGNALS WERE EVEN LOOKED FOR HERE. Without this row a county with no
+           code-violation signal reads identically to a county we searched and found clean, and
+           they are not the same claim: D12 comes from Indianapolis's own portal and reaches 2 of
+           92 counties. 56.8% of all signal-county cells are NOT COVERED. ⚠ This is the
+           unpublished-rate-as-zero defect at county grain — the same shape that produced 95 false
+           "below floor" tariff violations — and G51's third state is the fix. -->
+      ${row("SI signals searched here", p.si_signals_searched === undefined ? null
+              : `${p.si_signals_searched} of ${p.si_signals_searched + p.si_signals_not_covered}`
+                + ` · ${p.si_signals_with_hits} found something`,
+            "coverage not measured",
+            "Many signals come from a single city's portal, so most counties were never covered by "
+            + "them. A signal that did not search this county is NOT the same as one that searched "
+            + "and found nothing — this row is the difference.")}
+    </table>
+    <div class="prov">US Surface Transportation Board — ${prov("in_si_county_context")}</div>
     <!-- G51 sweep, 2026-08-20. The coverage argument here is that the queue and the EIA-861
          territory table are COMPLETE 92-county sets: every Indiana county has a row, so an empty
          cell means "we looked at this county and there are none", which is a finding. That is

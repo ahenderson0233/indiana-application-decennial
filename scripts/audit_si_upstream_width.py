@@ -134,35 +134,63 @@ else:
     print("  ⭐ every parent with a recorded status is fully loaded")
 
 # ================================================================================================
-# ⚠ THE DUPLICATED NORMALISER. build_warn_placement.py and build_si_cmbs_signals.py each carry
-# their own copy of SUFFIXES/DIRECTIONALS so that either can be re-run alone. A duplicate that
-# nothing checks is the two-copies defect this project has hit repeatedly, so it is checked here.
+# ⭐ THE ADDRESS NORMALISER — ONE DEFINITION, 2026-08-22b.
+#
+# ⛔ WHAT THIS CHECK USED TO BE, AND WHY IT CHANGED. build_warn_placement.py and
+# build_si_cmbs_signals.py each carried their own copy of SUFFIXES/DIRECTIONALS, and this block
+# asserted the two copies were character-identical. That is **a guard on a duplicate, not a fix for
+# one** — §2.15c, the defect this project has hit eight times. When G156 needed a THIRD caller
+# (NFIRS and SBA placement) the guard would have had to police three copies.
+#
+# ⭐ The lists now live once, in `scripts/si_address_norm.py`, and every placement builder imports
+# them. So the invariant worth asserting is no longer "do the copies match" — it is **"is there
+# still exactly one definition, and does every placement builder import it rather than re-declare
+# it".** A re-declaration anywhere is the drift starting again.
 # ================================================================================================
 print("\n" + "=" * 104)
-print("THE DUPLICATED ADDRESS NORMALISER - two copies, asserted identical")
+print("THE ADDRESS NORMALISER - one definition, imported by every placement builder")
 print("=" * 104)
 
+CANON = "scripts/si_address_norm.py"
+PLACERS = ["scripts/build_warn_placement.py", "scripts/build_si_cmbs_signals.py",
+           "scripts/build_si_addr_placement.py"]
 
-def lists_in(path):
-    t = io.open(os.path.join(REPO, path), encoding="utf-8").read()
-    out = {}
+
+def _text(path):
+    p = os.path.join(REPO, path)
+    return io.open(p, encoding="utf-8").read() if os.path.exists(p) else None
+
+
+canon = _text(CANON)
+if canon is None:
+    fails.append(f"{CANON}: the one normaliser is GONE - every placement builder is now broken")
+    print(f"  ⛔ {CANON} does not exist")
+else:
     for name in ("SUFFIXES", "DIRECTIONALS"):
-        m = re.search(name + r"\s*=\s*\[(.*?)\]\n", t, re.S)
-        out[name] = re.sub(r"\s+", "", m.group(1)) if m else None
-    return out
+        if not re.search(name + r"\s*=\s*\[", canon):
+            fails.append(f"{CANON}: {name} is not defined in the canonical module")
+            print(f"  ⛔ {name}: missing from {CANON}")
+        else:
+            print(f"  [PASS] {name}: defined once, in {CANON}")
 
-
-a = lists_in("scripts/build_warn_placement.py")
-b = lists_in("scripts/build_si_cmbs_signals.py")
-for name in ("SUFFIXES", "DIRECTIONALS"):
-    if a[name] is None or b[name] is None:
-        fails.append(f"{name}: could not be read from one of the two loaders")
-        print(f"  ⛔ {name}: unreadable in one copy")
-    elif a[name] != b[name]:
-        fails.append(f"{name}: the two copies have DRIFTED - warn and cmbs will place differently")
-        print(f"  ⛔ {name}: DRIFTED between build_warn_placement.py and build_si_cmbs_signals.py")
+# ⚠ the real check: nobody re-declares it. A second definition is the drift restarting.
+redeclared = []
+for path in PLACERS:
+    t = _text(path)
+    if t is None:
+        continue                      # a builder that does not exist yet is not a failure
+    if re.search(r"^SUFFIXES\s*=\s*\[", t, re.M) or re.search(r"^def naddr\(", t, re.M):
+        redeclared.append(path)
+    elif "si_address_norm" not in t:
+        fails.append(f"{path}: places addresses but does not import the one normaliser")
+        print(f"  ⛔ {os.path.basename(path)}: neither imports nor defines the normaliser")
     else:
-        print(f"  [PASS] {name}: identical in both loaders")
+        print(f"  [PASS] {os.path.basename(path)}: imports it")
+if redeclared:
+    fails.append("normaliser RE-DECLARED in: " + ", ".join(redeclared)
+                 + " - two copies will drift and the loser is invisible")
+    for p in redeclared:
+        print(f"  ⛔ {os.path.basename(p)}: re-declares SUFFIXES/naddr instead of importing")
 
 # ================================================================================================
 print("\n" + "=" * 104)

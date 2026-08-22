@@ -45,9 +45,41 @@ def round_coords(x):
 q_counties = f"""
 SELECT c.county_fips_code AS fips, r.county_name, ST_ASGEOJSON(c.county_geom) AS gj,
        r.parcels, r.with_building, r.ci, r.ge25mw, r.si_sites, r.class_union,
-       CAST(r.mw_potential_at_4 AS INT64) AS mw_potential_at_4
+       CAST(r.mw_potential_at_4 AS INT64) AS mw_potential_at_4,
+       -- ⭐ G163(c): the SI signal whose publisher grain is a COUNTY, so it reaches a reader at the
+       -- grain it actually has instead of showing as a bare zero on the signal list.
+       -- ⚠ CONTEXT, NOT A FINDING, and it must never be merged into si_sites.
+       -- ⛔ THE EVICTION KEYS WERE HERE AND WERE REMOVED, 2026-08-22b. `evictions_2022_2025` and
+       -- `foreclosures_2022_2025` shipped for one build. The Indiana courts publish no
+       -- commercial/residential split, so ~278,645 mostly-RESIDENTIAL filings were riding under a
+       -- signal named `D17_commercial_eviction`. Operator's rule: only non-residential reaches the
+       -- application. Removed from the table, the payload AND the popup in one change — G146 is
+       -- the worked example of why a control and its data come out together.
+       cc.rail_abandonment_dockets, cc.rail_abandonment_latest,
+       -- ⭐ G170 THE COVERAGE MASK. Without this a county with no D12_code_violation looks
+       -- exactly like a county we searched and found clean. It is neither: D12 comes from
+       -- Indianapolis's own portal and reaches 2 counties, so in the other 90 we did not
+       -- LOOK. 56.8% of all signal-county cells are not-covered and every one of them
+       -- currently renders as 'none'. This is the unpublished-rate-as-zero defect at county
+       -- grain, and G51's third state is the fix.
+       cov.si_signals_searched, cov.si_signals_not_covered, cov.si_signals_with_hits
 FROM `bigquery-public-data.geo_us_boundaries.counties` c
 JOIN `{DS}.in_county_rollup` r ON r.county_fips = c.county_fips_code
+LEFT JOIN (
+  SELECT county_fips,
+         MAX(IF(signal='D25_rail_abandonment', CAST(value_num AS INT64), NULL))
+           AS rail_abandonment_dockets,
+         MAX(IF(signal='D25_rail_abandonment', CAST(last_event_date AS STRING), NULL))
+           AS rail_abandonment_latest
+  FROM `{DS}.in_si_county_context` GROUP BY 1
+) cc ON cc.county_fips = c.county_fips_code
+LEFT JOIN (
+  SELECT county_fips,
+         COUNTIF(coverage_state != 'not_covered')   AS si_signals_searched,
+         COUNTIF(coverage_state  = 'not_covered')   AS si_signals_not_covered,
+         COUNTIF(coverage_state  = 'covered_with_hits') AS si_signals_with_hits
+  FROM `{DS}.in_si_signal_county_coverage` GROUP BY 1
+) cov ON cov.county_fips = c.county_fips_code
 WHERE c.state_fips_code = '18'"""
 feats = []
 for r in client.query(q_counties).result():

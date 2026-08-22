@@ -18,6 +18,7 @@ RE-SCRAPE COMMAND: python scripts/build_si_signals_doc.py
 """
 import io
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -87,22 +88,58 @@ CHANGE_LOG = [
   "G133 had recorded land banks as *an acquisition we hold nothing for*. We held two — the G25 "
   "check had grepped for the words *land bank*, and they are filed as `landbank` and `surplus`",
   "— closed"),
- ("`D14_sba_chargeoff`", "clip repaired **5,135 → 39,948** rows",
-  "re-keyed from `cdc_state` to `projectstate` / `borrstate`",
-  "`cdc_state` is the **lender's** office, not the property's state — a 7.8× under-clip on a "
-  "signal that reaches parcels today",
-  "⛔ **NOT WIRED.** D14 is fed by the `si_signals` corpus, so the repair reaches no reader. G156"),
- ("`D16_structure_fire`", "fire-incident clips repaired, **+33,039** Indiana rows",
-  "2022 held 1,221 of 10,548 and 2024 held 1,255 of 11,961 — two loads that STOPPED; 2023 was "
-  "absent entirely",
-  "`basicincident` and `incidentaddress` were complete for all five years, so nothing downstream "
-  "ever failed and the gap was silent",
-  "⛔ **NOT WIRED.** Same shape as D14. G156"),
- ("`D6_bankruptcy`", "`in_ustp_ch7_tfr` repaired **33 → 76,010**; `in_si_up_bankruptcy` clipped",
-  "re-keyed from `ch7_state_tax_paid` — a **DOLLAR column** — to `state`",
-  "`docs/UNWIRED_CLASSIFICATION.md` had classified the table *no_indiana_content*, recording the "
-  "symptom as the cause. Indiana was never absent; the clip was keyed on money",
-  "⛔ **NOT WIRED, and D6 reaches 0 parcels.** Aggregate grain is the deeper problem. G156"),
+ ("`D14_sba_chargeoff`", "⭐ **WIRED 2026-08-22b. 762 → 1,139 admitted parcels (+49%)**",
+  "G156(a) built `in_si_addr_placed`: `borrstreet`+`borrcity` normalised through the one shared "
+  "normaliser against `dlgf_prop_address`, two passes, admitted only where the address resolves "
+  "to exactly one parcel. The clip repair itself re-keyed `cdc_state` → `projectstate`/`borrstate`",
+  "⛔ **AND THE MEASUREMENT CORRECTED THE RECORD.** The 5,135 → 39,948 repair was real but its "
+  "SIGNAL value was overstated ~450×: only **3,850 loans are `CHGOFF`**, and D14 already held "
+  "3,774 through the corpus, so the ROW gain is at most 76. The other 36,098 are PIF / EXEMPT / "
+  "CANCLD — paid in full or never drawn, the OPPOSITE of distress. What the clip actually buys is "
+  "`borrstreet` (a direct address the corpus lacks) and `grosschargeoffamount` — **$247.2M** now "
+  "attached to parcels",
+  "⚠ `borrstreet` is the BORROWER address. `projectstate` and `borrstate` both read IN on 39,818 "
+  "of 39,948 rows so the STATE is corroborated; the STREET is not. ⚠ Dates reach back to 1993 — "
+  "an ageing rule is not yet applied to D14"),
+ ("`D16_structure_fire`", "⭐ **WIRED 2026-08-22b. 1,680 → 1,783 admitted parcels**",
+  "same builder: NFIRS incident street+city → `dlgf_prop_address`. Gated on "
+  "`property_class = 'non-residential'` AND loss ≥ $10k — 1,583 SI-grade incidents, 532 on a "
+  "uniquely-keyed parcel, **$43.5M** of loss attached",
+  "⛔ **AND A PINNED LITERAL WAS SWALLOWING THE REPAIR.** `build_nfirs_structure_fires.py` carried "
+  "`FIRE_YEARS = [2020,2021,2022,2024]  # 2023 fireincident is not held` — false since G152. "
+  "Re-running it after the repair produced a **byte-identical 45,607 rows**. FIRE_YEARS is now "
+  "MEASURED from `__TABLES__`; 2023's NOT_RES coverage went **0 → 4,357**. ⚠ The incident LIST "
+  "comes from `basicincident`, which was never short, so \"+33,039 rows\" was never going to "
+  "become +33,039 signals — the row count and the signal count are different quantities",
+  "⚠ `property_class` is used rather than `non_residential`: NOT_RES is stated on only 18,560 of "
+  "45,607 rows and gating on it would silently drop 59% as if residential"),
+ ("`D8_exit_intent`", "⭐ **WIRED 2026-08-22b. 0 → 2,511 reached, 434 admitted** — it had never "
+  "placed a single parcel",
+  "G163(a) built `in_si_rezoning_placed` from `in_si_up_indy_rezoning`: `stnum`+`stdir`+`stname` "
+  "against Marion County parcels (FIPS 18097). 9,727 addressed cases, 3,222 on exactly one parcel, "
+  "781 of those within 10 years. **9,614 carry a PETITIONER NAME** — an owner name, on a signal "
+  "family five backlog rows are blocked on for want of one",
+  "⛔ **THE DOCUMENTED REASON FOR SKIPPING IT WAS WRONG.** §5 of this file said the dates run "
+  "1990–2008 and ranked it second on that basis. True of the 142-row REDUCTION only — the clip's "
+  "`decision_date` runs to **2026-06-17**, with 1,039 cases in the 2020s. ⛔ And the first build "
+  "attempt failed instructively: the column named **`geometry_geojson` is ESRI JSON** "
+  "(`{{\"rings\":...}}`) **in State Plane FEET**, so it parses to NULL on all 13,414 rows. "
+  "*100% carrying geometry* was true and useless",
+  "⚠ Severity = decided within 10 years, so 1,099 older cases are carried low-severity rather "
+  "than dropped. ⛔ **OPEN FOR THE OPERATOR (G163):** a filed petition is a STATED intent, which "
+  "is the declared-intent (I-code) family, not the inferred-distress family D8 sits in"),
+ ("`D6_bankruptcy`", "⛔ **REFUSED, and the refusal is the finding. Still 0 parcels, correctly**",
+  "measured every column of `in_ustp_ch7_tfr`: `region`, `state`, `office`, `month_closed`, "
+  "`year_closed`, `days_open` and **70+ dollar totals**",
+  "⛔ **IT IS AGGREGATE DATA — trustee final-report statistics BY OFFICE AND MONTH. There is no "
+  "debtor, no case, no address, and no property.** The 33 → 76,010 clip repair was correct and "
+  "worth keeping (it had been keyed on `ch7_state_tax_paid`, a DOLLAR column), but the expectation "
+  "that it would feed D6 was never achievable. ⚠ Both the handoff and this file listed it as one "
+  "of three *\"cheapest wins… what is missing is a source block\"*. No source block can place a "
+  "county-month financial total on a parcel",
+  "⭐ Record as **wrong_grain** under G163 rather than leaving it as an unbuilt zero. "
+  "`in_si_up_bankruptcy` (90 rows, case name + filing date) is a separate question: a case name is "
+  "a debtor, not a parcel, and would need an owner-name bridge we do not have"),
 ]
 
 # ⚠ HAND-WRITTEN, AND LABELLED AS SUCH: what each widened clip is FOR. Everything else is queried.
@@ -142,12 +179,157 @@ for target in list(WHY):
     clips.append((target, tb.num_rows, len(tb.schema)))
 clips.sort(key=lambda r: -r[1])
 
-# which clips actually feed something a reader sees?
-spine = io.open(os.path.join(REPO, "scripts", "build_si_signal_v2.py"), encoding="utf-8").read()
-cmbs = io.open(os.path.join(REPO, "scripts", "build_si_cmbs_signals.py"), encoding="utf-8").read()
-intent_src = io.open(os.path.join(REPO, "scripts", "build_si_intent_signals.py"),
-                     encoding="utf-8").read()
-downstream = spine + cmbs + intent_src
+# ================================================================================================
+# ⛔ WHICH CLIPS ACTUALLY FEED SOMETHING A READER SEES — AND THIS USED TO BE WRONG.
+#
+# It read the text of exactly THREE scripts (build_si_signal_v2 + build_si_cmbs_signals +
+# build_si_intent_signals) and asked whether the clip's NAME appeared anywhere in them. ⚠ That is
+# a FALSE-NEGATIVE GENERATOR, because most clips do not reach the spine directly — they go through
+# a PLACEMENT table:
+#     in_si_up_sri_taxsale   -> in_si_sri_placed        -> spine   (D1/D4)
+#     in_si_up_ibtr_appeals  -> in_si_ibtr_placed       -> spine   (D26)
+#     in_si_up_indy_code     -> in_si_indy_code_widened -> spine   (D12/D21)
+#     in_sba_foia_loans      -> in_si_addr_placed       -> spine   (D14)
+#     in_nfirs_fireincident_*-> in_nfirs_structure_fires-> in_si_addr_placed -> spine (D16)
+# Every one of those read "not yet" while feeding a live signal. ⛔ AND THIS COLUMN IS THE G156
+# WORKLIST, so the largest open row in the backlog has been overstated by an instrument defect.
+#
+# ⭐ THE FIX IS TO FOLLOW THE CHAIN, not to add two more filenames to a list. Scan EVERY build
+# script; for each, record which clips it mentions and which tables it writes; then a clip counts
+# as feeding a signal if the spine mentions it directly, or mentions a table written by a script
+# that mentions the clip. Two hops covers every route in the estate today, and a third hop is
+# reported rather than silently missed.
+# ================================================================================================
+SCRIPTS_DIR = os.path.join(REPO, "scripts")
+
+
+def _code_only(src):
+    """⛔ STRIP COMMENTS AND DOCSTRINGS BEFORE ASKING WHETHER A TABLE IS READ.
+
+    The chain-following version of this check produced FALSE POSITIVES the moment it shipped:
+    `in_ustp_ch7_tfr` and `in_si_up_iocs_court` both reported *feeds a signal* while reaching ZERO
+    parcels — because the spine names them in a COMMENT explaining why they are REFUSED. ⚠ A text
+    scan cannot tell *this table is read* from *this table is discussed*, and the more carefully
+    the refusals are documented the more tables look wired. Prose is not a dependency.
+    """
+    out, i, n = [], 0, len(src)
+    while i < n:                                  # drop triple-quoted blocks whole
+        for q in ('"""', "'''"):
+            if src.startswith(q, i):
+                j = src.find(q, i + 3)
+                i = (j + 3) if j != -1 else n
+                break
+        else:
+            out.append(src[i])
+            i += 1
+    text = "".join(out)
+    keep = []
+    for line in text.split("\n"):
+        s = line.strip()
+        if s.startswith("#") or s.startswith("--"):
+            continue                              # whole-line Python / SQL comment
+        keep.append(line.split(" -- ")[0])        # trailing SQL comment on a code line
+    return "\n".join(keep)
+
+
+spine = _code_only(io.open(os.path.join(SCRIPTS_DIR, "build_si_signal_v2.py"),
+                           encoding="utf-8").read())
+
+_writes = re.compile(r"CREATE\s+OR\s+REPLACE\s+TABLE\s+`?\{?[A-Za-z_]*\}?[.`]*\.?(\w+)`?", re.I)
+_builders = []
+for _fn in sorted(os.listdir(SCRIPTS_DIR)):
+    if _fn.startswith("build_") and _fn.endswith(".py") and _fn != "build_si_signal_v2.py":
+        _raw = io.open(os.path.join(SCRIPTS_DIR, _fn), encoding="utf-8", errors="replace").read()
+        _src = _code_only(_raw)
+        _builders.append((_fn, _src, set(_writes.findall(_src))))
+
+
+# ================================================================================================
+# ⛔ THIS COLUMN WAS WRONG THREE TIMES IN ONE SESSION, AND THE THIRD TIME IS THE LESSON.
+#
+#   1. Original: scan the text of THREE scripts for the clip's name. FALSE NEGATIVES — most clips
+#      reach the spine through a placement table, so SRI, IBTR and Indy code all read "not yet"
+#      while feeding live signals. ⛔ This column IS the G156 worklist, so the backlog's largest
+#      open row was overstated by an instrument defect.
+#   2. Chain-following over every builder. FALSE POSITIVES — `in_ustp_ch7_tfr` reported *feeds a
+#      signal* while reaching ZERO parcels, because the spine names it in a COMMENT explaining the
+#      refusal. **The better the refusals are documented, the more tables look wired.**
+#   3. Strip comments first. FALSE NEGATIVES AGAIN, everywhere — in this codebase the SQL LIVES
+#      inside triple-quoted strings, so removing docstrings removed the dependencies themselves.
+#
+# ⭐ THE CONCLUSION IS THAT A SOURCE-TEXT SCAN CANNOT ANSWER THIS QUESTION AT ALL. Lineage is
+# DECLARED below, one line per clip, and every declaration is VERIFIED against the warehouse: the
+# named placement table must exist and hold rows, and the named signal must admit parcels. A
+# declaration that stops being true FAILS rather than quietly flipping to "not yet".
+#
+# ⚠ AND DECLARING IT SURFACED THE FINDING THE SCAN NEVER COULD. Three placement builders read
+# `in_si_refresh_*` tables, NOT G152's `in_si_up_*` full-width clips — two parallel families. The
+# refresh tables carry MORE ROWS and FEWER COLUMNS, and the columns the full-width clips add are
+# `_source_url`, `pulled_at`, `county_name`, `geoid`, `publisher_state`, `si_signal`:
+# **provenance and housekeeping, not one signal-bearing field.** So for the three biggest clips,
+# switching would gain nothing and LOSE rows (SRI -1,572, IBTR -81). See G156.
+# ================================================================================================
+LINEAGE = {
+    # clip                          -> (placement/derived table, signal it feeds, note)
+    "in_si_up_cmbs":                ("in_si_cmbs_placed", "D28_cmbs_loan_distress", "G152"),
+    "in_si_up_indy_landbank":       ("in_si_intent_signals", "I3_land_bank", "G133"),
+    "in_si_up_indy_rezoning":       ("in_si_rezoning_placed", "D8_exit_intent", "G163a"),
+    "in_sba_foia_loans":            ("in_si_addr_placed", "D14_sba_chargeoff", "G156a"),
+    "in_nfirs_fireincident_2020":   ("in_si_addr_placed", "D16_structure_fire", "G156a"),
+    "in_nfirs_fireincident_2021":   ("in_si_addr_placed", "D16_structure_fire", "G156a"),
+    "in_nfirs_fireincident_2022":   ("in_si_addr_placed", "D16_structure_fire", "G156a"),
+    "in_nfirs_fireincident_2023":   ("in_si_addr_placed", "D16_structure_fire", "G156a"),
+    "in_nfirs_fireincident_2024":   ("in_si_addr_placed", "D16_structure_fire", "G156a"),
+    "in_si_up_seized_auction":      ("in_si_up_seized_auction", "D3_seized_auction", "G163b, inline"),
+}
+# ⚠ these three feed a signal, but through the `refresh` SIBLING rather than the full-width clip.
+# Recorded separately so the doc can say so instead of scoring them either "yes" or "not yet".
+SIBLING_FED = {
+    "in_si_up_ibtr_appeals":  ("in_si_refresh_ibtr_appeals", "in_si_ibtr_placed",
+                               "D26_assessment_appeal", "+`_source_url` only"),
+    "in_si_up_sri_taxsale":   ("in_si_refresh_sri_taxsale_in", "in_si_sri_placed",
+                               "D1_tax_sale", "+`pulled_at`/`source_url`/`state_code` only"),
+    "in_si_up_indy_code":     ("in_si_refresh_indy_code_enforcement", "in_si_indy_code_widened",
+                               "D12_code_violation",
+                               "+`_source_url`/`county_name`/`geoid`/`publisher_state`/`si_signal` only"),
+}
+# ⚠ TWO FAMILIES, TWO TABLES. in_si_signal_coverage carries the 27 DISTRESS signals; the
+# declared-intent family (I-codes) lives in in_si_intent_signals and is not in coverage at all.
+# The first version of this verifier looked only at coverage and declared I3_land_bank's lineage
+# FALSE — the guard was right to fail, but it was failing on the verifier, not on the lineage.
+_admits = {r.signal: r.parcels_admitted for r in client.query(
+    f"SELECT signal, parcels_admitted FROM `{DS}.in_si_signal_coverage`")}
+_admits.update({r.signal: r.n for r in client.query(
+    f"SELECT signal, COUNT(DISTINCT parcel_key) n FROM `{DS}.in_si_intent_signals` GROUP BY 1")})
+
+
+def _rows(tbl):
+    try:
+        return client.get_table(f"{DS}.{tbl}").num_rows
+    except Exception:
+        return None
+
+
+def feeds_a_signal(clip):
+    """Declared lineage, VERIFIED. Returns (verdict, route). Raises if a declaration is false."""
+    if clip in LINEAGE:
+        tbl, sig, note = LINEAGE[clip]
+        n, adm = _rows(tbl), _admits.get(sig, 0)
+        if n is None or n == 0 or adm == 0:
+            raise SystemExit(
+                f"⛔ DECLARED LINEAGE IS FALSE: {clip} -> {tbl} -> {sig}. "
+                f"{tbl} holds {n}, {sig} admits {adm}. Either the build broke or the declaration "
+                f"is stale — fix one of them, do not let this column lie.")
+        return "yes", f"→ `{tbl}` → **{sig}** ({adm:,} parcels, {note})"
+    if clip in SIBLING_FED:
+        sib, tbl, sig, delta = SIBLING_FED[clip]
+        adm = _admits.get(sig, 0)
+        return "sibling", (f"the signal is fed by **`{sib}`**, not by this clip → `{tbl}` → "
+                           f"{sig} ({adm:,} parcels). This clip adds {delta}")
+    return "no", ""
+
+
+downstream = spine  # kept: some call sites still test membership directly
 
 L = []
 w = L.append
@@ -225,7 +407,13 @@ w("")
 w("| clip | rows | cols | feeds a signal? | what it buys |")
 w("|---|---:|---:|:--:|---|")
 for target, rows, cols in clips:
-    feeds = "⭐ yes" if target in downstream else "not yet"
+    _v, _route = feeds_a_signal(target)
+    # ⭐ THREE STATES, NOT TWO. "sibling" is the case a yes/no column cannot express and
+    # the one that was silently mis-scored: the source DOES feed a signal, through a
+    # narrower sibling table, and this clip would add only provenance.
+    feeds = {"yes": "⭐ yes", "sibling": "⚠ via sibling", "no": "not yet"}[_v]
+    if _route:
+        WHY[target] = (WHY.get(target, "") + f" **{_route}**").strip()
     why = WHY.get(target, "").replace("\n", " ").strip()
     if len(why) > 300:
         why = why[:297] + "…"
@@ -259,20 +447,37 @@ w("")
 w("## 5. ⚠ NEXT STEPS — THIS SECTION IS JUDGEMENT, NOT MEASUREMENT")
 w("")
 w("⭐ **G156 is the largest open row, and the table above shows why:** most clips read *not yet* "
-  "in the \"feeds a signal\" column. G152 widened them; only the CMBS clip and the Indianapolis "
-  "land bank have been turned into signals.")
+  "in the \"feeds a signal\" column. G152 widened them; four have now been turned into signals — "
+  "CMBS (D28/D29), the Indianapolis land bank (I3), SBA + NFIRS (D14/D16, G156a) and the Indy "
+  "rezoning layer (D8, G163a).")
 w("")
-w("1. ⭐ **`in_si_up_ibtr_appeals` first.** 10,071 rows, and **100% carry `stateParcelNumber`, "
-  "`locationAddress` AND `petitionerName`** — a direct parcel key and an **owner name**, which is "
-  "the thing G70, G71, G104, G90(b) and G147 are all blocked on. It also carries `attachments`, "
-  "which are per-record documents for G153's provenance links.")
-w("2. **`in_si_up_indy_rezoning`** — 13,414 cases, **100% with geometry**, 9,670 with a petitioner "
-  "name. ⚠ Dates run 1990–2008, so AGE is the open question, not availability.")
+w("⛔ **AND THE FIRST THING TO CARRY FORWARD IS THAT THIS SECTION WAS WRONG TWICE, 2026-08-22b.** "
+  "Both errors were the same shape — *a property of a column asserted from its NAME rather than "
+  "measured*:")
+w("")
+w("- It ranked `in_si_up_indy_rezoning` second and parked it on *\"dates run 1990–2008, so AGE is "
+  "the open question\"*. **That is true only of the 142-row corpus REDUCTION.** The clip's own "
+  "`decision_date` runs to **2026-06-17**, with 1,039 cases in the 2020s. D8 was built and now "
+  "admits **434 parcels** where it admitted none.")
+w("- It called that layer **100% carrying geometry**. True, and useless: the column named "
+  "`geometry_geojson` holds **Esri JSON in Indiana State Plane FEET**, so `ST_GEOGFROMGEOJSON` "
+  "returns NULL on all 13,414 rows. Placement went by address instead.")
+w("")
+w("1. ⭐ **`in_si_up_ibtr_appeals` is still first, and G162 sharpens why.** 10,071 rows, **100% "
+  "carrying `stateParcelNumber`, `locationAddress` AND `petitionerName`** — a direct publisher "
+  "key and an **owner name**, the thing G70, G71, G104, G90(b) and G147 are all blocked on. "
+  "⛔ `in_si_ibtr_placed` currently holds **5,438 of those 10,071 (54.0%)** and **no rule is "
+  "recorded for the missing 46%** — on a source where the key is direct, that is a failure until "
+  "proven otherwise. It also carries `attachments`, per-record documents for G153.")
+w("2. **`in_si_up_indy_taxsale`** — 62,368 Marion parcels with `deltaxpen`, `delsatax` and "
+  "`minimumbid`: the DOLLAR SIZE of a delinquency that D1/D4 carry only as a flag. ⭐ Promoted "
+  "above brownfield because D14 and D16 both proved the same point this session — the value of a "
+  "full-width clip is usually the AMOUNT and the ADDRESS it adds, not extra rows.")
 w("3. **`in_si_up_brownfield`** — EPA has already computed `ssdist`, `ssvoltage`, `transdist`, "
   "`tlkv` and `raildist` for 1,483 Indiana sites. Not a new signal: a cross-check on our own G29 "
   "distances, and possibly better ones.")
-w("4. **`in_si_up_indy_taxsale`** — 62,368 Marion parcels with `deltaxpen`, `delsatax` and "
-  "`minimumbid`: the DOLLAR SIZE of a delinquency that D1/D4 currently carry only as a flag.")
+w("4. ⛔ **`in_si_up_sri_taxsale` needs a rule, not a build.** `in_si_sri_placed` holds 31,228 of "
+  "81,975 (38.1%). Like IBTR, the shortfall may be correct — but nothing says so. G162.")
 w("")
 w("⛔ **ASSESS BEFORE BUILDING.** Each needs its own D-code, an admission rule and a written "
   "\"so what\" — and a source that cannot earn one is a refusal to record, not a signal to ship. "

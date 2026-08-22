@@ -49,37 +49,15 @@ client = bigquery.Client(project="energy-platfrom")
 # ⚠ THE LAST TWO POINT OPPOSITE WAYS, which is why a single canonical form is not enough and the
 # match is run TWICE - once with directionals, once with them removed from both sides.
 # ================================================================================================
-SUFFIXES = [("STREET", "ST"), ("AVENUE", "AVE"), ("ROAD", "RD"), ("DRIVE", "DR"),
-            ("BOULEVARD", "BLVD"), ("PARKWAY", "PKWY"), ("LANE", "LN"), ("COURT", "CT"),
-            ("PLACE", "PL"), ("CIRCLE", "CIR"), ("HIGHWAY", "HWY"), ("TERRACE", "TER"),
-            ("TRAIL", "TRL"), ("SUITE", ""), ("STE", ""), ("UNIT", ""), ("BUILDING", ""),
-            ("BLDG", "")]
-DIRECTIONALS = [("NORTH", "N"), ("SOUTH", "S"), ("EAST", "E"), ("WEST", "W"),
-                ("NORTHEAST", "NE"), ("NORTHWEST", "NW"), ("SOUTHEAST", "SE"),
-                ("SOUTHWEST", "SW")]
+# ⭐ 2026-08-22b: THE NORMALISER IS NOW ONE MODULE, NOT N COPIES. This file and its sibling
+# placement builder each carried their own SUFFIXES/DIRECTIONALS/naddr/ncity, guarded by an
+# assertion in audit_si_upstream_width.py that the copies still matched. A third caller (G156's
+# NFIRS and SBA placement) would have made it three. ⛔ A guard on a duplicate is not a fix for a
+# duplicate - §2.15c, the defect this project has hit eight times. One definition, imported.
+import os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from si_address_norm import DIRECTIONALS, SUFFIXES, naddr, ncity  # noqa: F401,E402
 
-
-def naddr(col, drop_dir=False):
-    """A street address reduced to the part two publishers will agree on.
-
-    drop_dir=True also removes N/S/E/W entirely, for the second pass - one publisher writes the
-    directional and the other omits it, and which one does varies by row.
-    """
-    e = f"UPPER(TRIM({col}))"
-    e = f"REGEXP_REPLACE({e}, r'[^A-Z0-9 ]', ' ')"          # punctuation first, so 'ST.' -> 'ST '
-    for long, short in SUFFIXES:
-        e = f"REGEXP_REPLACE({e}, r'\\b{long}\\b', '{short}')"
-    for long, short in DIRECTIONALS:
-        e = f"REGEXP_REPLACE({e}, r'\\b{long}\\b', '{short}')"
-    if drop_dir:
-        e = f"REGEXP_REPLACE({e}, r'\\b(N|S|E|W|NE|NW|SE|SW)\\b', ' ')"
-    return f"TRIM(REGEXP_REPLACE({e}, r' +', ' '))"
-
-
-def ncity(col):
-    """City names differ by spacing: the filing writes 'LaPorte', the assessor 'LA PORTE'."""
-    return (f"TRIM(REGEXP_REPLACE(REGEXP_REPLACE(UPPER(TRIM({col})), r'[^A-Z0-9]', ''), "
-            r"r' +', ' '))")
 
 
 SQL = f"""
