@@ -32,6 +32,7 @@ Then read, in this order — and no further than this, because it is enough:
 | 3a | ⭐ **`docs/COMPARABLE_TOOLS.md`** | ⭐ **the plan for what this product should LOOK like**, and §3 names the ONE question each page answers |
 | 3b | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** - which loaders re-run, how often, safely, and what each clip drops |
 | 3c | `docs/HANDOFF_2026-08-20b.md` | the batch-the-backlog session. ⚠ **HISTORY for figures**, still right about traps |
+| 3d | ⭐ `docs/SI_SIGNALS.md` | **generated 2026-08-22** — the whole SI signal system measured in one place: every signal held→reached→admitted, all 18 full-width upstream clips and whether each feeds a signal yet, plus the next steps. Rebuild with `python scripts/build_si_signals_doc.py` |
 | 4 | `docs/SIGNAL_REALITY.json` | **generated.** Every SI signal classed as done / not-split / wrong-grain / blocked / awaiting-operator, so you stop re-recommending finished or impossible work |
 
 `docs/PATH_TO_COMPLETE.md`, `docs/HANDOFF.md` and `docs/GAMEPLAN.md` are HISTORY. They contain

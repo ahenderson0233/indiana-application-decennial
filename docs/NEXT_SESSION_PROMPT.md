@@ -14,7 +14,13 @@ Repo: `C:\Users\ahend\Downloads\Decennial Summer Work\Project Reverse Uno\Califo
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | ForEach-Object { 'PID ' + $_.ProcessId + ' PPID ' + $_.ParentProcessId + ' :: ' + $_.CommandLine }"
 ```
 
-⚠ **Confirm by PARENTAGE, not by count** — your own command self-matches. A live harvest looks like `pull_pjm_injection.py --case 23 … --owner 1568` whose parent is `run_pjm_ladder.ps1`. ⭐ **It survived a machine restart on 2026-08-21 and kept advancing**, so check before assuming it died.
+⚠ **COUNT THE PYTHON WORKERS, NOT THE SUPERVISORS.** ⛔ I tripped on this on 2026-08-22 even having written the warning: a filter for `run_pjm_ladder.ps1` returned **8 matches** and I briefly believed two supervisors were racing. Seven were the bash wrapper chain around one real process plus my own probe — **every wrapper carries the whole command string**. The reliable question is *how many `python.exe` processes are running `pull_pjm_injection.py`*, and the answer must be **exactly 1**:
+
+```bash
+powershell -NoProfile -Command "(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*pull_pjm_injection.py*' } | Measure-Object).Count"
+```
+
+A live harvest is `pull_pjm_injection.py --case 23 … --owner 1568` whose parent is `run_pjm_ladder.ps1`. ⭐ **It survived a machine restart on 2026-08-21 and kept advancing**, so check before assuming it died — but it DID die later that day and needed resuming, so check rather than assuming either way.
 
 **If nothing is running, resume. This one command resumes, continues AND repairs, and is safe to run even while one is going** — it polls for the ABSENCE of a QueueScope process:
 
@@ -68,6 +74,7 @@ python scripts/audit_handoff_consistency.py
 | 4 | ⭐ `docs/COMPARABLE_TOOLS.md` | §3 names the ONE question each page answers |
 | 5 | ⭐ `docs/RESCRAPE_LEDGER.md` | **generated** — which loaders re-run, safely, and what each clip drops |
 | 6 | `docs/UNWIRED_CLASSIFICATION.md` | **generated** — why each unreached object is unreached |
+| 7 | ⭐ `docs/SI_SIGNALS.md` | **generated** — the whole SI signal system in one place: every signal held→reached→admitted, all 18 full-width clips and whether each feeds a signal yet, and the next steps. ⛔ Read this before touching G156 |
 
 ⚠ `HANDOFF_2026-08-21c.md` and earlier are **HISTORY**. 21b's §1 — *"we read a reduction"* — is **CLOSED**; do not re-open it.
 
