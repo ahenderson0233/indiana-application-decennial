@@ -216,8 +216,16 @@ complete = sorted(k.replace("in_pjm_qs_c23_", "") for k, v in rungs.items() if v
 short = {k.replace("in_pjm_qs_c23_", ""): v for k, v in rungs.items() if v < 1826}
 print(f"  [note] ladder complete rungs: {complete}")
 print(f"  [note] ladder short rungs:    {short}")
-check("inj_25 still short", rungs.get("in_pjm_qs_c23_inj_25") == 1797,
-      f"live {rungs.get('in_pjm_qs_c23_inj_25')}")
+# ⛔ THIS LINE USED TO READ `rungs.get("in_pjm_qs_c23_inj_25") == 1797` — THE FOURTH PINNED LITERAL
+#    IN THIS PROJECT, after `ribbon == 184`, `flagged == 23795` and the rung tolerance. It asserted
+#    that a rung being actively harvested holds one exact row count, so it failed the moment the
+#    harvest did its job: 1,797 -> 1,822.
+# ⚠ AND IT SAT TWO LINES ABOVE THE COMMENT EXPLAINING WHY PINNING A RUNG FIGURE IS WRONG. A rule
+#    written down next to its own violation is how this defect keeps recurring.
+# ⭐ What matters is that inj_25 is still SHORT and therefore still work; the exact count is the
+#    harvest's business, and it is printed in the `ladder short rungs` note above.
+check("inj_25 still short", rungs.get("in_pjm_qs_c23_inj_25", 0) < 1826,
+      f"live {rungs.get('in_pjm_qs_c23_inj_25')} of 1,826")
 
 # ⛔ THE RUNG BEING HARVESTED RIGHT NOW IS SHORT BY DEFINITION, and requiring the docs to name it
 #    made this check fail every time the ladder advanced - twice within hours of the handoff being
