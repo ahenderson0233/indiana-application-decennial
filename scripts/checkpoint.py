@@ -149,6 +149,15 @@ AUDITS = [
     # a missing element id, a redeclaration, or British prose, so nothing was looking.
     ("legend colours", "scripts/audit_legend_colours.py",
      r"(\d+) LEGEND COLOUR FAILURE\(S\)|0 legend colour failure"),
+
+    # ⭐ G148. Operator: *"it is crucial that we don't have floating buses."* ⛔ But the thing that
+    # can mislead a reader is NOT the floating count - that is a coverage ceiling (G114/G126) - it
+    # is an unplaceable bus BINDING a published deliverable figure. Measured by bus_id, zero do;
+    # the endpoint matcher's 100 m tolerance already refuses them. This holds that line.
+    # ⚠ Never join a bus by NAME here: 93 bus names are shared by more than one bus, and a first
+    # version of the check did exactly that and reported a violation that did not exist.
+    ("bus placement", "scripts/audit_bus_placement.py",
+     r"(\d+) FLOATING BUS\(ES\) REACH|0 unplaceable bus\(es\) reach"),
 ]
 
 print("=" * 90)
@@ -250,6 +259,11 @@ for label, script, pat in AUDITS:
         check(label, n == 0,
               f"{n} upstream SI source(s) not clipped Indiana-wide at full width"
               if n else "every upstream SI source is clipped Indiana-wide at FULL WIDTH")
+    elif label == "bus placement":
+        n = int(m.group(1)) if m.group(1) else 0
+        check(label, n == 0,
+              f"{n} unplaceable bus(es) bind a published deliverable figure"
+              if n else "every deliverable figure is bound by a bus we can put on a map")
     elif label == "legend colours":
         n = int(m.group(1)) if m.group(1) else 0
         check(label, n == 0,

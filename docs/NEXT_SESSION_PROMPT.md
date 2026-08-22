@@ -68,19 +68,22 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G148**, THE 175 FLOATING BUSES
+## ⭐ START HERE — **G143**, OUR MISO BUSES DISAGREE WITH ORENNIA'S OWN TABLE
 
-**G148** is first because G131 just handed it a named worklist. The operator asked me to fact-check
-whether Orennia places its bus points on substations; measured across both substation corpora, the
-median is **0.0 m** and 75.2% land within 50 m — but **175 of 1,731 (10.1%) are more than 2 km from
-any substation**, and 1,730 of them are inside Indiana, so a cross-border artefact explains at most
-one. Decide whether those 175 are a vendor artefact or a gap in our substation corpus, then make
-the invariant an audit. ⭐ Our own placement is *better* where it exists: **89 of the 90 PJM buses
-inside Indiana are within 250 m of a substation** — we have not placed worse, we have placed fewer.
+**G143** is sharper than G135 and it is next: G135 asks why the vendor can place buses we cannot,
+which is a coverage ceiling. G143 says that **where we read Orennia's OWN table our positions still
+disagree** — that is a defect in our derivation, not a ceiling. ⭐ Start from the operator's named
+case, **MISO bus `16SUNNYS`**, and compare `in_bus_headroom_miso_vendor` against what
+`in_bus_capacity_tier0` publishes for the same bus.
 
-⭐ **G131 and G149 closed 2026-08-21.** G131 is worth reading before touching the grid: three
-operator rulings turned a correctness check into a 66% coverage gain, and the substation is a
-BRIDGE (line → endpoint → substation → bus), never a validity test.
+⚠ Before you start, two measured facts from G148 that bear on it: **93 bus names are shared by more
+than one bus**, so never key a bus by name; and of 2,006 located buses, 1,646 are anchored to a
+substation, 64 sit on a line but not at a station, and 296 float — of which all 176 PJM ones are
+simply outside Indiana, where our substation corpus stops.
+
+⭐ **G131, G148 and G149 closed 2026-08-21.** G131 is worth reading first: three operator rulings
+turned a correctness check into a 66% coverage gain, and the substation is a BRIDGE
+(line → endpoint → substation → bus), never a validity test.
 
 ### Then the rest of the batch, in the order I would take it
 
