@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner signals — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=51a4e473"></head>
+<link rel="stylesheet" href="style.css?v=70fc5c4a"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">SI Feed</span></div></header>
 <nav id="nav"></nav>
@@ -367,7 +367,9 @@
     Remediation counts per source live in scrapers/lane_d/LANE_D_FINDINGS.md.</div></div>
   </details>
 </div>
-<script src="common.js?v=df2cea38"></script>
+<!-- G136: the workbook writer the screener already uses. ~9 KB, no CDN. -->
+<script src="vendor/xlsx-lite.js"></script>
+<script src="common.js?v=75fcffc6"></script>
 <script>
 (async () => {
   const s = await loadProv();
@@ -895,5 +897,13 @@
      <td>${r.ci_parcels ? fmt(r.ci_parcels) : "—"}</td>
      <td>${r.best_dc_mw ? fmt(r.best_dc_mw) : `<span class="cannot">—</span>`}</td></tr>`).join(""));
 })();
+/* ⭐ G136. ONE control for the whole page - a workbook with a sheet per table - rather
+   than a download button on each of them. The operator's constraint was that the exports
+   *"shouldn't take away from their aesthetic appearance"*, and this page carries enough
+   tables that per-table buttons would be the larger change to how it looks.
+   ⚠ Added on a timer, not inline: every table here is filled by an async payload fetch,
+   and a button wired before the tables exist would export an empty workbook. It only
+   reads the DOM at CLICK time, so the delay is about when the control APPEARS. */
+setTimeout(() => addPageExport("Owner Signals"), 2500);
 </script>
 </body></html>

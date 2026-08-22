@@ -68,18 +68,16 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G136**, EXCEL EXPORT WITHOUT WRECKING THE PAGES
+## ⭐ START HERE — **G139**, THE SENTIMENT DECISIONS THAT ARE NOW IN THE PAST
 
-**G136** is next and the constraint is the interesting half: *"these pages should maintain their
-polished look, and the exports shouldn't take away from their aesthetic appearance."* ⛔ So a
-button bolted onto every table is almost certainly the wrong answer. The screener's
-`s-export-xlsx` and `vendor/xlsx-lite.js` already write real workbooks with a README sheet — this
-is generalising that, once, for Power & Grid, Market & Cost and Owner Signals.
+**G139** is next and it is time-sensitive rather than hard: three county decisions were pending on
+a clock that has since run out — **Howard** and **City of Elkhart** council votes (2026-08-17) and
+**Marion MDC Proposal No. 238** (2026-08-19). All three dates are now past, so the answer exists
+and we do not hold it. ⚠ Check the warehouse first (G25) before scraping anything.
 
-⭐ **The grid batch is otherwise finished: G131, G137, G141, G142, G143, G148 and G149 all closed
-2026-08-21.** What remains after G136 is **G139** (sentiment decisions now past their council
-dates), **G135** (Orennia bus placement / FLOSM — a measurement and probably a refusal) and
-**G140**'s non-SI half.
+⭐ **The grid batch is done: G131, G136, G137, G141, G142, G143, G148 and G149 all closed
+2026-08-21.** After G139 what remains is **G135** (Orennia bus placement / FLOSM — likely a
+measurement and a refusal), **G140**'s non-SI half, and the rows blocked on the DLGF purchase.
 
 ### Then the rest of the batch, in the order I would take it
 

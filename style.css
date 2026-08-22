@@ -265,6 +265,17 @@ table.rtable tr:hover td { background: #fbfcfd; }
    until this session it was rendered with .bdg-un and the words "date unknown". */
 .bdg-up { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
+/* ⭐ G136: ONE export control per page, sitting beside the <h1> so it reads as a page action and
+   not as furniture on every card. Deliberately quiet — the operator's constraint was that the
+   exports must not take away from the pages' appearance, and a loud button on a polished page is
+   the same problem as forty small ones. */
+.pageexport {
+  float: right; margin-top: 2px; font-size: 11.5px; font-weight: 500; cursor: pointer;
+  padding: 4px 10px; border-radius: 5px; border: 1px solid #cbd5e1;
+  background: #f8fafc; color: #334155;
+}
+.pageexport:hover { background: #eef2f7; border-color: #94a3b8; color: #0f172a; }
+
 /* ⭐ G145 + G153: every event date for every signal, each with a link to the publisher. One block,
    rendered by siSignalLines() in common.js, used by the screener, the map dossier and si.html. */
 .sigdates { margin-top: 3px; }

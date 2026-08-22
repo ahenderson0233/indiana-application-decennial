@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grid &amp; Capacity — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=51a4e473"></head>
+<link rel="stylesheet" href="style.css?v=70fc5c4a"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Grid &amp; Capacity</span></div></header>
 <nav id="nav"></nav>
@@ -174,7 +174,9 @@
     <div class="scroll" style="max-height:170px"><table id="t-rbq"><tr><th>confidence</th><th>join rows</th><th>distinct upgrades</th><th>reach a bus</th></tr></table></div>
     <div class="prov" id="p-rb"></div></div>
 </div>
-<script src="common.js?v=df2cea38"></script>
+<!-- G136: the workbook writer the screener already uses. ~9 KB, no CDN. -->
+<script src="vendor/xlsx-lite.js"></script>
+<script src="common.js?v=75fcffc6"></script>
 <script>
 (async () => {
   await loadProv();
@@ -556,5 +558,13 @@
      built by <code>scripts/build_rtep_bus_join.py</code> from
      <code>in_pjm_rtep_upgrade_details</code> × <code>in_substations</code>. ${E.caveats.rtep_bus}`;
 })();
+/* ⭐ G136. ONE control for the whole page - a workbook with a sheet per table - rather
+   than a download button on each of them. The operator's constraint was that the exports
+   *"shouldn't take away from their aesthetic appearance"*, and this page carries enough
+   tables that per-table buttons would be the larger change to how it looks.
+   ⚠ Added on a timer, not inline: every table here is filled by an async payload fetch,
+   and a button wired before the tables exist would export an empty workbook. It only
+   reads the DOM at CLICK time, so the delay is about when the control APPEARS. */
+setTimeout(() => addPageExport("Power & Grid"), 2500);
 </script>
 </body></html>

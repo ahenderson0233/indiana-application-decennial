@@ -250,6 +250,116 @@ function intentPlain(csv) {
 }
 
 /* ================================================================================================
+   G136 — EXCEL EXPORT FOR EVERY TABLE ON A PAGE, WITHOUT A BUTTON ON EVERY TABLE
+   ------------------------------------------------------------------------------------------------
+   Operator, 2026-08-21: *"add Excel file outputs to … essentially every table in Power & Grid,
+   Market & Cost, and Owner Signals; however, these pages should maintain their polished look, and
+   the exports shouldn't take away from their aesthetic appearance."*
+
+   ⭐ THE AESTHETIC CONSTRAINT IS THE DESIGN BRIEF, NOT A CAVEAT ON IT. Owner signals carries 40
+   tables and grid carries 14. Forty download buttons would answer the request and wreck the page,
+   so this is ONE control per page that writes ONE workbook with A SHEET PER TABLE. That is less
+   clutter than the obvious answer AND more useful than it — a reader gets the whole page in one
+   file instead of clicking forty times and reassembling it themselves.
+
+   ⛔ IT EXPORTS THE RENDERED DOM, ON PURPOSE. Reading the payload would export what we hold; the
+   reader asked for the TABLE, which is what we chose to show — plain-language signal names, the
+   three-state "not measured here" wording, the cap. Exporting something different from what is on
+   screen, under the same name, is the two-copies defect wearing a spreadsheet.
+   ⚠ SO THE CAP TRAVELS WITH IT. `renderCappedTable` shows 120 of N; the README says which sheets
+   were capped and by how much, because a spreadsheet is exactly where a silent truncation stops
+   being visible.
+   ================================================================================================ */
+function pageTables() {
+  /* Every table with at least one data row, paired with the heading above it. ⚠ A table with only
+     a header row is a shell the page has not filled yet - exporting it would ship an empty sheet
+     that looks like a measured absence. */
+  const out = [];
+  for (const el of document.querySelectorAll("table")) {
+    const rows = [...el.querySelectorAll("tr")];
+    if (rows.length < 2) continue;
+    const card = el.closest(".card, section, .page") || document;
+    const h = card.querySelector("h2, h3");
+    let name = (h ? h.textContent : (el.id || "table")).replace(/\s+/g, " ").trim();
+    out.push({ el, name });
+  }
+  return out;
+}
+
+/* Excel sheet names: 31 chars, and none of : \ / ? * [ ] */
+function sheetName(raw, taken) {
+  /* ⚠ Strip the UI decoration before truncating. Headings carry ⭐ / ⚠ / ⛔ / ✅ as emphasis on
+     screen, which is right there and wrong on a sheet tab: a tab is a LABEL, and the reader who
+     opens the workbook has lost the context those glyphs were emphasising. They also eat two of
+     the 31 characters Excel allows. The README maps every sheet back to its full heading, so
+     nothing is lost by trimming them. */
+  let n = String(raw).replace(/[⭐⚠⛔✅\u{1F534}\u{1F7E1}\u{1F7E2}]/gu, " ")
+    .replace(/[:\\/?*\[\]]/g, "-").replace(/\s+/g, " ").trim().slice(0, 28) || "Sheet";
+  let s = n, i = 2;
+  while (taken.has(s)) { s = `${n.slice(0, 26)} ${i++}`; }
+  taken.add(s);
+  return s;
+}
+
+function exportPageTables(pageLabel) {
+  if (typeof XLSXLite === "undefined") { alert("The workbook writer did not load."); return; }
+  const taken = new Set();
+  const sheets = [];
+  const notes = [];
+  for (const { el, name } of pageTables()) {
+    const rows = [...el.querySelectorAll("tr")].map((tr) =>
+      [...tr.querySelectorAll("th,td")].map((c) => {
+        const txt = c.textContent.replace(/\s+/g, " ").trim();
+        // a pure number should land in Excel as a number, not as text
+        const n = Number(txt.replace(/,/g, ""));
+        return (txt !== "" && Number.isFinite(n) && /^-?[\d,]+(\.\d+)?$/.test(txt)) ? n : txt;
+      }));
+    if (!rows.length) continue;
+    const sn = sheetName(name, taken);
+    sheets.push({ name: sn, rows });
+    // ⚠ the cap, carried into the file. capNote writes this text next to the table.
+    const cap = el.parentElement && el.parentElement.querySelector(".capnote");
+    notes.push([sn, name, rows.length - 1, cap ? cap.textContent.replace(/\s+/g, " ").trim() : ""]);
+  }
+  if (!sheets.length) { alert("No filled tables on this page yet — wait for it to load."); return; }
+  const prov = [...document.querySelectorAll(".prov")]
+    .map((p) => p.textContent.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const readme = [
+    ["Indiana Siting Intelligence — " + pageLabel],
+    ["exported", new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC"],
+    ["sheets", sheets.length],
+    [],
+    ["⚠ This workbook contains exactly what the page showed when you exported it, including any"],
+    ["  row cap. Where a table was capped, the cap is stated below and on the page itself."],
+    [],
+    ["sheet", "table", "data rows", "cap note (blank = not capped)"],
+    ...notes,
+    [],
+    ["PROVENANCE, as printed on the page"],
+    ...prov.map((x) => [x]),
+  ];
+  sheets.unshift({ name: "README", rows: readme });
+  const slug = pageLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  XLSXLite.download(XLSXLite.write(sheets), `indiana-${slug}.xlsx`);
+}
+
+/* Drop the control into the page header. ⭐ ONE per page, beside the title, so it reads as a page
+   action rather than as furniture on every card. */
+function addPageExport(pageLabel) {
+  const h1 = document.querySelector(".page > h1");
+  if (!h1 || document.getElementById("page-export")) return;
+  const b = document.createElement("button");
+  b.id = "page-export";
+  b.className = "pageexport";
+  b.type = "button";
+  b.textContent = "Download this page (Excel)";
+  b.title = "One workbook, one sheet per table on this page, with a README carrying the "
+          + "provenance and any row cap.";
+  b.addEventListener("click", () => exportPageTables(pageLabel));
+  h1.appendChild(b);
+}
+
+/* ================================================================================================
    G145 + G153 — ONE renderer for "when did this signal happen, and where can I check it?"
    ------------------------------------------------------------------------------------------------
    ⛔ G145, THE DEFECT THIS REPLACES. The pages read a single parcel-wide `last_event`, which the

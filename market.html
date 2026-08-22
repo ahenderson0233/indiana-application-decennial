@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market &amp; Rates — Indiana Siting Intelligence</title>
-<link rel="stylesheet" href="style.css?v=51a4e473"></head>
+<link rel="stylesheet" href="style.css?v=70fc5c4a"></head>
 <body>
 <header id="topbar"><div id="title">Indiana Siting Intelligence <span class="tag">Market &amp; Rates</span></div></header>
 <nav id="nav"></nav>
@@ -185,7 +185,9 @@
       <b>empty on every row we hold</b>, so which posting is current cannot be determined from our
       capture. The highest capacity across held postings is shown, with the low end beside it.</div></div>
 </div>
-<script src="common.js?v=df2cea38"></script>
+<!-- G136: the workbook writer the screener already uses. ~9 KB, no CDN. -->
+<script src="vendor/xlsx-lite.js"></script>
+<script src="common.js?v=75fcffc6"></script>
 <script>
 /* G21 requirement 4 -- translate into the reader's DECISION unit. Both conversions are ESTIMATES
    and both say so on screen via .est-badge; "estimates never style as published".
@@ -851,5 +853,13 @@ function mmbtuToCents(v) {
     `utilities' industrial customers actually pay before it is worth showing.`;
 
 })();
+/* ⭐ G136. ONE control for the whole page - a workbook with a sheet per table - rather
+   than a download button on each of them. The operator's constraint was that the exports
+   *"shouldn't take away from their aesthetic appearance"*, and this page carries enough
+   tables that per-table buttons would be the larger change to how it looks.
+   ⚠ Added on a timer, not inline: every table here is filled by an async payload fetch,
+   and a button wired before the tables exist would export an empty workbook. It only
+   reads the DOM at CLICK time, so the delay is about when the control APPEARS. */
+setTimeout(() => addPageExport("Market & Cost"), 2500);
 </script>
 </body></html>

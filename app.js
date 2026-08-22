@@ -4143,7 +4143,7 @@ function openParcelEvidence(p, fips) {
               + (p.x_bus_wd_mi != null ? ` · ${p.x_bus_wd_mi === 0 ? "on this parcel" : `${p.x_bus_wd_mi} mi`}` : "")
             : null,
           "no withdrawal figure published at the nearest bus",
-          "What a data centre could DRAW here. This is the question a large load asks.")}
+          "What a data center could DRAW here. This is the question a large load asks.")}
       ${row("&nbsp;&nbsp;↳ sending power (injection)",
           p.x_bus_inj_mw != null
             ? `<b>${fmt(p.x_bus_inj_mw)} MW</b>${p.x_bus_inj_name ? ` at ${escHtml(p.x_bus_inj_name)}` : ""}`
