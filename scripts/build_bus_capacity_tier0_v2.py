@@ -269,13 +269,52 @@ miso AS (
                              ORDER BY v.existing_overload_flag ASC, v.capacity_mw ASC) = 1
 )
 
-SELECT *,
+/* ⛔ G143, 2026-08-21 — THESE THREE COLUMNS WERE FLAT FALSE FOR MOST MISO ROWS, AND THE OLD TEXT
+   IS KEPT HERE AS THE RECORD:
        1 AS upgrade_tiers_available,
-       'TIER 0 ONLY. PJM rows are headroom at a 100 MW PROBE, not a bus maximum - we hold no other '
-       'scenario yet. MISO rows are the licensed Orennia DPP-2025 proxy, both directions, and are '
-       'removable in one statement when the licence lapses.'    AS upgrade_tier_note,
-       'ISO Base Case'                                          AS interconnection_scenario,
-       CURRENT_TIMESTAMP()                                      AS built_at
+       'TIER 0 ONLY. PJM rows are headroom at a 100 MW PROBE, not a bus maximum - we hold no
+        other scenario yet. MISO rows are the licensed Orennia DPP-2025 proxy...'
+       'ISO Base Case' AS interconnection_scenario,
+
+   Operator: *"our buses (even the MISO ones where we use Orennia's datasets) don't match
+   Orennia's (e.g., MISO bus: 16SUNNYS)."* ⭐ Chased from that named case, and **the coordinates
+   are not the problem** — vendor and ours agree on 16SUNNYS to six decimal places. The number is
+   the problem.
+
+   ⭐ THE VENDOR PUBLISHES ONE CAPACITY PER UPGRADE TIER, 0 TO 4. On MISO_254535 withdrawal those
+   are 0, 0, 0, 0, 648.4 — tiers 0-3 all carry `existing_overload_flag`, and tier 4 does not. The
+   QUALIFY above prefers a non-overloaded row and then the smallest capacity, so it selects
+   **tier 4** and we publish **648.4 MW**. That selection rule is defensible: reporting 0 MW
+   because the system is already overloaded tells a siter nothing actionable.
+   ⛔ WHAT WAS NOT DEFENSIBLE IS CALLING IT TIER 0. Measured across the MISO half:
+       injection  — tier 0: 715 · tier 1: 287 · tier 2: 124 · tier 3: 120 · tier 4: 485
+       withdrawal — tier 0: 530 · tier 1: 488 · tier 2: 270 · tier 3: 270 · tier 4: 173
+   **1,016 of 1,731 injection buses (59%) and 1,201 of 1,731 withdrawal buses (69%) publish a
+   figure that is NOT tier 0**, on rows whose own note said "TIER 0 ONLY", in a table named
+   `in_bus_capacity_tier0`. A reader comparing our 648 MW at Sunnyside against the vendor's tier-0
+   zero sees a flat contradiction and has nothing on the row to explain it.
+   ⚠ The `upgrade_tier` COLUMN was right the whole time — it carried the truth and reached no
+   surface. The note beside it was the lie. */
+SELECT *,
+       -- how many tiers the publisher actually gives us for THIS bus, not a constant
+       CASE WHEN iso = 'MISO' THEN 5 ELSE 1 END               AS upgrade_tiers_available,
+       CASE
+         WHEN iso = 'PJM' THEN
+           'PJM: headroom at a 100 MW PROBE, from our own QueueScope harvest. Not a bus maximum, '
+           'and only one scenario exists - there is no tier to choose.'
+         WHEN upgrade_tier = 0 THEN
+           'MISO: tier 0 - the capacity available with NO network upgrades. Licensed Orennia '
+           'DPP-2025 proxy.'
+         ELSE
+           CONCAT('MISO: tier ', CAST(upgrade_tier AS STRING), ' of 4 - this capacity requires ',
+                  'NETWORK UPGRADES and is NOT available today. Tier 0 here is ',
+                  IF(existing_overload_flag, 'already overloaded', '0 MW'),
+                  ', so the lowest non-overloaded tier was taken. Licensed Orennia DPP-2025 proxy.')
+       END                                                    AS upgrade_tier_note,
+       IF(iso = 'MISO' AND upgrade_tier > 0,
+          CONCAT('DPP-2025 upgrade tier ', CAST(upgrade_tier AS STRING)),
+          'ISO Base Case')                                    AS interconnection_scenario,
+       CURRENT_TIMESTAMP()                                    AS built_at
 FROM (SELECT * FROM pjm UNION ALL SELECT * FROM miso)
 """
 

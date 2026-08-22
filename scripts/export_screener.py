@@ -74,6 +74,9 @@ for r in client.query(f"""
            -- the MISO half of in_bus_capacity_tier0 is a licensed vendor proxy. The badge has to
            -- follow the LIMITING end, because a MIN across two methods hides which one won.
            h.wd_limiting_iso           AS deliv_limiting_iso,
+           -- G143: 54.1% of deliverable figures need NETWORK UPGRADES (tier 1-4). The
+           -- warehouse always knew; no surface said so.
+           h.wd_limiting_tier          AS deliv_limiting_tier,
            h.wd_binding_at_limit       AS deliv_wd_binding,
            h.a_bus_name                AS deliv_a_bus,
            ROUND(h.a_wd_mw)            AS deliv_a_wd,
@@ -199,7 +202,7 @@ for r in client.query(f"""
          -- a NULL under 'both_ends' would be a measured absence, a NULL under 'cannot_assess'
          -- means we could not follow the line to its buses. Opposite claims, same empty cell.
          deliv_wd_mw, deliv_inj_mw, deliv_basis, deliv_ends, deliv_limiting_end,
-         deliv_limiting_iso,
+         deliv_limiting_iso, deliv_limiting_tier,
          deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd,
 
          -- ⭐ G120(b) 2026-08-20 - THE GEOCODE TRAP, MADE VISIBLE.

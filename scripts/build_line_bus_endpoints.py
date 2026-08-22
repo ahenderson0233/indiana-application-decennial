@@ -76,6 +76,11 @@ bus AS (
          MAX(IF(interconnection_type = 'Injection',  bus_interconnection_capacity_mw, NULL)) inj_mw,
          MAX(IF(interconnection_type = 'Withdrawal', primary_limiting_constraint, NULL)) wd_binding,
          MAX(IF(interconnection_type = 'Injection',  primary_limiting_constraint, NULL)) inj_binding,
+         /* ⭐ G143: WHICH UPGRADE TIER IS THIS CAPACITY AT? The vendor publishes one figure per
+            tier 0-4 and we select the lowest non-overloaded one, so 59-69% of MISO buses carry a
+            figure that requires NETWORK UPGRADES. The column existed and reached no surface. */
+         MAX(IF(interconnection_type = 'Withdrawal', upgrade_tier, NULL)) wd_tier,
+         MAX(IF(interconnection_type = 'Injection',  upgrade_tier, NULL)) inj_tier,
          ANY_VALUE(provenance_class) provenance
   FROM `{DS}.in_bus_capacity_tier0`
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL
@@ -137,6 +142,7 @@ matched AS (
   SELECT e.feature_id, e.kv, e.volt_class, e.owner, e.km, e.end_no,
          ARRAY_AGG(STRUCT(b.bus_id, b.bus_name, b.iso, b.bus_kv, b.wd_mw, b.inj_mw,
                           b.wd_binding, b.inj_binding, b.provenance,
+                          b.wd_tier, b.inj_tier,
                           c.dist_m AS dist_m, c.via AS via)
                    -- ⚠ tier FIRST: a direct hit always beats a bridged one, whatever the metres say
                    ORDER BY c.tier, c.dist_m LIMIT 1)[OFFSET(0)] AS m
@@ -158,6 +164,7 @@ wide AS (
          MAX(IF(end_no = 1, m.inj_binding, NULL)) a_inj_binding,
          MAX(IF(end_no = 1, m.dist_m,      NULL)) a_dist_m,
          MAX(IF(end_no = 1, m.via,         NULL)) a_match_via,
+         MAX(IF(end_no = 1, m.wd_tier,     NULL)) a_wd_tier,
          MAX(IF(end_no = 2, m.bus_id,      NULL)) b_bus_id,
          MAX(IF(end_no = 2, m.bus_name,    NULL)) b_bus_name,
          MAX(IF(end_no = 2, m.iso,         NULL)) b_iso,
@@ -166,7 +173,8 @@ wide AS (
          MAX(IF(end_no = 2, m.wd_binding,  NULL)) b_wd_binding,
          MAX(IF(end_no = 2, m.inj_binding, NULL)) b_inj_binding,
          MAX(IF(end_no = 2, m.dist_m,      NULL)) b_dist_m,
-         MAX(IF(end_no = 2, m.via,         NULL)) b_match_via
+         MAX(IF(end_no = 2, m.via,         NULL)) b_match_via,
+         MAX(IF(end_no = 2, m.wd_tier,     NULL)) b_wd_tier
   FROM matched GROUP BY feature_id
 )
 SELECT *,
@@ -212,7 +220,14 @@ SELECT *,
   CASE WHEN a_wd_mw IS NOT NULL AND b_wd_mw IS NOT NULL
          THEN IF(a_wd_mw <= b_wd_mw, a_iso, b_iso)
        WHEN a_wd_mw IS NOT NULL THEN a_iso
-       ELSE b_iso END AS wd_limiting_iso
+       ELSE b_iso END AS wd_limiting_iso,
+  /* ⭐ G143: and WHICH TIER that binding figure sits at. A deliverable capacity that exists only
+     after tier-4 network upgrades is a different product from one available today, and until now
+     nothing on any surface could tell them apart. */
+  CASE WHEN a_wd_mw IS NOT NULL AND b_wd_mw IS NOT NULL
+         THEN IF(a_wd_mw <= b_wd_mw, a_wd_tier, b_wd_tier)
+       WHEN a_wd_mw IS NOT NULL THEN a_wd_tier
+       ELSE b_wd_tier END AS wd_limiting_tier
 FROM wide
 """
 

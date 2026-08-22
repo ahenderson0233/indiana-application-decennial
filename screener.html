@@ -1124,7 +1124,21 @@ function deliverableBlock(s) {
     ? `<div class="hint" style="margin-bottom:6px">The binding end is a <b>MISO</b> bus, and our
        MISO headroom is a <b>licensed vendor proxy</b> (Orennia DPP-2025), not our own harvest.
        The PJM half is ours.</div>` : "";
-  return caveat + vendor + `<table class="dtable" style="margin-bottom:8px">
+  /* ⛔ G143 — THE BIGGEST DISCLOSURE ON THIS BLOCK, AND IT WAS MISSING ENTIRELY.
+     The MISO source publishes one capacity per UPGRADE TIER, 0 to 4. Tier 0 is what exists today;
+     tiers 1-4 exist only after network upgrades are built. Our selection rule takes the lowest
+     NON-OVERLOADED tier, which is defensible — reporting 0 MW because the system is already
+     overloaded tells a siter nothing — but it means **54.1% of every deliverable figure we
+     publish (235,941 of 435,860 parcels) requires network upgrades**, and until now the row said
+     nothing. The operator noticed the symptom as "our buses don't match Orennia's".
+     ⚠ A capacity that needs tier-4 upgrades is a different product from one available today. */
+  const tier = (s.deliv_limiting_tier > 0)
+    ? `<div class="cannot" style="margin-bottom:6px">⚠ <b>This capacity requires network
+       upgrades.</b> It is MISO DPP-2025 <b>upgrade tier ${s.deliv_limiting_tier} of 4</b>, not
+       capacity available today — at tier 0 this bus is either at 0 MW or already overloaded.
+       Treat it as what the site could reach <i>after</i> the upgrade is built and paid for.</div>`
+    : "";
+  return caveat + tier + vendor + `<table class="dtable" style="margin-bottom:8px">
     ${detailRow("Deliverable to a LOAD (withdrawal)", wd != null ? `<b>${fmt(wd)} MW</b>` : null,
       "not published at the limiting bus",
       "The lower of the two end-bus headrooms on the nearest line. This is what a data center "

@@ -156,9 +156,39 @@ print(f"  ⚠ of the floating, {float_in:,} are inside Indiana; the rest are out
 print(f"  ⭐ COVERAGE IS A CEILING (G114/G126), NOT A DEFECT. What matters is whether an unplaceable")
 print(f"     bus reaches a reader, and the endpoint matcher already refuses one.")
 
+# ================================================================================================
+# ⭐ G143: DOES THE TIER DISCLOSURE MATCH THE TIER? A second invariant on the same table.
+# The MISO source publishes one capacity per upgrade tier 0-4, and our rule takes the lowest
+# NON-OVERLOADED tier — so most MISO rows are NOT tier 0. For a long time every row said
+# "TIER 0 ONLY" and every scenario said "ISO Base Case" regardless: a false statement sitting on
+# the very column that carried the truth, in a table named in_bus_capacity_tier0.
+# ⚠ The operator saw the symptom from outside as *"our buses don't match Orennia's"*.
+# ================================================================================================
+tier = list(client.query(f"""
+SELECT
+  COUNTIF(upgrade_tier > 0)                                                   AS above_tier0,
+  COUNTIF(upgrade_tier > 0 AND UPPER(upgrade_tier_note) LIKE '%TIER 0 ONLY%') AS mislabelled,
+  COUNTIF(upgrade_tier > 0 AND interconnection_scenario = 'ISO Base Case')    AS wrong_scenario,
+  COUNTIF(upgrade_tier = 0)                                                   AS at_tier0,
+  COUNT(*)                                                                    AS rows_
+FROM `{DS}.in_bus_capacity_tier0`""").result())[0]
+
+print("\n" + "=" * 100)
+print("G143 - DOES THE TIER DISCLOSURE MATCH THE TIER?")
+print("=" * 100)
+print(f"  {tier.rows_:,} bus rows · {tier.at_tier0:,} at tier 0 · {tier.above_tier0:,} at a tier "
+      f"that REQUIRES NETWORK UPGRADES")
+if tier.mislabelled or tier.wrong_scenario:
+    print(f"  ⛔ {tier.mislabelled:,} row(s) above tier 0 still say 'TIER 0 ONLY'")
+    print(f"  ⛔ {tier.wrong_scenario:,} row(s) above tier 0 still say scenario 'ISO Base Case'")
+    violations += tier.mislabelled + tier.wrong_scenario
+else:
+    print("  ⭐ every row above tier 0 says so, in its note and in its scenario")
+
 print("\n" + "=" * 100)
 if violations:
-    print(f"⛔ {violations} FLOATING BUS(ES) REACH A TRANSMISSION-LINE ENDPOINT.")
+    print(f"⛔ {violations} FLOATING BUS(ES) REACH A TRANSMISSION-LINE ENDPOINT, "
+          f"or misstate their upgrade tier.")
     print("   A bus we cannot place is feeding a published deliverable figure. Either the bus has a")
     print("   real position we are missing, or the endpoint match is wrong. Do not ship this.")
     sys.exit(1)

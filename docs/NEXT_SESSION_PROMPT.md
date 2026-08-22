@@ -68,22 +68,22 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G143**, OUR MISO BUSES DISAGREE WITH ORENNIA'S OWN TABLE
+## ⭐ START HERE — **G142**, HEADROOM OFF BOTH ENDS OF EVERY NEARBY LINE
 
-**G143** is sharper than G135 and it is next: G135 asks why the vendor can place buses we cannot,
-which is a coverage ceiling. G143 says that **where we read Orennia's OWN table our positions still
-disagree** — that is a defect in our derivation, not a ceiling. ⭐ Start from the operator's named
-case, **MISO bus `16SUNNYS`**, and compare `in_bus_headroom_miso_vendor` against what
-`in_bus_capacity_tier0` publishes for the same bus.
+**G142** is next and G131 laid its foundation: the deliverable figure already follows the NEAREST
+line to the buses at its two ends and takes the lower. G142 widens that from *the* nearest line to
+**every line within the search radius**, because a developer may not tap the closest circuit.
 
-⚠ Before you start, two measured facts from G148 that bear on it: **93 bus names are shared by more
-than one bus**, so never key a bus by name; and of 2,006 located buses, 1,646 are anchored to a
-substation, 64 sit on a line but not at a station, and 296 float — of which all 176 PJM ones are
-simply outside Indiana, where our substation corpus stops.
+⚠ Three measured facts from G131/G143/G148 that bear on it, all live:
+**(a)** 54.1% of deliverable figures are bound at MISO upgrade **tier 1–4** — capacity that needs
+network upgrades, now disclosed on the row. Widening to more lines must carry the tier too.
+**(b)** 93 bus names are shared by more than one bus — **never key a bus by name**.
+**(c)** 2,718 of 3,736 lines still resolve fewer than two ends, and the ceiling is bus
+coordinates (G114/G126), not the matcher.
 
-⭐ **G131, G148 and G149 closed 2026-08-21.** G131 is worth reading first: three operator rulings
-turned a correctness check into a 66% coverage gain, and the substation is a BRIDGE
-(line → endpoint → substation → bus), never a validity test.
+⭐ **G131, G143, G148 and G149 all closed 2026-08-21.** G143 is the one to read: the operator's
+*"our buses don't match Orennia's"* turned out not to be coordinates at all — they agree to six
+decimals — but a different UPGRADE TIER published under a tier-0 label.
 
 ### Then the rest of the batch, in the order I would take it
 

@@ -65,6 +65,9 @@ SELECT
      lapses late 2027; the PJM half is our own harvest. A figure that is the MINIMUM of two
      differently-produced numbers must say which one won, or the vendor badge cannot follow it. */
   e.wd_limiting_iso,
+  /* ⭐ G143: the upgrade tier the BINDING figure sits at. 59-69% of MISO buses publish a
+     capacity that requires network upgrades, and nothing on any surface said so. */
+  e.wd_limiting_tier,
   e.a_match_via, e.b_match_via,
   /* ⛔ Three states, never two. NULL capacity with basis 'both_ends' would be a measured zero;
      NULL with 'cannot_assess' means we could not follow the line. A surface must tell them
