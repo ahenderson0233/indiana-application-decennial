@@ -1155,6 +1155,26 @@ function deliverableBlock(s) {
     ${detailRow("Limited at", s.deliv_limiting_end, null,
       "The weaker of the two ends — the one that caps this site.")}
     ${detailRow("First constraint to bind there", s.deliv_wd_binding)}
+    ${/* ⭐ G142, operator 2026-08-21: *"we may not always interconnect with the closest
+         transmission line."* The nearest line is one of 5.11 on the average parcel, and measured
+         across 431,048 parcels, 196,528 have a BETTER one within three miles — 91,836 of them
+         crossing 300 MW that their nearest line said they could not reach.
+         ⚠ THE DISTANCE IS NOT OPTIONAL. A stronger circuit further away costs a gen-tie, an
+         easement and a route, so the extra MW is only meaningful beside the extra miles. Showing
+         the best figure alone would be the mirror image of the defect this fixes. */
+      detailRow("Options within 3 miles", s.alt_n_lines != null
+        ? `<b>${fmt(s.alt_n_lines)}</b> line${s.alt_n_lines === 1 ? "" : "s"} carry a figure`
+        : null, "no other line within 3 miles carries a deliverable figure",
+        "A developer is not obliged to tap the closest circuit.")}
+    ${(s.alt_uplift_mw > 0) ? detailRow("⭐ A stronger line nearby",
+        `<b>${fmt(s.alt_best_wd_mw)} MW</b> at <b>${Number(s.alt_best_mi).toFixed(2)} mi</b>`
+        + (s.alt_best_kv ? ` · ${fmt(s.alt_best_kv)} kV` : "")
+        + (s.alt_best_end ? ` · limited at ${escHtml(s.alt_best_end)}` : "")
+        + (s.alt_best_tier > 0 ? ` · <span class="cannot">needs tier ${s.alt_best_tier} upgrades</span>` : "")
+        + `<div class="sub2">+${fmt(s.alt_uplift_mw)} MW over the nearest line, `
+        + `${(Number(s.alt_best_mi) - Number(s.nearest_line_mi ?? s.line_mi ?? 0)).toFixed(2)} mi further away</div>`,
+        null,
+        "The best deliverable capacity within three miles. Reaching it means building to it.") : ""}
     </table>
 `;
 }

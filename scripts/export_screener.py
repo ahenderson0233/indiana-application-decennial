@@ -77,6 +77,15 @@ for r in client.query(f"""
            -- G143: 54.1% of deliverable figures need NETWORK UPGRADES (tier 1-4). The
            -- warehouse always knew; no surface said so.
            h.wd_limiting_tier          AS deliv_limiting_tier,
+           -- G142: the alternative, with what it costs to reach it. ⚠ best_line_mi is
+           -- NOT optional - a better figure without its distance is unactionable.
+           o.n_line_options            AS alt_n_lines,
+           o.best_wd_mw                AS alt_best_wd_mw,
+           o.best_line_mi              AS alt_best_mi,
+           o.best_line_kv              AS alt_best_kv,
+           o.best_limiting_end         AS alt_best_end,
+           o.best_limiting_tier        AS alt_best_tier,
+           o.uplift_wd_mw              AS alt_uplift_mw,
            h.wd_binding_at_limit       AS deliv_wd_binding,
            h.a_bus_name                AS deliv_a_bus,
            ROUND(h.a_wd_mw)            AS deliv_a_wd,
@@ -106,6 +115,9 @@ for r in client.query(f"""
     -- 73,094 was quoted after the numbers had gone to 190,178 / 73,058). audit_handoff_docs.py
     -- re-measures it; this comment names the finding, not the figure.
     LEFT JOIN `{DS}.in_parcel_line_headroom` h USING (parcel_source, parcel_key)
+    -- ⭐ G142: every capacity-bearing line within 3 miles, not just the nearest. 196,528
+    -- parcels have a BETTER line than the one we were showing, and 91,836 cross 300 MW.
+    LEFT JOIN `{DS}.in_parcel_line_options` o USING (parcel_source, parcel_key)
     WHERE c.county_fips IS NOT NULL
   )
   SELECT parcel_source, parcel_key, county_fips, county_name, occ_group, site_kind,
@@ -203,6 +215,8 @@ for r in client.query(f"""
          -- means we could not follow the line to its buses. Opposite claims, same empty cell.
          deliv_wd_mw, deliv_inj_mw, deliv_basis, deliv_ends, deliv_limiting_end,
          deliv_limiting_iso, deliv_limiting_tier,
+         alt_n_lines, alt_best_wd_mw, alt_best_mi, alt_best_kv, alt_best_end,
+         alt_best_tier, alt_uplift_mw,
          deliv_wd_binding, deliv_a_bus, deliv_a_wd, deliv_b_bus, deliv_b_wd,
 
          -- ⭐ G120(b) 2026-08-20 - THE GEOCODE TRAP, MADE VISIBLE.

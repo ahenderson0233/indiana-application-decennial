@@ -104,6 +104,9 @@ for r in client.query(f"""
          n_facilities_overloaded_base AS facilities_at_zero,
          n_monitored_facilities AS monitored_facilities,
          existing_overload_flag, provenance_class AS provenance, probe_mw,
+         -- ⭐ G143/G137: WHICH UPGRADE TIER this capacity sits at. 59-69% of MISO buses
+         -- publish a figure that requires network upgrades, and no surface said so.
+         upgrade_tier,
          powerflow_case AS vintage, latitude AS lat, longitude AS lon
   FROM `{DS}.in_bus_capacity_tier0`
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""):

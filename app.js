@@ -3130,16 +3130,23 @@ function naaSoWhat(p) {
  * where we DID look and found nothing understates what we know, which is the complaint that
  * prompted this. The default stays the honest one, so a caller that says nothing is never taken to
  * be asserting emptiness. */
-function row(k, v, absent) {
+function row(k, v, absent, why) {
   /* G51 sweep, 2026-08-19. Pass `absent` ONLY when the source covers every parcel, so a null
      genuinely means "measured, nothing here". in_asset_distance_parcel and in_water_distance_parcel
      both cover all 532,868 candidates at fan-out 1.000, which is what makes the grid and water rows
      safe. Anything per-county or per-source keeps the default -- inventing "none" where we never
-     looked is the defect this three-state helper exists to prevent. */
+     looked is the defect this three-state helper exists to prevent.
+
+     ⭐ G141 added the optional 4th argument `why` — the governing principle asks every figure on
+     screen to say what it changes, and this helper had nowhere to put that. It is OPTIONAL and
+     every existing 3-argument call is unaffected. ⚠ It was added because a call site passed a
+     fourth argument that the signature silently swallowed: a dead argument looks exactly like a
+     working one, which is the same shape as the dead `${color}` G149 just fixed. */
   const val = (v === null || v === undefined || v === "")
     ? `<span class="cannot">${absent || "not measured here"}</span>`
     : (typeof v === "number" ? fmt(v) : String(v));
-  return `<tr><td>${k}</td><td>${val}</td></tr>`;
+  const tip = why ? ` title="${escHtml(why)}"` : "";
+  return `<tr${tip}><td>${k}</td><td>${val}</td></tr>`;
 }
 function show(title, html, starKey) {
   // every panel hides the dossier button; openParcelEvidence and openDossier re-show it, so a
@@ -4116,11 +4123,34 @@ function openParcelEvidence(p, fips) {
       ${row("nearest bus",
           p._dpoi_name
             ? `${p._dpoi_name}${p._dpoi_kv ? ` (${p._dpoi_kv} kV)` : ""} · ` +
-              `${p._dpoi_mi === 0 ? "on this parcel" : `${p._dpoi_mi} mi`} · ` +
-              `${fmt(p._dpoi_mw)} MW ${p._dpoi_dir === "sending power" ? "injection" : "load"} headroom` +
+              `${p._dpoi_mi === 0 ? "on this parcel" : `${p._dpoi_mi} mi`}` +
               (p._dpoi_exact ? "" : ` <span class="cannot">(approximate &mdash; measured from a point)</span>`)
             : null,
-          "no bus within 25 miles (measured)")}</table>
+          "no bus within 25 miles (measured)")}
+      ${/* ⭐ G141, operator 2026-08-21: *"We need to place the injection and withdrawal amounts
+           within the main popup (not just the dossier)."*
+           ⛔ THIS ROW USED TO SHOW ONE DIRECTION AND CALL IT "nearest bus". `enrichDistances`
+           picks withdrawal when it exists and injection otherwise, so a reader saw a single
+           headroom figure with no way to tell which question it answered — and the OTHER number
+           was on the parcel the whole time, in x_bus_inj_mw / x_bus_wd_mw, reaching only the
+           dossier. A data centre asks the LOAD question and a generator asks the INJECTION one;
+           fusing them into "bus headroom" answers neither.
+           ⚠ Shown as two rows, never summed and never averaged — they are different quantities
+           measured against different constraints. */
+        row("&nbsp;&nbsp;↳ getting power (withdrawal)",
+          p.x_bus_wd_mw != null
+            ? `<b>${fmt(p.x_bus_wd_mw)} MW</b>${p.x_bus_wd_name ? ` at ${escHtml(p.x_bus_wd_name)}` : ""}`
+              + (p.x_bus_wd_mi != null ? ` · ${p.x_bus_wd_mi === 0 ? "on this parcel" : `${p.x_bus_wd_mi} mi`}` : "")
+            : null,
+          "no withdrawal figure published at the nearest bus",
+          "What a data centre could DRAW here. This is the question a large load asks.")}
+      ${row("&nbsp;&nbsp;↳ sending power (injection)",
+          p.x_bus_inj_mw != null
+            ? `<b>${fmt(p.x_bus_inj_mw)} MW</b>${p.x_bus_inj_name ? ` at ${escHtml(p.x_bus_inj_name)}` : ""}`
+              + (p.x_bus_inj_mi != null ? ` · ${p.x_bus_inj_mi === 0 ? "on this parcel" : `${p.x_bus_inj_mi} mi`}` : "")
+            : null,
+          "no injection figure published at the nearest bus",
+          "What on-site or co-located GENERATION could push back into the grid.")}</table>
     ${p._dline_mi != null ? `<div class="sowhat">${
       p._dline_on
         ? "A transmission line already crosses this parcel, so there is <b>no greenfield line to build</b> — but expect an easement and conductor-clearance constraint that shapes where you can put steel."

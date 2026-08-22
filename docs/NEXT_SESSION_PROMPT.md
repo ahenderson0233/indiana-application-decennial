@@ -68,22 +68,18 @@ python scripts/audit_handoff_consistency.py
 
 ---
 
-## ⭐ START HERE — **G142**, HEADROOM OFF BOTH ENDS OF EVERY NEARBY LINE
+## ⭐ START HERE — **G136**, EXCEL EXPORT WITHOUT WRECKING THE PAGES
 
-**G142** is next and G131 laid its foundation: the deliverable figure already follows the NEAREST
-line to the buses at its two ends and takes the lower. G142 widens that from *the* nearest line to
-**every line within the search radius**, because a developer may not tap the closest circuit.
+**G136** is next and the constraint is the interesting half: *"these pages should maintain their
+polished look, and the exports shouldn't take away from their aesthetic appearance."* ⛔ So a
+button bolted onto every table is almost certainly the wrong answer. The screener's
+`s-export-xlsx` and `vendor/xlsx-lite.js` already write real workbooks with a README sheet — this
+is generalising that, once, for Power & Grid, Market & Cost and Owner Signals.
 
-⚠ Three measured facts from G131/G143/G148 that bear on it, all live:
-**(a)** 54.1% of deliverable figures are bound at MISO upgrade **tier 1–4** — capacity that needs
-network upgrades, now disclosed on the row. Widening to more lines must carry the tier too.
-**(b)** 93 bus names are shared by more than one bus — **never key a bus by name**.
-**(c)** 2,718 of 3,736 lines still resolve fewer than two ends, and the ceiling is bus
-coordinates (G114/G126), not the matcher.
-
-⭐ **G131, G143, G148 and G149 all closed 2026-08-21.** G143 is the one to read: the operator's
-*"our buses don't match Orennia's"* turned out not to be coordinates at all — they agree to six
-decimals — but a different UPGRADE TIER published under a tier-0 label.
+⭐ **The grid batch is otherwise finished: G131, G137, G141, G142, G143, G148 and G149 all closed
+2026-08-21.** What remains after G136 is **G139** (sentiment decisions now past their council
+dates), **G135** (Orennia bus placement / FLOSM — a measurement and probably a refusal) and
+**G140**'s non-SI half.
 
 ### Then the rest of the batch, in the order I would take it
 
