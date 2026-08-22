@@ -100,10 +100,11 @@ bus upgrade tier, so cost may only be answerable as a $/MW benchmark.
 |---|---|---|
 | ① | ⭐ **G156** — 16 of the 18 full-width clips are still unexploited | **the largest open row.** G152 clipped 18 sources and only two produced a signal. `in_si_up_ibtr_appeals` alone carries `stateParcelNumber`, `locationAddress` AND `petitionerName` on **10,071 parcels** — an OWNER NAME, which is the thing five other rows are blocked on |
 | ② | **G155** — Indiana distribution-level substations | the operator says we hold them; I could not find them. Every Indiana source is transmission-level and the AEP hosting-capacity tables are **Ohio/Michigan only**. Search by content |
-| ③ | **G157** — 93 bus names are shared by more than one bus | small and live: `wd_limiting_end` stores a NAME, so the screener's "Limited at" can be ambiguous. Carry `bus_id` beside it |
-| ④ | **G140**'s non-SI half | 74 objects the rescrape ledger marks `unknown` idempotency, 49 unresolved. ⛔ 3 loaders are append-only and 2 read their own output |
-| ⑤ | **G135** — Orennia bus coverage / FLOSM | ⚠ **its premise changed.** G143 showed our positions MATCH the vendor's to six decimals; only coverage remains, and FLOSM is the untried half |
-| ⑥ | **G102 · G103** | acquisitions. ⭐ Send to an **Opus (non-Fable) agent**, briefed with the write boundary, no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them** |
+| ③ | ⛔ **G159** — floating buses are excluded from the calculation and INCLUDED in the display | **57,359 parcels** are told their nearest bus is one our own model cannot attach to a substation or a line. Not false — *unqualified*. Labelling it costs nothing and does not wait on G155 |
+| ④ | **G157** — 93 bus names are shared by more than one bus | small and live: `wd_limiting_end` stores a NAME, so the screener's "Limited at" can be ambiguous. Carry `bus_id` beside it |
+| ⑤ | **G140**'s non-SI half | 74 objects the rescrape ledger marks `unknown` idempotency, 49 unresolved. ⛔ 3 loaders are append-only and 2 read their own output |
+| ⑥ | **G135** — Orennia bus coverage / FLOSM | ⚠ **its premise changed.** G143 showed our positions MATCH the vendor's to six decimals; only coverage remains, and FLOSM is the untried half |
+| ⑦ | **G102 · G103** | acquisitions. ⭐ Send to an **Opus (non-Fable) agent**, briefed with the write boundary, no-CAPTCHA / no-UA-spoof and BLOCKED-is-a-success, because **agents do not inherit them** |
 
 **Blocked on a purchase, not on engineering:** **G70 · G71 · G104 · G90(b) · G147.**
 ⭐ G152 *measured* this rather than repeating it: `energy.si_d5_vacancy_derived` carries `parcel_owner`, `assessed_value`, `land_use`, `zoning` and `year_built` columns that are **100% NULL on all 967,366 Indiana rows**. The DLGF Gateway purchase is confirmed as the only route.
@@ -114,7 +115,7 @@ bus upgrade tier, so cost may only be answerable as a $/MW benchmark.
 
 ---
 
-## THE BACKLOG — 121 DONE · 16 PARTIAL · 16 OPEN
+## THE BACKLOG — 121 DONE · 16 PARTIAL · 17 OPEN
 
 ---
 
