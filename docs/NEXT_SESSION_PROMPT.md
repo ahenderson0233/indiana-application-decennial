@@ -58,11 +58,12 @@ python scripts/audit_handoff_consistency.py
 
 **Expect 3 checkpoint failures and expect all three to be correct:** the **wiring census** (⭐ the END STATE, not a gap — every unreached object carries a measured reason and the worklist is 0), the **honesty audit's 1 known failure**, and **unregistered ladder rungs** the running harvest created.
 
-⭐ **The checkpoint runs SIXTEEN audits.** Four are new as of 2026-08-21/22, and every one exists because something shipped that nothing was looking at:
+⭐ **The checkpoint runs EIGHTEEN audits.** Six are new as of 2026-08-21/22, and every one exists because something shipped that nothing was looking at:
 - **`si upstream width`** — every upstream SI source is clipped Indiana-wide at full width.
 - **`signal reality`** — regenerates `docs/SIGNAL_REALITY.json`. ⛔ It exists because that file is on the required reading list, is labelled *generated*, and had gone **five days without regenerating** while still reporting `D19_warn` at 2 parcels.
 - **`legend colours`** — every swatch the app draws resolves to a real colour.
 - **`bus placement`** — no unplaceable bus binds a published figure, and no row above upgrade tier 0 claims to be tier 0.
+- **`si column capture`** · **`si source freshness`** — our clips against the PUBLISHER, for columns and for events. ⛔ Both existed and passed for weeks while sitting in NO checkpoint. **An audit nobody runs is a comment.**
 
 ### 4. Read, in this order
 
@@ -122,7 +123,7 @@ bus upgrade tier, so cost may only be answerable as a $/MW benchmark.
 
 ---
 
-## THE BACKLOG — 121 DONE · 16 PARTIAL · 17 OPEN
+## THE BACKLOG — 121 DONE · 16 PARTIAL · 18 OPEN
 
 ---
 

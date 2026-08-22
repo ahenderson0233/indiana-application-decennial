@@ -94,6 +94,46 @@ for target, parent, pred, kind in plan:
     print(f"{target:32} {parent:34} {len(oc):>4}/{len(pc):<4} {ours:>10,}  {v}")
 
 # ================================================================================================
+# ⛔ IS THE PARENT ITSELF COMPLETE? THE QUESTION THIS AUDIT COULD NOT SEE UNTIL 2026-08-22.
+# Everything above compares OUR CLIP against its `energy` PARENT. Both can be perfectly consistent
+# while the PARENT is a partial load of its own publisher — and then we hold 100% of 68%.
+# Operator, 2026-08-22: *"have they all been rescraped for fresh data, and do we actually hold ALL
+# columns for each table?"* This is the half of that question nothing was answering.
+# ⭐ `energy.registry_sources` records the platform session's own load status per object, so the
+# answer is already written down; nobody was reading it.
+# ⚠ REPORTS, DOES NOT FAIL. `energy` is READ-ONLY and its loaders belong to the platform session,
+# so a PARTIAL parent is not something this workstream can fix — but it IS something we must know,
+# because a signal built on it rests on a fraction of the source.
+# ================================================================================================
+print("\n" + "=" * 104)
+print("IS EACH PARENT ITSELF FULLY LOADED? (read from energy.registry_sources)")
+print("=" * 104)
+parents = sorted({p for _, p, _, _ in plan})
+stat = list(client.query(f"""
+WITH latest AS (
+  SELECT o AS parent, status,
+         ROW_NUMBER() OVER (PARTITION BY o ORDER BY last_validated_at DESC) rn
+  FROM `{EN}.registry_sources`, UNNEST(object_names) o
+  WHERE o IN UNNEST(@p))
+SELECT parent, status FROM latest WHERE rn = 1 ORDER BY parent""",
+    job_config=bigquery.QueryJobConfig(query_parameters=[
+        bigquery.ArrayQueryParameter("p", "STRING", parents)])).result())
+partial = [(r.parent, (r.status or "")[:110]) for r in stat
+           if (r.status or "").upper().startswith("PARTIAL")]
+seen = {r.parent for r in stat}
+print(f"  {len(stat)} of {len(parents)} parent(s) carry a load status in energy.registry_sources")
+for miss in sorted(set(parents) - seen):
+    print(f"  ⚠ {miss}: no status recorded upstream - completeness unknown")
+if partial:
+    print(f"  ⛔ {len(partial)} PARENT(S) ARE A PARTIAL LOAD OF THEIR OWN PUBLISHER:")
+    for name, s in partial:
+        print(f"     {name}: {s}")
+    print("  ⚠ Our clip of these is complete; the PARENT is not. Any signal derived from them")
+    print("     rests on a fraction of the source. Re-clip when the platform session finishes.")
+else:
+    print("  ⭐ every parent with a recorded status is fully loaded")
+
+# ================================================================================================
 # ⚠ THE DUPLICATED NORMALISER. build_warn_placement.py and build_si_cmbs_signals.py each carry
 # their own copy of SUFFIXES/DIRECTIONALS so that either can be re-run alone. A duplicate that
 # nothing checks is the two-copies defect this project has hit repeatedly, so it is checked here.

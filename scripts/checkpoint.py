@@ -158,6 +158,20 @@ AUDITS = [
     # version of the check did exactly that and reported a violation that did not exist.
     ("bus placement", "scripts/audit_bus_placement.py",
      r"(\d+) FLOATING BUS\(ES\) REACH|0 unplaceable bus\(es\) reach"),
+
+    # ⛔ BOTH OF THESE EXISTED, BOTH PASSED, AND NOTHING RAN EITHER OF THEM — found 2026-08-22 when
+    # the operator asked whether we hold ALL columns and whether everything has been re-scraped.
+    # ⚠ They answer DIFFERENT questions from `si upstream width`, which compares our clip against
+    # its energy PARENT. These two go one step further out, to the PUBLISHER:
+    #   · column capture  — does the publisher offer a field we do not hold? (ArcGIS layers publish
+    #     their own field list at ?f=json, so this is a measurement, not an estimate.)
+    #   · rescrape rehearsal — does the publisher hold EVENTS we do not? Read-only; writes nothing.
+    # ⛔ An audit nobody runs is a comment. "Registered but not dispatched" was trap 4; these were
+    # not even registered.
+    ("si column capture", "scripts/audit_si_column_capture.py",
+     r"(\d+) source\(s\) compared · (\d+) with a real gap"),
+    ("si source freshness", "scripts/rehearse_si_rescrape.py",
+     r"(\d+) source\(s\) unchanged · (\d+) with MORE rows live"),
 ]
 
 print("=" * 90)
@@ -259,6 +273,17 @@ for label, script, pat in AUDITS:
         check(label, n == 0,
               f"{n} upstream SI source(s) not clipped Indiana-wide at full width"
               if n else "every upstream SI source is clipped Indiana-wide at FULL WIDTH")
+    elif label == "si column capture":
+        gaps = int(m.group(2))
+        check(label, gaps == 0,
+              f"{gaps} SI source(s) where the publisher offers a field we do not hold"
+              if gaps else f"{m.group(1)} source(s) compared against the publisher, 0 gaps")
+    elif label == "si source freshness":
+        # ⚠ A DELTA IS A SIGNAL TO LOOK, NOT A DEFECT — a loader that filters deliberately will
+        # always read low against an unfiltered endpoint. This reports rather than fails, which is
+        # why it is `check(..., True, ...)`: it puts the number on the board every run.
+        check(label, True,
+              f"{m.group(1)} source(s) unchanged, {m.group(2)} with more rows live than we hold")
     elif label == "bus placement":
         n = int(m.group(1)) if m.group(1) else 0
         check(label, n == 0,
